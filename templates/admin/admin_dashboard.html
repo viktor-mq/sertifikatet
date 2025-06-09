@@ -1,0 +1,115 @@
+<!DOCTYPE html>
+<html lang="no">
+<head>
+    <meta charset="UTF-8">
+    <title>Adminpanel</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            padding: 40px;
+            background-color: #f4f4f4;
+        }
+        h1 {
+            color: #333;
+        }
+        .container {
+            background-color: white;
+            padding: 30px;
+            border-radius: 8px;
+            box-shadow: 0 0 10px rgba(0,0,0,0.1);
+            max-width: 800px;
+            margin: auto;
+        }
+        .btn {
+            padding: 10px 20px;
+            background-color: #0077cc;
+            color: white;
+            text-decoration: none;
+            border-radius: 5px;
+        }
+        .btn:hover {
+            background-color: #005fa3;
+        }
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 25px;
+        }
+        th, td {
+            text-align: left;
+            padding: 12px;
+            border-bottom: 1px solid #ddd;
+        }
+        th {
+            background-color: #0077cc;
+            color: white;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>Velkommen til adminpanelet</h1>
+        <p>Her kan du administrere spørsmål og tilknyttede skiltbilder.</p>
+
+        <a href="#" onclick="toggleForm()" class="btn">➕ Legg til nytt spørsmål</a>
+
+        <div id="questionForm" style="display: none; margin-top: 20px;">
+            <form method="POST">
+                <h2>Legg til nytt spørsmål</h2>
+                <label for="question">Spørsmål:</label>
+                <textarea name="question" required></textarea>
+
+                <label for="option_a">Alternativ A:</label>
+                <input type="text" name="option_a" required>
+
+                <label for="option_b">Alternativ B:</label>
+                <input type="text" name="option_b" required>
+
+                <label for="option_c">Alternativ C:</label>
+                <input type="text" name="option_c" required>
+
+                <label for="option_d">Alternativ D:</label>
+                <input type="text" name="option_d" required>
+
+                <label for="correct_answer">Riktig svar (a, b, c, d):</label>
+                <input type="text" name="correct_answer" maxlength="1" pattern="[a-dA-D]" required>
+
+                <label for="category">Kategori:</label>
+                <input type="text" name="category">
+
+                <label for="image_filename">Velg bilde:</label>
+                <select name="image_filename">
+                    {% for image in images %}
+                        <option value="{{ image['filename'] }}">{{ image['description'] }} ({{ image['filename'] }})</option>
+                    {% endfor %}
+                </select>
+
+                <button type="submit">➕ Lagre spørsmål</button>
+            </form>
+        </div>
+
+        <!-- Placeholder for fremtidig tabell med spørsmål -->
+        <table>
+            <thead>
+                <tr>
+                    <th>Spørsmål</th>
+                    <th>Kategori</th>
+                    <th>Bilde</th>
+                    <th>Handling</th>
+                </tr>
+            </thead>
+            <tbody>
+                <tr>
+                    <td colspan="4" style="text-align:center;">(Ingen spørsmål lastet inn ennå)</td>
+                </tr>
+            </tbody>
+        </table>
+        <script>
+            function toggleForm() {
+                const form = document.getElementById("questionForm");
+                form.style.display = form.style.display === "none" ? "block" : "none";
+            }
+        </script>
+    </div>
+</body>
+</html>

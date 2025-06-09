@@ -1,0 +1,317 @@
+sign_code;description;category;filename;explanation
+151;Militer aktivitet;fare;fare/fareskilt_militaer_aktivitet.gif;Dette skiltet varsler om at det kan foregå militær øvelse eller aktivitet i området. Vær forberedt på militære kjøretøy, soldater eller uventet aktivitet på veien.
+100.1;Farlig Sving Høyre;fare;fare/sf200510071219100101_gif.gif;Varselet betyr at det kommer en skarp sving mot høyre. Senk farten og vær oppmerksom på veigrepet.
+100.2;Farlig Sving Venstre;fare;fare/sf200510071219100201_gif.gif;Varselet betyr at det kommer en skarp sving mot Venstre. Senk farten og vær oppmerksom på veigrepet.
+102.1;Farlige Svinger Høgre;fare;fare/sf200510071219102101_gif.gif;Her er det flere svinger etter hverandre, den første mot høyre. Konstruksjonen av veien kan være krevende, og du må ha lav fart og god kontroll.
+102.2;Farlige Svinger Venstre;fare;fare/sf200510071219102201_gif.gif;Flere svinger i rekkefølge, med første mot venstre. Reduser farten og vær forberedt på uoversiktlige partier.
+104.1;Bratt Bakke Opp;fare;fare/sf200510071219104101_gif.gif;Skiltet viser at det kommer en bratt stigning. Biler med svak motor må kanskje gå i lavt gir. Vær også oppmerksom på biler foran som kan miste fart.
+104.2;Bratt Bakke Ned;fare;fare/sf200510071219104201_gif.gif;Skiltet varsler om en bratt nedoverbakke – vær forberedt på økt bremselengde.
+106.1;Smalere Veg Begge;fare;fare/sf200510071219106101_gif.gif;Kjørebane blir smalere på begge sider – møtende trafikk må tas hensyn til.
+106.2;Smalere Veg Fra Høgre;fare;fare/sf200510071219106201_gif.gif;Kjørebane blir smalere fra høyre side. Vær oppmerksom på møtende trafikk.
+106.3;Smalere Veg Fra Venstre;fare;fare/sf200510071219106301_gif.gif;Kjørebane blir smalere fra venstre side. Vær forberedt på mindre plass.
+108;Ujevn Veg;fare;fare/sf20051007121910801_gif.gif;Veibanen har ujevnheter som hull eller dumper. Kjør forsiktig.
+109;Fartshump;fare;fare/sf20051007121910901_gif.gif;Skiltet varsler om fartshump – reduser hastigheten.
+110;Vegarbeid;fare;fare/sf20051007121911001_gif.gif;Det pågår arbeid i eller nær veibanen – vis særlig aktsomhet.
+112;Steinsprut;fare;fare/sf20051007121911201_gif.gif;Fare for steinsprut, ofte på grunn av løst dekke eller fjell.
+114;Rasfare;fare;fare/sf20051007121911401_gif.gif;Område med fare for stein- eller jordras – vær ekstra varsom.
+116;Glatt Kjørebane;fare;fare/sf20051007121911601_gif.gif;Fare for glatt kjørebane – kan skyldes is, olje eller annet underlag.
+117;Farlig Vegskulder;fare;fare/sf20051007121911701_gif.gif;Skulderen på veien er svak eller lav – risiko ved utforkjøring eller møting.
+118;Bevegelig Bru;fare;fare/sf20051007121911801_gif.gif;Varsler om bru som kan åpnes/løftes – stans og vent kan være nødvendig.
+120;Kai, Strand, Ferjeleie;fare;fare/sf20051007121912001_gif.gif;Fare for å kjøre i vannet – området leder mot kai, strand eller ferje.
+122;Tunnel;fare;fare/sf20051007121912201_gif.gif;Inngang til tunnel – vær oppmerksom på lysforhold og nødutganger.
+124;Farlig Vegkryss;fare;fare/sf20051007121912401_gif.gif;Kryss med nedsatt sikt eller høy ulykkesrisiko – reduser farten.
+126;Rundkjøring;fare;fare/sf20051007121912601_gif.gif;Du nærmer deg en rundkjøring – gi tegn og vikeplikt ved innkjøring.
+132;Trafikklyssignal;fare;fare/sf20051007121913201_gif.gif;Kryss eller punkt regulert med trafikklys – vær klar for stans.
+134;Planovergang Med Bom;fare;fare/sf20051007121913401_gif.gif;Jernbaneovergang med bom – stans ved rødt lys eller lukket bom.
+135;Planovergang Uten Bom;fare;fare/sf20051007121913501_gif.gif;Jernbaneovergang uten bom – ekstra oppmerksomhet nødvendig.
+136.1;Avstandsskilt 300 meter;fare;fare/sf200510071219136101_gif.gif;Skiltet varsler at det kommer et farlig punkt om 300 meter.
+136.2;Avstandsskilt 200 meter;fare;fare/sf200510071219136201_gif.gif;Farlig punkt kommer om 200 meter – forberede deg på handling.
+136.3;Avstandsskilt 100 meter;fare;fare/sf200510071219136301_gif.gif;Farlig punkt kommer om 100 meter – vær oppmerksom.
+138.1;Jernbarnespor Enkeltsporet;fare;fare/sf200510071219138101_gif.gif;Enkelt jernbanespor krysser veien – stans ved behov.
+138.2;Jernbarnespor Flersporet;fare;fare/sf200510071219138201_gif.gif;Flere jernbanespor krysser veien – vær ekstra oppmerksom.
+139;Sporvogn;fare;fare/sf20051007121913901_gif.gif;Vei krysset eller delt med sporvogn – fare for kryssende trafikk.
+140;Avstand Til Gangfelt;fare;fare/sf20051007121914001_gif.gif;Gangfelt nærmer seg – vis hensyn til fotgjengere.
+142;Barn;fare;fare/sf20051007121914201_gif.gif;Barn kan komme plutselig ut i veien – typisk nær skole eller lekeområde.
+144;Syklende;fare;fare/sf20051007121914401_gif.gif;Syklister i området – vær varsom ved forbikjøring.
+146.1;Elg;fare;fare/sf200510071219146101_gif.gif;Fareskilt som varsler om elgfare – vanlig i skogsområder. Reduser farten og vær oppmerksom, spesielt ved skumring.
+146.2;Rein;fare;fare/sf200510071219146201_gif.gif;Fareskilt for rein – ofte brukt på fjellet eller i nordlige strøk. Reinen går ofte i flokker.
+146.3;Hjort;fare;fare/sf200510071219146301_gif.gif;Varsler om fare for hjortekollisjoner. Hjorten kan komme løpende brått ut fra skog eller skråning.
+146.4;Ku;fare;fare/sf200510071219146401_gif.gif;Fare for at kyr kan være på eller ved veien – vanlig nær beitemark.
+146.5;sauer og Lam;fare;fare/sf200510071219146501_gif.gif;Fare for dyr i veibanen – kan være storfe, sau, rein eller andre dyr.
+148;Møtende Trafikk;fare;fare/sf20051007121914801_gif.gif;Fareskilt for sau – typisk brukt i fjellområder eller beiteområder med løsdrift.
+149;Ko;fare;fare/sf20051007121914901_gif.gif;Varsler om fare for stillestående eller saktegående trafikk – typisk ved stor trafikkmengde, rushtid eller ulykker.
+150;Fly;fare;fare/sf20051007121915001_gif.gif;Lavtgående fly i området – særlig ved rullebaner nær veien.
+152;Sidevind;fare;fare/sf20051007121915201_gif.gif;Fare for sterk sidevind – risiko for å miste kontroll over kjøretøyet.
+153;Trafikkulykke;fare;fare/sf20051007121915301_gif.gif;Utsatt punkt for trafikkulykker – vær ekstra aktpågivende.
+154;Skiløpere;fare;fare/sf20051007121915401_gif.gif;Kryssende skiløype – reduser farten og se etter skiløpere.
+155;Ridende;fare;fare/sf20051007121915501_gif.gif;Kryssende ridesti – fare for hest og rytter i eller ved veien.
+156;Annen fare;fare;fare/sf20051007121915601_gif.gif;Skiltet brukes når faren ikke dekkes av andre fareskilt – se etter supplerende informasjon.
+302;Innkjoring Forbudt;forbuds;forbuds/sf20051007121930201_gif.gif;Det er ikke tillatt å kjøre inn i veien fra denne retningen.
+306.0;Forbudt for alle kjoretoy;forbuds;forbuds/sf200510071219306001_gif.gif;Gjelder alle typer kjøretøy – ingen motorisert eller ikke-motorisert trafikk.
+306.1;Forbudt for motorvogn med unntak av liten elektrisk motorvogn;forbuds;forbuds/sf200510071219306101_gif.gif;Forbud mot motorvogn, men små elektriske kjøretøy som el-sparkesykkel kan være unntatt.
+306.3;Forbudt for alle traktorer og for motorredskap konstruert for fart mindre enn 40 km/t.;forbuds;forbuds/sf200510071219306301_gif.gif;Traktorer og motorredskap som anleggsmaskiner har ikke tillatelse.
+306.4;Forbudt for motorsykkel og moped;forbuds;forbuds/sf200510071219306401_gif.gif;Gjelder tohjuls- eller trehjuls motoriserte kjøretøy.
+306.5;Forbudt for lastebil og trekkbil;forbuds;forbuds/sf200510071219306501_gif.gif;Lastebiler og trekkbiler har ikke adgang.
+306.6;Forbudt for syklende og forer av liten elektrisk motorvogn;forbuds;forbuds/sf200510071219306601_gif.gif;Gjelder syklister og små elektriske kjøretøy som el-sparkesykkel.
+306.7;Forbudt for gaende;forbuds;forbuds/sf200510071219306701_gif.gif;Fotgjengere har ikke adgang.
+306.8;Forbudt for gaende, syklende og fører av liten elektrisk motorvogn;forbuds;forbuds/sf200510071219306801_gif.gif;Totalforbud for disse trafikantgruppene – ofte brukt i tunneler.
+306.9;Forbudt for ridende;forbuds;forbuds/sf200510071219306901_gif.gif;Gjelder personer som rir – vanlig ved høytrafikkerte veier eller motorvei.
+306.10;Forbudt for liten elektrisk motorvogn;forbuds;forbuds/sf-20051007-1219-306-10-01_gif.png;Forbud mot små elektriske kjøretøy som el-sparkesykkel.
+308;Forbudt for transport av farlig gods;forbuds;forbuds/sf20051007121930801_gif.gif;Ikke tillatt å transportere farlig gods – eksplosiver, gass, gift osv.
+310;Forbudt for motorvogn med flere enn to hjul og med tillatt totalvekt høyere enn angitt;forbuds;forbuds/sf20051007121931001_gif.gif;Forbud mot større motorvogn – typisk busser og lastebiler med visse unntak.
+312;Breddegrense;forbuds;forbuds/sf20051007121931201_gif.gif;Kjøretøy som er bredere enn angitt må ikke passere.
+314;Høydegrense;forbuds;forbuds/sf20051007121931401_gif.gif;Kjøretøy som er høyere enn angitt må ikke passere.
+316;Lengdegrense;forbuds;forbuds/sf20051007121931601_gif.gif;Kjøretøy som er lengre enn angitt må ikke kjøre inn.
+318.1;Totalvektgrense for kjoretoy;forbuds;forbuds/sf200510071219318101_gif.gif;Kjøretøy over angitt totalvekt har ikke tillatelse til å passere.
+318.2;Totalvektgrense for for vogntog;forbuds;forbuds/sf200510071219318201_gif.gif;Vogntog over angitt totalvekt har ikke tillatelse til å passere.
+320;Aksellastgrense;forbuds;forbuds/sf20051007121932001_gif.gif;Begrenser aksellast – viktig for broers og vegers bæreevne.
+322;Boggilastgrense;forbuds;forbuds/sf20051007121932201_gif.gif;Begrenser boggilast – gjelder for tunge kjøretøykombinasjoner.
+324;Stopp for angitt formal;forbuds;forbuds/sf20051007121932401_gif.gif;Stopp for kontroll eller annen kontrollfunksjon – se undertekst eller symbol.
+326;Stopp for toll;forbuds;forbuds/sf20051007121932601_gif.gif;Stopp for toll – brukes nær grenseoverganger eller tollstasjoner.
+330.1;Svingeforbud Høgre;forbuds;forbuds/sf200510071219330101_gif.gif;Det er forbudt å svinge til høyre der dette skiltet er plassert.
+330.2;Svingeforbud Venstre;forbuds;forbuds/sf200510071219330201_gif.gif;Det er forbudt å svinge til venstre der dette skiltet er plassert.
+332;Vendingsforbud;forbuds;forbuds/sf20051007121933201_gif.gif;Det er ikke tillatt å snu – for eksempel i kryss eller U-sving.
+334;Forbikjøringsforbud;forbuds;forbuds/sf20051007121933401_gif.gif;Forbikjøring av motorvogn på mer enn to hjul er forbudt.
+335;Forbikjoringsforbud for lastebil;forbuds;forbuds/sf20051007121933501_gif.gif;Forbikjøring med lastebil er forbudt – gjelder tunge kjøretøy.
+336;Slutt på forbikjoringsforbud;forbuds;forbuds/sf20051007121933601_gif.gif;Forbudet mot forbikjøring oppheves – gjelder alle kjøretøy.
+337;Slutt på forbikjoringsforbud for lastebil;forbuds;forbuds/sf20051007121933701_gif.gif;Forbudet mot forbikjøring med lastebil oppheves.
+362;Fartsgrense;forbuds;forbuds/sf20051007121936201_gif.gif;Viser hvilken fartsgrense som gjelder fra og med skiltets plassering.
+364;Slutt på serskilt fartsgrense;forbuds;forbuds/sf20051007121936401_gif.gif;Fartsgrensen som tidligere gjaldt opphører – generelle regler gjelder videre.
+366;Fartsgrensesone;forbuds;forbuds/sf20051007121936601_gif.gif;Område der angitt fartsgrense gjelder til sonen oppheves.
+367;Fartsgrensesone for liten elektrisk motorvogn;forbuds;forbuds/sf-20051007-1219-367-01_gif.png;Fartsgrensesone spesifikt for liten elektrisk motorvogn, f.eks. el-sparkesykkel.
+368;Slutt pa fartsgrensesone;forbuds;forbuds/sf20051007121936801_gif.gif;Slutt på fartsgrensesone – den angitte soneregelen oppheves.
+369;Slutt på fartsgrensesone for liten elektrisk motorvogn;forbuds;forbuds/sf-20051007-1219-369-01_gif.png;Slutt på sone med fartsgrense for liten elektrisk motorvogn.
+370;Stans forbudt;forbuds;forbuds/sf20051007121937001_gif.gif;Stans av kjøretøy er forbudt på området skiltet dekker.
+372;Parkering forbudt;forbuds;forbuds/sf20051007121937201_gif.gif;Parkering er ikke tillatt – se eventuelle tilleggsskilt for tidsrom.
+376.1;Parkeringssone;forbuds;forbuds/sf200510071219376101_gif.gif;Område der parkeringsregler gjelder som en sone – gjelder inntil opphevet.
+376.2;Parkeringssone;forbuds;forbuds/sf200510071219376201_gif.gif;Område der parkeringsregler gjelder som en sone – gjelder inntil opphevet.
+377;Sone med parkeringsforbud for liten elektrisk motorvogn;forbuds;forbuds/sf-20051007-1219-377-01_gif.png;Sone med parkeringsforbud for liten elektrisk motorvogn – f.eks. el-sparkesykkel.
+378.1;Slutt på parkeringssone;forbuds;forbuds/sf200510071219378101_gif.gif;Slutt på område der parkeringssone-regler har vært gjeldende.
+378.2;Slutt på parkeringsforbud;forbuds;forbuds/sf200510071219378201_gif.gif;Slutt på område med parkeringsforbud – normal parkering tillatt.
+379;Slutt på sone med parkeringsforbud for liten elektrisk motorvogn;forbuds;forbuds/sf-20051007-1219-379-01_png.png;Slutt på sone med parkeringsforbud for liten elektrisk motorvogn.
+380;Sone med bruksforbud for liten elektrisk motorvogn;forbuds;forbuds/sf-20051007-1219-380-01_PNG.png;Område der bruk av liten elektrisk motorvogn er forbudt.
+382;Slutt på sone med bruksforbud for liten elektrisk motorvogn;forbuds;forbuds/sf-20051007-1219-382-01_PNG.png;Slutt på sone med bruksforbud for liten elektrisk motorvogn.
+1000;Kjørefeltlinje;linjer_og;linjer_og/sf200510071219100001_gif.gif;Angir deling mellom kjørefelt i samme retning – kan krysses med varsomhet.
+1002;Varsellinje;linjer_og;linjer_og/sf200510071219100201_gif_2.gif;Varsler overgang til sperrelinje – kryssing frarådes.
+1004;Sperrelinje;linjer_og;linjer_og/sf200510071219100401_gif.gif;Det er ikke tillatt å krysse denne linjen – forbudt passering.
+1006;Kombinerte linjer;linjer_og;linjer_og/sf200510071219100601_gif.gif;En blanding av sperrelinje og kjørefeltlinje – gjelder forskjellig for hver retning.
+1008;Skillelinje;linjer_og;linjer_og/sf200510071219100801_gif.gif;Skiller kjørefelt som går i ulike retninger – kryssing forbudt.
+1010;Ledelinje;linjer_og;linjer_og/sf200510071219101001_gif.gif;Brukes for å lede trafikk i kryss eller rundkjøring – gir retning.
+1012;Kantlinje;linjer_og;linjer_og/sf200510071219101201_gif.gif;Marker ytterkant av kjørebanen – hjelper med plassering i veibanen.
+1014;Sperreområde;linjer_og;linjer_og/sf200510071219101401_gif.gif;Område markert med heltrukne linjer – kjøring tillates ikke innenfor.
+1020;Stopplinje;linjer_og;linjer_og/sf200510071219102001_gif.gif;Linje hvor kjøretøy må stanse ved stoppskilt eller rødt lys.
+1022;Vikelinje;linjer_og;linjer_og/sf200510071219102201_gif_2.gif;Angir hvor vikeplikt skal utøves – stans er ikke påkrevd med mindre nødvendig.
+1024;Gangfelt;linjer_og;linjer_og/sf200510071219102401_gif.gif;Markerer gangfelt – gir fotgjengere rett til å krysse veien trygt.
+1026;Sykkelkryssing;linjer_og;linjer_og/sf200510071219102601_gif.gif;Markerer kryssing for syklister – gir informasjon om syklistens trase.
+1027;Fartshump;linjer_og;linjer_og/sf200510071219102701_gif.gif;Markering av fartshump – varsler sjåfører om å redusere hastigheten.
+1028;Parkeringsfelt;linjer_og;linjer_og/sf200510071219102801_gif.gif;Angir parkeringsfelt – veibanen er reservert for parkering.
+1034;Piler;linjer_og;linjer_og/sf200510071219103401_gif.gif;Piler angir kjørefeltets retning eller tillatt bevegelse.
+1036;Vikesymbol;linjer_og;linjer_og/sf200510071219103601_gif.gif;Symbol som markerer vikeplikt i veikryss.
+1037;Gangsymbol;linjer_og;linjer_og/sf200510071219103701_gif.gif;Symbol som viser hvor fotgjengere forventes å krysse.
+1038;Delesymbol;linjer_og;linjer_og/sf200510071219103901_gif.gif;Delesymbol for gang- og sykkelvei – skiller soner for gående og syklende.
+1040;Parkeringssymbol;linjer_og;linjer_og/sf200510071219104001_gif.gif;Symbol for parkering – ofte brukt i kombinasjon med parkeringsfelt.
+1041;Liten elektrisk motorvogn;linjer_og;linjer_og/sf-20051007-1219-1041-01-02.png;Markering for område eller felt for liten elektrisk motorvogn (f.eks. el-sparkesykkel).
+1042;Symbol for forflytningshemmede;linjer_og;linjer_og/sf200510071219104201_gif_2.gif;Markerer plass eller område reservert for forflytningshemmede.
+1044;Skinnekjøretøy;linjer_og;linjer_og/sf200510071219104401_gif.gif;Symbol for trikk/sporvogn – markerer felt der disse kjører.
+1050;Tekst;linjer_og;linjer_og/sf200510071219105001_gif.gif;Inngravert eller malt tekst i veibanen – gir ekstra informasjon, f.eks. «BUSS».
+1052;Sambruksfelt;linjer_og;linjer_og/sf200510071219105201_gif.gif;Felt reservert for felles bruk, f.eks. buss, taxi og elbil.
+1054;Fartsgrense;linjer_og;linjer_og/sf200510071219105401_gif.gif;Fartsgrensen angitt med tall i kjørebanen.
+1053;Tungtrafikkfelt;linjer_og;linjer_og/vegoppmerkingsskilt_som_viser_75_tonn__grafikk.gif;Felt reservert for tunge kjøretøy som lastebil og buss.
+761;Motorveg;opplysnings;opplysnings/sf20051007121950201_gif.gif;Vei reservert for motorvogn med høy standard – avkjørsler kun i planfrie kryss.
+763;Motortrafikkveg;opplysnings;opplysnings/sf20051007121950301_gif.gif;Hovedvei for motorisert trafikk med visse restriksjoner for gående og syklende.
+504;Slutt på motorveg;opplysnings;opplysnings/sf20051007121950401_gif.gif;Motorveien opphører – normale trafikkregler gjelder videre.
+505;Slutt på motortrafikkveg;opplysnings;opplysnings/sf20051007121950501_gif.gif;Motortrafikkveien opphører – vær oppmerksom på mulig redusert standard.
+506;Tungtrafikkfelt;opplysnings;opplysnings/sf20051007121950601_gif.gif;Felt forbeholdt tunge kjøretøy, som lastebil og buss.
+507;Slutt på tungtrafikkfelt;opplysnings;opplysnings/sf20051007121950701_gif.gif;Avslutning på særskilt felt for tungtrafikk.
+508.1;Kollektivfelt for buss;opplysnings;opplysnings/sf200510071219508101_gif.gif;Felt reservert for busser – andre kjøretøy må ikke bruke dette.
+508.2;Kollektivfelt for buss og drosje;opplysnings;opplysnings/sf200510071219508201_gif.gif;Felt reservert for busser og drosjer (taxi).
+509;Sambruksfelt;opplysnings;opplysnings/sf20051007121950901_gif.gif;Felt for felles bruk, f.eks. elbil, taxi, kollektiv m.m. – se skilt.
+510.1;Slutt på kollektivfelt;opplysnings;opplysnings/sf200510071219510101_gif.gif;Slutt på område med kollektivfelt – vanlige regler gjelder.
+510.2;Slutt på kollektivfelt for buss og drosje;opplysnings;opplysnings/sf200510071219510201_gif.gif;Kollektivfelt for buss og drosje opphører – normale regler gjelder.
+511;Slutt på sambruksfelt;opplysnings;opplysnings/sf20051007121951101_gif.gif;Felt for elbil, taxi m.m. opphører – vanlig trafikkfelt følger.
+512;Holdeplass for buss;opplysnings;opplysnings/sf20051007121951201_gif.gif;Marker område der buss stopper for av- og påstigning.
+513;Holdeplass for sporvogn;opplysnings;opplysnings/sf20051007121951301_gif.gif;Marker område der trikk/sporvogn stopper – se opp for passasjerer.
+514;Holdeplass for drosje;opplysnings;opplysnings/sf20051007121951401_gif.gif;Reservert plass for taxi – ventende og kjørende drosjer.
+516;Gangfelt;opplysnings;opplysnings/sf20051007121951601_gif.gif;Opplyser om fotgjengerovergang – vis hensyn og vikeplikt.
+518;Gangveg;opplysnings;opplysnings/sf20051007121951801_gif.gif;Opplyser om veg kun for gående – sykling forbudt.
+520;Sykkelveg;opplysnings;opplysnings/sf20051007121952001_gif.gif;Opplyser om veg kun for syklister – andre trafikanter forbudt.
+521.1;Sykkelfelt – sideplassert;opplysnings;opplysnings/sf20051007121952101_gif.gif;Oppmerksomhet på sykkelfelt langs veikant – kun for syklister.
+521.2;Sykkelfelt – Midtstilt;opplysnings;opplysnings/sf200510071219521201_gif.gif;Sykkelfelt plassert i midten av kjørefelt – kun for syklister.
+522;Gang- og sykkelveg;opplysnings;opplysnings/sf20051007121952201_gif.gif;Veg delt mellom gående og syklende – vis hensyn og hold deg til riktig side.
+524;Møteplass;opplysnings;opplysnings/sf20051007121952401_gif.gif;Utvidet område der kjøretøy kan møtes og passere hverandre.
+526.1;Envegskjøring frem;opplysnings;opplysnings/sf200510071219526101_gif.gif;Kun én kjøreretning tillatt – fremover i pilens retning.
+526.2;Envegskjøring venstre;opplysnings;opplysnings/sf200510071219526201_gif.gif;Enveisveg med kjøreretning til venstre.
+527.1;Blindveg;opplysnings;opplysnings/sf200510071219527101_gif.gif;Veg som ikke har gjennomkjøring – ender blindt.
+527.2;Skiltet viser at vegen er fysisk stengt.;opplysnings;opplysnings/sf200510071219527201_gif.gif;Veg sperret med fysisk hindring, f.eks. bom, mur eller annet.
+527.3;Skiltet viser at kryssende veg er fysisk stengt;opplysnings;opplysnings/sf200510071219527301_gif.gif;Kryssende veg er fysisk sperret – gjennomkjøring umulig.
+527.4;Skiltet viser at vegen er stengt for biltrafikk, men åpen for gående og syklende;opplysnings;opplysnings/sf200510071219527401_gif.gif;Biltrafikk forhindres – men annen ferdsel kan være tillatt.
+528;Valgfritt kjørefelt;opplysnings;opplysnings/sf20051007121952801_gif.gif;Trafikanter kan velge fritt mellom kjørefeltene i angitt område.
+530;Sammenfletting;opplysnings;opplysnings/sf200510071219530a01_gif.gif;Kjørefelt flettes sammen – veksle på å slippe frem kjøretøy.
+531.1;Felt for fartsøkning;opplysnings;opplysnings/sf200510071219531101_gif.gif;Kjørefelt for akselerasjon – benyttes ved innkjøring på hovedvei.
+532;Kjørefelt slutter;opplysnings;opplysnings/sf200510071219532a01_gif.gif;Et kjørefelt opphører – vær oppmerksom og flett inn i tide.
+534;Kjørefelt begynner;opplysnings;opplysnings/sf200510071219534a01_gif.gif;Et nytt kjørefelt starter – benytt ved behov.
+536.1;Påkjøring fortsetter i eget kjørefelt;opplysnings;opplysnings/sf200510071219536101_gif.gif;Feltet du kommer fra fortsetter – ingen fletting nødvendig.
+538;Kjørefeltinndeling;opplysnings;opplysnings/sf20051007121953801_gif.gif;Viser hvordan kjørefeltene er delt – planlegg kjøring deretter.
+539;Endret kjøremønster;opplysnings;opplysnings/sf20051007121953901_gif.gif;Kjør forsiktig – uvanlig eller midlertidig kjøremønster i området.
+540;Gatetun;opplysnings;opplysnings/sf20051007121954001_gif.gif;Område der gående har prioritet – lav hastighet påbudt.
+542;Slutt på gatetun;opplysnings;opplysnings/sf20051007121954201_gif.gif;Vanlige trafikkregler gjelder igjen – vis hensyn.
+548;Gågate;opplysnings;opplysnings/sf20051007121954801_gif.gif;Veg kun for gående – kjøring vanligvis forbudt.
+550;Slutt på gågate;opplysnings;opplysnings/sf20051007121955001_gif.gif;Kjøring kan gjenopptas – følg gjeldende regler.
+552;Parkering;opplysnings;opplysnings/sf20051007121955201_gif.gif;Område der det er tillatt å parkere – følg eventuelle tilleggsskilt.
+555;Havarilomme;opplysnings;opplysnings/sf20051007121955501_gif.gif;Lomme i veien for nødstopp – ikke ment for vanlig parkering.
+556.1;Automatisk trafikkontroll – punktmåling;opplysnings;opplysnings/sf200510071219556101_gif.gif;Fotoboks måler kjøretøyets hastighet på et bestemt punkt.
+556.2;Automatisk trafikkontroll – strekningsmåling;opplysnings;opplysnings/sf200510071219556201_gif.gif;Gjennomsnittshastighet måles over en strekning.
+558;Videokontroll/-overvåking;opplysnings;opplysnings/sf20051007121955801_gif.gif;Området er videoovervåket – ofte brukt ved bomstasjoner eller tunneler.
+560;Opplysningstavle;opplysnings;opplysnings/sf20051007121956001_gif.gif;Gir generell informasjon – kan brukes sammen med symbol eller tekst.
+565;Feil kjøreretning;opplysnings;opplysnings/sf20051007121956501_gif.gif;Varsel om at du kjører mot kjøreretningen – snu umiddelbart.
+570.1;Nødutgangsskilt for tunnel;opplysnings;opplysnings/sf2005100712195701h01_gif.gif;Viser plassering av nødutgang i tunnel.
+570.2;Retning og avstand til nødutgang;opplysnings;opplysnings/sf2005100712195702h01_gif.gif;Angir retningen og avstanden til nærmeste nødutgang.
+650.22;Sykkelloype;service;service/serviceskilt_som_viser_sykkelløype__grafikk.gif;Vei eller rute tilrettelagt for syklister – del av nasjonalt eller lokalt nettverk.
+602;Førstehjelp;service;service/sf20051007121960201_gif.gif;Sted der førstehjelpsutstyr er tilgjengelig – f.eks. hjertestarter.
+605;Nødtelefon;service;service/sf20051007121960501_gif.gif;Plassering av telefon for nødsituasjoner – ofte i tunneler eller langs motorvei.
+606;Brannslokningsapparat;service;service/sf20051007121960601_gif.gif;Viser hvor brannslukker er plassert – viktig ved brannfare.
+608;Kjøretøyverksted;service;service/sf20051007121960801_gif.gif;Verksted der kjøretøy kan repareres – dekker både små og store kjøretøy.
+609;Hurtiglading av motorvogn;service;service/sf20051007121960901_gif.gif;Tilgang til hurtigladestasjon for elbil eller annet elektrisk kjøretøy.
+610.1 ;Drivstoff;service;service/sf200510071219610101_gif.gif;Tilgang på bensin, diesel eller annen type drivstoff – bensinstasjon.
+611;Toalettømmeanlegg;service;service/sf20051007121961101_gif.gif;Tømmestasjon for campingvogner eller bobiler – sanitæranlegg.
+612;Toalett;service;service/sf20051007121961201_gif.gif;Offentlig toalett tilgjengelig på stedet.
+613.1;Rasteplass;service;service/sf200510071219613101_gif.gif;Tilrettelagt stoppested med sitteplasser, ofte med toalett og informasjon.
+613.2;Rasteplass med toalett;service;service/sf200510071219613201_gif.gif;Rast med både sitteplass og toalett – egnet for lengre stopp.
+614;Enklere servering;service;service/sf20051007121961401_gif.gif;Kiosk, kafé eller annen enkel matservering.
+616;Spisested;service;service/sf20051007121961601_gif.gif;Restaurant eller større serveringssted med varm mat.
+618;Campingplass;service;service/sf20051007121961801_gif.gif;Område tilrettelagt for telt og campingvogner.
+621;Bobilplass;service;service/sf20051007121962101_gif.gif;Oppstillingsplass spesifikt for bobiler – ofte med strøm og vann.
+622;Campinghytter;service;service/sf20051007121962201_gif.gif;Enkle overnattingshytter ofte tilknyttet campingplass.
+624;Vandrerhjem;service;service/sf20051007121962401_gif.gif;Rimelig overnatting med fellesrom og selvbetjening.
+625;Rom og frokost;service;service/sf20051007121962501_gif.gif;Privat overnatting med frokost inkludert – «bed and breakfast».
+626;Overnattingssted;service;service/sf20051007121962601_gif.gif;Generell overnatting – hotell, motell, pensjonat osv.
+635;Informasjon;service;service/sf20051007121963501_gif.gif;Generell informasjonstavle for reisende – f.eks. kart, regler eller tilbud.
+637;Turistkontor;service;service/sf20051007121963701_gif.gif;Offentlig kontor med informasjon for turister – kart, brosjyrer, tips.
+638;Døgnhvileplass;service;service/sf-20051007-1219-638-01-01.png;Parkeringsplass for langtransport med fasiliteter for hvile og overnatting.
+640.10;Severdighet;service;service/sf2005100712196401001_gif.gif;Viser vei til kulturelt eller naturlig interessant sted.
+640.12;Museum/galleri;service;service/sf2005100712196401201_gif.gif;Tilgang til kunstutstilling eller museum.
+640.20 ;Utsiktspunkt;service;service/sf2005100712196402001_gif.gif;Sted med utsikt over landskap, by eller severdighet.
+650.10;Badeplass;service;service/sf2005100712196501001_gif.gif;Offentlig tilrettelagt badeområde.
+650.11;Fiskeplass;service;service/sf2005100712196501101_gif.gif;Tilrettelagt område for sportsfiske eller fritidsfiske.
+650.20;Tursti;service;service/sf2005100712196502001_gif.gif;Merket rute for fotturer i naturen.
+650.21;Skiløype;service;service/sf2005100712196502101_gif.gif;Preparert løype for langrenn eller annen skigåing.
+650.40;Gardsmat/bygdeturisme;service;service/sf2005100712196504001_gif.gif;Tilbud om lokal mat, gårdsopplevelser eller overnatting i landlige omgivelser.
+1080;Hovedsignal;signaler;signaler/sf200510071219108001_gif.gif;Vanlig trafikklys for motorvogner – regulerer kjøring med rødt, gult og grønt.
+1082.1;Pilsignal Venstre;signaler;signaler/sf2005100712191082101_gif.gif;Trafikklys med pil til venstre – gjelder kun for venstresvingende trafikk.
+1082.2;Pilsignal Opp;signaler;signaler/sf2005100712191082201_gif.gif;Pilsignal rett frem – gjelder bare for trafikk rett frem.
+1082.3;Pilsignal Høgre;signaler;signaler/sf2005100712191082301_gif.gif;Pil til høyre – signalet gjelder bare for høyresvingende trafikk.
+1084;Sykkelsignal;signaler;signaler/sf200510071219108402_gif.gif;Eget lys for syklister – styrer når det er trygt å krysse eller kjøre.
+1086;Fotgjengersignal;signaler;signaler/sf200510071219108601_gif.gif;Signal for fotgjengere – grønn mann = gå, rød mann = stans.
+1088;Signal for kollektivtrafikk;signaler;signaler/sf200510071219108802_gif.gif;Trafikklys for buss og trikk – egne signaler som ikke gjelder andre trafikanter.
+1090;Kjørefeltsignal;signaler;signaler/sf200510071219109001_gif.gif;Lyssignal over kjørefelt – viser om feltet er åpent eller stengt.
+1092;Tolyssignal;signaler;signaler/sf200510071219109201_gif.gif;Rødt og grønt lys brukt der gult ikke er nødvendig – f.eks. bommer.
+1094;Rødt stoppblinksignal;signaler;signaler/sf200510071219109401_gif.gif;Blinkende rødt lys – stans umiddelbart og følg anvisninger eller bommer.
+1096;Blinkende signal foran jernbane;signaler;signaler/sf200510071219109601_gif.gif;Varsellys før planovergang – stans ved blinkende rødt, jernbane nærmer seg.
+1098;Gult blinksignal;signaler;signaler/sf200510071219109801_gif.gif;Varsellys som ber trafikanter være ekstra oppmerksomme – ingen stans plikt.
+1100.1;Blinkende lyspil;signaler;signaler/sf2005100712191100101_gif.gif;Pil som blinker for å vise anbefalt kjøreretning – ofte ved hinder eller veiarbeid.
+902.1;Bakgrunnsmarkering Høgre;markering;markering/sf200510071219902h01_gif.gif;Refleksmarkering som viser hindringer eller objekter på høyre side.
+902.2;Bakgrunnsmarkering Venstre;markering;markering/sf200510071219902v01_gif.gif;Refleksmarkering som viser hindringer eller objekter på venstre side.
+904 .1;Retningsmarkering Høgre;markering;markering/sf200510071219904h01_gif.gif;Viser skarp sving eller kurve til høyre – gir tidlig visuell varsling.
+904.2;Retningsmarkering Venstre;markering;markering/sf200510071219904v01_gif.gif;Viser skarp sving eller kurve til venstre – gir tidlig visuell varsling.
+906.1;Hindermarkering Høgre;markering;markering/sf200510071219906h01_gif.gif;Markerer hindring – passer på høyre side.
+906.2;Hindermarkering Venstre;markering;markering/sf200510071219906v01_gif.gif;Markerer hindring – passer på venstre side.
+906.3;Hindermarkering Frem;markering;markering/sf200510071219906vh01_gif.gif;Hindring skal passeres rett frem – typisk midt i veien.
+908;Hindermarkering;markering;markering/sf20051007121990801_gif.gif;Generell markering av hindringer i eller ved veibanen.
+912;Avkjøringsmarkering;markering;markering/sf20051007121991201_gif.gif;Marker avkjøring – ofte brukt før utfartsramper.
+914;Tunnelmarkering;markering;markering/sf200510071219914h01_gif.gif;Brukes i tunneler for å vise vegkanter eller retning.
+916;Avstandsmarkering i tunnel;markering;markering/sf20051007121991601_gif.gif;Viser avstand i meter til nærmeste nødutgang – plassert jevnlig i tunnelvegger.
+920;Kantstolpe;markering;markering/sf200510071219920h01_gif.gif;Marker kant av veien – reflekser gir veiledning i mørke.
+940;Trafikkjegle;markering;markering/sf20051007121994001_gif.gif;Midlertidig markering ved arbeid, ulykker eller hindringer – lett flyttbar.
+942;Trafikksylinder;markering;markering/sf20051007121994201_gif.gif;Høy, sylindrisk markør for å lede trafikk eller sperre av område midlertidig.
+802;Avstand;under;under/sf20051007121980201_gif.gif;Viser hvor langt restriksjon eller informasjon gjelder fremover.
+804;Utstrekning;under;under/sf20051007121980401_gif.gif;Angir total lengde eller område som restriksjonen gjelder.
+806;Tid;under;under/sf20051007121980601_gif.gif;Viser når skiltet gjelder – f.eks. ukedager, klokkeslett.
+807.1 ;Personbil;under;under/sf200510071219807101_gif.gif;Skiltet gjelder kun for personbiler.
+807.2;Varebil, lastebil og trekkbil;under;under/sf200510071219807201_gif.gif;Gjelder kjøretøy med varer, gods eller tilhenger – som lastebil og trekkbil.
+807.3;Buss;under;under/sf200510071219807301_gif.gif;Skiltet gjelder for busser i rutetrafikk eller turtrafikk.
+807.4;Vogntog;under;under/sf200510071219807401_gif.gif;Gjelder kjøretøykombinasjoner – f.eks. lastebil med tilhenger.
+807.5;Tilhenger særskilt innredet til campingbruk, samt eventuell trekkvogn;under;under/sf200510071219807501_gif.gif;Gjelder tilhengere innredet til campingbruk.
+807.6;Sykkel og liten elektrisk motorvogn;under;under/sf200510071219807601_gif.gif;Skiltet gjelder for sykler, el-sykler og små elektriske kjøretøy.
+807.7;Tohjuls motorsykkel med og uten sidevogn og tohjuls moped;under;under/sf200510071219807701_gif.gif;Gjelder tohjuls motorsykkel og moped, med eller uten sidevogn.
+807.8;Forflytningshemmede med parkeringstillatelse;under;under/sf200510071219807801_gif.gif;Gjelder kun for personer med gyldig parkeringsbevis for forflytningshemmede.
+807.9;Kjøretøy særskilt innredet til campingbruk (bobil);under;under/sf200510071219807901_gif.gif;Gjelder for bobiler og større kjøretøy spesielt tilpasset camping.
+808;Tekst;under;under/sf20051007121980801_gif.gif;Tilleggsskilt med informasjon i form av tekst.
+810;Svingpil;under;under/sf20051007121981001_gif.gif;Angir hvilken retning skiltet gjelder for – f.eks. høyresving.
+812;Anbefalt fart;under;under/sf20051007121981201_gif.gif;Viser anbefalt hastighet under spesielle forhold – ikke bindende.
+813.1;Stigningsgrad;under;under/sf200510071219813101_gif.gif;Angir stigning eller helling på veien i prosent.
+814;Virkelig fri vegbredde;under;under/sf20051007121981401_gif.gif;Viser faktisk tilgjengelig bredde på veien – nyttig for større kjøretøy.
+816;Kryssende tømmertransport;under;under/sf20051007121981601_gif.gif;Informasjon om at veien krysses av tømmertransport – vis forsiktighet.
+817;Særlig ulykkesfare;under;under/sf20051007121981701_gif.gif;Varsel om høy ulykkesrisiko – kjør ekstra forsiktig.
+822;Forløp av forkjørsveg;under;under/sf20051007121982201_gif.gif;Viser hvordan forkjørsveien fortsetter gjennom kryss – viktig for vikeplikt.
+824;Forvarsling av stopp;under;under/sf20051007121982401_gif.gif;Informerer om at det kommer et stopp-skilt lenger fremme.
+826;Sykkeltrafikk i begge kjøreretninger;under;under/sf20051007121982601_gif.gif;Angir at syklister kan kjøre begge retninger i enveiskjørt gate.
+828.1;Utstrekning av stans- og parkeringsregulering;under;under/sf200510071219828101_gif.gif;Viser hvor langt parkeringsforbud eller stansforbud gjelder.
+829;Oppstilling av parkert kjøretøy;under;under/sf20051007121982901_gif.gif;Viser hvordan kjøretøy skal plasseres på parkeringsplass.
+831;Parkeringsskive/gratisbillett;under;under/sf20051007121983101_gif.gif;Informasjon om at parkeringsskive eller gratisbillett må brukes.
+834;Kombinert regulering;under;under/sf20051007121983401_gif.gif;Flere parkeringsregler gjelder samtidig – les nøye tilleggsskilt.
+701;Tabellorienteringstavle;vegvisnings;vegvisnings/sf20051007121970101_gif.gif;Stor oversiktstavle som viser flere reisemål og avstander – plassert i god avstand fra veikryss.
+703;Diagramorienteringstavle;vegvisnings;vegvisnings/sf20051007121970301_gif.gif;Viser veikryss med kjøremønster – forbereder fører på veivalg.
+705;Avkjøringstavle;vegvisnings;vegvisnings/sf20051007121970501_gif.gif;Informerer om avkjøring fra hovedvei – viser destinasjon og avstand.
+707;Kjørefeltorienteringstavle;vegvisnings;vegvisnings/sf20051007121970701_gif.gif;Viser hvilke felt som leder til ulike reisemål – hjelper ved feltskifte.
+709;Portalorienteringstavle;vegvisnings;vegvisnings/sf20051007121970901_gif.gif;Oversiktsskilt plassert over veibanen – viser felt og destinasjoner.
+711;Tabellvegviser;vegvisnings;vegvisnings/sf20051007121971101_gif.gif;Standard vegviserskilt med tekst og eventuelt symboler – viser retning og reisemål.
+713;Vanlig vegviser;vegvisnings;vegvisnings/sf20051007121971301_gif.gif;Enklere retningsskilt med ett eller få reisemål.
+715;Avkjøringsvegviser;vegvisnings;vegvisnings/sf20051007121971501_gif.gif;Skilt ved selve avkjøringen – angir reisemål for den aktuelle avkjøringen.
+717;Kjørefeltvegviser;vegvisnings;vegvisnings/sf20051007121971701_gif.gif;Viser hvilke felt som leder til spesifikke reisemål – plassert langs veien.
+719;Portalvegviser;vegvisnings;vegvisnings/sf20051007121971901_gif.gif;Skilt over kjørebanen som viser retning og felt for ulike reisemål.
+723.11;Vegnummer for europaveg;vegvisnings;vegvisnings/sf2005100712197231101_gif.gif;Viser nummer på europaveg – E-veier med grønn bakgrunn og hvit tekst.
+723.13;Vegnummer for riksveg som ikke er europaveg;vegvisnings;vegvisnings/sf2005100712197231301_gif.gif;Viser nummer på nasjonal hovedvei – hvit bakgrunn, sort tekst.
+723.15;Vegnummer for nummerert fylkesveg;vegvisnings;vegvisnings/sf2005100712197231501_gif.gif;Nummerert fylkesvei – skilt med blå bakgrunn og hvit tekst.
+723.21;Ringveg/ringrute;vegvisnings;vegvisnings/sf2005100712197232101_gif.gif;Viser rutenummer for ringvei – brukes i større byområder.
+723.31;Nasjonal turistveg;vegvisnings;vegvisnings/sf2005100712197233101_gif.gif;Spesielt utvalgte veier med naturopplevelser – brun bakgrunn.
+723.41;Omkjøringsrute for store kjøretøy;vegvisnings;vegvisnings/sf2005100712197234101_gif.gif;Anbefalt omkjøringsvei for store kjøretøy som ikke kommer gjennom vanlig rute.
+723.51;Rute for transport av farlig gods;vegvisnings;vegvisnings/sf2005100712197235101_gif.gif;Skilt for anbefalt rute for kjøretøy med farlig last.
+723.61;Andre omkjøringsruter;vegvisnings;vegvisnings/sf2005100712197236101_gif.gif;Midlertidige eller faste ruter brukt ved stengte veier eller veiarbeid.
+723.62;Andre omkjøringsruter;vegvisnings;vegvisnings/sf2005100712197236201_gif.gif;Midlertidige eller faste ruter brukt ved stengte veier eller veiarbeid.
+723.63;Andre omkjøringsruter;vegvisnings;vegvisnings/sf2005100712197236301_gif.gif;Midlertidige eller faste ruter brukt ved stengte veier eller veiarbeid.
+723.64;Andre omkjøringsruter;vegvisnings;vegvisnings/sf2005100712197236401_gif.gif;Midlertidige eller faste omkjøringsruter – gjerne nummererte og fargede symboler.
+723.65;Andre omkjøringsruter;vegvisnings;vegvisnings/sf2005100712197236501_gif.gif;Midlertidige eller faste omkjøringsruter – gjerne nummererte og fargede symboler.
+723.66;Andre omkjøringsruter;vegvisnings;vegvisnings/sf2005100712197236601_gif.gif;Midlertidige eller faste omkjøringsruter – gjerne nummererte og fargede symboler.
+723.71;Kryssnummer på flerfeltsveg;vegvisnings;vegvisnings/sf2005100712197237101_gif.gif;Angir nummer på kryss langs motorvei – hjelper fører med orientering.
+723.73;Kryssnummer på tofeltsveg;vegvisnings;vegvisnings/sf2005100712197237301_gif.gif;Viser nummer på kryss langs tofelts hovedvei.
+725;Avstandsskilt;vegvisnings;vegvisnings/sf20051007121972501_gif.gif;Viser avstand til ulike reisemål langs ruten – vanligvis i kilometer.
+727;Stedsnavnskilt;vegvisnings;vegvisnings/sf20051007121972701_gif.gif;Angir hvilket sted du nå kjører inn i.
+729;Gate-/vegnavnskilt;vegvisnings;vegvisnings/sf20051007121972901_gif.gif;Viser navn på gaten eller veien – orienteringshjelp i tettbygde strøk.
+731;Samleskilt for vegvisning;vegvisnings;vegvisnings/sf20051007121973101_gif.gif;Flere vegvisere samlet på én tavle – gir oversikt over retninger.
+741;Omkjøring for bestemte kjøretøygrupper;vegvisnings;vegvisnings/sf20051007121974101_gif.gif;Viser omkjøring spesielt for f.eks. tunge kjøretøy, farlig gods osv.
+743;Midlertidig omkjøring;vegvisnings;vegvisnings/sf20051007121974301_gif.gif;Midlertidig rute grunnet f.eks. veiarbeid eller hendelser.
+745;Slutt på midlertidig omkjøring;vegvisnings;vegvisnings/sf20051007121974501_gif.gif;Informerer om at midlertidig rute nå avsluttes.
+749;Vegviser for gangtrafikk;vegvisnings;vegvisnings/sf20051007121974901_gif.gif;Skilt som viser retning for gående trafikanter.
+751;Vegviser for sykkelrute;vegvisnings;vegvisnings/sf20051007121975101_gif.gif;Viser retning og nummer for sykkelrute – nasjonale eller lokale.
+753;Tabellvegviser for sykkelrute;vegvisnings;vegvisnings/sf20051007121975301_gif.gif;Oversikt over flere sykkelruter med destinasjoner og avstand.
+755;Sykkelruteskilt;vegvisnings;vegvisnings/sf20051007121975501_gif.gif;Symbolskilt som viser hvilken sykkelrute du befinner deg på.
+757;Avstandsskilt for sykkelrute;vegvisnings;vegvisnings/sf20051007121975701_gif.gif;Viser avstand til mål for sykkelruten.
+761;Motorveg;vegvisnings;vegvisnings/sf20051007121976101_gif.gif;Vei reservert for motorvogn med høy standard – avkjørsler kun i planfrie kryss.
+763;Motortrafikkveg;vegvisnings;vegvisnings/sf20051007121976301_gif.gif;Hovedvei for motorisert trafikk med visse restriksjoner for gående og syklende.
+765;Bomveg/brukerbetaling på veg;vegvisnings;vegvisnings/sf20051007121976501_gif.gif;Informerer om at veien er avgiftsbelagt.
+767;Parkering;vegvisnings;vegvisnings/sf20051007121976701_gif.gif;Skilt som viser hvor det finnes parkeringsplass.
+769;Parkeringshus;vegvisnings;vegvisnings/sf20051007121976901_gif.gif;Viser vei til innendørs parkeringsanlegg.
+771;Lufthavn/flyplass;vegvisnings;vegvisnings/sf20051007121977101_gif.gif;Viser vei til flyplass.
+772;Helikopterplass;vegvisnings;vegvisnings/sf20051007121977201_gif.gif;Skilt for helikopterlandingsplass.
+773;Busstasjon/bussterminal;vegvisnings;vegvisnings/sf20051007121977301_gif.gif;Viser plassering av bussterminal eller stasjon.
+774;Jernbanestasjon/togterminal;vegvisnings;vegvisnings/sf20051007121977401_gif.gif;Sted der tog ankommer og går – skiltet viser retning til nærmeste jernbanestasjon.
+775;Bilferje;vegvisnings;vegvisnings/sf20051007121977501_gif.gif;Viser vei til ferjeleie for kjøretøy – skiltet benyttes der bilferje er del av transportnettet.
+776;Godshavn;vegvisnings;vegvisnings/sf20051007121977601_gif.gif;Angir plassering av havn for gods – brukes til å lede tungtrafikk eller frakttransport.
+780;Kjetting;vegvisnings;vegvisnings/sf20051007121978001_gif.gif;Skiltet angir plass for pålegging eller kontroll av kjettinger ved vinterføre.
+790.10;Kirke;vegvisnings;vegvisnings/sf2005100712197901001_gif.gif;Viser vei til kirke – både for religiøse formål og som severdighet.
+790.15;Næringsområde;vegvisnings;vegvisnings/sf2005100712197901501_gif.gif;Angir plassering av industri- eller næringsområde.
+790.20;Svømmehall;vegvisnings;vegvisnings/sf2005100712197902001_gif.gif;Skilt for offentlig svømmeanlegg – viser hvor man finner bademulighet.
+790.30;Alpinanlegg;vegvisnings;vegvisnings/sf2005100712197903001_gif.gif;Brukes for å vise vei til anlegg for alpint eller skisport.
+790.31;Hoppbakke;vegvisnings;vegvisnings/sf2005100712197903101_gif.gif;Viser plassering av skihoppanlegg.
+790.32 ;Skistadion;vegvisnings;vegvisnings/sf2005100712197903201_gif.gif;Skilt for anlegg med langrennsløyper, skiskytterarena eller lignende.
+790.40;Golfbane;vegvisnings;vegvisnings/sf2005100712197904001_gif.gif;Angir vei til golfbane eller golfanlegg.
+792.11;Betaling med elektronisk brikke;vegvisnings;vegvisnings/sf2005100712197921101_gif.gif;Bompassering der betaling skjer automatisk med elektronisk brikke, f.eks. AutoPASS.
+792.12;Betaling til betjent;vegvisnings;vegvisnings/sf2005100712197921201_gif.gif;Bomstasjon hvor betaling gjøres manuelt til betjent.
+792.13;Betaling med mynter til automat;vegvisnings;vegvisnings/sf2005100712197921301_gif.gif;Bom der man betaler med mynter i automat.
+792.14;Betaling med kort til automat;vegvisnings;vegvisnings/sf2005100712197921401_gif.gif;Bom der man betaler med bankkort/kredittkort i automat.
+792.15;Betaling med sedler til automat;vegvisnings;vegvisnings/sf2005100712197921501_gif.gif;Bomstasjon der man kan betale med kontantsedler i automat.
+792.16;Ta billett i et lukket betalingssystem;vegvisnings;vegvisnings/sf2005100712197921601_gif.gif;Du må ta en billett ved innkjøringen – brukes ved parkeringsanlegg.
+792.17;Lever billett i et lukket betalingssystem;vegvisnings;vegvisnings/sf2005100712197921701_gif.gif;Du må levere billett ved utkjøring for å betale korrekt beløp.
+792.30;Helautomatisk bomstasjon som passeres uten å stanse;vegvisnings;vegvisnings/sf2005100712197923001_gif.gif;Passering skjer automatisk – ingen manuell betaling på stedet.
+792.31;Betaling med AutoPASS;vegvisnings;vegvisnings/sf2005100712197923101_gif.gif;Skiltet viser at bompengene betales automatisk via AutoPASS-avtale.
+790.16;Kjøpesenter;vegvisnings;vegvisnings/vegvisningsskilt_som_viser_en_handlevogn_for_kjøpesenter__grafikk.gif;Viser retning til større kjøpesenter eller handlesenter.

@@ -1,0 +1,24 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Quiz</title>
+</head>
+<body>
+    <h1>Teoritest</h1>
+    <form method="post">
+        {% for i, q in enumerate(questions) %}
+            <fieldset>
+                <legend>{{ q.question }}</legend>
+                {% if q.image_filename %}
+                    <img src="{{ url_for('static', filename='images/' + q.image_filename) }}" alt="Trafikkskilt" width="150"><br>
+                {% endif %}
+                {% for option in q.options %}
+                    <label><input type="radio" name="q{{ i }}" value="{{ option }}"> {{ option }}</label><br>
+                {% endfor %}
+            </fieldset>
+            <br>
+        {% endfor %}
+        <button type="submit">Send inn svar</button>
+    </form>
+</body>
+</html>
