@@ -6,6 +6,7 @@ import csv
 from io import StringIO
 from datetime import datetime
 import os
+from werkzeug.utils import secure_filename
 
 app = Flask(__name__)
 app.secret_key = 'supersecretkey'  # Kreves for session
@@ -21,7 +22,7 @@ def init_db():
         CREATE TABLE IF NOT EXISTS questions (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
             question TEXT NOT NULL,
-            correct_answer TEXT NOT NULL,
+            correct_option TEXT NOT NULL,
             category TEXT,
             image_filename TEXT,
             created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
@@ -130,7 +131,7 @@ def quiz():
         score = 0
         for i, q in enumerate(questions):
             selected = request.form.get(f'q{i}')
-            if selected == q['correct_answer']:
+            if selected == q['correct_option']:
                 score += 1
         return render_template('result.html', score=score, total=len(questions))
 
@@ -183,14 +184,14 @@ def validate_question(question_data, question_id=None):
     errors = []
     
     # Check required fields
-    required_fields = ['question', 'option_a', 'option_b', 'option_c', 'option_d', 'correct_answer']
+    required_fields = ['question', 'option_a', 'option_b', 'option_c', 'option_d', 'correct_option']
     for field in required_fields:
         if not question_data.get(field, '').strip():
             field_name = field.replace('_', ' ').capitalize()
             errors.append(f'{field_name} er påkrevd')
     
     # Validate correct answer
-    if question_data.get('correct_answer', '').lower() not in ['a', 'b', 'c', 'd']:
+    if question_data.get('correct_option', '').lower() not in ['a', 'b', 'c', 'd']:
         errors.append('Riktig svar må være a, b, c eller d')
     
     # Check for duplicate question
@@ -228,6 +229,14 @@ def admin_dashboard():
     validation_errors = []
     message = None
 
+    # Håndter opplasting av nytt bilde
+    new_img = request.files.get('new_image')
+    if new_img and new_img.filename:
+        filename = secure_filename(new_img.filename)
+        save_path = os.path.join(app.static_folder, 'images', 'signs', filename)
+        new_img.save(save_path)
+        message = f'Bildet "{filename}" ble lastet opp.'
+
     if request.method == 'POST':
         # Check if this is a SQL query
         if 'sql_query' in request.form:
@@ -256,7 +265,7 @@ def admin_dashboard():
                 'option_b': request.form['option_b'],
                 'option_c': request.form['option_c'],
                 'option_d': request.form['option_d'],
-                'correct_answer': request.form['correct_answer'].lower(),
+                'correct_option': request.form.get('correct_option', '').lower(),
                 'category': request.form['category'] or 'Ukategorisert',
                 'image_filename': request.form['image_filename']
             }
@@ -269,9 +278,9 @@ def admin_dashboard():
                     # Update existing question
                     cursor.execute("""
                         UPDATE questions 
-                        SET question=?, correct_answer=?, category=?, image_filename=?
+                        SET question=?, correct_option=?, category=?, image_filename=?
                         WHERE id=?
-                    """, (question_data['question'], question_data['correct_answer'], 
+                    """, (question_data['question'], question_data['correct_option'], 
                           question_data['category'], question_data['image_filename'], question_id))
                     
                     # Update options for this question
@@ -289,9 +298,9 @@ def admin_dashboard():
                 else:
                     # Insert new question
                     cursor.execute("""
-                        INSERT INTO questions (question, correct_answer, category, image_filename)
+                        INSERT INTO questions (question, correct_option, category, image_filename)
                         VALUES (?, ?, ?, ?)
-                    """, (question_data['question'], question_data['correct_answer'], 
+                    """, (question_data['question'], question_data['correct_option'], 
                           question_data['category'], question_data['image_filename']))
                     
                     # Get the ID of the newly inserted question
@@ -417,7 +426,7 @@ def export_questions():
     
     # Write header
     writer.writerow(['ID', 'Question', 'Option A', 'Option B', 'Option C', 'Option D', 
-                     'Correct Answer', 'Category', 'Image Filename'])
+                     'Correct Option', 'Category', 'Image Filename'])
     
     # Write data
     for q in questions:
@@ -428,7 +437,7 @@ def export_questions():
             q.get('option_b', ''),
             q.get('option_c', ''),
             q.get('option_d', ''),
-            q.get('correct_answer', ''),
+            q.get('correct_option', ''),
             q.get('category', ''),
             q.get('image_filename', '')
         ])
@@ -452,7 +461,7 @@ def preview_question():
         'option_b': request.json.get('option_b', ''),
         'option_c': request.json.get('option_c', ''),
         'option_d': request.json.get('option_d', ''),
-        'correct_answer': request.json.get('correct_answer', ''),
+        'correct_option': request.json.get('correct_option', ''),
         'image_filename': request.json.get('image_filename', '')
     }
     
@@ -463,6 +472,20 @@ def preview_question():
 def logout():
     session.pop('admin', None)
     return redirect(url_for('admin'))
+
+
+
+# Error handlers
+@app.errorhandler(400)
+def handle_bad_request(e):
+    app.logger.error(f'Bad Request: {e}')
+    # Return a simple page with error message
+    return f"<h1>400 Bad Request</h1><p>{e.description if hasattr(e, 'description') else str(e)}</p>", 400
+
+@app.errorhandler(500)
+def handle_server_error(e):
+    app.logger.error(f'Server Error: {e}', exc_info=True)
+    return f"<h1>500 Internal Server Error</h1><p>{str(e)}</p>", 500
 
 
 if __name__ == '__main__':

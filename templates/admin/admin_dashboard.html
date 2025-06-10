@@ -508,100 +508,111 @@
                     <button type="button" onclick="deselectAllQuestions()" class="btn btn-small">☐ Fjern alle</button>
                     <span id="selectedCount" style="margin-left: 15px; font-weight: bold;">0 valgte</span>
                 </div>
-
-                <!-- Add/Edit Question Form -->
-                <div id="questionForm" style="display: none; margin-top: 20px;">
-                    <form method="POST" action="{{ url_for('admin_dashboard') }}" id="newQuestionForm">
-                        <h2>Legg til nytt spørsmål</h2>
-                        <input type="hidden" name="question_id" id="questionId">
-                        
-                        <label for="question">Spørsmål:</label>
-                        <textarea name="question" id="questionText" required></textarea>
-
-                        <label for="option_a">Alternativ A:</label>
-                        <input type="text" name="option_a" id="optionA" required>
-
-                        <label for="option_b">Alternativ B:</label>
-                        <input type="text" name="option_b" id="optionB" required>
-
-                        <label for="option_c">Alternativ C:</label>
-                        <input type="text" name="option_c" id="optionC" required>
-
-                        <label for="option_d">Alternativ D:</label>
-                        <input type="text" name="option_d" id="optionD" required>
-
-                        <label for="correct_answer">Riktig svar (a, b, c, d):</label>
-                        <input type="text" name="correct_answer" id="correctAnswer" maxlength="1" pattern="[a-dA-D]" required>
-
-                        <label for="category">Kategori:</label>
-                        <input type="text" name="category" id="categoryInput">
-
-                        <label for="image_filename">Velg bilde:</label>
-                        <select name="image_filename" id="imageSelect">
-                            <option value="">Ingen bilde</option>
-                            {% for image in images %}
-                            <option value="{{ image.filename }}">{{ image.name }} ({{ image.filename }})</option>
-                            {% endfor %}
-                        </select>
-
-                        <div style="display: flex; gap: 10px; margin-top: 15px;">
-                            <button type="submit">➕ Lagre spørsmål</button>
-                            <button type="button" onclick="previewQuestion()" class="btn btn-warning">👁️ Forhåndsvis</button>
-                            <button type="button" onclick="cancelForm()" class="btn" style="background-color: #6c757d;">Avbryt</button>
-                        </div>
-                    </form>
-                </div>
-
-                <!-- Questions Table -->
-                <div class="table-container">
-                    <table>
-                        <thead>
-                            <tr>
-                                <th class="checkbox-column bulk-checkbox" style="display: none;">
-                                    <input type="checkbox" onchange="toggleAllCheckboxes(this)">
-                                </th>
-                                <th>ID</th>
-                                <th>Spørsmål</th>
-                                <th>Kategori</th>
-                                <th>Bilde</th>
-                                <th>Alternativer</th>
-                                <th>Handlinger</th>
-                            </tr>
-                        </thead>
-                        <tbody id="questionsTableBody">
-                            {% for question in questions %}
-                            <tr data-id="{{ question.id }}">
-                                <td class="checkbox-column bulk-checkbox" style="display: none;">
-                                    <input type="checkbox" name="question_ids" value="{{ question.id }}" onchange="updateSelectedCount()">
-                                </td>
-                                <td>{{ question.id }}</td>
-                                <td>{{ question.question }}</td>
-                                <td>{{ question.category or 'Ukategorisert' }}</td>
-                                <td>
-                                    {% if question.image_filename %}
-                                    <img src="{{ url_for('static', filename='images/signs/' ~ question.image_filename) }}" 
-                                         alt="{{ question.image_filename }}" class="question-image">
-                                    {% else %}
-                                    <span style="color: #999;">Ingen bilde</span>
-                                    {% endif %}
-                                </td>
-                                <td class="options-display">
-                                    <div>A: {{ question.option_a }}</div>
-                                    <div>B: {{ question.option_b }}</div>
-                                    <div>C: {{ question.option_c }}</div>
-                                    <div>D: {{ question.option_d }}</div>
-                                    <div class="correct-answer">Riktig: {{ question.correct_option|upper }}</div>
-                                </td>
-                                <td>
-                                    <button type="button" onclick="editQuestionFromRow(this, {{ question.id }})" class="btn btn-warning btn-small">✏️ Rediger</button>
-                                    <button type="button" onclick="confirmDelete({{ question.id }})" class="btn btn-danger btn-small">🗑️ Slett</button>
-                                </td>
-                            </tr>
-                            {% endfor %}
-                        </tbody>
-                    </table>
-                </div>
             </form>
+
+            <!-- Add/Edit Question Form -->
+            <div id="questionForm" style="display: none; margin-top: 20px;">
+                <form method="POST" action="{{ url_for('admin_dashboard') }}" enctype="multipart/form-data" id="newQuestionForm">
+                    <h2>Legg til nytt spørsmål</h2>
+                    <input type="hidden" name="question_id" id="questionId">
+                    
+                    <label for="question">Spørsmål:</label>
+                    <textarea name="question" id="questionText" required></textarea>
+
+                    <label for="option_a">Alternativ A:</label>
+                    <input type="text" name="option_a" id="optionA" required>
+
+                    <label for="option_b">Alternativ B:</label>
+                    <input type="text" name="option_b" id="optionB" required>
+
+                    <label for="option_c">Alternativ C:</label>
+                    <input type="text" name="option_c" id="optionC" required>
+
+                    <label for="option_d">Alternativ D:</label>
+                    <input type="text" name="option_d" id="optionD" required>
+
+                    <label for="correct_option">Riktig svar:</label>
+                    <input type="text" name="correct_option" id="correctOption" required>
+
+                    <label for="category">Kategori:</label>
+                    <input type="text" name="category" id="categoryInput">
+
+                    <label for="image_filename">Velg bilde:</label>
+                    <select name="image_filename" id="imageSelect">
+                        <option value="">Ingen bilde</option>
+                        {% for image in images %}
+                        <option value="{{ image.filename }}">{{ image.name }} ({{ image.filename }})</option>
+                        {% endfor %}
+                    </select>
+                    <label for="new_image">Last opp nytt bilde:</label>
+                    <input type="file" name="new_image" id="newImageInput" />
+                    <div id="imageGallery" style="margin:10px 0;">
+                        {% for img in images %}
+                          <img src="{{ url_for('static', filename='images/signs/' ~ img.filename) }}"
+                               data-filename="{{ img.filename }}"
+                               class="selectable-img"
+                               style="max-height:50px; margin:5px; cursor:pointer; border:2px solid transparent;"
+                               onclick="pickImage(this)">
+                        {% endfor %}
+                      </div>
+
+                    <div style="display: flex; gap: 10px; margin-top: 15px;">
+                        <button type="submit">➕ Lagre spørsmål</button>
+                        <button type="button" onclick="previewQuestion()" class="btn btn-warning">👁️ Forhåndsvis</button>
+                        <button type="button" onclick="cancelForm()" class="btn" style="background-color: #6c757d;">Avbryt</button>
+                    </div>
+                </form>
+            </div>
+
+            <!-- Questions Table -->
+            <div class="table-container">
+                <table>
+                    <thead>
+                        <tr>
+                            <th class="checkbox-column bulk-checkbox" style="display: none;">
+                                <input type="checkbox" onchange="toggleAllCheckboxes(this)">
+                            </th>
+                            <th>ID</th>
+                            <th>Spørsmål</th>
+                            <th>Kategori</th>
+                            <th>Bilde</th>
+                            <th>Alternativer</th>
+                            <th>Handlinger</th>
+                        </tr>
+                    </thead>
+                    <tbody id="questionsTableBody">
+                        {% for question in questions %}
+                        <tr data-id="{{ question.id }}">
+                            <td class="checkbox-column bulk-checkbox" style="display: none;">
+                                <input type="checkbox" name="question_ids" value="{{ question.id }}" onchange="updateSelectedCount()">
+                            </td>
+                            <td>{{ question.id }}</td>
+                            <td>{{ question.question }}</td>
+                            <td>{{ question.category or 'Ukategorisert' }}</td>
+                            <td>
+                                {% if question.image_filename %}
+                                <img src="{{ url_for('static', filename='images/signs/' ~ question.image_filename) }}" 
+                                     alt="{{ question.image_filename }}" class="question-image">
+                                {% else %}
+                                <span style="color: #999;">Ingen bilde</span>
+                                {% endif %}
+                            </td>
+                            <td class="options-display">
+                                <div>A: {{ question.option_a }}</div>
+                                <div>B: {{ question.option_b }}</div>
+                                <div>C: {{ question.option_c }}</div>
+                                <div>D: {{ question.option_d }}</div>
+                                <div class="correct-answer">Riktig: {{ question.correct_option|upper }}</div>
+                            </td>
+                            <td>
+                                <button type="button" onclick="editQuestionFromRow(this, {{ question.id }})" class="btn btn-warning btn-small">✏️ Rediger</button>
+                                <button type="button" onclick="confirmDelete({{ question.id }})" class="btn btn-danger btn-small">🗑️ Slett</button>
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
         </div>
 
         <script>
@@ -643,7 +654,7 @@
                     document.getElementById('optionD').value = text.substring(2).trim();
                 } else if (div.classList.contains('correct-answer')) {
                     const ans = text.split(':')[1].trim().toLowerCase();
-                    document.getElementById('correctAnswer').value = ans;
+                    document.getElementById('correctOption').value = ans;
                 }
             });
 
@@ -1002,7 +1013,7 @@
             const optionB = document.getElementById('optionB').value;
             const optionC = document.getElementById('optionC').value;
             const optionD = document.getElementById('optionD').value;
-            const correctAnswer = document.getElementById('correctAnswer').value.toLowerCase();
+            const correctOption = document.getElementById('correctOption').value.toLowerCase();
             const imageSelect = document.getElementById('imageSelect');
             const imageName = imageSelect.options[imageSelect.selectedIndex].text;
             
@@ -1014,10 +1025,10 @@
             
             previewHTML += `<h3>${question || 'Spørsmålstekst kommer her...'}</h3>`;
             previewHTML += '<div class="preview-options">';
-            previewHTML += `<div class="preview-option ${correctAnswer === 'a' ? 'correct' : ''}">A: ${optionA || 'Alternativ A'}</div>`;
-            previewHTML += `<div class="preview-option ${correctAnswer === 'b' ? 'correct' : ''}">B: ${optionB || 'Alternativ B'}</div>`;
-            previewHTML += `<div class="preview-option ${correctAnswer === 'c' ? 'correct' : ''}">C: ${optionC || 'Alternativ C'}</div>`;
-            previewHTML += `<div class="preview-option ${correctAnswer === 'd' ? 'correct' : ''}">D: ${optionD || 'Alternativ D'}</div>`;
+            previewHTML += `<div class="preview-option ${correctOption === 'a' ? 'correct' : ''}">A: ${optionA || 'Alternativ A'}</div>`;
+            previewHTML += `<div class="preview-option ${correctOption === 'b' ? 'correct' : ''}">B: ${optionB || 'Alternativ B'}</div>`;
+            previewHTML += `<div class="preview-option ${correctOption === 'c' ? 'correct' : ''}">C: ${optionC || 'Alternativ C'}</div>`;
+            previewHTML += `<div class="preview-option ${correctOption === 'd' ? 'correct' : ''}">D: ${optionD || 'Alternativ D'}</div>`;
             previewHTML += '</div></div>';
             
             document.getElementById('previewContent').innerHTML = previewHTML;
@@ -1087,6 +1098,13 @@
             if (event.target === modal) {
                 modal.style.display = 'none';
             }
+        }
+
+        function pickImage(el) {
+            document.getElementById('imageSelect').value = el.dataset.filename;
+            document.querySelectorAll('.selectable-img')
+                    .forEach(i => i.style.borderColor = 'transparent');
+            el.style.borderColor = '#0077cc';
         }
     </script>
 </body>
