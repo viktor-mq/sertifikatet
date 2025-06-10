@@ -32,6 +32,11 @@
         .btn:hover {
             background-color: #005fa3;
         }
+        .btn.active {
+            background-color: #005fa3;
+            border: 2px solid #ffffff;
+            box-shadow: 0 0 5px rgba(0,0,0,0.3);
+        }
         .table-container {
             overflow-x: auto;
         }
@@ -66,7 +71,7 @@
         <h1>Velkommen til adminpanelet</h1>
         <p>Her kan du administrere spørsmål og tilknyttede skiltbilder.</p>
 
-        <a href="#" class="btn" onclick="showSection('questions')">📋 Spørsmål</a>
+        <a href="#" class="btn active" onclick="showSection('questions')">📋 Spørsmål</a>
         <a href="#" class="btn" onclick="showSection('database')">💾 Database</a>
 
         <div id="questionsSection" style="margin-top: 30px;">
@@ -182,14 +187,19 @@
                 const form = document.getElementById("questionForm");
                 form.style.display = form.style.display === "none" ? "block" : "none";
             }
-            function showSection(section) {
-              document.getElementById('questionsSection').style.display = 'none';
-              document.getElementById('databaseSection').style.display = 'none';
-              if (section === 'questions') {
-                document.getElementById('questionsSection').style.display = 'block';
-              } else if (section === 'database') {
-                document.getElementById('databaseSection').style.display = 'block';
-              }
+            function showSection(sectionName) {
+                // Remove active class from all buttons
+                document.querySelectorAll('.btn').forEach(btn => btn.classList.remove('active'));
+                
+                // Add active class to clicked button
+                event.target.classList.add('active');
+                
+                // Hide all sections
+                document.getElementById('questionsSection').style.display = 'none';
+                document.getElementById('databaseSection').style.display = 'none';
+                
+                // Show selected section
+                document.getElementById(sectionName + 'Section').style.display = 'block';
             }
             // Show questions by default
             showSection('questions');
