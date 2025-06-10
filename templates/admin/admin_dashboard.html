@@ -17,7 +17,8 @@
             padding: 30px;
             border-radius: 8px;
             box-shadow: 0 0 10px rgba(0,0,0,0.1);
-            max-width: 800px;
+            max-width: 1240px;
+            width: 95%;
             margin: auto;
         }
         .btn {
@@ -26,9 +27,23 @@
             color: white;
             text-decoration: none;
             border-radius: 5px;
+            margin-right: 10px;
         }
         .btn:hover {
             background-color: #005fa3;
+        }
+        .table-container {
+            overflow-x: auto;
+        }
+        #questionForm label,
+        #questionForm textarea,
+        #questionForm input,
+        #questionForm select,
+        #questionForm button {
+            display: block;
+            width: 100%;
+            box-sizing: border-box;
+            margin-bottom: 10px;
         }
         table {
             width: 100%;
@@ -51,64 +66,133 @@
         <h1>Velkommen til adminpanelet</h1>
         <p>Her kan du administrere spørsmål og tilknyttede skiltbilder.</p>
 
-        <a href="#" onclick="toggleForm()" class="btn">➕ Legg til nytt spørsmål</a>
+        <a href="#" class="btn" onclick="showSection('questions')">📋 Spørsmål</a>
+        <a href="#" class="btn" onclick="showSection('database')">💾 Database</a>
 
-        <div id="questionForm" style="display: none; margin-top: 20px;">
-            <form method="POST">
-                <h2>Legg til nytt spørsmål</h2>
-                <label for="question">Spørsmål:</label>
-                <textarea name="question" required></textarea>
+        <div id="questionsSection" style="margin-top: 30px;">
+            <a href="#" onclick="toggleForm()" class="btn">➕ Legg til nytt spørsmål</a>
 
-                <label for="option_a">Alternativ A:</label>
-                <input type="text" name="option_a" required>
+            <div id="questionForm" style="display: none; margin-top: 20px;">
+                <form method="POST">
+                    <h2>Legg til nytt spørsmål</h2>
+                    <label for="question">Spørsmål:</label>
+                    <textarea name="question" required></textarea>
 
-                <label for="option_b">Alternativ B:</label>
-                <input type="text" name="option_b" required>
+                    <label for="option_a">Alternativ A:</label>
+                    <input type="text" name="option_a" required>
 
-                <label for="option_c">Alternativ C:</label>
-                <input type="text" name="option_c" required>
+                    <label for="option_b">Alternativ B:</label>
+                    <input type="text" name="option_b" required>
 
-                <label for="option_d">Alternativ D:</label>
-                <input type="text" name="option_d" required>
+                    <label for="option_c">Alternativ C:</label>
+                    <input type="text" name="option_c" required>
 
-                <label for="correct_answer">Riktig svar (a, b, c, d):</label>
-                <input type="text" name="correct_answer" maxlength="1" pattern="[a-dA-D]" required>
+                    <label for="option_d">Alternativ D:</label>
+                    <input type="text" name="option_d" required>
 
-                <label for="category">Kategori:</label>
-                <input type="text" name="category">
+                    <label for="correct_answer">Riktig svar (a, b, c, d):</label>
+                    <input type="text" name="correct_answer" maxlength="1" pattern="[a-dA-D]" required>
 
-                <label for="image_filename">Velg bilde:</label>
-                <select name="image_filename">
-                    {% for image in images %}
-                        <option value="{{ image['filename'] }}">{{ image['description'] }} ({{ image['filename'] }})</option>
+                    <label for="category">Kategori:</label>
+                    <input type="text" name="category">
+
+                    <label for="image_filename">Velg bilde:</label>
+                    <select name="image_filename">
+                        {% for image in images %}
+                            <option value="{{ image['filename'] }}">{{ image['description'] }} ({{ image['filename'] }})</option>
+                        {% endfor %}
+                    </select>
+
+                    <button type="submit">➕ Lagre spørsmål</button>
+                </form>
+            </div>
+
+            <!-- Placeholder for fremtidig tabell med spørsmål -->
+            <div class="table-container">
+            <table>
+                <thead>
+                    <tr>
+                        <th>Spørsmål</th>
+                        <th>Kategori</th>
+                        <th>Bilde</th>
+                        <th>Handling</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for q in questions %}
+                        <tr>
+                            <td>
+                              {% if q['image_filename'] %}
+                                <img src="{{ url_for('static', filename='images/signs/' ~ q['image_filename']) }}" alt="Skiltbilde" style="max-width: 100px; display:block; margin-bottom:10px;">
+                              {% endif %}
+                              {{ q['question'] }}
+                            </td>
+                            <td>{{ q['category'] }}</td>
+                            <td>{{ q['image_filename'] }}</td>
+                            <td>
+                                <strong>A:</strong> {{ q['option_a'] }}<br>
+                                <strong>B:</strong> {{ q['option_b'] }}<br>
+                                <strong>C:</strong> {{ q['option_c'] }}<br>
+                                <strong>D:</strong> {{ q['option_d'] }}<br>
+                                <strong>Riktig svar:</strong> {{ q['correct_answer'] }}
+                            </td>
+                        </tr>
+                    {% else %}
+                        <tr>
+                            <td colspan="4" style="text-align:center;">(Ingen spørsmål lastet inn ennå)</td>
+                        </tr>
                     {% endfor %}
-                </select>
-
-                <button type="submit">➕ Lagre spørsmål</button>
-            </form>
+                </tbody>
+            </table>
+            </div>
         </div>
 
-        <!-- Placeholder for fremtidig tabell med spørsmål -->
-        <table>
-            <thead>
-                <tr>
-                    <th>Spørsmål</th>
-                    <th>Kategori</th>
-                    <th>Bilde</th>
-                    <th>Handling</th>
-                </tr>
-            </thead>
-            <tbody>
-                <tr>
-                    <td colspan="4" style="text-align:center;">(Ingen spørsmål lastet inn ennå)</td>
-                </tr>
-            </tbody>
-        </table>
+        <div id="databaseSection" style="display:none; margin-top:20px;">
+          {% if message %}
+            <div class="message">{{ message }}</div>
+          {% endif %}
+          <form method="POST">
+            <label for="sql_query">SQL-konsoll:</label>
+            <textarea id="sql_query" name="sql_query" rows="5" style="width:100%; box-sizing:border-box;"></textarea>
+            <button type="submit" class="btn">Kjør SQL</button>
+          </form>
+          {% for table, rows in tables.items() %}
+            <h2 style="margin-top:30px;">Tabell: {{ table }}</h2>
+            {% if rows %}
+              <div class="table-container">
+              <table>
+                <thead>
+                  <tr>{% for col in rows[0].keys() %}<th>{{ col }}</th>{% endfor %}</tr>
+                </thead>
+                <tbody>
+                  {% for row in rows %}
+                    <tr>{% for col in row.keys() %}<td>{{ row[col] }}</td>{% endfor %}</tr>
+                  {% endfor %}
+                </tbody>
+              </table>
+              </div>
+            {% else %}
+              <p>(Ingen data i denne tabellen.)</p>
+            {% endif %}
+          {% endfor %}
+        </div>
+
         <script>
             function toggleForm() {
                 const form = document.getElementById("questionForm");
                 form.style.display = form.style.display === "none" ? "block" : "none";
             }
+            function showSection(section) {
+              document.getElementById('questionsSection').style.display = 'none';
+              document.getElementById('databaseSection').style.display = 'none';
+              if (section === 'questions') {
+                document.getElementById('questionsSection').style.display = 'block';
+              } else if (section === 'database') {
+                document.getElementById('databaseSection').style.display = 'block';
+              }
+            }
+            // Show questions by default
+            showSection('questions');
         </script>
     </div>
 </body>

@@ -48,9 +48,6 @@ def quiz():
     random.shuffle(questions)
     return render_template('quiz.html', questions=questions)
 
-if __name__ == '__main__':
-    app.run(debug=True)
-
 
 # Admin login and dashboard
 @app.route('/admin', methods=['GET', 'POST'])
@@ -61,7 +58,7 @@ def admin():
             session['admin'] = True
             return redirect(url_for('admin_dashboard'))
         else:
-            return render_template('admin_login.html', error='Feil passord.')
+            return render_template('admin/admin_login.html', error='Feil passord.')
     return render_template('admin/admin_login.html')
 
 
@@ -90,8 +87,28 @@ def admin_dashboard():
         """, (question, option_a, option_b, option_c, option_d, correct_answer, category, image_filename))
         conn.commit()
 
-    cursor.execute("SELECT * FROM sign_images")
+    cursor.execute("SELECT * FROM traffic_signs")
     images = cursor.fetchall()
+    cursor.execute("SELECT * FROM questions")
+    questions = cursor.fetchall()
     conn.close()
 
-    return render_template('admin/admin_dashboard.html', images=images)
+    # Fetch all tables for the Database section
+    conn = sqlite3.connect('questions.db')
+    conn.row_factory = sqlite3.Row
+    cursor = conn.cursor()
+    cursor.execute("SELECT name FROM sqlite_master WHERE type='table'")
+    table_names = [row['name'] for row in cursor.fetchall()]
+    tables = {}
+    for tbl in table_names:
+        cursor.execute(f"SELECT * FROM {tbl}")
+        tables[tbl] = cursor.fetchall()
+    conn.close()
+
+    return render_template('admin/admin_dashboard.html',
+                           images=images,
+                           questions=questions,
+                           tables=tables)
+
+if __name__ == '__main__':
+    app.run(debug=True)

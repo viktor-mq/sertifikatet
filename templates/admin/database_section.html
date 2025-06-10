@@ -1,0 +1,155 @@
+<file name=app.py>
+# Removed the separate /admin/database route entirely.
+
+@app.route('/admin', methods=['GET', 'POST'])
+def admin_dashboard():
+    conn = get_db_connection()
+    conn.row_factory = sqlite3.Row
+    cursor = conn.cursor()
+
+    message = None
+
+    if request.method == 'POST':
+        sql_query = request.form.get('sql_query')
+        if sql_query:
+            try:
+                cursor.execute(sql_query)
+                conn.commit()
+                message = "SQL-spørringen ble kjørt."
+            except Exception as e:
+                message = f"Feil under kjøring av SQL: {e}"
+
+    cursor.execute("SELECT * FROM questions")
+    questions = cursor.fetchall()
+
+    cursor.execute("SELECT * FROM images")
+    images = cursor.fetchall()
+
+    cursor.execute("SELECT name FROM sqlite_master WHERE type='table'")
+    table_names = [r['name'] for r in cursor.fetchall()]
+    tables = {}
+    for tbl in table_names:
+        cursor.execute(f"SELECT * FROM {tbl}")
+        tables[tbl] = cursor.fetchall()
+
+    return render_template('admin/admin_dashboard.html',
+                           images=images,
+                           questions=questions,
+                           tables=tables,
+                           message=message)
+</file>
+
+<file name=templates/admin/admin_dashboard.html>
+<!DOCTYPE html>
+<html lang="no">
+<head>
+  <meta charset="UTF-8" />
+  <title>Admin Dashboard</title>
+  <style>
+    body { font-family: Arial, sans-serif; padding: 40px; background: #f4f4f4; }
+    .container { background: white; padding: 30px; max-width: 1200px; margin: auto; }
+    .btn { display: inline-block; background: #0077cc; color: white; padding: 8px 16px; border-radius: 4px; text-decoration: none; margin-bottom: 20px; cursor: pointer; }
+    .btn:hover { background: #005fa3; }
+    table { width: 100%; border-collapse: collapse; margin-bottom: 40px; }
+    th, td { border: 1px solid #ddd; padding: 8px; }
+    th { background: #0077cc; color: white; }
+    h2 { margin-top: 40px; }
+    textarea { font-family: monospace; width: 100%; box-sizing: border-box; }
+    .message {
+      padding: 10px;
+      background: #e0ffe0;
+      border: 1px solid #00aa00;
+      margin-bottom: 20px;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h1>Admin Dashboard</h1>
+
+    <a href="#" class="btn" onclick="showSection('questions')">📋 Quiz</a>
+    <a href="#" class="btn" onclick="showSection('database')">💾 Database</a>
+
+    <div id="questionsSection">
+      <h2>Quiz Questions</h2>
+      <form method="POST" action="/admin/questions">
+        <!-- Quiz form content here (assuming existing) -->
+      </form>
+
+      <table>
+        <thead>
+          <tr>
+            {% if questions %}
+              {% for col in questions[0].keys() %}
+                <th>{{ col }}</th>
+              {% endfor %}
+            {% endif %}
+          </tr>
+        </thead>
+        <tbody>
+          {% for question in questions %}
+            <tr>
+              {% for col in question.keys() %}
+                <td>{{ question[col] }}</td>
+              {% endfor %}
+            </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+
+    <div id="databaseSection" style="display:none;">
+      <h2>Databaseadministrasjon</h2>
+      {% if message %}
+        <div class="message">{{ message }}</div>
+      {% endif %}
+      <form method="POST" action="/admin">
+        <label for="sql_query">SQL-konsoll:</label>
+        <textarea id="sql_query" name="sql_query" rows="5"></textarea>
+        <button type="submit" class="btn">Kjør SQL</button>
+      </form>
+
+      {% for table, rows in tables.items() %}
+        <h3>Tabell: {{ table }}</h3>
+        {% if rows %}
+          <table>
+            <thead>
+              <tr>
+                {% for col in rows[0].keys() %}
+                  <th>{{ col }}</th>
+                {% endfor %}
+              </tr>
+            </thead>
+            <tbody>
+              {% for row in rows %}
+                <tr>
+                  {% for col in row.keys() %}
+                    <td>{{ row[col] }}</td>
+                  {% endfor %}
+                </tr>
+              {% endfor %}
+            </tbody>
+          </table>
+        {% else %}
+          <p>(Ingen data i denne tabellen.)</p>
+        {% endif %}
+      {% endfor %}
+    </div>
+  </div>
+
+  <script>
+    function showSection(section) {
+      var questionsSection = document.getElementById('questionsSection');
+      var databaseSection = document.getElementById('databaseSection');
+      if (section === 'questions') {
+        questionsSection.style.display = 'block';
+        databaseSection.style.display = 'none';
+      } else if (section === 'database') {
+        questionsSection.style.display = 'none';
+        databaseSection.style.display = 'block';
+      }
+    }
+  </script>
+</body>
+</html>
+</file>
