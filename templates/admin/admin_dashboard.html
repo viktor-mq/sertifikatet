@@ -64,6 +64,24 @@
             background-color: #0077cc;
             color: white;
         }
+        .column-filter {
+            background: #f5f5f5;
+            padding: 10px;
+            border-radius: 5px;
+            margin-bottom: 15px;
+        }
+
+        .column-filter label {
+            display: inline-block;
+            margin: 5px;
+            cursor: pointer;
+        }
+
+        #tableFilter {
+            padding: 5px;
+            border-radius: 4px;
+            border: 1px solid #ddd;
+}
     </style>
 </head>
 <body>
@@ -121,6 +139,7 @@
                         <th>Kategori</th>
                         <th>Bilde</th>
                         <th>Handling</th>
+                        <th></th>
                     </tr>
                 </thead>
                 <tbody>
@@ -141,10 +160,15 @@
                                 <strong>D:</strong> {{ q['option_d'] }}<br>
                                 <strong>Riktig svar:</strong> {{ q['correct_answer'] }}
                             </td>
+                            <td>
+                                <button type="button" 
+                                        onclick='editQuestion({{ q|tojson|safe }})' 
+                                        class="btn btn-edit">✏️ Rediger</button>
+                            </td>
                         </tr>
                     {% else %}
                         <tr>
-                            <td colspan="4" style="text-align:center;">(Ingen spørsmål lastet inn ennå)</td>
+                            <td colspan="5" style="text-align:center;">(Ingen spørsmål lastet inn ennå)</td>
                         </tr>
                     {% endfor %}
                 </tbody>
@@ -152,34 +176,78 @@
             </div>
         </div>
 
-        <div id="databaseSection" style="display:none; margin-top:20px;">
-          {% if message %}
-            <div class="message">{{ message }}</div>
-          {% endif %}
-          <form method="POST">
-            <label for="sql_query">SQL-konsoll:</label>
-            <textarea id="sql_query" name="sql_query" rows="5" style="width:100%; box-sizing:border-box;"></textarea>
-            <button type="submit" class="btn">Kjør SQL</button>
-          </form>
-          {% for table, rows in tables.items() %}
-            <h2 style="margin-top:30px;">Tabell: {{ table }}</h2>
-            {% if rows %}
-              <div class="table-container">
-              <table>
-                <thead>
-                  <tr>{% for col in rows[0].keys() %}<th>{{ col }}</th>{% endfor %}</tr>
-                </thead>
-                <tbody>
-                  {% for row in rows %}
-                    <tr>{% for col in row.keys() %}<td>{{ row[col] }}</td>{% endfor %}</tr>
-                  {% endfor %}
-                </tbody>
-              </table>
-              </div>
-            {% else %}
-              <p>(Ingen data i denne tabellen.)</p>
-            {% endif %}
-          {% endfor %}
+        {% include 'admin/database_section.html' %}
+
+        <!-- Edit Question Modal -->
+        <div id="editModal" class="modal" style="display: none;">
+          <div class="modal-content">
+            <span class="close">&times;</span>
+            <form method="POST" action="{{ url_for('admin_dashboard') }}">
+              <input type="hidden" name="question_id" id="edit_question_id">
+
+              <label for="edit_image_preview">Nåværende bilde:</label>
+              <img id="edit_image_preview" style="max-width: 200px; margin: 10px 0;">
+
+              <label for="edit_image_filename">Endre bilde:</label>
+              <select name="image_filename" id="edit_image_filename" onchange="previewImage(this)">
+                <option value="">Ingen bilde</option>
+                {% for image in images %}
+                  <option value="{{ image['filename'] }}">{{ image['description'] }} ({{ image['filename'] }})</option>
+                {% endfor %}
+              </select>
+
+              <label for="edit_question">Spørsmål:</label>
+              <textarea name="question" id="edit_question" required></textarea>
+
+              <label for="edit_option_a">Alternativ A:</label>
+              <input type="text" name="option_a" id="edit_option_a" required>
+              <label for="edit_option_a_image">Bilde for alternativ A:</label>
+              <select name="option_a_image" id="edit_option_a_image">
+                <option value="">Ingen bilde</option>
+                {% for image in images %}
+                  <option value="{{ image['filename'] }}">{{ image['description'] }}</option>
+                {% endfor %}
+              </select>
+
+              <label for="edit_option_b">Alternativ B:</label>
+              <input type="text" name="option_b" id="edit_option_b" required>
+              <label for="edit_option_b_image">Bilde for alternativ B:</label>
+              <select name="option_b_image" id="edit_option_b_image">
+                <option value="">Ingen bilde</option>
+                {% for image in images %}
+                  <option value="{{ image['filename'] }}">{{ image['description'] }}</option>
+                {% endfor %}
+              </select>
+
+              <label for="edit_option_c">Alternativ C:</label>
+              <input type="text" name="option_c" id="edit_option_c" required>
+              <label for="edit_option_c_image">Bilde for alternativ C:</label>
+              <select name="option_c_image" id="edit_option_c_image">
+                <option value="">Ingen bilde</option>
+                {% for image in images %}
+                  <option value="{{ image['filename'] }}">{{ image['description'] }}</option>
+                {% endfor %}
+              </select>
+
+              <label for="edit_option_d">Alternativ D:</label>
+              <input type="text" name="option_d" id="edit_option_d" required>
+              <label for="edit_option_d_image">Bilde for alternativ D:</label>
+              <select name="option_d_image" id="edit_option_d_image">
+                <option value="">Ingen bilde</option>
+                {% for image in images %}
+                  <option value="{{ image['filename'] }}">{{ image['description'] }}</option>
+                {% endfor %}
+              </select>
+
+              <label for="edit_correct_answer">Riktig svar (a, b, c, d):</label>
+              <input type="text" name="correct_answer" id="edit_correct_answer" maxlength="1" pattern="[a-dA-D]" required>
+
+              <label for="edit_category">Kategori:</label>
+              <input type="text" name="category" id="edit_category">
+
+              <button type="submit" class="btn">💾 Lagre endringer</button>
+            </form>
+          </div>
         </div>
 
         <script>
@@ -203,6 +271,57 @@
             }
             // Show questions by default
             showSection('questions');
+
+            function editQuestion(question) {
+                document.getElementById('editModal').style.display = 'block';
+                document.getElementById('edit_question_id').value = question.id;
+                document.getElementById('edit_question').value = question.question;
+                document.getElementById('edit_option_a').value = question.option_a;
+                document.getElementById('edit_option_b').value = question.option_b;
+                document.getElementById('edit_option_c').value = question.option_c;
+                document.getElementById('edit_option_d').value = question.option_d;
+                document.getElementById('edit_correct_answer').value = question.correct_answer;
+                document.getElementById('edit_category').value = question.category;
+                document.getElementById('edit_image_filename').value = question.image_filename;
+                document.getElementById('edit_image_preview').src = question.image_filename 
+                    ? '/static/images/signs/' + question.image_filename 
+                    : '';
+                if(question.image_filename) {
+                    document.getElementById('edit_image_preview').style.display = 'block';
+                } else {
+                    document.getElementById('edit_image_preview').style.display = 'none';
+                }
+                // Optionally, set option images if those fields exist in question
+                if(question.option_a_image !== undefined) {
+                    document.getElementById('edit_option_a_image').value = question.option_a_image || '';
+                }
+                if(question.option_b_image !== undefined) {
+                    document.getElementById('edit_option_b_image').value = question.option_b_image || '';
+                }
+                if(question.option_c_image !== undefined) {
+                    document.getElementById('edit_option_c_image').value = question.option_c_image || '';
+                }
+                if(question.option_d_image !== undefined) {
+                    document.getElementById('edit_option_d_image').value = question.option_d_image || '';
+                }
+            }
+            function previewImage(select) {
+                const img = document.getElementById('edit_image_preview');
+                if(select.value) {
+                    img.src = '/static/images/signs/' + select.value;
+                    img.style.display = 'block';
+                } else {
+                    img.style.display = 'none';
+                }
+            }
+            document.querySelector('.close').onclick = function() {
+                document.getElementById('editModal').style.display = 'none';
+            };
+            window.onclick = function(event) {
+                if (event.target.id === 'editModal') {
+                    document.getElementById('editModal').style.display = 'none';
+                }
+            };
         </script>
     </div>
 </body>

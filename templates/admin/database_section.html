@@ -1,141 +1,178 @@
-<file name=app.py>
-# Removed the separate /admin/database route entirely.
+<style>
+.column-value-filter {
+    position: absolute;
+    top: calc(100% - 25px);
+    left: 0;
+    width: 200px; /* Fixed width for dropdowns */
+    max-width: 300px;
+    padding: 2px;
+    border: 1px solid #ddd;
+    border-radius: 3px;
+    font-size: 12px;
+    background: white;
+    z-index: 1000;
+}
 
-@app.route('/admin', methods=['GET', 'POST'])
-def admin_dashboard():
-    conn = get_db_connection()
-    conn.row_factory = sqlite3.Row
-    cursor = conn.cursor()
+th {
+    position: relative;
+    min-width: 100px;
+    white-space: nowrap;
+    padding-bottom: 45px; /* Space for dropdown */
+}
 
-    message = None
+/* Handle long text in dropdowns */
+.column-value-filter option {
+    max-width: 100%;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+.table-container {
+    position: relative;
+    margin-top: 10px; /* Add space above table */
+}
+</style>
 
-    if request.method == 'POST':
-        sql_query = request.form.get('sql_query')
-        if sql_query:
-            try:
-                cursor.execute(sql_query)
-                conn.commit()
-                message = "SQL-spørringen ble kjørt."
-            except Exception as e:
-                message = f"Feil under kjøring av SQL: {e}"
-
-    cursor.execute("SELECT * FROM questions")
-    questions = cursor.fetchall()
-
-    cursor.execute("SELECT * FROM images")
-    images = cursor.fetchall()
-
-    cursor.execute("SELECT name FROM sqlite_master WHERE type='table'")
-    table_names = [r['name'] for r in cursor.fetchall()]
-    tables = {}
-    for tbl in table_names:
-        cursor.execute(f"SELECT * FROM {tbl}")
-        tables[tbl] = cursor.fetchall()
-
-    return render_template('admin/admin_dashboard.html',
-                           images=images,
-                           questions=questions,
-                           tables=tables,
-                           message=message)
-</file>
-
-<file name=templates/admin/admin_dashboard.html>
-<!DOCTYPE html>
-<html lang="no">
-<head>
-  <meta charset="UTF-8" />
-  <title>Admin Dashboard</title>
-  <style>
-    body { font-family: Arial, sans-serif; padding: 40px; background: #f4f4f4; }
-    .container { background: white; padding: 30px; max-width: 1200px; margin: auto; }
-    .btn { display: inline-block; background: #0077cc; color: white; padding: 8px 16px; border-radius: 4px; text-decoration: none; margin-bottom: 20px; cursor: pointer; }
-    .btn:hover { background: #005fa3; }
-    table { width: 100%; border-collapse: collapse; margin-bottom: 40px; }
-    th, td { border: 1px solid #ddd; padding: 8px; }
-    th { background: #0077cc; color: white; }
-    h2 { margin-top: 40px; }
-    textarea { font-family: monospace; width: 100%; box-sizing: border-box; }
-    .message {
-      padding: 10px;
-      background: #e0ffe0;
-      border: 1px solid #00aa00;
-      margin-bottom: 20px;
-    }
-  </style>
-</head>
-<body>
-  <div class="container">
-    <h1>Admin Dashboard</h1>
-
-    <a href="#" class="btn" onclick="showSection('questions')">📋 Quiz</a>
-    <a href="#" class="btn" onclick="showSection('database')">💾 Database</a>
-
-    <div id="questionsSection">
-      <h2>Quiz Questions</h2>
-      <form method="POST" action="/admin/questions">
-        <!-- Quiz form content here (assuming existing) -->
-      </form>
-
-      <table>
-        <thead>
-          <tr>
-            {% if questions %}
-              {% for col in questions[0].keys() %}
-                <th>{{ col }}</th>
-              {% endfor %}
-            {% endif %}
-          </tr>
-        </thead>
-        <tbody>
-          {% for question in questions %}
-            <tr>
-              {% for col in question.keys() %}
-                <td>{{ question[col] }}</td>
-              {% endfor %}
-            </tr>
-          {% endfor %}
-        </tbody>
-      </table>
-    </div>
-
-    <div id="databaseSection" style="display:none;">
-      <h2>Databaseadministrasjon</h2>
-      {% if message %}
+<div id="databaseSection" style="display:none; margin-top:20px;">
+    {% if message %}
         <div class="message">{{ message }}</div>
-      {% endif %}
-      <form method="POST" action="/admin">
+    {% endif %}
+    
+    <form method="POST">
         <label for="sql_query">SQL-konsoll:</label>
-        <textarea id="sql_query" name="sql_query" rows="5"></textarea>
+        <textarea id="sql_query" name="sql_query" rows="5" style="width:100%; box-sizing:border-box;"></textarea>
         <button type="submit" class="btn">Kjør SQL</button>
-      </form>
+    </form>
 
-      {% for table, rows in tables.items() %}
-        <h3>Tabell: {{ table }}</h3>
-        {% if rows %}
-          <table>
-            <thead>
-              <tr>
-                {% for col in rows[0].keys() %}
-                  <th>{{ col }}</th>
-                {% endfor %}
-              </tr>
-            </thead>
-            <tbody>
-              {% for row in rows %}
-                <tr>
-                  {% for col in row.keys() %}
-                    <td>{{ row[col] }}</td>
-                  {% endfor %}
-                </tr>
-              {% endfor %}
-            </tbody>
-          </table>
-        {% else %}
-          <p>(Ingen data i denne tabellen.)</p>
-        {% endif %}
-      {% endfor %}
+    <!-- Table Filter -->
+    <div style="margin: 20px 0;">
+        <label for="tableFilter" style="font-size: 22px; font-weight: bold;">Vis tabell: </label>
+        <select id="tableFilter" onchange="filterTables()">
+            <option value="all">Alle tabeller</option>
+            {% for table in tables.keys() %}
+                <option value="{{ table }}">{{ table }}</option>
+            {% endfor %}
+        </select>
     </div>
-  </div>
+
+    {% for table, rows in tables.items() %}
+        <div class="table-section" data-table="{{ table }}">
+            <h2 style="margin-top:30px;">Tabell: {{ table }}</h2>
+            
+            {% if rows %}
+                <!-- Column Filter -->
+                <div class="column-filter" style="margin-bottom: 10px;">
+                    {% for col in rows[0].keys() %}
+                        <label style="margin-right: 10px;">
+                            <input type="checkbox" 
+                                   class="column-checkbox" 
+                                   data-table="{{ table }}" 
+                                   data-column="{{ col }}" 
+                                   checked> {{ col }}
+                        </label>
+                    {% endfor %}
+                </div>
+
+                <div class="table-container">
+                    <table>
+                        <thead>
+                            <tr>
+                                {% for col in rows[0].keys() %}
+                                <th data-column="{{ col }}">
+                                    {{ col }}
+                                    <select class="column-value-filter" data-table="{{ table }}" data-column="{{ col }}" onchange="filterTableByColumn()">
+                                        <option value="all">Alle</option>
+                                        {% set unique_values = [] %}
+                                        {% for row in rows %}
+                                            {% if row[col] not in unique_values %}
+                                                {% set _ = unique_values.append(row[col]) %}
+                                                <option value="{{ row[col] }}">{{ row[col] }}</option>
+                                            {% endif %}
+                                        {% endfor %}
+                                    </select>
+                                </th>
+                            {% endfor %}
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for row in rows %}
+                                <tr>
+                                    {% for col in rows[0].keys()%}
+                                        <td data-column="{{ col }}" style="color: black;">
+                                            {% if table == 'traffic_signs' and col == 'filename' %}
+                                                <img src="{{ url_for('static', filename='images/signs/' ~ row[col]) }}" 
+                                                     alt="{{ row[col] }}" 
+                                                     style="max-width: 100px;">
+                                            {% else %}
+                                                {{ row[col] }}
+                                            {% endif %}
+                                        </td>
+                                    {% endfor %}
+                                </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            {% else %}
+                <p>(Ingen data i denne tabellen.)</p>
+            {% endif %}
+        </div>
+    {% endfor %}
+</div>
+
+<script>
+function filterTables() {
+    const selectedTable = document.getElementById('tableFilter').value;
+    const tables = document.querySelectorAll('.table-section');
+    
+    tables.forEach(table => {
+        if (selectedTable === 'all' || table.dataset.table === selectedTable) {
+            table.style.display = 'block';
+        } else {
+            table.style.display = 'none';
+        }
+    });
+}
+
+document.querySelectorAll('.column-checkbox').forEach(checkbox => {
+    checkbox.addEventListener('change', function() {
+        const table = this.dataset.table;
+        const column = this.dataset.column;
+        const cells = document.querySelectorAll(`[data-table="${table}"] [data-column="${column}"]`);
+        
+        cells.forEach(cell => {
+            cell.style.display = this.checked ? '' : 'none';
+        });
+    });
+});
+</script>
+
+<script>
+function filterTableByColumn() {
+    const tables = document.querySelectorAll('.table-section');
+    
+    tables.forEach(table => {
+        const rows = table.querySelectorAll('tbody tr');
+        const filters = table.querySelectorAll('.column-value-filter');
+        
+        rows.forEach(row => {
+            let showRow = true;
+            
+            filters.forEach(filter => {
+                const column = filter.dataset.column;
+                const filterValue = filter.value;
+                const cell = row.querySelector(`td[data-column="${column}"]`);
+                
+                if (filterValue !== 'all' && cell.textContent.trim() !== filterValue) {
+                    showRow = false;
+                }
+            });
+            
+            row.style.display = showRow ? '' : 'none';
+        });
+    });
+}
+</script>
 
   <script>
     function showSection(section) {
@@ -152,4 +189,3 @@ def admin_dashboard():
   </script>
 </body>
 </html>
-</file>
