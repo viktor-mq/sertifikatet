@@ -605,81 +605,50 @@
         </div>
 
         <script>
-        // editQuestionFromRow moved from <style> to here
         function editQuestionFromRow(button, id) {
-            console.log('Edit button clicked for ID:', id);
-            
-            try {
-                // Get the row from the button
-                const row = button.closest('tr');
-                if (!row) {
-                    console.error('Row not found');
-                    alert('Kunne ikke finne spørsmålet.');
-                    return;
-                }
-                
-                // Show the form first
-                document.getElementById('questionForm').style.display = 'block';
-                document.getElementById('newQuestionForm').querySelector('h2').textContent = 'Rediger spørsmål';
-                document.getElementById('questionId').value = id;
-                
-                // Get the cells
-                const cells = row.cells;
-                
-                // Check if bulk mode is active by looking at the first cell
-                let startIndex = 0;
-                if (cells[0] && cells[0].querySelector('input[type="checkbox"]')) {
-                    startIndex = 1; // Skip checkbox column
-                }
-                
-                // Extract data based on position
-                const questionText = cells[startIndex + 1].textContent.trim(); // Skip ID column
-                const categoryText = cells[startIndex + 2].textContent.trim();
-                const imageCell = cells[startIndex + 3];
-                const optionsCell = cells[startIndex + 4];
-                
-                // Fill form fields
-                document.getElementById('questionText').value = questionText;
-                document.getElementById('categoryInput').value = categoryText === 'Ukategorisert' ? '' : categoryText;
-                
-                // Extract options
-                if (optionsCell) {
-                    const optionDivs = optionsCell.querySelectorAll('div');
-                    optionDivs.forEach(div => {
-                        const text = div.textContent.trim();
-                        if (text.startsWith('A:')) {
-                            document.getElementById('optionA').value = text.substring(2).trim();
-                        } else if (text.startsWith('B:')) {
-                            document.getElementById('optionB').value = text.substring(2).trim();
-                        } else if (text.startsWith('C:')) {
-                            document.getElementById('optionC').value = text.substring(2).trim();
-                        } else if (text.startsWith('D:')) {
-                            document.getElementById('optionD').value = text.substring(2).trim();
-                        } else if (text.includes('Riktig:')) {
-                            document.getElementById('correctAnswer').value = text.split(':')[1].trim().toLowerCase();
-                        }
-                    });
-                }
-                
-                // Handle image
-                if (imageCell) {
-                    const img = imageCell.querySelector('img');
-                    if (img) {
-                        const src = img.getAttribute('src');
-                        const filename = src.split('/').pop();
-                        document.getElementById('imageSelect').value = filename;
-                    } else {
-                        document.getElementById('imageSelect').value = '';
-                    }
-                }
-                
-                // Scroll to form
-                document.getElementById('questionForm').scrollIntoView({ behavior: 'smooth' });
-                
-            } catch (error) {
-                console.error('Error in editQuestionFromRow:', error);
-                alert('Det oppstod en feil. Sjekk konsollen for detaljer.');
+            console.log('editQuestionFromRow called with id:', id);
+            const row = button.closest('tr');
+            if (!row) {
+                alert('Kunne ikke finne raden.');
+                return;
             }
+            const formDiv = document.getElementById('questionForm');
+            formDiv.style.display = 'block';
+            document.getElementById('questionId').value = id;
+
+            // Cells: [checkbox?, id, question, category, image, options]
+            const cells = Array.from(row.querySelectorAll('td'));
+            // Question text
+            document.getElementById('questionText').value = cells[2].textContent.trim();
+
+            // Category
+            const cat = cells[3].textContent.trim();
+            document.getElementById('categoryInput').value = cat === 'Ukategorisert' ? '' : cat;
+
+            // Image
+            const imgElem = cells[4].querySelector('img');
+            document.getElementById('imageSelect').value = imgElem ? imgElem.src.split('/').pop() : '';
+
+            // Options and correct answer
+            const optionDivs = cells[5].querySelectorAll('div');
+            optionDivs.forEach(div => {
+                const text = div.textContent.trim();
+                if (text.startsWith('A:')) {
+                    document.getElementById('optionA').value = text.substring(2).trim();
+                } else if (text.startsWith('B:')) {
+                    document.getElementById('optionB').value = text.substring(2).trim();
+                } else if (text.startsWith('C:')) {
+                    document.getElementById('optionC').value = text.substring(2).trim();
+                } else if (text.startsWith('D:')) {
+                    document.getElementById('optionD').value = text.substring(2).trim();
+                } else if (div.classList.contains('correct-answer')) {
+                    const ans = text.split(':')[1].trim().toLowerCase();
+                    document.getElementById('correctAnswer').value = ans;
+                }
+            });
+
+            // Scroll into view
+            formDiv.scrollIntoView({ behavior: 'smooth' });
         }
         </script>
 
