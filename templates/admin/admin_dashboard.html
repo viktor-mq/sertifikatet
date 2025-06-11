@@ -483,7 +483,7 @@
                 <a href="#" onclick="toggleForm()" class="btn">➕ Legg til nytt spørsmål</a>
                 <a href="{{ url_for('export_questions') }}" class="btn btn-success">📥 Eksporter spørsmål</a>
                 <button onclick="toggleBulkMode()" class="btn btn-warning" id="bulkModeBtn">✅ Bulk-operasjoner</button>
-                <button type="button" class="btn btn-secondary btn-small" onclick="showUploadModal()">📷 Last opp bilde</button>
+                <button type="button" class="btn btn-secondary btn-small" onclick="showUploadModal()">📷 Last opp bilde til databasen</button>
                 {% include 'admin/upload_image.html' %}
             </div>
 
@@ -554,8 +554,6 @@
                         <option value="{{ image.filename }}">{{ image.name }} ({{ image.filename }})</option>
                         {% endfor %}
                     </select>
-                    <label for="new_image">Last opp nytt bilde:</label>
-                    <input type="file" name="new_image" id="newImageInput" />
                     <label for="galleryFolderFilter">Filtrer galleri på mappe:</label>
                     <select id="galleryFolderFilter" onchange="filterGalleryByFolder()">
                       <option value="all">Alle mapper</option>
