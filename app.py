@@ -221,31 +221,51 @@ def admin_dashboard():
     conn = sqlite3.connect('questions.db')
     conn.row_factory = sqlite3.Row
     cursor = conn.cursor()
-    
+
     # Get search and filter parameters
     search_query = request.args.get('search', '')
     category_filter = request.args.get('category', '')
-    
+
     validation_errors = []
     message = None
 
-    # Håndter opplasting av nytt bilde
-    new_img = request.files.get('new_image')
-    if new_img and new_img.filename:
-        filename = secure_filename(new_img.filename)
-        save_path = os.path.join(app.static_folder, 'images', 'signs', filename)
-        new_img.save(save_path)
-        message = f'Bildet "{filename}" ble lastet opp.'
-
     if request.method == 'POST':
-        # Check if this is a SQL query
+        # Handle image upload
+        new_img = request.files.get('image')
+        if new_img and new_img.filename:
+            folder = request.form.get('folder')
+            filename = secure_filename(new_img.filename)
+            save_dir = os.path.join(app.static_folder, 'images', folder)
+            os.makedirs(save_dir, exist_ok=True)
+            new_img.save(os.path.join(save_dir, filename))
+
+            if folder == 'signs':
+                sign_code = request.form.get('sign_code')
+                name      = request.form.get('name')
+                desc      = request.form.get('descriptionSign')
+                cursor.execute(
+                    "INSERT OR REPLACE INTO traffic_signs (sign_code, filename, name, description) VALUES (?, ?, ?, ?)",
+                    (sign_code, filename, name, desc)
+                )
+            else:
+                title = request.form.get('title') or request.form.get('titleCustom')
+                desc  = (request.form.get('descriptionQuiz') or request.form.get('descriptionCustom'))
+                cursor.execute(
+                    "INSERT INTO quiz_images (filename, folder, title, description) VALUES (?, ?, ?, ?)",
+                    (filename, folder, title, desc)
+                )
+            conn.commit()
+            message = f'Bildet "{filename}" ble lastet opp i {folder}.'
+            return redirect(url_for('admin_dashboard'))
+
+        # Next, handle SQL query or question form
         if 'sql_query' in request.form:
             sql_query = request.form['sql_query']
             try:
                 # Execute SQL query
                 cursor.execute(sql_query)
                 conn.commit()
-                
+
                 # If it's a SELECT query, fetch results
                 if sql_query.strip().upper().startswith('SELECT'):
                     results = cursor.fetchall()
@@ -254,11 +274,10 @@ def admin_dashboard():
                     message = "Query executed successfully."
             except Exception as e:
                 message = f"SQL Error: {str(e)}"
-        
         else:
             # Handle question form submission
             question_id = request.form.get('question_id')
-            
+
             question_data = {
                 'question': request.form['question'],
                 'option_a': request.form['option_a'],
@@ -269,10 +288,10 @@ def admin_dashboard():
                 'category': request.form['category'] or 'Ukategorisert',
                 'image_filename': request.form['image_filename']
             }
-            
+
             # Validate the question
             validation_errors = validate_question(question_data, question_id)
-            
+
             if not validation_errors:
                 if question_id:
                     # Update existing question
@@ -282,10 +301,10 @@ def admin_dashboard():
                         WHERE id=?
                     """, (question_data['question'], question_data['correct_option'], 
                           question_data['category'], question_data['image_filename'], question_id))
-                    
+
                     # Update options for this question
                     cursor.execute("DELETE FROM options WHERE question_id=?", (question_id,))
-                    
+
                     # Insert updated options
                     options = [
                         (question_id, 'a', question_data['option_a']),
@@ -294,7 +313,7 @@ def admin_dashboard():
                         (question_id, 'd', question_data['option_d'])
                     ]
                     cursor.executemany("INSERT INTO options (question_id, option_letter, option_text) VALUES (?, ?, ?)", options)
-                    
+
                 else:
                     # Insert new question
                     cursor.execute("""
@@ -302,10 +321,10 @@ def admin_dashboard():
                         VALUES (?, ?, ?, ?)
                     """, (question_data['question'], question_data['correct_option'], 
                           question_data['category'], question_data['image_filename']))
-                    
+
                     # Get the ID of the newly inserted question
                     new_question_id = cursor.lastrowid
-                    
+
                     # Insert options for the new question
                     options = [
                         (new_question_id, 'a', question_data['option_a']),
@@ -314,7 +333,7 @@ def admin_dashboard():
                         (new_question_id, 'd', question_data['option_d'])
                     ]
                     cursor.executemany("INSERT INTO options (question_id, option_letter, option_text) VALUES (?, ?, ?)", options)
-                
+
                 conn.commit()
                 return redirect(url_for('admin_dashboard'))
 
@@ -325,9 +344,43 @@ def admin_dashboard():
     cursor.execute("SELECT DISTINCT category FROM questions WHERE category IS NOT NULL AND category != '' ORDER BY category")
     categories = [row[0] for row in cursor.fetchall()]
 
-    # Get traffic signs
-    cursor.execute("SELECT * FROM traffic_signs")
-    images = [dict(row) for row in cursor.fetchall()]
+    # Build unified images list from traffic_signs and quiz_images
+    images = []
+    # traffic_signs
+    cursor.execute("SELECT filename, description FROM traffic_signs")
+    for row in cursor.fetchall():
+        images.append({'filename': row['filename'], 'name': row['description'], 'folder': 'signs'})
+    # quiz_images
+    cursor.execute("SELECT filename, folder, title FROM quiz_images")
+    for row in cursor.fetchall():
+        images.append({'filename': row['filename'], 'name': row['title'], 'folder': row['folder']})
+    # Auto-scan static/image folders for any files not yet in images list
+    for folder in ['signs', 'quiz', 'custom']:
+        folder_path = os.path.join(app.static_folder, 'images', folder)
+        if os.path.isdir(folder_path):
+            for fname in os.listdir(folder_path):
+                file_path = os.path.join(folder_path, fname)
+                if not os.path.isfile(file_path):
+                    continue
+                if any(img['filename'] == fname and img['folder'] == folder for img in images):
+                    continue
+                images.append({'filename': fname, 'name': fname, 'folder': folder})
+    # Optional: question_images relationships
+    try:
+        cursor.execute("SELECT question_id, image_id, role FROM question_images")
+        question_images = [dict(r) for r in cursor.fetchall()]
+    except:
+        question_images = []
+
+    # Deduplicate images list by (folder, filename)
+    seen = set()
+    unique_images = []
+    for img in images:
+        key = (img['folder'], img['filename'])
+        if key not in seen:
+            seen.add(key)
+            unique_images.append(img)
+    images = unique_images
 
     # Get statistics
     stats = get_question_statistics()
@@ -355,7 +408,9 @@ def admin_dashboard():
                            category_filter=category_filter,
                            stats=stats,
                            validation_errors=validation_errors,
-                           message=message)
+                           message=message,
+                           folders=['signs', 'quiz', 'custom'],
+                           question_images=question_images)
 
 
 @app.route('/admin/delete_question/<int:question_id>', methods=['POST'])
@@ -472,8 +527,6 @@ def preview_question():
 def logout():
     session.pop('admin', None)
     return redirect(url_for('admin'))
-
-
 
 # Error handlers
 @app.errorhandler(400)

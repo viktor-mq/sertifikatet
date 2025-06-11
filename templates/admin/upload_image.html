@@ -1,0 +1,67 @@
+<div id="uploadModal" class="modal">
+  <div class="modal-content">
+    <span class="close-modal" onclick="closeUploadModal()">&times;</span>
+    <h2>Last opp nytt bilde</h2>
+    <form method="POST" action="{{ url_for('admin_dashboard') }}" enctype="multipart/form-data">
+      <label for="folderSelect">Velg mappe:</label>
+      <select name="folder" id="folderSelect" required onchange="onFolderChange()">
+        {% for f in folders %}
+          <option value="{{ f }}">{{ f }}</option>
+        {% endfor %}
+      </select>
+
+      <label for="imageUploadInput">Velg fil:</label>
+      <input type="file" name="image" id="imageUploadInput" accept="image/*" required onchange="onFileSelect()">
+
+      <div id="metadataFields">
+        <div id="signsFields" class="metadata">
+          <label for="sign_code">Skiltkode:</label>
+          <input type="text" name="sign_code" id="sign_code">
+
+          <label for="name">Navn:</label>
+          <input type="text" name="name" id="name">
+
+          <label for="descriptionSign">Forklaring:</label>
+          <textarea name="description" id="descriptionSign" rows="3"></textarea>
+        </div>
+        <div id="quizFields" class="metadata">
+          <label for="title">Tittel:</label>
+          <input type="text" name="title" id="title">
+
+          <label for="descriptionQuiz">Beskrivelse:</label>
+          <textarea name="description" id="descriptionQuiz" rows="3"></textarea>
+        </div>
+        <div id="customFields" class="metadata">
+          <label for="titleCustom">Tittel:</label>
+          <input type="text" name="title" id="titleCustom">
+
+          <label for="descriptionCustom">Beskrivelse:</label>
+          <textarea name="description" id="descriptionCustom" rows="3"></textarea>
+        </div>
+      </div>
+
+      <div style="margin-top:15px;">
+        <button type="submit" class="btn">💾 Lagre bilde</button>
+        <button type="button" class="btn" onclick="closeUploadModal()">Avbryt</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<script>
+  function showUploadModal() {
+    document.getElementById('uploadModal').style.display = 'flex';
+  }
+  function closeUploadModal() {
+    document.getElementById('uploadModal').style.display = 'none';
+  }
+  function onFileSelect() {
+    document.getElementById('metadataFields').style.display = 'block';
+    onFolderChange();
+  }
+  function onFolderChange() {
+    var folder = document.getElementById('folderSelect').value;
+    document.querySelectorAll('.metadata').forEach(div => div.style.display = 'none');
+    document.getElementById(folder + 'Fields').style.display = 'block';
+  }
+</script>

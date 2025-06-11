@@ -4,6 +4,13 @@
     <meta charset="UTF-8">
     <title>Adminpanel</title>
     <style>
+        .btn-secondary {
+            background-color: #6c757d;
+            color: white;
+        }
+        .btn-secondary:hover {
+            background-color: #5a6268;
+        }
         body {
             font-family: Arial, sans-serif;
             padding: 40px;
@@ -433,6 +440,7 @@
         <h1>Velkommen til adminpanelet</h1>
         <p>Her kan du administrere spørsmål og tilknyttede skiltbilder.</p>
 
+
         <a href="#" class="btn active" onclick="showSection('questions')" id="questionsTab">📋 Spørsmål</a>
         <a href="#" class="btn" onclick="showSection('database')" id="databaseTab">💾 Database</a>
 
@@ -475,6 +483,8 @@
                 <a href="#" onclick="toggleForm()" class="btn">➕ Legg til nytt spørsmål</a>
                 <a href="{{ url_for('export_questions') }}" class="btn btn-success">📥 Eksporter spørsmål</a>
                 <button onclick="toggleBulkMode()" class="btn btn-warning" id="bulkModeBtn">✅ Bulk-operasjoner</button>
+                <button type="button" class="btn btn-secondary btn-small" onclick="showUploadModal()">📷 Last opp bilde</button>
+                {% include 'admin/upload_image.html' %}
             </div>
 
             <!-- Search and Filter -->
@@ -546,15 +556,23 @@
                     </select>
                     <label for="new_image">Last opp nytt bilde:</label>
                     <input type="file" name="new_image" id="newImageInput" />
+                    <label for="galleryFolderFilter">Filtrer galleri på mappe:</label>
+                    <select id="galleryFolderFilter" onchange="filterGalleryByFolder()">
+                      <option value="all">Alle mapper</option>
+                      {% for f in folders %}
+                      <option value="{{ f }}">{{ f }}</option>
+                      {% endfor %}
+                    </select>
                     <div id="imageGallery" style="margin:10px 0;">
                         {% for img in images %}
-                          <img src="{{ url_for('static', filename='images/signs/' ~ img.filename) }}"
+                          <img src="{{ url_for('static', filename='images/' ~ (img.folder or 'signs') ~ '/' ~ img.filename) }}"
                                data-filename="{{ img.filename }}"
+                               data-folder="{{ img.folder or 'signs' }}"
                                class="selectable-img"
                                style="max-height:50px; margin:5px; cursor:pointer; border:2px solid transparent;"
                                onclick="pickImage(this)">
                         {% endfor %}
-                      </div>
+                    </div>
 
                     <div style="display: flex; gap: 10px; margin-top: 15px;">
                         <button type="submit">➕ Lagre spørsmål</button>
@@ -1106,6 +1124,14 @@
                     .forEach(i => i.style.borderColor = 'transparent');
             el.style.borderColor = '#0077cc';
         }
+    // Gallery folder filter
+    function filterGalleryByFolder() {
+      const selected = document.getElementById('galleryFolderFilter').value;
+      document.querySelectorAll('#imageGallery img').forEach(img => {
+        img.style.display = (selected === 'all' || img.dataset.folder === selected)
+          ? 'inline-block' : 'none';
+      });
+    }
     </script>
 </body>
 </html>
