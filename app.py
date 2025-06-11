@@ -74,9 +74,11 @@ def load_questions(category=None, search=None):
     cursor = conn.cursor()
     
     query = """
-        SELECT q.*, 
+        SELECT q.*,
+               qi.folder AS image_folder,
                GROUP_CONCAT(o.option_letter || ':' || o.option_text, '|') as options_data
         FROM questions q
+        LEFT JOIN quiz_images qi ON qi.filename = q.image_filename
         LEFT JOIN options o ON q.id = o.question_id
     """
     
@@ -98,12 +100,12 @@ def load_questions(category=None, search=None):
     
     cursor.execute(query, params)
     rows = cursor.fetchall()
-    conn.close()
     
     questions = []
     for row in rows:
         question_dict = dict(row)
-        
+        # Default image_folder to 'signs' if not set
+        question_dict['image_folder'] = row['image_folder'] or 'signs'
         # Parse options data
         if row['options_data']:
             options_list = row['options_data'].split('|')
@@ -111,11 +113,10 @@ def load_questions(category=None, search=None):
                 if ':' in opt:
                     letter, text = opt.split(':', 1)
                     question_dict[f'option_{letter}'] = text
-        
         # Remove the temporary options_data field
         question_dict.pop('options_data', None)
         questions.append(question_dict)
-    
+    conn.close()
     return questions
 
 

@@ -609,10 +609,11 @@
                             <td>{{ question.category or 'Ukategorisert' }}</td>
                             <td>
                                 {% if question.image_filename %}
-                                <img src="{{ url_for('static', filename='images/signs/' ~ question.image_filename) }}" 
-                                     alt="{{ question.image_filename }}" class="question-image">
+                                    {% set folder = question.image_folder or 'signs' %}
+                                    <img src="{{ url_for('static', filename='images/' ~ folder ~ '/' ~ question.image_filename) }}"
+                                         alt="{{ question.image_filename }}" class="question-image">
                                 {% else %}
-                                <span style="color: #999;">Ingen bilde</span>
+                                    <span style="color: #999;">Ingen bilde</span>
                                 {% endif %}
                             </td>
                             <td class="options-display">
