@@ -230,6 +230,16 @@ def admin_dashboard():
             'folder': qi.folder
         })
 
+    # Remove duplicates: keep unique (folder, filename)
+    seen = set()
+    unique_images = []
+    for img in images:
+        key = (img['folder'], img['filename'])
+        if key not in seen:
+            seen.add(key)
+            unique_images.append(img)
+    images = unique_images
+
     # Folders under static/images
     images_dir = os.path.join(current_app.static_folder, 'images')
     folders = []
