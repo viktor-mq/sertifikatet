@@ -1,1 +1,550 @@
-<!-- Placeholder for questions.html in templates/admin -->
+{# templates/admin/questions.html #}
+
+<!-- Questions Section -->
+<div id="questionsSection" class="section active" style="margin-top: 30px;" data-static-url="{{ url_for('static', filename='') }}">
+  <!-- Statistics Section -->
+  <div class="stats-container">
+    <div class="stat-card">
+      <h3 id="totalQuestions">{{ stats.total }}</h3>
+      <p>Totale spørsmål</p>
+    </div>
+    <div class="stat-card">
+      <h3 id="totalCategories">{{ stats.by_category|length }}</h3>
+      <p>Kategorier</p>
+    </div>
+    <div class="stat-card">
+      <h3 id="questionsWithImages">{{ stats.with_images }}</h3>
+      <p>Med bilder</p>
+    </div>
+    <div class="stat-card">
+      <h3 id="questionsWithoutImages">{{ stats.without_images }}</h3>
+      <p>Uten bilder</p>
+    </div>
+  </div>
+
+  <!-- Validation Errors -->
+  {% if validation_errors %}
+  <div class="validation-errors">
+    <strong>⚠️ Feil i skjemaet:</strong>
+    <ul>
+      {% for error in validation_errors %}
+      <li>{{ error }}</li>
+      {% endfor %}
+    </ul>
+  </div>
+  {% endif %}
+
+  <!-- Action Buttons -->
+  <div style="margin-bottom: 20px;">
+    <a href="#" onclick="toggleForm()" class="btn">➕ Legg til nytt spørsmål</a>
+    <a href="{{ url_for('admin.export_questions') }}" class="btn btn-success">📥 Eksporter spørsmål</a>
+    <button onclick="toggleBulkMode()" class="btn btn-warning" id="bulkModeBtn">✅ Bulk-operasjoner</button>
+    <button type="button" class="btn btn-secondary btn-small" onclick="showUploadModal()">📷 Last opp bilde</button>
+    {% include 'admin/upload_image.html' %}
+  </div>
+
+  <!-- Search and Filter -->
+  <form method="GET" action="{{ url_for('admin.admin_dashboard') }}">
+    <div class="search-filter-container">
+      <input type="text" name="search" placeholder="🔍 Søk i spørsmål…" value="{{ search_query }}">
+      <select name="category">
+        <option value="">Alle kategorier</option>
+        {% for category in categories %}
+        <option value="{{ category }}" {% if category == category_filter %}selected{% endif %}>
+          {{ category }}
+        </option>
+        {% endfor %}
+      </select>
+      <button type="submit" class="btn">Søk</button>
+      <a href="{{ url_for('admin.admin_dashboard') }}" class="btn btn-secondary">Tilbakestill</a>
+    </div>
+  </form>
+
+  <!-- Bulk Operations Panel -->
+  <form method="POST" action="{{ url_for('admin.bulk_delete') }}" id="bulkForm">
+    <div id="bulkOperations" class="bulk-operations" style="display: none;">
+      <p><strong>Bulk-operasjoner:</strong> Velg spørsmål nedenfor og bruk knappene her.</p>
+      <button type="submit" onclick="return confirmBulkDelete()" class="btn btn-danger btn-small">🗑️ Slett valgte</button>
+      <button type="button" onclick="selectAllQuestions()" class="btn btn-small">☑️ Velg alle</button>
+      <button type="button" onclick="deselectAllQuestions()" class="btn btn-small">☐ Fjern alle</button>
+      <span id="selectedCount" style="margin-left: 15px; font-weight: bold;">0 valgte</span>
+    </div>
+  </form>
+
+  <!-- Add/Edit Question Form -->
+  <div id="questionForm" style="display: none; margin-top: 20px;">
+    <form method="POST" action="{{ url_for('admin.admin_dashboard') }}" enctype="multipart/form-data" id="newQuestionForm">
+      <h2>Legg til / Rediger spørsmål</h2>
+      <input type="hidden" name="question_id" id="questionId">
+
+      <label for="questionText">Spørsmål:</label>
+      <textarea name="question" id="questionText" required></textarea>
+
+      <label for="optionA">Alternativ A:</label>
+      <input type="text" name="option_a" id="optionA" required>
+
+      <label for="optionB">Alternativ B:</label>
+      <input type="text" name="option_b" id="optionB" required>
+
+      <label for="optionC">Alternativ C:</label>
+      <input type="text" name="option_c" id="optionC" required>
+
+      <label for="optionD">Alternativ D:</label>
+      <input type="text" name="option_d" id="optionD" required>
+
+      <label for="correctOption">Riktig svar:</label>
+      <input type="text" name="correct_option" id="correctOption" required placeholder="a, b, c eller d">
+
+      <label for="categoryInput">Kategori:</label>
+      <input type="text" name="category" id="categoryInput">
+
+      <label for="imageSelect">Velg bilde:</label>
+      <select name="image_filename" id="imageSelect">
+        <option value="" data-folder="">Ingen bilde</option>
+        {% for img in images %}
+        <option value="{{ img.filename }}" data-folder="{{ img.folder or 'signs' }}">
+          {{ img.name }} ({{ img.filename }})
+        </option>
+        {% endfor %}
+      </select>
+      
+      <label for="galleryFolderFilter">Filtrer galleri på mappe:</label>
+      <select id="galleryFolderFilter" onchange="filterGalleryByFolder()">
+        <option value="all">Alle mapper</option>
+        {% for f in folders %}
+        <option value="{{ f }}">{{ f }}</option>
+        {% endfor %}
+      </select>
+      
+      <div id="imageGallery">
+        {% for img in images %}
+          <img src="{{ url_for('static', filename='images/' ~ (img.folder or 'signs') ~ '/' ~ img.filename) }}"
+               data-filename="{{ img.filename }}"
+               data-folder="{{ img.folder or 'signs' }}"
+               class="selectable-img"
+               onclick="pickImage(this)"
+               alt="{{ img.name }}">
+        {% endfor %}
+      </div>
+
+      <div style="display: flex; gap: 10px; margin-top: 15px;">
+        <button type="submit" class="btn btn-primary">💾 Lagre spørsmål</button>
+        <button type="button" onclick="previewQuestion()" class="btn btn-warning">👁️ Forhåndsvis</button>
+        <button type="button" onclick="cancelForm()" class="btn btn-secondary">Avbryt</button>
+      </div>
+    </form>
+  </div>
+
+  <!-- Questions Table -->
+  <div class="table-container">
+    <!-- Column Filter -->
+    <div class="column-filter" style="background: #f8f9fa; padding: 10px; border-radius: 5px; margin-bottom: 15px;">
+      <strong>Vis kolonner:</strong>
+      <label style="margin-left: 10px;"><input type="checkbox" class="column-checkbox" data-column="id" checked> ID</label>
+      <label style="margin-left: 10px;"><input type="checkbox" class="column-checkbox" data-column="question" checked> Spørsmål</label>
+      <label style="margin-left: 10px;"><input type="checkbox" class="column-checkbox" data-column="category" checked> Kategori</label>
+      <label style="margin-left: 10px;"><input type="checkbox" class="column-checkbox" data-column="image" checked> Bilde</label>
+      <label style="margin-left: 10px;"><input type="checkbox" class="column-checkbox" data-column="options" checked> Alternativer</label>
+      <label style="margin-left: 10px;"><input type="checkbox" class="column-checkbox" data-column="actions" checked> Handlinger</label>
+    </div>
+    <table>
+      <thead>
+        <tr>
+          <th class="checkbox-column bulk-checkbox" style="display: none;"><input type="checkbox" onchange="toggleAllCheckboxes(this)"></th>
+          <th data-column="id">ID</th>
+          <th data-column="question">Spørsmål</th>
+          <th data-column="category">Kategori</th>
+          <th data-column="image">Bilde</th>
+          <th data-column="options">Alternativer</th>
+          <th data-column="actions">Handlinger</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for question in questions %}
+        <tr data-id="{{ question.id }}">
+          <td class="checkbox-column bulk-checkbox" style="display: none;">
+            <input type="checkbox" name="question_ids" value="{{ question.id }}" onchange="updateSelectedCount()">
+          </td>
+          <td data-column="id">{{ question.id }}</td>
+          <td data-column="question">{{ question.question }}</td>
+          <td data-column="category">{{ question.category or 'Ukategorisert' }}</td>
+          <td data-column="image">
+            {% if question.image_filename %}
+              {% set folder = question.image_folder or 'signs' %}
+              <img src="{{ url_for('static', filename='images/' ~ folder ~ '/' ~ question.image_filename) }}"
+                   alt="" class="question-image">
+            {% else %}
+              <span style="color: #999;">Ingen bilde</span>
+            {% endif %}
+          </td>
+          <td data-column="options" class="options-display">
+            <div {% if question.correct_option|lower == 'a' %}style="color: #10B981; font-weight: 600;"{% endif %}>A: {{ question.option_a }}</div>
+            <div {% if question.correct_option|lower == 'b' %}style="color: #10B981; font-weight: 600;"{% endif %}>B: {{ question.option_b }}</div>
+            <div {% if question.correct_option|lower == 'c' %}style="color: #10B981; font-weight: 600;"{% endif %}>C: {{ question.option_c }}</div>
+            <div {% if question.correct_option|lower == 'd' %}style="color: #10B981; font-weight: 600;"{% endif %}>D: {{ question.option_d }}</div>
+            <div style="margin-top: 5px;"><strong>Riktig: <span style="color: #10B981;">{{ question.correct_option|upper }}</span></strong></div>
+          </td>
+          <td data-column="actions">
+            <button onclick="editQuestionFromRow(this, {{ question.id }})" class="btn btn-warning btn-small">✏️ Rediger</button>
+            <button onclick="confirmDelete({{ question.id }})" class="btn btn-danger btn-small">🗑️ Slett</button>
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+
+<script>
+// Toggles and helpers for questions section
+
+function toggleForm() {
+  const form = document.getElementById('questionForm');
+  if (form.style.display === 'none' || form.style.display === '') {
+    form.style.display = 'block';
+    document.getElementById('questionId').value = '';
+    document.getElementById('newQuestionForm').reset();
+    document.querySelector('#newQuestionForm h2').textContent = 'Legg til nytt spørsmål';
+  } else {
+    form.style.display = 'none';
+  }
+}
+
+function cancelForm() {
+  const form = document.getElementById('questionForm');
+  form.style.display = 'none';
+  document.getElementById('newQuestionForm').reset();
+  document.getElementById('questionId').value = '';
+}
+
+let bulkModeEnabled = false;
+function toggleBulkMode() {
+  bulkModeEnabled = !bulkModeEnabled;
+  const bulkOperations = document.getElementById('bulkOperations');
+  const bulkCheckboxes = document.querySelectorAll('.bulk-checkbox');
+  const bulkModeBtn = document.getElementById('bulkModeBtn');
+
+  if (bulkModeEnabled) {
+    bulkOperations.style.display = 'block';
+    bulkCheckboxes.forEach(cb => cb.style.display = 'table-cell');
+    bulkModeBtn.textContent = '❌ Avbryt bulk-modus';
+    bulkModeBtn.classList.remove('btn-warning');
+    bulkModeBtn.classList.add('btn-danger');
+  } else {
+    bulkOperations.style.display = 'none';
+    bulkCheckboxes.forEach(cb => cb.style.display = 'none');
+    bulkModeBtn.textContent = '✅ Bulk-operasjoner';
+    bulkModeBtn.classList.remove('btn-danger');
+    bulkModeBtn.classList.add('btn-warning');
+    deselectAllQuestions();
+  }
+}
+
+function selectAllQuestions() {
+  document.querySelectorAll('input[name="question_ids"]').forEach(checkbox => {
+    checkbox.checked = true;
+  });
+  updateSelectedCount();
+}
+
+function deselectAllQuestions() {
+  document.querySelectorAll('input[name="question_ids"]').forEach(checkbox => {
+    checkbox.checked = false;
+  });
+  updateSelectedCount();
+}
+
+function toggleAllCheckboxes(master) {
+  document.querySelectorAll('input[name="question_ids"]').forEach(checkbox => {
+    checkbox.checked = master.checked;
+  });
+  updateSelectedCount();
+}
+
+function updateSelectedCount() {
+  const selectedCheckboxes = document.querySelectorAll('input[name="question_ids"]:checked');
+  const countElem = document.getElementById('selectedCount');
+  if (countElem) {
+    countElem.textContent = selectedCheckboxes.length + ' valgte';
+  }
+}
+
+function confirmBulkDelete() {
+  const selectedCount = document.querySelectorAll('input[name="question_ids"]:checked').length;
+  if (selectedCount === 0) {
+    alert('Ingen spørsmål er valgt for sletting.');
+    return false;
+  }
+  return confirm(`Er du sikker på at du vil slette ${selectedCount} spørsmål? Dette kan ikke angres.`);
+}
+
+function confirmDelete(id) {
+  if (confirm('Er du sikker på at du vil slette dette spørsmålet?')) {
+    const form = document.createElement('form');
+    form.method = 'POST';
+    form.action = `{{ url_for('admin.delete_question', question_id=0) }}`.replace('0', id);
+    document.body.appendChild(form);
+    form.submit();
+  }
+}
+
+function editQuestionFromRow(button, id) {
+  const row = button.closest('tr');
+  if (!row) {
+    alert('Kunne ikke finne raden.');
+    return;
+  }
+  
+  // Show form and update title
+  const formDiv = document.getElementById('questionForm');
+  formDiv.style.display = 'block';
+  document.getElementById('questionId').value = id;
+  document.querySelector('#newQuestionForm h2').textContent = 'Rediger spørsmål';
+
+  // Get data from row using data-column attributes
+  const questionText = row.querySelector('td[data-column="question"]').textContent.trim();
+  const category = row.querySelector('td[data-column="category"]').textContent.trim();
+  const imageCell = row.querySelector('td[data-column="image"]');
+  const optionsCell = row.querySelector('td[data-column="options"]');
+  
+  // Fill question text
+  document.getElementById('questionText').value = questionText;
+  
+  // Fill category
+  document.getElementById('categoryInput').value = category === 'Ukategorisert' ? '' : category;
+  
+  // Handle image
+  const imgElem = imageCell.querySelector('img');
+  const imageName = imgElem ? imgElem.src.split('/').pop() : '';
+  document.getElementById('imageSelect').value = imageName;
+  
+  // Update selected image in gallery
+  document.querySelectorAll('.selectable-img').forEach(img => {
+    img.classList.remove('selected');
+    if (img.dataset.filename === imageName) {
+      img.classList.add('selected');
+    }
+  });
+  
+  // Parse options
+  const optionDivs = optionsCell.querySelectorAll('div');
+  let correctAnswer = '';
+  
+  optionDivs.forEach(div => {
+    const text = div.textContent.trim();
+    if (text.startsWith('A:')) {
+      document.getElementById('optionA').value = text.substring(2).trim();
+    } else if (text.startsWith('B:')) {
+      document.getElementById('optionB').value = text.substring(2).trim();
+    } else if (text.startsWith('C:')) {
+      document.getElementById('optionC').value = text.substring(2).trim();
+    } else if (text.startsWith('D:')) {
+      document.getElementById('optionD').value = text.substring(2).trim();
+    } else if (text.includes('Riktig:')) {
+      correctAnswer = text.split(':')[1].trim().toLowerCase();
+    }
+  });
+  
+  // Set correct answer
+  document.getElementById('correctOption').value = correctAnswer;
+  
+  // Scroll into view
+  formDiv.scrollIntoView({ behavior: 'smooth' });
+}
+
+function pickImage(el) {
+  if (!el || !el.dataset) return;
+  document.getElementById('imageSelect').value = el.dataset.filename;
+  document.querySelectorAll('.selectable-img').forEach(img => {
+    img.classList.remove('selected');
+  });
+  el.classList.add('selected');
+}
+
+function filterGalleryByFolder() {
+  const select = document.getElementById('galleryFolderFilter');
+  if (!select) return;
+  const selected = select.value;
+  document.querySelectorAll('#imageGallery img').forEach(img => {
+    img.style.display = (selected === 'all' || img.dataset.folder === selected) ? 'inline-block' : 'none';
+  });
+}
+
+function previewQuestion() {
+  const question = document.getElementById('questionText').value;
+  const optionA = document.getElementById('optionA').value;
+  const optionB = document.getElementById('optionB').value;
+  const optionC = document.getElementById('optionC').value;
+  const optionD = document.getElementById('optionD').value;
+  const correctOption = document.getElementById('correctOption').value.trim().toLowerCase();
+  const imageSelect = document.getElementById('imageSelect');
+  
+  let folder = 'signs';
+  const selectedOption = imageSelect.selectedOptions[0];
+  if (selectedOption && selectedOption.dataset.folder) {
+    folder = selectedOption.dataset.folder;
+  } else {
+    // Try to find folder from selected image in gallery
+    const selectedImg = document.querySelector('.selectable-img.selected');
+    if (selectedImg && selectedImg.dataset.folder) {
+      folder = selectedImg.dataset.folder;
+    }
+  }
+  
+  let previewHTML = '<div class="preview-question">';
+  if (imageSelect.value) {
+    // Get the static URL from the data attribute
+    const staticUrl = document.getElementById('questionsSection').dataset.staticUrl || '/static/';
+    const imageUrl = `${staticUrl}images/${folder}/${imageSelect.value}`;
+    console.log('Preview image URL:', imageUrl); // Debug log
+    previewHTML += `<img src="${imageUrl}" alt="Question image" onerror="console.error('Failed to load image:', this.src); this.style.display='none'">`;
+  }
+  previewHTML += `<h3>${question || 'Spørsmålstekst kommer her...'}</h3>`;
+  previewHTML += '<div class="preview-options">';
+  previewHTML += `<div class="preview-option ${correctOption === 'a' ? 'correct' : ''}">A: ${optionA || 'Alternativ A'}</div>`;
+  previewHTML += `<div class="preview-option ${correctOption === 'b' ? 'correct' : ''}">B: ${optionB || 'Alternativ B'}</div>`;
+  previewHTML += `<div class="preview-option ${correctOption === 'c' ? 'correct' : ''}">C: ${optionC || 'Alternativ C'}</div>`;
+  previewHTML += `<div class="preview-option ${correctOption === 'd' ? 'correct' : ''}">D: ${optionD || 'Alternativ D'}</div>`;
+  previewHTML += '</div></div>';
+  document.getElementById('previewContent').innerHTML = previewHTML;
+  document.getElementById('previewModal').style.display = 'block';
+}
+
+function closePreview() {
+  document.getElementById('previewModal').style.display = 'none';
+}
+
+// Close modal when clicking outside
+window.onclick = function(event) {
+  const modal = document.getElementById('previewModal');
+  if (event.target === modal) {
+    modal.style.display = 'none';
+  }
+}
+
+// Column visibility toggle for questions table
+document.addEventListener('DOMContentLoaded', function() {
+  document.querySelectorAll('.column-checkbox').forEach(checkbox => {
+    checkbox.addEventListener('change', function() {
+      const column = this.dataset.column;
+      const cells = document.querySelectorAll(`#questionsSection [data-column="${column}"]`);
+      
+      cells.forEach(cell => {
+        cell.style.display = this.checked ? '' : 'none';
+      });
+    });
+  });
+});
+</script>
+
+<!-- Preview Modal -->
+<div id="previewModal" class="modal">
+  <div class="modal-content">
+    <span class="close" onclick="closePreview()">&times;</span>
+    <h2>👁️ Forhåndsvisning av spørsmål</h2>
+    <div id="previewContent"></div>
+  </div>
+</div>
+
+<style>
+/* Preview specific styles */
+.preview-question {
+  background: #f8f9fa;
+  padding: 20px;
+  border-radius: 8px;
+  border-left: 4px solid #3B82F6;
+}
+
+.preview-options {
+  margin-top: 15px;
+}
+
+.preview-option {
+  background: white;
+  padding: 10px;
+  margin: 5px 0;
+  border-radius: 4px;
+  border: 1px solid #e5e7eb;
+}
+
+.preview-option.correct {
+  background: #D1FAE5;
+  border-color: #10B981;
+  color: #10B981;
+  font-weight: 600;
+}
+
+/* Image gallery enhancement */
+#imageGallery {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  margin: 15px 0;
+  padding: 15px;
+  background: #f8f9fa;
+  border-radius: 8px;
+  max-height: 200px;
+  overflow-y: auto;
+  border: 2px dashed #e5e7eb;
+}
+
+#imageGallery:empty::after {
+  content: 'Ingen bilder tilgjengelig';
+  color: #9CA3AF;
+  font-style: italic;
+}
+
+.selectable-img {
+  max-height: 60px;
+  cursor: pointer;
+  border: 3px solid transparent;
+  border-radius: 4px;
+  transition: all 0.2s;
+  opacity: 0.8;
+}
+
+.selectable-img:hover {
+  border-color: #3B82F6;
+  transform: scale(1.05);
+  opacity: 1;
+}
+
+.selectable-img.selected {
+  border-color: #10B981;
+  box-shadow: 0 0 0 3px rgba(16, 185, 129, 0.2);
+  opacity: 1;
+}
+
+/* Column filter enhancement */
+.column-filter {
+  background: #f8f9fa;
+  padding: 12px;
+  border-radius: 5px;
+  margin-bottom: 15px;
+  border: 1px solid #e5e7eb;
+}
+
+.column-filter label {
+  margin-left: 10px;
+  cursor: pointer;
+  user-select: none;
+}
+
+.column-filter label:hover {
+  color: #3B82F6;
+}
+
+.preview-question img {
+  max-width: 200px;
+  height: auto;
+  display: block;
+  margin: 0 auto 15px;
+  border-radius: 4px;
+  box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+}
+
+/* Make correct answers more visible */
+td[data-column="options"] div {
+  padding: 2px 0;
+}
+</style>

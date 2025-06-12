@@ -1,1 +1,94 @@
-<!-- Placeholder for quiz_home.html in templates/quiz -->
+{% extends "base.html" %}
+
+{% block title %}Quiz - TeoriTest{% endblock %}
+
+{% block content %}
+<div class="max-w-7xl mx-auto px-6 py-12">
+    <h1 class="text-4xl font-bold text-center mb-12">
+        <span class="bg-gradient-to-r from-purple-400 to-pink-400 bg-clip-text text-transparent">
+            Velg Øvelsestype
+        </span>
+    </h1>
+    
+    <div class="grid grid-cols-1 md:grid-cols-2 gap-8 max-w-4xl mx-auto">
+        <!-- Practice Mode -->
+        <div class="glass rounded-2xl p-8 hover-card">
+            <div class="w-16 h-16 bg-gradient-to-r from-purple-600 to-pink-600 rounded-full flex items-center justify-center mb-6">
+                <i class="fas fa-graduation-cap text-2xl"></i>
+            </div>
+            <h2 class="text-2xl font-bold mb-4">Øvelsesmodus</h2>
+            <p class="text-gray-300 mb-6">
+                Øv på spørsmål i ditt eget tempo. Få umiddelbar tilbakemelding og forklaringer på hvert spørsmål.
+            </p>
+            <ul class="space-y-2 mb-6 text-sm text-gray-400">
+                <li class="flex items-center">
+                    <i class="fas fa-check text-green-400 mr-2"></i>
+                    Velg kategori og antall spørsmål
+                </li>
+                <li class="flex items-center">
+                    <i class="fas fa-check text-green-400 mr-2"></i>
+                    Umiddelbar tilbakemelding
+                </li>
+                <li class="flex items-center">
+                    <i class="fas fa-check text-green-400 mr-2"></i>
+                    Ingen tidsbegrensning
+                </li>
+            </ul>
+            <a href="{{ url_for('quiz.practice') }}" 
+               class="block w-full text-center py-3 bg-gradient-to-r from-purple-600 to-pink-600 rounded-lg hover:from-pink-600 hover:to-purple-600 transition-all">
+                Start Øvelse
+            </a>
+        </div>
+        
+        <!-- Exam Mode -->
+        <div class="glass rounded-2xl p-8 hover-card">
+            <div class="w-16 h-16 bg-gradient-to-r from-blue-600 to-purple-600 rounded-full flex items-center justify-center mb-6">
+                <i class="fas fa-clipboard-list text-2xl"></i>
+            </div>
+            <h2 class="text-2xl font-bold mb-4">Eksamensmodus</h2>
+            <p class="text-gray-300 mb-6">
+                Simuler en ekte teoriprøve med 45 spørsmål og 45 minutter. Få resultat når du er ferdig.
+            </p>
+            <ul class="space-y-2 mb-6 text-sm text-gray-400">
+                <li class="flex items-center">
+                    <i class="fas fa-check text-green-400 mr-2"></i>
+                    45 offisielle spørsmål
+                </li>
+                <li class="flex items-center">
+                    <i class="fas fa-check text-green-400 mr-2"></i>
+                    45 minutter tidsbegrensning
+                </li>
+                <li class="flex items-center">
+                    <i class="fas fa-check text-green-400 mr-2"></i>
+                    85% for å bestå
+                </li>
+            </ul>
+            <a href="{{ url_for('quiz.exam') }}" 
+               class="block w-full text-center py-3 bg-gradient-to-r from-blue-600 to-purple-600 rounded-lg hover:from-purple-600 hover:to-blue-600 transition-all">
+                Start Eksamen
+            </a>
+        </div>
+    </div>
+    
+    <!-- Stats Preview -->
+    <div class="mt-12 text-center">
+        <div class="glass rounded-2xl p-8 max-w-2xl mx-auto">
+            <h3 class="text-xl font-bold mb-4">Din Fremgang</h3>
+            <div class="grid grid-cols-3 gap-4 text-center">
+                <div>
+                    <div class="text-3xl font-bold text-purple-400">0</div>
+                    <div class="text-sm text-gray-400">Spørsmål besvart</div>
+                </div>
+                <div>
+                    <div class="text-3xl font-bold text-green-400">0%</div>
+                    <div class="text-sm text-gray-400">Riktige svar</div>
+                </div>
+                <div>
+                    <div class="text-3xl font-bold text-blue-400">0</div>
+                    <div class="text-sm text-gray-400">Øvelser fullført</div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

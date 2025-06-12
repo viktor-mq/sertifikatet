@@ -33,21 +33,41 @@ th {
 }
 </style>
 
-<div id="databaseSection" style="display:none; margin-top:20px;">
+<div id="databaseSection" class="section" style="margin-top: 30px;">
+    <h2>💾 Database Administrasjon</h2>
+    
+    <!-- Database Statistics -->
+    <div class="stats-container" style="margin-bottom: 30px;">
+        <div class="stat-card">
+            <h3>{{ tables|length }}</h3>
+            <p>Totale tabeller</p>
+        </div>
+        <div class="stat-card">
+            <h3>{{ stats.total }}</h3>
+            <p>Totale spørsmål</p>
+        </div>
+        <div class="stat-card">
+            <h3>{{ images|length }}</h3>
+            <p>Tilgjengelige bilder</p>
+        </div>
+    </div>
+    
     {% if message %}
-        <div class="message">{{ message }}</div>
+        <div class="message" style="background: #d4edda; color: #155724; padding: 15px; border-radius: 8px; margin-bottom: 20px; border: 1px solid #c3e6cb;">
+            {{ message }}
+        </div>
     {% endif %}
     
-    <form method="POST">
-        <label for="sql_query">SQL-konsoll:</label>
-        <textarea id="sql_query" name="sql_query" rows="5" style="width:100%; box-sizing:border-box;"></textarea>
-        <button type="submit" class="btn">Kjør SQL</button>
+    <form method="POST" action="{{ url_for('admin.admin_dashboard') }}" style="background: #f8f9fa; padding: 20px; border-radius: 8px; margin-bottom: 30px;">
+        <h3 style="margin-top: 0;">💻 SQL-konsoll</h3>
+        <textarea id="sql_query" name="sql_query" rows="5" style="width:100%; box-sizing:border-box; padding: 10px; border: 2px solid #e5e7eb; border-radius: 8px; font-family: 'Courier New', monospace;"></textarea>
+        <button type="submit" class="btn" style="margin-top: 10px;">▶️ Kjør SQL</button>
     </form>
 
     <!-- Table Filter -->
-    <div style="margin: 20px 0;">
-        <label for="tableFilter" style="font-size: 22px; font-weight: bold;">Vis tabell: </label>
-        <select id="tableFilter" onchange="filterTables()">
+    <div style="background: #f8f9fa; padding: 15px; border-radius: 8px; margin-bottom: 20px; display: flex; align-items: center; gap: 15px;">
+        <label for="tableFilter" style="font-size: 16px; font-weight: bold; margin: 0;">📊 Vis tabell:</label>
+        <select id="tableFilter" onchange="filterTables()" style="padding: 8px 12px; border: 2px solid #e5e7eb; border-radius: 8px; font-size: 14px; min-width: 200px;">
             <option value="all">Alle tabeller</option>
             {% for table in tables.keys() %}
                 <option value="{{ table }}">{{ table }}</option>
@@ -56,8 +76,10 @@ th {
     </div>
 
     {% for table, rows in tables.items() %}
-        <div class="table-section" data-table="{{ table }}">
-            <h2 style="margin-top:30px;">Tabell: {{ table }}</h2>
+        <div class="table-section" data-table="{{ table }}" style="background: white; padding: 20px; border-radius: 12px; margin-bottom: 20px; box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);">
+            <h3 style="color: #374151; margin-bottom: 15px; display: flex; align-items: center; gap: 10px;">
+                 {{ table|upper|replace('_', ' ') }}
+            </h3>
             
             {% if rows %}
                 <!-- Column Filter -->
@@ -91,13 +113,13 @@ th {
                                         {% endfor %}
                                     </select>
                                 </th>
-                            {% endfor %}
+                                {% endfor %}
                             </tr>
                         </thead>
                         <tbody>
                             {% for row in rows %}
                                 <tr>
-                                    {% for col in rows[0].keys()%}
+                                    {% for col in rows[0].keys() %}
                                         <td data-column="{{ col }}" style="color: black;">
                                             {% if table == 'traffic_signs' and col == 'filename' %}
                                                 <img src="{{ url_for('static', filename='images/signs/' ~ row[col]) }}" 
@@ -138,16 +160,14 @@ document.querySelectorAll('.column-checkbox').forEach(checkbox => {
     checkbox.addEventListener('change', function() {
         const table = this.dataset.table;
         const column = this.dataset.column;
-        const cells = document.querySelectorAll(`[data-table="${table}"] [data-column="${column}"]`);
+        const cells = document.querySelectorAll(`.table-section[data-table="${table}"] td[data-column="${column}"]`);
         
         cells.forEach(cell => {
             cell.style.display = this.checked ? '' : 'none';
         });
     });
 });
-</script>
 
-<script>
 function filterTableByColumn() {
     const tables = document.querySelectorAll('.table-section');
     
@@ -173,19 +193,3 @@ function filterTableByColumn() {
     });
 }
 </script>
-
-  <script>
-    function showSection(section) {
-      var questionsSection = document.getElementById('questionsSection');
-      var databaseSection = document.getElementById('databaseSection');
-      if (section === 'questions') {
-        questionsSection.style.display = 'block';
-        databaseSection.style.display = 'none';
-      } else if (section === 'database') {
-        questionsSection.style.display = 'none';
-        databaseSection.style.display = 'block';
-      }
-    }
-  </script>
-</body>
-</html>

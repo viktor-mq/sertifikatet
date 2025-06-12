@@ -1,13 +1,254 @@
+{% extends "base.html" %}
 
+{% block title %}TeoriTest - Norsk Førerkort{% endblock %}
 
-<!DOCTYPE html>
-<html>
-<head>
-    <title>Teoritest</title>
-</head>
-<body>
-    <h1>Velkommen til Teoritesten</h1>
-    <p>Test dine kunnskaper og bli klar for teoriprøven!</p>
-    <a href="{{ url_for('quiz') }}">Start quiz</a>
-</body>
-</html>
+{% block content %}
+<!-- Hero Section -->
+<section class="relative overflow-hidden">
+    <!-- Animated Background -->
+    <div class="absolute inset-0 animated-gradient opacity-20"></div>
+    
+    <!-- Floating Elements -->
+    <div class="absolute top-20 left-10 text-6xl opacity-20 float-animation">🚗</div>
+    <div class="absolute top-40 right-20 text-6xl opacity-20 float-animation" style="animation-delay: 2s;">🚙</div>
+    <div class="absolute bottom-20 left-1/3 text-6xl opacity-20 float-animation" style="animation-delay: 4s;">🚕</div>
+    
+    <div class="relative max-w-7xl mx-auto px-6 py-20">
+        <div class="text-center">
+            <h1 class="text-5xl md:text-7xl font-bold mb-6">
+                <span class="bg-gradient-to-r from-purple-400 via-pink-400 to-blue-400 bg-clip-text text-transparent">
+                    Bestå Teoriprøven
+                </span>
+                <br>
+                <span class="text-white">Første Gang!</span>
+            </h1>
+            <p class="text-xl md:text-2xl text-gray-300 mb-10 max-w-3xl mx-auto">
+                Norges mest moderne og effektive læringssystem for teoriprøven. 
+                Med spillbasert læring og AI-tilpasset trening.
+            </p>
+            
+            <!-- CTA Buttons -->
+            <div class="flex flex-col sm:flex-row gap-4 justify-center">
+                <a href="{{ url_for('auth.register') }}" 
+                   class="group relative px-8 py-4 bg-gradient-to-r from-purple-600 to-pink-600 rounded-full text-lg font-bold overflow-hidden hover-card">
+                    <span class="relative z-10">Start Gratis Prøve</span>
+                    <div class="absolute inset-0 bg-gradient-to-r from-pink-600 to-purple-600 opacity-0 group-hover:opacity-100 transition-opacity"></div>
+                </a>
+                <a href="#features" 
+                   class="px-8 py-4 border-2 border-white/30 rounded-full text-lg font-bold hover:bg-white/10 transition-all">
+                    Les Mer <i class="fas fa-arrow-down ml-2"></i>
+                </a>
+            </div>
+        </div>
+    </div>
+</section>
+
+<!-- Features Section -->
+<section id="features" class="py-20">
+    <div class="max-w-7xl mx-auto px-6">
+        <h2 class="text-4xl font-bold text-center mb-12">
+            <span class="bg-gradient-to-r from-purple-400 to-pink-400 bg-clip-text text-transparent">
+                Hvorfor Velge TeoriTest?
+            </span>
+        </h2>
+        
+        <div class="grid grid-cols-1 md:grid-cols-3 gap-8">
+            <!-- Feature 1 -->
+            <div class="glass rounded-2xl p-8 hover-card">
+                <div class="w-16 h-16 bg-gradient-to-r from-purple-600 to-pink-600 rounded-full flex items-center justify-center mb-6">
+                    <i class="fas fa-brain text-2xl"></i>
+                </div>
+                <h3 class="text-2xl font-bold mb-4">AI-Tilpasset Læring</h3>
+                <p class="text-gray-300">
+                    Vår AI analyserer dine svar og tilpasser spørsmålene for optimal læring. 
+                    Fokuser på områdene du trenger mest.
+                </p>
+            </div>
+            
+            <!-- Feature 2 -->
+            <div class="glass rounded-2xl p-8 hover-card">
+                <div class="w-16 h-16 bg-gradient-to-r from-blue-600 to-purple-600 rounded-full flex items-center justify-center mb-6">
+                    <i class="fas fa-gamepad text-2xl"></i>
+                </div>
+                <h3 class="text-2xl font-bold mb-4">Gamifisert Læring</h3>
+                <p class="text-gray-300">
+                    Gjør læringen morsom! Tjen poeng, låse opp achievements og konkurrer 
+                    med venner på rankinglisten.
+                </p>
+            </div>
+            
+            <!-- Feature 3 -->
+            <div class="glass rounded-2xl p-8 hover-card">
+                <div class="w-16 h-16 bg-gradient-to-r from-green-600 to-blue-600 rounded-full flex items-center justify-center mb-6">
+                    <i class="fas fa-chart-line text-2xl"></i>
+                </div>
+                <h3 class="text-2xl font-bold mb-4">Detaljert Statistikk</h3>
+                <p class="text-gray-300">
+                    Følg din fremgang med detaljerte analyser. Se hvilke emner du mestrer 
+                    og hvor du trenger mer øvelse.
+                </p>
+            </div>
+        </div>
+    </div>
+</section>
+
+<!-- Stats Section -->
+<section class="py-20 relative">
+    <div class="absolute inset-0 animated-gradient opacity-10"></div>
+    <div class="relative max-w-7xl mx-auto px-6">
+        <div class="grid grid-cols-1 md:grid-cols-4 gap-8 text-center">
+            <div class="glass rounded-2xl p-8 pulse-animation">
+                <div class="text-5xl font-bold bg-gradient-to-r from-purple-400 to-pink-400 bg-clip-text text-transparent mb-2">
+                    95%
+                </div>
+                <p class="text-gray-300">Beståttandel</p>
+            </div>
+            <div class="glass rounded-2xl p-8 pulse-animation" style="animation-delay: 0.5s;">
+                <div class="text-5xl font-bold bg-gradient-to-r from-blue-400 to-purple-400 bg-clip-text text-transparent mb-2">
+                    50K+
+                </div>
+                <p class="text-gray-300">Aktive Brukere</p>
+            </div>
+            <div class="glass rounded-2xl p-8 pulse-animation" style="animation-delay: 1s;">
+                <div class="text-5xl font-bold bg-gradient-to-r from-green-400 to-blue-400 bg-clip-text text-transparent mb-2">
+                    2000+
+                </div>
+                <p class="text-gray-300">Spørsmål</p>
+            </div>
+            <div class="glass rounded-2xl p-8 pulse-animation" style="animation-delay: 1.5s;">
+                <div class="text-5xl font-bold bg-gradient-to-r from-pink-400 to-orange-400 bg-clip-text text-transparent mb-2">
+                    4.8★
+                </div>
+                <p class="text-gray-300">Brukerrating</p>
+            </div>
+        </div>
+    </div>
+</section>
+
+<!-- Pricing Section -->
+<section class="py-20">
+    <div class="max-w-7xl mx-auto px-6">
+        <h2 class="text-4xl font-bold text-center mb-12">
+            <span class="bg-gradient-to-r from-purple-400 to-pink-400 bg-clip-text text-transparent">
+                Velg Din Plan
+            </span>
+        </h2>
+        
+        <div class="grid grid-cols-1 md:grid-cols-3 gap-8">
+            <!-- Free Plan -->
+            <div class="glass rounded-2xl p-8 hover-card">
+                <h3 class="text-2xl font-bold mb-4">Gratis</h3>
+                <div class="text-4xl font-bold mb-6">
+                    0 kr<span class="text-lg font-normal">/mnd</span>
+                </div>
+                <ul class="space-y-3 mb-8">
+                    <li class="flex items-center">
+                        <i class="fas fa-check text-green-400 mr-3"></i>
+                        50 spørsmål per dag
+                    </li>
+                    <li class="flex items-center">
+                        <i class="fas fa-check text-green-400 mr-3"></i>
+                        Grunnleggende statistikk
+                    </li>
+                    <li class="flex items-center">
+                        <i class="fas fa-check text-green-400 mr-3"></i>
+                        1 prøveeksamen per uke
+                    </li>
+                </ul>
+                <a href="{{ url_for('auth.register') }}" 
+                   class="block w-full text-center py-3 border-2 border-purple-600 rounded-lg hover:bg-purple-600 transition-colors">
+                    Start Gratis
+                </a>
+            </div>
+            
+            <!-- Premium Plan -->
+            <div class="glass rounded-2xl p-8 hover-card relative overflow-hidden">
+                <div class="absolute top-0 right-0 bg-gradient-to-r from-purple-600 to-pink-600 text-xs font-bold px-4 py-2 rounded-bl-lg">
+                    MEST POPULÆR
+                </div>
+                <h3 class="text-2xl font-bold mb-4">Premium</h3>
+                <div class="text-4xl font-bold mb-6">
+                    149 kr<span class="text-lg font-normal">/mnd</span>
+                </div>
+                <ul class="space-y-3 mb-8">
+                    <li class="flex items-center">
+                        <i class="fas fa-check text-green-400 mr-3"></i>
+                        Ubegrenset spørsmål
+                    </li>
+                    <li class="flex items-center">
+                        <i class="fas fa-check text-green-400 mr-3"></i>
+                        AI-tilpasset læring
+                    </li>
+                    <li class="flex items-center">
+                        <i class="fas fa-check text-green-400 mr-3"></i>
+                        Detaljert statistikk
+                    </li>
+                    <li class="flex items-center">
+                        <i class="fas fa-check text-green-400 mr-3"></i>
+                        Ubegrenset prøveeksamener
+                    </li>
+                    <li class="flex items-center">
+                        <i class="fas fa-check text-green-400 mr-3"></i>
+                        Videoforklaringer
+                    </li>
+                </ul>
+                <a href="{{ url_for('auth.register') }}" 
+                   class="block w-full text-center py-3 bg-gradient-to-r from-purple-600 to-pink-600 rounded-lg hover:from-pink-600 hover:to-purple-600 transition-all">
+                    Prøv Premium
+                </a>
+            </div>
+            
+            <!-- Pro Plan -->
+            <div class="glass rounded-2xl p-8 hover-card">
+                <h3 class="text-2xl font-bold mb-4">Pro</h3>
+                <div class="text-4xl font-bold mb-6">
+                    249 kr<span class="text-lg font-normal">/mnd</span>
+                </div>
+                <ul class="space-y-3 mb-8">
+                    <li class="flex items-center">
+                        <i class="fas fa-check text-green-400 mr-3"></i>
+                        Alt i Premium
+                    </li>
+                    <li class="flex items-center">
+                        <i class="fas fa-check text-green-400 mr-3"></i>
+                        Personlig veileder
+                    </li>
+                    <li class="flex items-center">
+                        <i class="fas fa-check text-green-400 mr-3"></i>
+                        Garantert bestått*
+                    </li>
+                    <li class="flex items-center">
+                        <i class="fas fa-check text-green-400 mr-3"></i>
+                        Offline-modus
+                    </li>
+                </ul>
+                <a href="{{ url_for('auth.register') }}" 
+                   class="block w-full text-center py-3 border-2 border-purple-600 rounded-lg hover:bg-purple-600 transition-colors">
+                    Velg Pro
+                </a>
+            </div>
+        </div>
+    </div>
+</section>
+
+<!-- CTA Section -->
+<section class="py-20">
+    <div class="max-w-4xl mx-auto px-6 text-center">
+        <div class="glass rounded-3xl p-12">
+            <h2 class="text-4xl font-bold mb-6">
+                Klar for å Bestå Teoriprøven?
+            </h2>
+            <p class="text-xl text-gray-300 mb-8">
+                Bli med over 50,000 fornøyde brukere som har bestått teoriprøven med vår hjelp!
+            </p>
+            <a href="{{ url_for('auth.register') }}" 
+               class="inline-block px-8 py-4 bg-gradient-to-r from-purple-600 to-pink-600 rounded-full text-lg font-bold hover-card">
+                Start Din Gratis Prøveperiode Nå
+            </a>
+            <p class="text-sm text-gray-400 mt-4">
+                Ingen kredittkort påkrevd • Avbryt når som helst
+            </p>
+        </div>
+    </div>
+</section>
+{% endblock %}

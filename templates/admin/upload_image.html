@@ -2,7 +2,7 @@
   <div class="modal-content">
     <span class="close-modal" onclick="closeUploadModal()">&times;</span>
     <h2>Last opp nytt bilde</h2>
-    <form method="POST" action="{{ url_for('admin_dashboard') }}" enctype="multipart/form-data">
+    <form method="POST" action="{{ url_for('admin.admin_dashboard') }}" enctype="multipart/form-data">
       <label for="folderSelect">Velg mappe:</label>
       <select name="folder" id="folderSelect" required onchange="onFolderChange()">
         {% for f in folders %}

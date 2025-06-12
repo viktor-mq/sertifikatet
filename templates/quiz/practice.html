@@ -1,0 +1,97 @@
+{% extends "base.html" %}
+
+{% block title %}Øvelsesmodus - TeoriTest{% endblock %}
+
+{% block content %}
+<div class="max-w-4xl mx-auto px-6 py-12">
+    <h1 class="text-3xl font-bold text-center mb-8">
+        <span class="bg-gradient-to-r from-purple-400 to-pink-400 bg-clip-text text-transparent">
+            Øvelsesmodus
+        </span>
+    </h1>
+    
+    <div class="glass rounded-2xl p-8">
+        <form action="{{ url_for('quiz.start_practice') }}" method="POST">
+            <!-- Category Selection -->
+            <div class="mb-8">
+                <label class="block text-lg font-semibold mb-4">Velg Kategori</label>
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <label class="glass rounded-lg p-4 cursor-pointer hover:bg-white/10 transition-all">
+                        <input type="radio" name="category" value="all" checked class="mr-3">
+                        <span class="font-medium">Alle kategorier</span>
+                        <p class="text-sm text-gray-400 mt-1">Øv på spørsmål fra alle emner</p>
+                    </label>
+                    
+                    {% for category in categories %}
+                    <label class="glass rounded-lg p-4 cursor-pointer hover:bg-white/10 transition-all">
+                        <input type="radio" name="category" value="{{ category }}" class="mr-3">
+                        <span class="font-medium">{{ category }}</span>
+                    </label>
+                    {% endfor %}
+                </div>
+            </div>
+            
+            <!-- Number of Questions -->
+            <div class="mb-8">
+                <label class="block text-lg font-semibold mb-4">Antall Spørsmål</label>
+                <div class="grid grid-cols-2 md:grid-cols-4 gap-4">
+                    <label class="glass rounded-lg p-4 cursor-pointer hover:bg-white/10 transition-all text-center">
+                        <input type="radio" name="num_questions" value="10" class="sr-only">
+                        <span class="block text-2xl font-bold">10</span>
+                        <span class="text-sm text-gray-400">Kort økt</span>
+                    </label>
+                    <label class="glass rounded-lg p-4 cursor-pointer hover:bg-white/10 transition-all text-center">
+                        <input type="radio" name="num_questions" value="20" checked class="sr-only">
+                        <span class="block text-2xl font-bold">20</span>
+                        <span class="text-sm text-gray-400">Standard</span>
+                    </label>
+                    <label class="glass rounded-lg p-4 cursor-pointer hover:bg-white/10 transition-all text-center">
+                        <input type="radio" name="num_questions" value="30" class="sr-only">
+                        <span class="block text-2xl font-bold">30</span>
+                        <span class="text-sm text-gray-400">Lang økt</span>
+                    </label>
+                    <label class="glass rounded-lg p-4 cursor-pointer hover:bg-white/10 transition-all text-center">
+                        <input type="radio" name="num_questions" value="45" class="sr-only">
+                        <span class="block text-2xl font-bold">45</span>
+                        <span class="text-sm text-gray-400">Full test</span>
+                    </label>
+                </div>
+            </div>
+            
+            <!-- Start Button -->
+            <div class="text-center">
+                <button type="submit" 
+                        class="px-8 py-4 bg-gradient-to-r from-purple-600 to-pink-600 rounded-lg text-lg font-bold hover:from-pink-600 hover:to-purple-600 transition-all">
+                    Start Øvelse <i class="fas fa-arrow-right ml-2"></i>
+                </button>
+            </div>
+        </form>
+    </div>
+    
+    <!-- Tips -->
+    <div class="mt-8 glass rounded-2xl p-6">
+        <h3 class="font-bold mb-3 flex items-center">
+            <i class="fas fa-lightbulb text-yellow-400 mr-2"></i>
+            Tips for effektiv læring
+        </h3>
+        <ul class="space-y-2 text-sm text-gray-300">
+            <li>• Start med kategorier du synes er vanskelige</li>
+            <li>• Ta notater på spørsmål du bommet på</li>
+            <li>• Gjør minst 20 spørsmål per økt for best effekt</li>
+            <li>• Gjennomgå forklaringene selv om du svarte riktig</li>
+        </ul>
+    </div>
+</div>
+
+<style>
+input[type="radio"]:checked + span,
+input[type="radio"]:checked ~ span {
+    color: #a855f7;
+}
+
+label:has(input[type="radio"]:checked) {
+    border: 2px solid #a855f7;
+    background: rgba(168, 85, 247, 0.1);
+}
+</style>
+{% endblock %}
