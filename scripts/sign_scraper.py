@@ -10,8 +10,8 @@ SAVE_DIR = "static/images/signs"
 
 os.makedirs(SAVE_DIR, exist_ok=True)
 
-def slugify(text, count_map):
-    base = text.lower().replace(" ", "_").replace(".", "_").replace(",", "").replace("–", "-")
+def slugify(opt_text, count_map):
+    base = opt_text.lower().replace(" ", "_").replace(".", "_").replace(",", "").replace("–", "-")
     base = ''.join(c for c in base if c.isalnum() or c == '_')
     count = count_map[base]
     count_map[base] += 1

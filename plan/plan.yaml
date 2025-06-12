@@ -1,0 +1,270 @@
+project:
+  name: Driving Theory Platform
+  purpose: Modern, all-in-one web/mobile app that helps users
+    pass the driver’s theory test through quizzes, videos,
+    games, progress tracking and gamification in Norway.
+  features:
+    quizzes:
+      - interactive
+      - categorized (road signs, traffic rules)
+      - detailed explanations
+      - images
+    multimedia:
+      - instructional videos
+      - simulated driving scenarios
+    progress_tracking:
+      - personalized analytics
+    gamification:
+      - achievements
+      - daily streaks
+      - leaderboards
+
+tech_stack:
+  backend:
+    framework: Flask (consider FastAPI)
+    database: MySQL
+    orm: SQLAlchemy
+    cache: Redis
+    tasks: Celery
+  frontend:
+    ui_library: React or Vue.js
+    css_framework: Tailwind CSS
+    charts: Chart.js
+    games: Phaser.js
+  mobile:
+    framework: React Native or Flutter
+  infrastructure:
+    containers: Docker
+    storage: AWS S3
+    ci_cd: GitHub Actions
+
+database:
+  tables:
+      traffic_signs:   # <- manglet
+      - id
+      - sign_code
+      - category
+      - filename
+      - description
+      - explanation
+    options:  # eller options
+      - id
+      - question_id
+      - option_letter   # 'a', 'b', 'c', ...
+      - option_text
+    users:
+      - id
+      - username
+      - email
+      - password_hash
+      - full_name
+      - date_of_birth
+      - created_at
+      - last_login
+      - is_active
+      - profile_picture
+      - preferred_language
+    user_progress:
+      - id
+      - user_id
+      - total_quizzes_taken
+      - total_questions_answered
+      - correct_answers
+      - total_game_sessions
+      - total_game_score
+      - total_videos_watched
+      - videos_completed
+      - current_streak_days
+      - longest_streak_days
+      - last_activity_date
+    achievements:
+      - id
+      - name
+      - description
+      - icon_filename
+      - points
+      - category
+      - requirement_type
+      - requirement_value
+    user_achievements:
+      - id
+      - user_id
+      - achievement_id
+      - earned_at
+    questions:
+      - id
+      - question
+      - correct_option
+      - category
+      - subcategory
+      - difficulty_level
+      - explanation
+      - image_filename
+      - created_at
+      - updated_at
+      - is_active
+      - question_type
+    quiz_sessions:
+      - id
+      - user_id
+      - quiz_type
+      - category
+      - total_questions
+      - correct_answers
+      - time_spent_seconds
+      - score
+      - started_at
+      - completed_at
+    quiz_responses:
+      - id
+      - session_id
+      - question_id
+      - user_answer
+      - is_correct
+      - time_spent_seconds
+    game_scenarios:
+      - id
+      - name
+      - description
+      - scenario_type
+      - difficulty_level
+      - max_score
+      - time_limit_seconds
+      - config_json
+    game_sessions:
+      - id
+      - user_id
+      - scenario_id
+      - score
+      - time_played_seconds
+      - mistakes_count
+      - completed
+      - started_at
+      - completed_at
+    videos:
+      - id
+      - title
+      - description
+      - filename
+      - youtube_url
+      - duration_seconds
+      - category
+      - difficulty_level
+      - order_index
+      - thumbnail_filename
+      - created_at
+    video_checkpoints:
+      - id
+      - video_id
+      - timestamp_seconds
+      - question_id
+      - is_mandatory
+    video_progress:
+      - id
+      - user_id
+      - video_id
+      - last_position_seconds
+      - completed
+      - checkpoints_passed
+      - total_checkpoints
+      - started_at
+      - completed_at
+    learning_paths:
+      - id
+      - name
+      - description
+      - estimated_hours
+      - difficulty_level
+      - icon_filename
+      - is_recommended
+    learning_path_items:
+      - id
+      - path_id
+      - item_type
+      - item_id
+      - order_index
+      - is_mandatory
+    user_learning_paths:
+      - id
+      - user_id
+      - path_id
+      - progress_percentage
+      - started_at
+      - completed_at
+    leaderboard_entries:
+      - id
+      - user_id
+      - leaderboard_type
+      - category
+      - score
+      - rank
+      - period_start
+      - period_end
+      - created_at
+    user_feedback:
+      - id
+      - user_id
+      - feedback_type
+      - subject
+      - message
+      - status
+      - created_at
+
+file_structure:
+  root:
+    - app.py
+    - config.py
+    - requirements.txt
+    - run.py
+    - .env
+    - README.md
+    app:
+      - auth
+      - main
+      - quiz
+      - game
+      - video
+      - admin
+      - api
+      - utils
+    static:
+      css: [main.css, quiz.css, game.css, video.css, admin.css]
+      js: [main.js, quiz.js, game scripts, video-player.js, admin.js]
+      images: [signs, scenarios, achievements, ui, profiles]
+      videos: []
+      audio: []
+    templates:
+      - auth
+      - quiz
+      - game
+      - video
+      - progress
+      - admin
+      - components
+    migrations: []
+    tests: [test_quiz.py, test_game.py, test_video.py, test_api.py]
+    scripts: [init_db.py, import_questions.py, generate_stats.py]
+
+security:
+  storage: ".env"
+  items:
+    - SECRET_KEY
+    - DATABASE_URL
+    - REDIS_URL
+    - JWT_SECRET
+  authentication:
+    hashing: bcrypt
+    session_management: true
+    csrf_protection: true
+  data_protection:
+    input_validation: true
+    sql_injection_protection: true
+    xss_protection: true
+  compliance: GDPR
+
+monetization:
+  model: Freemium
+  subscription_tiers:
+    basic: limited daily content
+    premium: unlimited quizzes, videos
+    pro: offline mode, all features

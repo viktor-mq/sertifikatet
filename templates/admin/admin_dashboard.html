@@ -56,8 +56,9 @@
 
         // Initialize on page load
         document.addEventListener('DOMContentLoaded', function() {
-            // Make sure questions section is active by default
-            showSection('questions');
+            // Show section that is already marked as active, or default to 'questions'
+            const defaultSection = document.querySelector('.section.active')?.id?.replace('Section', '') || 'questions';
+            showSection(defaultSection);
         });
     </script>
     

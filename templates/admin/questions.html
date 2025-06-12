@@ -315,9 +315,25 @@ function editQuestionFromRow(button, id) {
   
   // Handle image
   const imgElem = imageCell.querySelector('img');
-  const imageName = imgElem ? imgElem.src.split('/').pop() : '';
-  document.getElementById('imageSelect').value = imageName;
-  
+  let imageName = '';
+  let folder = '';
+  if (imgElem) {
+    const parts = imgElem.src.split('/images/');
+    if (parts.length === 2) {
+      const path = parts[1]; // e.g. signs/fare/fil.gif or quiz/Pyss.png
+      const pathParts = path.split('/');
+      if (pathParts.length >= 2) {
+        const isTrafficSign = pathParts[0] === 'signs';
+        if (isTrafficSign) {
+          folder = pathParts.slice(1, -1).join('/');
+        } else {
+          folder = pathParts.slice(0, -1).join('/');
+        }
+        imageName = pathParts[pathParts.length - 1];
+      }
+    }
+  }
+  document.getElementById('imageSelect').value = folder ? `${folder}/${imageName}` : imageName;
   // Update selected image in gallery
   document.querySelectorAll('.selectable-img').forEach(img => {
     img.classList.remove('selected');

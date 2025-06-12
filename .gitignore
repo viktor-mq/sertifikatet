@@ -45,6 +45,7 @@ instance/
 # Installer logs
 pip-log.txt
 pip-delete-this-directory.txt
+repomix-output.xml
 
 # Unit test / coverage reports
 htmlcov/

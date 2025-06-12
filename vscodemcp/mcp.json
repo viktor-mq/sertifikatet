@@ -1,0 +1,27 @@
+{
+    "copilot.enable": true,
+    "copilot.language": {
+        "python": true,
+        "javascript": true,
+        "html": true,
+        "css": true,
+        "sql": true
+    },
+    "copilot.inlineSuggest.enable": true,
+    "copilot.editor.enableAutoCompletions": true,
+    "copilot.chat.enable": true,
+    "workbench.settings": {
+        "editor.inlineSuggest.enabled": true,
+        "github.copilot.enable": {
+            "*": true,
+            "yaml": false,
+            "plaintext": false,
+            "markdown": true
+        }
+    },
+    "authentication": {
+        "github": {
+            "copilot": true
+        }
+    }
+}
