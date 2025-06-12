@@ -19,6 +19,7 @@ body {
     padding: 40px;
     background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
     margin: 0;
+    padding-top: 70px;
 }
 h1 {
     color: #333;
@@ -752,7 +753,7 @@ th {
 
 /* Admin header */
 .admin-header {
-    background-color: rgb(2, 110, 188);
+    background-color: rgba(2, 110, 188);
     backdrop-filter: blur(8px);
     padding: 5px 20px;
     box-shadow: 0 2px 4px rgba(0,0,0,0.1);

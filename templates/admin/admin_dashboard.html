@@ -6,11 +6,11 @@
     <link rel="stylesheet" href="{{ url_for('static', filename='css/admin.css') }}">
 </head>
 <body>
-    <header class="admin-header" style="background-color: #fff; padding: 10px 20px; box-shadow: 0 2px 4px rgba(0,0,0,0.1); display: flex; align-items: center;">
+    <header class="admin-header" style="padding: 10px 20px; box-shadow: 0 2px 4px rgba(0,0,0,0.1); display: flex; align-items: center;">
         <img src="{{ url_for('static', filename='images/profiles/selskapslogo.png') }}" 
              alt="Sertifikatet Logo" 
              style="height: 40px; margin-right: 15px;">
-        <h1 style="font-size: 1.5rem; margin: 0;">Sertifikatet Adminpanel</h1>
+        <h1 style="font-size: 1.5rem; margin: 0; color: #1d1d1d;">Adminpanel</h1>
     </header>
     
     <div class="container">
@@ -62,8 +62,8 @@
         });
     </script>
     
-    <footer class="admin-footer" style="background-color: #f8f9fa; padding: 15px 20px; text-align: center; margin-top: 40px; border-top: 1px solid #e0e0e0;">
-        <p style="margin: 0; font-size: 0.9rem; color: #555;">
+    <footer class="admin-footer" style="padding: 15px 20px; text-align: center; margin-top: 40px;">
+        <p style="margin: 0; font-size: 0.9rem; color: #1d1d1d;">
             &copy; <span id="currentYear"></span> Sertifikatet. All rights reserved.
         </p>
     </footer>
