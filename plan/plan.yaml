@@ -282,7 +282,7 @@ monetization:
     to remove ads and unlock additional features.
   subscription_tiers:
     free:
-      access: limited daily quizzes, 2 mock exam/week (45 question multiple choice, max 8 mistakes to pass), basic stats
+      access: limited daily quizzes, 2 mock exam/week (45 question multiple choice, max 7 mistakes to pass), basic stats
       ads: enabled
     premium:
       access: unlimited quizzes, videos, detailed stats, AI-adaptive learning

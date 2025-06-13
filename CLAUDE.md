@@ -3,12 +3,13 @@ A web/app platform to help users pass the Norwegian driver’s theory test. The 
 
 ## Files to Reference
 - plan/plan.yaml → defines structure, models, routes, modules
-- plan/steps.txt → tracks all completed and upcoming phases
+- project_checklist.txt → use this as the authoritative roadmap for phases and progress tracking
 Do not analyze:
   - /venv/
   - /__pycache__/
   - /plan/plan.docx
   - /plan/plan.pdf
+  - /plan/steps.txt
   - /repomix-output.xml
   - /questions.db
   - All image files: *.png, *.gif

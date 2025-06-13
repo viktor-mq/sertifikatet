@@ -40,23 +40,15 @@ def dashboard():
 @main_bp.route('/practice')
 def practice():
     """Practice mode page"""
-    if 'user_id' not in session:
-        flash('Du må logge inn for å øve', 'warning')
-        return redirect(url_for('auth.login', next=request.url))
-    
-    # TODO: Implement practice mode
-    return redirect(url_for('main.quiz'))
+    # Practice mode doesn't require login
+    return redirect(url_for('main.quiz', type='practice'))
 
 
 @main_bp.route('/exam')
 def exam():
     """Mock exam page"""
-    if 'user_id' not in session:
-        flash('Du må logge inn for å ta prøveeksamen', 'warning')
-        return redirect(url_for('auth.login', next=request.url))
-    
-    # TODO: Implement exam mode
-    return redirect(url_for('main.quiz'))
+    # Exam mode is available for all users
+    return redirect(url_for('main.quiz', type='exam'))
 
 
 @main_bp.route('/quiz', methods=['GET', 'POST'])
@@ -112,27 +104,12 @@ def quiz():
 @main_bp.route('/submit_quiz', methods=['POST'])
 def submit_quiz():
     """Handle quiz submission"""
-    if 'user_id' not in session:
-        flash('Du må logge inn for å lagre resultatene', 'warning')
-        return redirect(url_for('auth.login'))
-    
-    user_id = session['user_id']
     quiz_type = request.form.get('quiz_type', 'practice')
     start_time = int(request.form.get('start_time', 0))
     
     # Calculate time spent
     end_time = int(datetime.now().timestamp() * 1000)
     time_spent_seconds = (end_time - start_time) // 1000 if start_time else 0
-    
-    # Create quiz session
-    quiz_session = QuizSession(
-        user_id=user_id,
-        quiz_type=quiz_type,
-        started_at=datetime.fromtimestamp(start_time / 1000) if start_time else datetime.utcnow(),
-        time_spent_seconds=time_spent_seconds
-    )
-    db.session.add(quiz_session)
-    db.session.flush()
     
     # Process answers
     correct_count = 0
@@ -153,15 +130,6 @@ def submit_quiz():
                 if is_correct:
                     correct_count += 1
                 
-                # Save response
-                response = QuizResponse(
-                    session_id=quiz_session.id,
-                    question_id=question_id,
-                    user_answer=user_answer,
-                    is_correct=is_correct
-                )
-                db.session.add(response)
-                
                 # Collect results for display
                 results.append({
                     'question': question,
@@ -170,40 +138,75 @@ def submit_quiz():
                     'correct_answer': question.correct_option
                 })
     
-    # Update quiz session
-    quiz_session.total_questions = total_questions
-    quiz_session.correct_answers = correct_count
-    quiz_session.score = (correct_count / total_questions * 100) if total_questions > 0 else 0
-    quiz_session.completed_at = datetime.utcnow()
+    # Calculate score
+    score = (correct_count / total_questions * 100) if total_questions > 0 else 0
     
-    # Update user progress
-    user = User.query.get(user_id)
-    if user and user.progress:
-        progress = user.progress
-        progress.total_quizzes_taken += 1
-        progress.total_questions_answered += total_questions
-        progress.correct_answers += correct_count
-        progress.last_activity_date = datetime.utcnow().date()
+    # If user is logged in, save to database
+    if 'user_id' in session:
+        user_id = session['user_id']
         
-        # Update streak
-        today = datetime.utcnow().date()
-        if progress.last_activity_date:
-            days_diff = (today - progress.last_activity_date).days
-            if days_diff == 1:
-                progress.current_streak_days += 1
-            elif days_diff > 1:
+        # Create quiz session
+        quiz_session = QuizSession(
+            user_id=user_id,
+            quiz_type=quiz_type,
+            started_at=datetime.fromtimestamp(start_time / 1000) if start_time else datetime.utcnow(),
+            time_spent_seconds=time_spent_seconds,
+            total_questions=total_questions,
+            correct_answers=correct_count,
+            score=score,
+            completed_at=datetime.utcnow()
+        )
+        db.session.add(quiz_session)
+        db.session.flush()
+        
+        # Save individual responses
+        for result in results:
+            response = QuizResponse(
+                session_id=quiz_session.id,
+                question_id=result['question'].id,
+                user_answer=result['user_answer'],
+                is_correct=result['is_correct']
+            )
+            db.session.add(response)
+        
+        # Update user progress
+        user = User.query.get(user_id)
+        if user and user.progress:
+            progress = user.progress
+            progress.total_quizzes_taken += 1
+            progress.total_questions_answered += total_questions
+            progress.correct_answers += correct_count
+            progress.last_activity_date = datetime.utcnow().date()
+            
+            # Update streak
+            today = datetime.utcnow().date()
+            if progress.last_activity_date:
+                days_diff = (today - progress.last_activity_date).days
+                if days_diff == 1:
+                    progress.current_streak_days += 1
+                elif days_diff > 1:
+                    progress.current_streak_days = 1
+            else:
                 progress.current_streak_days = 1
-        else:
-            progress.current_streak_days = 1
+            
+            # Update longest streak
+            if progress.current_streak_days > progress.longest_streak_days:
+                progress.longest_streak_days = progress.current_streak_days
         
-        # Update longest streak
-        if progress.current_streak_days > progress.longest_streak_days:
-            progress.longest_streak_days = progress.current_streak_days
-    
-    db.session.commit()
-    
-    # Redirect to results page
-    return redirect(url_for('main.quiz_results', session_id=quiz_session.id))
+        db.session.commit()
+        
+        # Redirect to results page
+        return redirect(url_for('main.quiz_results', session_id=quiz_session.id))
+    else:
+        # For non-logged in users, store results in session
+        session['temp_quiz_results'] = {
+            'score': score,
+            'correct_answers': correct_count,
+            'total_questions': total_questions,
+            'time_spent_seconds': time_spent_seconds,
+            'results': results
+        }
+        return redirect(url_for('main.quiz_results_guest'))
 
 
 @main_bp.route('/quiz/results/<int:session_id>')
@@ -241,6 +244,97 @@ def quiz_results(session_id):
     return render_template('quiz_results.html', 
                          session=quiz_session, 
                          results=results)
+
+
+@main_bp.route('/quiz/results/guest')
+def quiz_results_guest():
+    """Display quiz results for guest users"""
+    temp_results = session.get('temp_quiz_results')
+    
+    if not temp_results:
+        flash('Ingen quiz resultater funnet', 'error')
+        return redirect(url_for('main.quiz'))
+    
+    # Create a mock session object for template compatibility
+    quiz_session = type('obj', (object,), {
+        'score': temp_results['score'],
+        'correct_answers': temp_results['correct_answers'],
+        'total_questions': temp_results['total_questions'],
+        'time_spent_seconds': temp_results['time_spent_seconds']
+    })
+    
+    # Format results
+    results = []
+    for result in temp_results['results']:
+        question = result['question']
+        results.append({
+            'question': question,
+            'user_answer': result['user_answer'],
+            'is_correct': result['is_correct'],
+            'correct_answer': result['correct_answer'],
+            'options': {opt.option_letter: opt.option_text for opt in question.options}
+        })
+    
+    # Clear temp results
+    session.pop('temp_quiz_results', None)
+    
+    # Add a flash message encouraging registration
+    flash('Logg inn for å lagre resultatene dine og spore fremgangen din!', 'info')
+    
+    return render_template('quiz_results.html', 
+                         session=quiz_session, 
+                         results=results,
+                         is_guest=True)
+
+
+@main_bp.route('/quiz/categories')
+def quiz_categories():
+    """Quiz category selection page"""
+    # Get all categories with question counts
+    category_counts = db.session.query(
+        Question.category,
+        db.func.count(Question.id).label('count')
+    ).filter(
+        Question.is_active == True,
+        Question.category.isnot(None)
+    ).group_by(Question.category).all()
+    
+    # Format categories with icons and colors
+    category_map = {
+        'Fareskilt': {'icon': 'fa-exclamation-triangle', 'color': 'red', 'description': 'Lær om skilt som varsler om fare'},
+        'Påbudsskilt': {'icon': 'fa-arrow-circle-right', 'color': 'blue', 'description': 'Skilt som påbyr bestemte handlinger'},
+        'Forbudsskilt': {'icon': 'fa-ban', 'color': 'red', 'description': 'Skilt som forbyr bestemte handlinger'},
+        'Vikeplikt': {'icon': 'fa-hand-paper', 'color': 'yellow', 'description': 'Regler for vikeplikt og forkjørsrett'},
+        'Opplysningsskilt': {'icon': 'fa-info-circle', 'color': 'blue', 'description': 'Skilt som gir informasjon'},
+        'Serviceskilt': {'icon': 'fa-concierge-bell', 'color': 'green', 'description': 'Skilt for service og fasiliteter'},
+        'Vegvisningsskilt': {'icon': 'fa-directions', 'color': 'green', 'description': 'Skilt for vegvisning og retning'},
+        'Trafikkregler': {'icon': 'fa-traffic-light', 'color': 'purple', 'description': 'Generelle trafikkregler og lover'}
+    }
+    
+    categories = []
+    total_questions = 0
+    
+    for cat_name, count in category_counts:
+        total_questions += count
+        cat_info = category_map.get(cat_name, {
+            'icon': 'fa-question-circle',
+            'color': 'gray',
+            'description': 'Spørsmål i denne kategorien'
+        })
+        categories.append({
+            'name': cat_name,
+            'count': count,
+            'icon': cat_info['icon'],
+            'color': cat_info['color'],
+            'description': cat_info['description']
+        })
+    
+    # Sort by count descending
+    categories.sort(key=lambda x: x['count'], reverse=True)
+    
+    return render_template('quiz_categories.html', 
+                         categories=categories,
+                         total_questions=total_questions)
 
 
 @main_bp.route('/api/questions')

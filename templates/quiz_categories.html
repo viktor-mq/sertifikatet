@@ -1,0 +1,126 @@
+{% extends "base.html" %}
+
+{% block title %}Velg Kategori - TeoriTest{% endblock %}
+
+{% block content %}
+<section class="py-12">
+    <div class="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8">
+        <!-- Header -->
+        <div class="text-center mb-12">
+            <h1 class="text-4xl font-bold mb-4">
+                <span class="bg-gradient-to-r from-purple-400 to-pink-400 bg-clip-text text-transparent">
+                    Velg Quiz Kategori
+                </span>
+            </h1>
+            <p class="text-xl text-gray-400">
+                Øv på spesifikke kategorier eller ta en blandet quiz
+            </p>
+        </div>
+
+        <!-- Category Grid -->
+        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mb-8">
+            <!-- All Categories -->
+            <a href="{{ url_for('main.quiz') }}" 
+               class="glass rounded-2xl p-8 hover-card group">
+                <div class="w-16 h-16 bg-gradient-to-r from-purple-600 to-pink-600 rounded-full flex items-center justify-center mb-6 group-hover:scale-110 transition">
+                    <i class="fas fa-random text-2xl"></i>
+                </div>
+                <h3 class="text-2xl font-bold mb-2">Alle Kategorier</h3>
+                <p class="text-gray-400 mb-4">
+                    Få spørsmål fra alle kategorier for en komplett test
+                </p>
+                <div class="flex items-center justify-between">
+                    <span class="text-sm text-gray-500">{{ total_questions }} spørsmål</span>
+                    <i class="fas fa-arrow-right text-purple-400 group-hover:translate-x-2 transition"></i>
+                </div>
+            </a>
+
+            <!-- Category Cards -->
+            {% for category in categories %}
+            <a href="{{ url_for('main.quiz', category=category.name) }}" 
+               class="glass rounded-2xl p-8 hover-card group">
+                <div class="w-16 h-16 bg-{{ category.color }}-600/20 rounded-full flex items-center justify-center mb-6 group-hover:scale-110 transition">
+                    <i class="fas {{ category.icon }} text-2xl text-{{ category.color }}-400"></i>
+                </div>
+                <h3 class="text-2xl font-bold mb-2">{{ category.name }}</h3>
+                <p class="text-gray-400 mb-4">
+                    {{ category.description }}
+                </p>
+                <div class="flex items-center justify-between">
+                    <span class="text-sm text-gray-500">{{ category.count }} spørsmål</span>
+                    <i class="fas fa-arrow-right text-{{ category.color }}-400 group-hover:translate-x-2 transition"></i>
+                </div>
+            </a>
+            {% endfor %}
+        </div>
+
+        <!-- Quiz Modes -->
+        <div class="glass rounded-2xl p-8 mb-8">
+            <h2 class="text-2xl font-bold mb-6">Quiz Modus</h2>
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+                <!-- Practice Mode -->
+                <div class="bg-gray-800/50 rounded-xl p-6">
+                    <div class="flex items-center mb-4">
+                        <div class="w-10 h-10 bg-blue-600/20 rounded-lg flex items-center justify-center mr-4">
+                            <i class="fas fa-book text-blue-400"></i>
+                        </div>
+                        <h3 class="text-lg font-semibold">Øvingsmodus</h3>
+                    </div>
+                    <p class="text-gray-400 text-sm mb-4">
+                        Øv i ditt eget tempo uten tidsbegrensning
+                    </p>
+                    <ul class="space-y-2 text-sm text-gray-500">
+                        <li><i class="fas fa-check text-green-400 mr-2"></i>Ubegrenset tid</li>
+                        <li><i class="fas fa-check text-green-400 mr-2"></i>Se svar med en gang</li>
+                        <li><i class="fas fa-check text-green-400 mr-2"></i>Velg antall spørsmål</li>
+                    </ul>
+                </div>
+
+                <!-- Timed Mode -->
+                <div class="bg-gray-800/50 rounded-xl p-6">
+                    <div class="flex items-center mb-4">
+                        <div class="w-10 h-10 bg-yellow-600/20 rounded-lg flex items-center justify-center mr-4">
+                            <i class="fas fa-clock text-yellow-400"></i>
+                        </div>
+                        <h3 class="text-lg font-semibold">Tidsmodus</h3>
+                    </div>
+                    <p class="text-gray-400 text-sm mb-4">
+                        Test deg selv med tidsbegrensning
+                    </p>
+                    <ul class="space-y-2 text-sm text-gray-500">
+                        <li><i class="fas fa-check text-green-400 mr-2"></i>2 minutter per spørsmål</li>
+                        <li><i class="fas fa-check text-green-400 mr-2"></i>Automatisk innsending</li>
+                        <li><i class="fas fa-check text-green-400 mr-2"></i>Ekstra poeng for hurtighet</li>
+                    </ul>
+                </div>
+
+                <!-- Exam Mode -->
+                <div class="bg-gray-800/50 rounded-xl p-6">
+                    <div class="flex items-center mb-4">
+                        <div class="w-10 h-10 bg-green-600/20 rounded-lg flex items-center justify-center mr-4">
+                            <i class="fas fa-graduation-cap text-green-400"></i>
+                        </div>
+                        <h3 class="text-lg font-semibold">Eksamensmodus</h3>
+                    </div>
+                    <p class="text-gray-400 text-sm mb-4">
+                        Simuler den virkelige teoriprøven
+                    </p>
+                    <ul class="space-y-2 text-sm text-gray-500">
+                        <li><i class="fas fa-check text-green-400 mr-2"></i>45 spørsmål</li>
+                        <li><i class="fas fa-check text-green-400 mr-2"></i>90 minutter</li>
+                        <li><i class="fas fa-check text-green-400 mr-2"></i>Maks 7 feil for å bestå</li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+
+        <!-- Quick Start -->
+        <div class="text-center">
+            <a href="{{ url_for('main.quiz', type='exam') }}" 
+               class="inline-block px-8 py-4 bg-gradient-to-r from-green-600 to-blue-600 rounded-lg text-lg font-bold hover:from-green-700 hover:to-blue-700 transition">
+                <i class="fas fa-graduation-cap mr-2"></i> Start Prøveeksamen
+            </a>
+        </div>
+    </div>
+</section>
+{% endblock %}
