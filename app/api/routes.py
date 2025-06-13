@@ -1,4 +1,5 @@
-from flask import jsonify, request, session
+from flask import jsonify, request, session, current_app
+import os
 from . import api_bp
 from .. import db
 from ..models import Question, User, QuizSession, TrafficSign
@@ -27,7 +28,17 @@ def get_questions():
     questions = query.all()
     
     result = []
+    images_dir = os.path.join(current_app.static_folder, 'images')
+    
     for q in questions:
+        # Dynamic discovery of image folder
+        image_folder = ''
+        if q.image_filename:
+            for root, dirs, files in os.walk(images_dir):
+                if q.image_filename in files:
+                    image_folder = os.path.relpath(root, images_dir).replace(os.sep, '/')
+                    break
+        
         options = {}
         for opt in q.options:
             options[opt.option_letter] = opt.option_text
@@ -38,7 +49,8 @@ def get_questions():
             'options': options,
             'category': q.category,
             'difficulty_level': q.difficulty_level,
-            'image_filename': q.image_filename
+            'image_filename': q.image_filename,
+            'image_folder': image_folder
         })
     
     return jsonify({

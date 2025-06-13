@@ -96,7 +96,13 @@
                     <!-- Question Image -->
                     {% if result.question.image_filename %}
                     <div class="mb-4">
-                        <img src="{{ url_for('static', filename='images/' ~ (result.question.image_folder or 'signs') ~ '/' ~ result.question.image_filename) }}" 
+                        {% set path = [] %}
+                        {% if result.question.image_folder %}
+                          {% set path = ['images', result.question.image_folder, result.question.image_filename] %}
+                        {% else %}
+                          {% set path = ['images', result.question.image_filename] %}
+                        {% endif %}
+                        <img src="{{ url_for('static', filename=path | join('/')) }}" 
                              alt="Spørsmålsbilde" 
                              class="max-w-xs rounded-lg">
                     </div>

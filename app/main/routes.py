@@ -1,5 +1,6 @@
-from flask import render_template, request, redirect, url_for, session, jsonify, flash
+from flask import render_template, request, redirect, url_for, session, jsonify, flash, current_app
 import random
+import os
 from datetime import datetime
 from . import main_bp
 from .. import db
@@ -114,13 +115,23 @@ def quiz():
     
     # Format questions for template
     questions = []
+    images_dir = os.path.join(current_app.static_folder, 'images')
+    
     for q in questions_list:
+        # Dynamic discovery of image folder
+        image_folder = ''
+        if q.image_filename:
+            for root, dirs, files in os.walk(images_dir):
+                if q.image_filename in files:
+                    image_folder = os.path.relpath(root, images_dir).replace(os.sep, '/')
+                    break
+        
         question_data = {
             'id': q.id,
             'question': q.question,
             'category': q.category,
             'image_filename': q.image_filename,
-            'image_folder': q.image_folder or 'signs',
+            'image_folder': image_folder,
             'correct_option': q.correct_option
         }
         
@@ -386,7 +397,17 @@ def api_questions():
     
     # Format for JSON response
     result = []
+    images_dir = os.path.join(current_app.static_folder, 'images')
+    
     for q in questions:
+        # Dynamic discovery of image folder
+        image_folder = ''
+        if q.image_filename:
+            for root, dirs, files in os.walk(images_dir):
+                if q.image_filename in files:
+                    image_folder = os.path.relpath(root, images_dir).replace(os.sep, '/')
+                    break
+        
         options = {opt.option_letter: opt.option_text for opt in q.options}
         result.append({
             'id': q.id,
@@ -394,7 +415,8 @@ def api_questions():
             'options': options,
             'correct_option': q.correct_option,
             'category': q.category,
-            'image_filename': q.image_filename
+            'image_filename': q.image_filename,
+            'image_folder': image_folder
         })
     
     return jsonify(result)
