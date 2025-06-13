@@ -102,7 +102,7 @@
       <select name="image_filename" id="imageSelect">
         <option value="" data-folder="">Ingen bilde</option>
         {% for img in images %}
-        <option value="{{ img.filename }}" data-folder="{{ img.folder or 'signs' }}">
+        <option value="{{ img.filename }}" data-folder="{{ img.folder }}">
           {{ img.name }} ({{ img.filename }})
         </option>
         {% endfor %}
@@ -118,9 +118,9 @@
       
       <div id="imageGallery">
         {% for img in images %}
-          <img src="{{ url_for('static', filename='images/' ~ (img.folder or 'signs') ~ '/' ~ img.filename) }}"
+          <img src="{{ url_for('static', filename=( 'images/' ~ img.folder ~ '/' ~ img.filename ) if img.folder else 'images/' ~ img.filename) }}"
                data-filename="{{ img.filename }}"
-               data-folder="{{ img.folder or 'signs' }}"
+               data-folder="{{ img.folder }}"
                class="selectable-img"
                onclick="pickImage(this)"
                alt="{{ img.name }}">
@@ -170,8 +170,7 @@
           <td data-column="category">{{ question.category or 'Ukategorisert' }}</td>
           <td data-column="image">
             {% if question.image_filename %}
-              {% set folder = question.image_folder or 'signs' %}
-              <img src="{{ url_for('static', filename='images/' ~ folder ~ '/' ~ question.image_filename) }}"
+              <img src="{{ url_for('static', filename='images/signs/' ~ question.image_filename) }}"
                    alt="" class="question-image">
             {% else %}
               <span style="color: #999;">Ingen bilde</span>
@@ -322,18 +321,14 @@ function editQuestionFromRow(button, id) {
     if (parts.length === 2) {
       const path = parts[1]; // e.g. signs/fare/fil.gif or quiz/Pyss.png
       const pathParts = path.split('/');
-      if (pathParts.length >= 2) {
-        const isTrafficSign = pathParts[0] === 'signs';
-        if (isTrafficSign) {
-          folder = pathParts.slice(1, -1).join('/');
-        } else {
-          folder = pathParts.slice(0, -1).join('/');
-        }
+      // Corrected logic: set folder to category if signs, else leave blank
+      if (pathParts.length >= 3 && pathParts[0] === 'signs') {
+        folder = pathParts[1]; // Use category as folder
         imageName = pathParts[pathParts.length - 1];
       }
     }
   }
-  document.getElementById('imageSelect').value = folder ? `${folder}/${imageName}` : imageName;
+  document.getElementById('imageSelect').value = imageName;
   // Update selected image in gallery
   document.querySelectorAll('.selectable-img').forEach(img => {
     img.classList.remove('selected');
@@ -394,25 +389,18 @@ function previewQuestion() {
   const optionD = document.getElementById('optionD').value;
   const correctOption = document.getElementById('correctOption').value.trim().toLowerCase();
   const imageSelect = document.getElementById('imageSelect');
-  
-  let folder = 'signs';
-  const selectedOption = imageSelect.selectedOptions[0];
-  if (selectedOption && selectedOption.dataset.folder) {
-    folder = selectedOption.dataset.folder;
-  } else {
-    // Try to find folder from selected image in gallery
-    const selectedImg = document.querySelector('.selectable-img.selected');
-    if (selectedImg && selectedImg.dataset.folder) {
-      folder = selectedImg.dataset.folder;
-    }
-  }
-  
+
   let previewHTML = '<div class="preview-question">';
   if (imageSelect.value) {
     // Get the static URL from the data attribute
     const staticUrl = document.getElementById('questionsSection').dataset.staticUrl || '/static/';
-    const imageUrl = `${staticUrl}images/${folder}/${imageSelect.value}`;
-    console.log('Preview image URL:', imageUrl); // Debug log
+    const selectedOption = imageSelect.selectedOptions[0];
+    const folder = selectedOption ? selectedOption.dataset.folder : '';
+    const imagePath = folder
+      ? `images/${folder}/${imageSelect.value}`
+      : `images/${imageSelect.value}`;
+    const imageUrl = `${staticUrl}${imagePath}`;
+    console.log('Preview image URL:', imageUrl);
     previewHTML += `<img src="${imageUrl}" alt="Question image" onerror="console.error('Failed to load image:', this.src); this.style.display='none'">`;
   }
   previewHTML += `<h3>${question || 'Spørsmålstekst kommer her...'}</h3>`;

@@ -212,14 +212,21 @@ def admin_dashboard():
     images = []
     
     # Traffic signs
+    images_dir = os.path.join(current_app.static_folder, 'images')
     for ts in TrafficSign.query.all():
+        # Dynamically find the subfolder under static/images containing this filename
+        folder = ''
+        for root, dirs, files in os.walk(images_dir):
+            if ts.filename in files:
+                folder = os.path.relpath(root, images_dir).replace(os.sep, '/')
+                break
         images.append({
-            'id': ts.id, 
-            'filename': ts.filename, 
-            'name': ts.description or ts.name, 
-            'folder': 'signs'
+            'id': ts.id,
+            'filename': ts.filename,
+            'name': ts.description or ts.name,
+            'folder': folder
         })
-    
+
     # Quiz images
     for qi in QuizImage.query.all():
         display = qi.title or qi.description or qi.filename
