@@ -39,20 +39,27 @@ def dashboard():
     achievement_service = AchievementService()
     leaderboard_service = LeaderboardService()
     
-    # Get user data
-    dashboard_data = progress_service.get_user_dashboard_data(session['user_id'])
-    achievements = achievement_service.get_user_achievements(session['user_id'])
-    user_rank = leaderboard_service.get_user_rank(session['user_id'])
-    
-    # Get recent achievements (last 5 earned)
-    recent_achievements = [a for a in achievements if a['earned']][-5:]
-    
-    # Get achievement stats
-    achievement_stats = {
-        'total_earned': len([a for a in achievements if a['earned']]),
-        'total_available': len(achievements),
-        'recent': recent_achievements
-    }
+    # Get user data with error handling
+    try:
+        dashboard_data = progress_service.get_user_dashboard_data(session['user_id'])
+        achievements = achievement_service.get_user_achievements(session['user_id'])
+        user_rank = leaderboard_service.get_user_rank(session['user_id'])
+        
+        # Get recent achievements (last 5 earned)
+        recent_achievements = [a for a in achievements if a['earned']][-5:]
+        
+        # Get achievement stats
+        achievement_stats = {
+            'total_earned': len([a for a in achievements if a['earned']]),
+            'total_available': len(achievements),
+            'recent': recent_achievements
+        }
+    except Exception as e:
+        # Fallback to basic data if services fail
+        print(f"Dashboard data error: {e}")
+        dashboard_data = None
+        achievement_stats = None
+        user_rank = None
     
     return render_template('dashboard.html', 
                          user=user, 

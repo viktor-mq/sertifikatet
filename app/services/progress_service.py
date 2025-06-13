@@ -1,7 +1,7 @@
 # app/services/progress_service.py
 from datetime import datetime, timedelta
-from typing import List, Dict, Optional
-from sqlalchemy import and_, func, desc, case
+from typing import List, Dict
+from sqlalchemy import func, desc, case
 from .. import db
 from ..models import User, UserProgress, QuizSession, QuizResponse, Question
 
@@ -121,12 +121,12 @@ class ProgressService:
             )
             
             category_performance.append({
-                'category': result.category,
-                'sessions': result.sessions,
-                'avg_score': round(result.avg_score or 0, 1),
-                'accuracy': round(accuracy, 1),
-                'mastery_level': mastery_level,
-                'total_questions': result.total_questions or 0
+                'category': str(result.category),
+                'sessions': int(result.sessions),
+                'avg_score': round(float(result.avg_score or 0), 1),
+                'accuracy': round(float(accuracy), 1),
+                'mastery_level': str(mastery_level),
+                'total_questions': int(result.total_questions or 0)
             })
         
         return sorted(category_performance, key=lambda x: x['avg_score'], reverse=True)
@@ -165,7 +165,7 @@ class ProgressService:
             QuizSession.completed_at.isnot(None)
         ).group_by(func.date(QuizSession.completed_at)).all()
         
-        # Create timeline with all dates
+        # Create timeline with all dates (limit to avoid infinite loops)
         timeline = []
         current_date = start_date.date()
         end_date = datetime.utcnow().date()
@@ -173,14 +173,18 @@ class ProgressService:
         # Convert results to dict for easy lookup
         activity_by_date = {result.date: result for result in results}
         
-        while current_date <= end_date:
+        # Safety limit to prevent infinite loops
+        max_days = 30
+        day_count = 0
+        
+        while current_date <= end_date and day_count < max_days:
             activity = activity_by_date.get(current_date)
             if activity:
                 timeline.append({
                     'date': current_date.isoformat(),
-                    'quizzes': activity.quizzes,
-                    'avg_score': round(activity.avg_score or 0, 1),
-                    'questions': activity.questions or 0
+                    'quizzes': int(activity.quizzes),
+                    'avg_score': round(float(activity.avg_score or 0), 1),
+                    'questions': int(activity.questions or 0)
                 })
             else:
                 timeline.append({
@@ -190,6 +194,7 @@ class ProgressService:
                     'questions': 0
                 })
             current_date += timedelta(days=1)
+            day_count += 1
         
         return timeline
     
@@ -202,7 +207,7 @@ class ProgressService:
             Question.category,
             Question.subcategory,
             func.count(QuizResponse.id).label('attempts'),
-            func.sum(func.case([(QuizResponse.is_correct == False, 1)], else_=0)).label('incorrect_count')
+            func.sum(case((QuizResponse.is_correct == False, 1), else_=0)).label('incorrect_count')
         ).join(
             QuizResponse, Question.id == QuizResponse.question_id
         ).join(
@@ -214,7 +219,7 @@ class ProgressService:
         ).having(
             func.count(QuizResponse.id) >= 2  # At least 2 attempts
         ).order_by(
-            desc(func.sum(func.case([(QuizResponse.is_correct == False, 1)], else_=0)))
+            desc(func.sum(case((QuizResponse.is_correct == False, 1), else_=0)))
         ).limit(limit).all()
         
         weak_areas = []

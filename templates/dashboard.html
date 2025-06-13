@@ -62,34 +62,46 @@
         <!-- Progress Overview -->
         <div class="grid grid-cols-1 md:grid-cols-2 gap-8 mb-8">
             <!-- Progress Chart -->
-            <div class="glass rounded-2xl p-8">
+            <div class="glass rounded-2xl p-8 max-h-[30rem] overflow-y-auto">
                 <h2 class="text-2xl font-bold mb-6">Din Fremgang</h2>
-                <canvas id="progressChart" height="200"></canvas>
+                {% if dashboard_data and dashboard_data.activity_timeline %}
+                    <canvas id="progressChart" style="max-height: 350px;"></canvas>
+                {% else %}
+                    <div class="text-center py-16 text-gray-400">
+                        <i class="fas fa-chart-line text-4xl mb-4"></i>
+                        <p class="text-lg mb-2">Ingen aktivitet ennå</p>
+                        <p class="text-sm">Ta din første quiz for å se fremgangsdata</p>
+                    </div>
+                {% endif %}
             </div>
             
             <!-- Category Performance -->
             <div class="glass rounded-2xl p-8">
                 <h2 class="text-2xl font-bold mb-6">Kategoriresultater</h2>
                 <div class="space-y-4">
-                    {% set categories = [
-                        ('Fareskilt', 75, 'text-red-400'),
-                        ('Påbudsskilt', 82, 'text-blue-400'),
-                        ('Forbudsskilt', 68, 'text-purple-400'),
-                        ('Vikeplikt', 90, 'text-green-400'),
-                        ('Trafikkregler', 71, 'text-yellow-400')
-                    ] %}
-                    {% for category, score, color in categories %}
-                    <div>
-                        <div class="flex justify-between mb-1">
-                            <span class="text-sm font-medium">{{ category }}</span>
-                            <span class="text-sm {{ color }}">{{ score }}%</span>
+                    {% if dashboard_data and dashboard_data.category_performance %}
+                        {% for category in dashboard_data.category_performance[:5] %}
+                        <div>
+                            <div class="flex justify-between mb-1">
+                                <span class="text-sm font-medium">{{ category.category }}</span>
+                                <span class="text-sm text-purple-400">{{ category.avg_score }}%</span>
+                            </div>
+                            <div class="bg-gray-700 rounded-full h-2">
+                                <div class="bg-gradient-to-r from-purple-600 to-pink-600 h-2 rounded-full" 
+                                     style="width: {{ category.avg_score }}%"></div>
+                            </div>
+                            <div class="flex justify-between mt-1">
+                                <span class="text-xs text-gray-400">{{ category.sessions }} quiz{{ 'zer' if category.sessions != 1 else '' }}</span>
+                                <span class="text-xs text-gray-400">{{ category.mastery_level }}</span>
+                            </div>
                         </div>
-                        <div class="bg-gray-700 rounded-full h-2">
-                            <div class="bg-gradient-to-r from-purple-600 to-pink-600 h-2 rounded-full" 
-                                 style="width: {{ score }}%"></div>
+                        {% endfor %}
+                    {% else %}
+                        <div class="text-center py-8 text-gray-400">
+                            <i class="fas fa-chart-bar text-3xl mb-2"></i>
+                            <p>Ta en quiz for å se kategoriresultater</p>
                         </div>
-                    </div>
-                    {% endfor %}
+                    {% endif %}
                 </div>
             </div>
         </div>
@@ -173,17 +185,28 @@
 <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 <script>
 // Progress Chart
+{% if dashboard_data and dashboard_data.activity_timeline %}
 const ctx = document.getElementById('progressChart').getContext('2d');
+
+// Prepare data from server
+const activityData = {{ dashboard_data.activity_timeline | tojson }};
+const labels = activityData.slice(-7).map(item => {
+    const date = new Date(item.date);
+    return date.toLocaleDateString('nb-NO', { weekday: 'short' });
+});
+const scores = activityData.slice(-7).map(item => item.avg_score);
+
 const progressChart = new Chart(ctx, {
     type: 'line',
     data: {
-        labels: ['Man', 'Tir', 'Ons', 'Tor', 'Fre', 'Lør', 'Søn'],
+        labels: labels,
         datasets: [{
-            label: 'Nøyaktighet',
-            data: [65, 72, 68, 78, 85, 82, 88],
+            label: 'Gjennomsnittlig score',
+            data: scores,
             borderColor: 'rgb(147, 51, 234)',
             backgroundColor: 'rgba(147, 51, 234, 0.1)',
-            tension: 0.3
+            tension: 0.3,
+            fill: true
         }]
     },
     options: {
@@ -219,6 +242,7 @@ const progressChart = new Chart(ctx, {
         }
     }
 });
+{% endif %}
 </script>
 {% endblock %}
 {% endblock %}
