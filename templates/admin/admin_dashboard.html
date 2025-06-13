@@ -6,15 +6,23 @@
     <link rel="stylesheet" href="{{ url_for('static', filename='css/admin.css') }}">
 </head>
 <body>
-    <header class="admin-header" style="padding: 10px 20px; box-shadow: 0 2px 4px rgba(0,0,0,0.1); display: flex; align-items: center;">
-        <img src="{{ url_for('static', filename='images/profiles/selskapslogo.png') }}" 
-             alt="Sertifikatet Logo" 
-             style="height: 40px; margin-right: 15px;">
-        <h1 style="font-size: 1.5rem; margin: 0; color: #1d1d1d;">Adminpanel</h1>
+    <header class="admin-header" style="padding: 10px 20px; box-shadow: 0 2px 4px rgba(0,0,0,0.1); display: flex; align-items: center; justify-content: space-between;">
+      <div style="display: flex; align-items: center;">
+        <a href="{{ url_for('main.index') }}">
+          <img src="{{ url_for('static', filename='images/profiles/selskapslogo.png') }}"
+               alt="Sertifikatet Logo"
+               style="height: 40px; margin-right: 15px;">
+        </a>
+        <h1 style="font-size: 1.5rem; margin: 0; color: rgb(251, 191, 36)">Adminpanelet</h1>
+      </div>
+      <div>
+        <a href="{{ url_for('auth.logout') }}" style="color: rgba(255, 255, 255, 0.885); text-decoration: none; font-weight: bold; margin-right: 60px;">
+          Logg ut
+        </a>
+      </div>
     </header>
     
     <div class="container">
-        <p>Her kan du administrere spørsmål og tilknyttede skiltbilder.</p>
 
         <div class="section-tabs">
             <a href="#" class="btn active" onclick="showSection('questions')" id="questionsTab">📋 Spørsmål</a>
@@ -63,7 +71,7 @@
     </script>
     
     <footer class="admin-footer" style="padding: 15px 20px; text-align: center; margin-top: 40px;">
-        <p style="margin: 0; font-size: 0.9rem; color: #1d1d1d;">
+        <p style="margin: 0; font-size: 0.9rem; color: rgb(176, 175, 175);">
             &copy; <span id="currentYear"></span> Sertifikatet. All rights reserved.
         </p>
     </footer>

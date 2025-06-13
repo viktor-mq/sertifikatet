@@ -18,7 +18,7 @@ def admin_required(f):
     @wraps(f)
     @login_required
     def decorated_function(*args, **kwargs):
-        if not current_user.is_authenticated or current_user.username != 'admin':
+        if not current_user.is_authenticated or current_user.username != 'Viktor':
             flash('Du har ikke tilgang til denne siden', 'error')
             return redirect(url_for('main.index'))
         return f(*args, **kwargs)
