@@ -32,6 +32,9 @@ def create_app():
     from .api.routes import api_bp
     app.register_blueprint(api_bp, url_prefix='/api')
     
+    from .learning import learning_bp
+    app.register_blueprint(learning_bp, url_prefix='/learning')
+    
     # Create tables if they don't exist
     with app.app_context():
         db.create_all()

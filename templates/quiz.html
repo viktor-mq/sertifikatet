@@ -37,6 +37,9 @@
         <form id="quizForm" method="POST" action="{{ url_for('main.submit_quiz') }}">
             <input type="hidden" name="start_time" id="startTime">
             <input type="hidden" name="quiz_type" value="{{ quiz_type or 'practice' }}">
+            {% if learning_path_id %}
+            <input type="hidden" name="learning_path_id" value="{{ learning_path_id }}">
+            {% endif %}
             
             <!-- Questions -->
             <div id="questionsContainer">

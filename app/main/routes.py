@@ -91,6 +91,11 @@ def quiz():
     quiz_type = request.args.get('type', 'practice')
     category = request.args.get('category')
     limit = request.args.get('limit', type=int)
+    learning_path_id = request.args.get('learning_path_id', type=int)
+    
+    # If from learning path, set quiz_type
+    if learning_path_id:
+        quiz_type = 'learning_path'
     
     # For exam mode, always use 45 questions
     if quiz_type == 'exam':
@@ -141,7 +146,7 @@ def quiz():
         
         questions.append(question_data)
     
-    return render_template('quiz.html', questions=questions, quiz_type=quiz_type)
+    return render_template('quiz.html', questions=questions, quiz_type=quiz_type, learning_path_id=learning_path_id)
 
 
 @main_bp.route('/submit_quiz', methods=['POST'])
@@ -221,6 +226,13 @@ def submit_quiz():
         # Check for new achievements
         achievement_service = AchievementService()
         new_achievements = achievement_service.check_achievements(user_id)
+        
+        # If this was a learning path quiz and passed (>= 80%), update learning path progress
+        if quiz_type == 'learning_path' and score >= 80:
+            from ..services.learning_service import LearningService
+            learning_path_id = request.form.get('learning_path_id', type=int)
+            if learning_path_id:
+                LearningService.update_path_progress(user_id, learning_path_id)
         
         # Update leaderboards
         leaderboard_service = LeaderboardService()

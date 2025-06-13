@@ -29,6 +29,7 @@
                 
                 <div class="flex items-center space-x-4">
                     <a href="{{ url_for('main.quiz_categories') }}" class="hover:text-purple-400 transition">Quiz</a>
+                    <a href="{{ url_for('learning.index') }}" class="hover:text-purple-400 transition">Læringsveier</a>
                     
                     {% if session.user_id %}
                         <a href="{{ url_for('main.dashboard') }}" class="hover:text-purple-400 transition">Dashboard</a>
