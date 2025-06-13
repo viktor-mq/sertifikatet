@@ -100,7 +100,13 @@ def profile():
     
     # Get user progress and statistics
     progress = user.progress
-    recent_sessions = user.quiz_sessions.order_by(QuizSession.completed_at.desc()).limit(5).all()
+    recent_sessions = (
+        QuizSession.query
+        .filter_by(user_id=current_user.id)
+        .order_by(QuizSession.completed_at.desc())
+        .limit(5)
+        .all()
+    )
     achievements = user.achievements
     
     # Calculate statistics
