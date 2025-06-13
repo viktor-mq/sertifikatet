@@ -1,0 +1,224 @@
+{% extends "base.html" %}
+
+{% block title %}Dashboard - TeoriTest{% endblock %}
+
+{% block content %}
+<section class="py-12">
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+        <!-- Welcome Banner -->
+        <div class="glass rounded-2xl p-8 mb-8 bg-gradient-to-r from-purple-600/10 to-pink-600/10">
+            <div class="flex items-center justify-between">
+                <div>
+                    <h1 class="text-3xl font-bold mb-2">
+                        Velkommen tilbake, {{ user.full_name or user.username }}! 👋
+                    </h1>
+                    <p class="text-gray-400">
+                        {% if progress and progress.current_streak_days > 0 %}
+                        Du har en {{ progress.current_streak_days }} dagers streak! Keep it up! 🔥
+                        {% else %}
+                        La oss starte din læringsreise i dag!
+                        {% endif %}
+                    </p>
+                </div>
+                <div class="hidden md:block text-6xl opacity-20">
+                    🚗
+                </div>
+            </div>
+        </div>
+
+        <!-- Quick Actions -->
+        <div class="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
+            <a href="{{ url_for('main.quiz') }}" class="glass rounded-xl p-6 hover-card group">
+                <div class="flex items-center justify-between mb-4">
+                    <div class="w-12 h-12 bg-purple-600/20 rounded-lg flex items-center justify-center group-hover:bg-purple-600/30 transition">
+                        <i class="fas fa-brain text-purple-400 text-xl"></i>
+                    </div>
+                </div>
+                <h3 class="text-xl font-semibold mb-2">Start Quiz</h3>
+                <p class="text-gray-400 text-sm">Test kunnskapen din med en quiz</p>
+            </a>
+            
+            <a href="{{ url_for('main.practice') }}" class="glass rounded-xl p-6 hover-card group">
+                <div class="flex items-center justify-between mb-4">
+                    <div class="w-12 h-12 bg-blue-600/20 rounded-lg flex items-center justify-center group-hover:bg-blue-600/30 transition">
+                        <i class="fas fa-book-open text-blue-400 text-xl"></i>
+                    </div>
+                </div>
+                <h3 class="text-xl font-semibold mb-2">Øvingsmodus</h3>
+                <p class="text-gray-400 text-sm">Øv på spesifikke kategorier</p>
+            </a>
+            
+            <a href="{{ url_for('main.exam') }}" class="glass rounded-xl p-6 hover-card group">
+                <div class="flex items-center justify-between mb-4">
+                    <div class="w-12 h-12 bg-green-600/20 rounded-lg flex items-center justify-center group-hover:bg-green-600/30 transition">
+                        <i class="fas fa-graduation-cap text-green-400 text-xl"></i>
+                    </div>
+                </div>
+                <h3 class="text-xl font-semibold mb-2">Prøveeksamen</h3>
+                <p class="text-gray-400 text-sm">Simuler den virkelige eksamen</p>
+            </a>
+        </div>
+
+        <!-- Progress Overview -->
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-8 mb-8">
+            <!-- Progress Chart -->
+            <div class="glass rounded-2xl p-8">
+                <h2 class="text-2xl font-bold mb-6">Din Fremgang</h2>
+                <canvas id="progressChart" height="200"></canvas>
+            </div>
+            
+            <!-- Category Performance -->
+            <div class="glass rounded-2xl p-8">
+                <h2 class="text-2xl font-bold mb-6">Kategoriresultater</h2>
+                <div class="space-y-4">
+                    {% set categories = [
+                        ('Fareskilt', 75, 'text-red-400'),
+                        ('Påbudsskilt', 82, 'text-blue-400'),
+                        ('Forbudsskilt', 68, 'text-purple-400'),
+                        ('Vikeplikt', 90, 'text-green-400'),
+                        ('Trafikkregler', 71, 'text-yellow-400')
+                    ] %}
+                    {% for category, score, color in categories %}
+                    <div>
+                        <div class="flex justify-between mb-1">
+                            <span class="text-sm font-medium">{{ category }}</span>
+                            <span class="text-sm {{ color }}">{{ score }}%</span>
+                        </div>
+                        <div class="bg-gray-700 rounded-full h-2">
+                            <div class="bg-gradient-to-r from-purple-600 to-pink-600 h-2 rounded-full" 
+                                 style="width: {{ score }}%"></div>
+                        </div>
+                    </div>
+                    {% endfor %}
+                </div>
+            </div>
+        </div>
+
+        <!-- Recommended Learning Path -->
+        <div class="glass rounded-2xl p-8 mb-8">
+            <div class="flex items-center justify-between mb-6">
+                <h2 class="text-2xl font-bold">Anbefalt Læringssti</h2>
+                <a href="#" class="text-purple-400 hover:text-purple-300 transition">
+                    Se alle <i class="fas fa-arrow-right ml-1"></i>
+                </a>
+            </div>
+            
+            <div class="grid grid-cols-1 md:grid-cols-4 gap-4">
+                <div class="bg-gray-800/50 rounded-lg p-4 border-2 border-purple-600">
+                    <div class="flex items-center justify-between mb-2">
+                        <div class="w-8 h-8 bg-purple-600 rounded-full flex items-center justify-center text-sm font-bold">
+                            1
+                        </div>
+                        <span class="text-xs text-green-400">Fullført</span>
+                    </div>
+                    <h3 class="font-semibold mb-1">Grunnleggende regler</h3>
+                    <p class="text-xs text-gray-400">Lær de viktigste trafikkreglene</p>
+                </div>
+                
+                <div class="bg-gray-800/50 rounded-lg p-4 border-2 border-purple-600 border-dashed">
+                    <div class="flex items-center justify-between mb-2">
+                        <div class="w-8 h-8 bg-purple-600/20 border-2 border-purple-600 rounded-full flex items-center justify-center text-sm font-bold">
+                            2
+                        </div>
+                        <span class="text-xs text-yellow-400">Pågår</span>
+                    </div>
+                    <h3 class="font-semibold mb-1">Trafikkskilt</h3>
+                    <p class="text-xs text-gray-400">Lær alle typer skilt</p>
+                </div>
+                
+                <div class="bg-gray-800/50 rounded-lg p-4 opacity-60">
+                    <div class="flex items-center justify-between mb-2">
+                        <div class="w-8 h-8 bg-gray-700 rounded-full flex items-center justify-center text-sm font-bold">
+                            3
+                        </div>
+                        <i class="fas fa-lock text-gray-500 text-xs"></i>
+                    </div>
+                    <h3 class="font-semibold mb-1">Kjøreteknikk</h3>
+                    <p class="text-xs text-gray-400">Avanserte kjøreteknikker</p>
+                </div>
+                
+                <div class="bg-gray-800/50 rounded-lg p-4 opacity-60">
+                    <div class="flex items-center justify-between mb-2">
+                        <div class="w-8 h-8 bg-gray-700 rounded-full flex items-center justify-center text-sm font-bold">
+                            4
+                        </div>
+                        <i class="fas fa-lock text-gray-500 text-xs"></i>
+                    </div>
+                    <h3 class="font-semibold mb-1">Prøveeksamen</h3>
+                    <p class="text-xs text-gray-400">Test alt du har lært</p>
+                </div>
+            </div>
+        </div>
+
+        <!-- Daily Challenge -->
+        <div class="glass rounded-2xl p-8 bg-gradient-to-r from-orange-600/10 to-red-600/10">
+            <div class="flex items-center justify-between">
+                <div>
+                    <h2 class="text-2xl font-bold mb-2">Dagens Utfordring 🎯</h2>
+                    <p class="text-gray-400 mb-4">Fullfør dagens utfordring for å opprettholde din streak!</p>
+                    <a href="#" class="inline-block px-6 py-3 bg-gradient-to-r from-orange-600 to-red-600 rounded-lg hover:from-orange-700 hover:to-red-700 transition">
+                        Start Utfordringen
+                    </a>
+                </div>
+                <div class="text-center">
+                    <div class="text-5xl font-bold mb-2">15</div>
+                    <div class="text-sm text-gray-400">spørsmål</div>
+                </div>
+            </div>
+        </div>
+    </div>
+</section>
+
+{% block extra_js %}
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<script>
+// Progress Chart
+const ctx = document.getElementById('progressChart').getContext('2d');
+const progressChart = new Chart(ctx, {
+    type: 'line',
+    data: {
+        labels: ['Man', 'Tir', 'Ons', 'Tor', 'Fre', 'Lør', 'Søn'],
+        datasets: [{
+            label: 'Nøyaktighet',
+            data: [65, 72, 68, 78, 85, 82, 88],
+            borderColor: 'rgb(147, 51, 234)',
+            backgroundColor: 'rgba(147, 51, 234, 0.1)',
+            tension: 0.3
+        }]
+    },
+    options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        plugins: {
+            legend: {
+                display: false
+            }
+        },
+        scales: {
+            y: {
+                beginAtZero: true,
+                max: 100,
+                ticks: {
+                    color: '#9CA3AF',
+                    callback: function(value) {
+                        return value + '%';
+                    }
+                },
+                grid: {
+                    color: 'rgba(156, 163, 175, 0.1)'
+                }
+            },
+            x: {
+                ticks: {
+                    color: '#9CA3AF'
+                },
+                grid: {
+                    display: false
+                }
+            }
+        }
+    }
+});
+</script>
+{% endblock %}
+{% endblock %}

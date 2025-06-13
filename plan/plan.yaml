@@ -40,17 +40,17 @@ tech_stack:
 
 database:
   tables:
-      traffic_signs:   # <- manglet
+      traffic_signs:   
       - id
       - sign_code
       - category
       - filename
       - description
       - explanation
-    options:  # eller options
+    options:  
       - id
       - question_id
-      - option_letter   # 'a', 'b', 'c', ...
+      - option_letter   # 'a', 'b', 'c', 'd'
       - option_text
     users:
       - id
@@ -104,6 +104,19 @@ database:
       - updated_at
       - is_active
       - question_type
+    question_images:
+      - question_id
+      - image_id
+      - role
+    quiz_images:
+      - id
+      - filename
+      - folder
+      - title
+      - description
+      - uploaded_at
+      - uploader_id
+      - tags
     quiz_sessions:
       - id
       - user_id
@@ -263,8 +276,19 @@ security:
   compliance: GDPR
 
 monetization:
-  model: Freemium
+  model: Ad-supported Freemium
+  description: >
+    The platform is free by default and monetized via ads. Users can optionally upgrade
+    to remove ads and unlock additional features.
   subscription_tiers:
-    basic: limited daily content
-    premium: unlimited quizzes, videos
-    pro: offline mode, all features
+    free:
+      access: limited daily quizzes, 2 mock exam/week (45 question multiple choice, max 8 mistakes to pass), basic stats
+      ads: enabled
+    premium:
+      access: unlimited quizzes, videos, detailed stats, AI-adaptive learning
+      ads: disabled
+      price: 149 NOK/month
+    pro:
+      access: everything in premium + offline mode, personal tutor
+      ads: disabled
+      price: 249 NOK/month
