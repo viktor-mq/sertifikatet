@@ -1,0 +1,185 @@
+<!DOCTYPE html>
+<html lang="no">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Din daglige påminnelse</title>
+    <style>
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+            line-height: 1.6;
+            color: #333;
+            background-color: #f4f4f4;
+            margin: 0;
+            padding: 0;
+        }
+        .container {
+            max-width: 600px;
+            margin: 40px auto;
+            background: #ffffff;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+            overflow: hidden;
+        }
+        .header {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 30px;
+            text-align: center;
+        }
+        .header h1 {
+            margin: 0;
+            font-size: 28px;
+            font-weight: 500;
+        }
+        .streak-badge {
+            display: inline-block;
+            background: rgba(255,255,255,0.2);
+            padding: 10px 20px;
+            border-radius: 20px;
+            margin-top: 10px;
+            font-size: 18px;
+        }
+        .streak-badge .fire {
+            font-size: 24px;
+        }
+        .content {
+            padding: 40px 30px;
+        }
+        .content h2 {
+            color: #667eea;
+            margin-top: 0;
+        }
+        .button {
+            display: inline-block;
+            padding: 12px 30px;
+            background: #667eea;
+            color: white;
+            text-decoration: none;
+            border-radius: 4px;
+            font-weight: 500;
+            margin: 20px 0;
+        }
+        .button:hover {
+            background: #5a63d8;
+        }
+        .stats-box {
+            background: #f8f9fa;
+            padding: 20px;
+            border-radius: 8px;
+            margin: 20px 0;
+        }
+        .stat-item {
+            display: inline-block;
+            width: 48%;
+            margin: 5px 0;
+        }
+        .stat-label {
+            color: #666;
+            font-size: 14px;
+        }
+        .stat-value {
+            font-size: 24px;
+            font-weight: bold;
+            color: #667eea;
+        }
+        .tips {
+            background: #e8f4f8;
+            padding: 20px;
+            border-radius: 8px;
+            border-left: 4px solid #667eea;
+            margin: 20px 0;
+        }
+        .footer {
+            background: #f8f9fa;
+            padding: 20px;
+            text-align: center;
+            color: #666;
+            font-size: 14px;
+        }
+        .footer a {
+            color: #667eea;
+            text-decoration: none;
+        }
+        .motivation {
+            text-align: center;
+            padding: 20px;
+            font-size: 18px;
+            color: #555;
+            font-style: italic;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>Sertifikatet.no</h1>
+            {% if streak_days > 0 %}
+            <div class="streak-badge">
+                <span class="fire">🔥</span> {{ streak_days }} dager i strekk!
+            </div>
+            {% endif %}
+        </div>
+        
+        <div class="content">
+            <h2>Hei {{ user.full_name or user.username }}! 👋</h2>
+            
+            {% if streak_days == 0 %}
+            <p>Vi savner deg! Det er på tide å komme tilbake og fortsette din læringsreise.</p>
+            {% elif streak_days < 7 %}
+            <p>Fantastisk! Du har øvd {{ streak_days }} dager på rad. Fortsett slik for å bygge en solid vane!</p>
+            {% elif streak_days < 30 %}
+            <p>Imponerende! {{ streak_days }} dager i strekk viser dedikasjon. Du er på god vei til å mestre teorien!</p>
+            {% else %}
+            <p>Utrolig! {{ streak_days }} dager i strekk! Du er en ekte mester. La oss holde flammen i live! 🏆</p>
+            {% endif %}
+            
+            <div class="stats-box">
+                <h3>Din fremgang så langt:</h3>
+                <div class="stat-item">
+                    <div class="stat-label">Dager i strekk</div>
+                    <div class="stat-value">{{ streak_days }}</div>
+                </div>
+                <div class="stat-item">
+                    <div class="stat-label">Totalt XP</div>
+                    <div class="stat-value">{{ user.total_xp }}</div>
+                </div>
+            </div>
+            
+            <div class="tips">
+                <h3>💡 Dagens tips:</h3>
+                {% if streak_days % 3 == 0 %}
+                <p>Prøv en ny kategori i dag! Variasjon hjelper deg å huske bedre.</p>
+                {% elif streak_days % 3 == 1 %}
+                <p>Ta en rask 10-spørsmåls quiz for å holde kunnskapen fersk.</p>
+                {% else %}
+                <p>Se en instruksjonsvideo om et tema du synes er vanskelig.</p>
+                {% endif %}
+            </div>
+            
+            <p style="text-align: center;">
+                <a href="{{ login_url }}" class="button">Fortsett øvingen nå</a>
+            </p>
+            
+            <div class="motivation">
+                {% if streak_days < 7 %}
+                "Hver ekspert var en gang en nybegynner"
+                {% elif streak_days < 30 %}
+                "Fremgang er fremgang, uansett hvor liten"
+                {% else %}
+                "Suksess er summen av små anstrengelser gjentatt dag etter dag"
+                {% endif %}
+            </div>
+            
+            <p>Husk: Bare 15 minutter om dagen kan gjøre en stor forskjell! Vi tror på deg! 💪</p>
+        </div>
+        
+        <div class="footer">
+            <p>&copy; {{ current_year }} Sertifikatet.no. Alle rettigheter forbeholdt.</p>
+            <p><a href="{{ login_url }}">Logg inn</a> | <a href="mailto:support@sertifikatet.no">Kontakt support</a></p>
+            <p><small>Du mottar denne e-posten fordi du har aktivert daglige påminnelser. 
+            <a href="#">Administrer preferanser</a></small></p>
+        </div>
+    </div>
+</body>
+</html>

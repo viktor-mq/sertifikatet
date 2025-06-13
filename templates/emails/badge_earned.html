@@ -1,0 +1,191 @@
+<!DOCTYPE html>
+<html lang="no">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Ny prestasjon låst opp!</title>
+    <style>
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+            line-height: 1.6;
+            color: #333;
+            background-color: #f4f4f4;
+            margin: 0;
+            padding: 0;
+        }
+        .container {
+            max-width: 600px;
+            margin: 40px auto;
+            background: #ffffff;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+            overflow: hidden;
+        }
+        .header {
+            background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
+            color: white;
+            padding: 30px;
+            text-align: center;
+        }
+        .header h1 {
+            margin: 0;
+            font-size: 28px;
+            font-weight: 500;
+        }
+        .trophy {
+            font-size: 64px;
+            margin: 20px 0;
+        }
+        .content {
+            padding: 40px 30px;
+            text-align: center;
+        }
+        .content h2 {
+            color: #f5576c;
+            margin-top: 0;
+            font-size: 32px;
+        }
+        .badge-container {
+            background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
+            color: white;
+            padding: 30px;
+            border-radius: 8px;
+            margin: 20px 0;
+            box-shadow: 0 4px 15px rgba(245, 87, 108, 0.3);
+        }
+        .badge-name {
+            font-size: 24px;
+            font-weight: bold;
+            margin: 10px 0;
+        }
+        .badge-description {
+            font-size: 16px;
+            opacity: 0.9;
+        }
+        .button {
+            display: inline-block;
+            padding: 12px 30px;
+            background: #f5576c;
+            color: white;
+            text-decoration: none;
+            border-radius: 4px;
+            font-weight: 500;
+            margin: 20px 0;
+        }
+        .button:hover {
+            background: #e44d62;
+        }
+        .stats {
+            background: #f8f9fa;
+            padding: 20px;
+            border-radius: 8px;
+            margin: 20px 0;
+        }
+        .stat-row {
+            display: flex;
+            justify-content: space-around;
+            margin: 10px 0;
+        }
+        .stat-item {
+            text-align: center;
+        }
+        .stat-value {
+            font-size: 24px;
+            font-weight: bold;
+            color: #f5576c;
+        }
+        .stat-label {
+            color: #666;
+            font-size: 14px;
+        }
+        .share-section {
+            margin: 30px 0;
+            padding: 20px;
+            background: #f0f0f0;
+            border-radius: 8px;
+        }
+        .footer {
+            background: #f8f9fa;
+            padding: 20px;
+            text-align: center;
+            color: #666;
+            font-size: 14px;
+        }
+        .footer a {
+            color: #f5576c;
+            text-decoration: none;
+        }
+        .confetti {
+            position: absolute;
+            width: 100%;
+            height: 100%;
+            overflow: hidden;
+            pointer-events: none;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <div class="trophy">🏆</div>
+            <h1>Gratulerer!</h1>
+        </div>
+        
+        <div class="content">
+            <h2>Du har låst opp en ny prestasjon!</h2>
+            
+            <div class="badge-container">
+                <div class="badge-name">{{ badge_name }}</div>
+                <div class="badge-description">
+                    {% if badge_name == "Første skritt" %}
+                    Du har fullført din første quiz!
+                    {% elif badge_name == "Ukens helt" %}
+                    7 dager med øving i strekk!
+                    {% elif badge_name == "Perfeksjonist" %}
+                    100% riktig på en quiz med 20+ spørsmål!
+                    {% elif badge_name == "Speedster" %}
+                    Fullført en quiz på under 5 minutter!
+                    {% elif badge_name == "Kunnskapsjeger" %}
+                    Fullført quizer i alle kategorier!
+                    {% else %}
+                    En fantastisk prestasjon!
+                    {% endif %}
+                </div>
+            </div>
+            
+            <p>{{ user.full_name or user.username }}, du gjør fremskritt hver dag! 
+            Denne prestasjonen viser din dedikasjon til å mestre teoriprøven.</p>
+            
+            <div class="stats">
+                <h3>Din fremgang</h3>
+                <div class="stat-row">
+                    <div class="stat-item">
+                        <div class="stat-value">{{ user.total_xp }}</div>
+                        <div class="stat-label">Total XP</div>
+                    </div>
+                    <div class="stat-item">
+                        <div class="stat-value">{{ user.achievements|length + 1 }}</div>
+                        <div class="stat-label">Prestasjoner</div>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="share-section">
+                <p><strong>Del din suksess!</strong></p>
+                <p>La vennene dine vite om din fremgang og inspirer dem til å starte sin egen læringsreise.</p>
+            </div>
+            
+            <p style="text-align: center;">
+                <a href="{{ profile_url }}" class="button">Se alle prestasjonene dine</a>
+            </p>
+            
+            <p><em>"Hver prestasjon er et skritt nærmere målet ditt!"</em></p>
+        </div>
+        
+        <div class="footer">
+            <p>&copy; {{ current_year }} Sertifikatet.no. Alle rettigheter forbeholdt.</p>
+            <p><a href="{{ profile_url }}">Min profil</a> | <a href="mailto:support@sertifikatet.no">Kontakt support</a></p>
+        </div>
+    </div>
+</body>
+</html>

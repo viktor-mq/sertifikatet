@@ -1,0 +1,121 @@
+<!DOCTYPE html>
+<html lang="no">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Bekreft din e-postadresse</title>
+    <style>
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+            line-height: 1.6;
+            color: #333;
+            background-color: #f4f4f4;
+            margin: 0;
+            padding: 0;
+        }
+        .container {
+            max-width: 600px;
+            margin: 40px auto;
+            background: #ffffff;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+            overflow: hidden;
+        }
+        .header {
+            background: #1a73e8;
+            color: white;
+            padding: 30px;
+            text-align: center;
+        }
+        .header h1 {
+            margin: 0;
+            font-size: 28px;
+            font-weight: 500;
+        }
+        .content {
+            padding: 40px 30px;
+        }
+        .content h2 {
+            color: #1a73e8;
+            margin-top: 0;
+        }
+        .button {
+            display: inline-block;
+            padding: 12px 30px;
+            background: #1a73e8;
+            color: white;
+            text-decoration: none;
+            border-radius: 4px;
+            font-weight: 500;
+            margin: 20px 0;
+        }
+        .button:hover {
+            background: #155ab7;
+        }
+        .footer {
+            background: #f8f9fa;
+            padding: 20px;
+            text-align: center;
+            color: #666;
+            font-size: 14px;
+        }
+        .footer a {
+            color: #1a73e8;
+            text-decoration: none;
+        }
+        .code-block {
+            background: #f5f5f5;
+            padding: 10px;
+            border-radius: 4px;
+            font-family: monospace;
+            word-break: break-all;
+            margin: 10px 0;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>Sertifikatet.no</h1>
+        </div>
+        
+        <div class="content">
+            <h2>Velkommen, {{ user.full_name or user.username }}!</h2>
+            
+            <p>Takk for at du registrerte deg på Sertifikatet.no. Vi er glade for å ha deg med!</p>
+            
+            <p>For å fullføre registreringen og aktivere kontoen din, vennligst bekreft e-postadressen din ved å klikke på knappen nedenfor:</p>
+            
+            <p style="text-align: center;">
+                <a href="{{ verify_url }}" class="button">Bekreft e-postadresse</a>
+            </p>
+            
+            <p>Eller kopier og lim inn denne lenken i nettleseren din:</p>
+            <div class="code-block">{{ verify_url }}</div>
+            
+            <p><strong>Merk:</strong> Denne lenken utløper om 1 time av sikkerhetshensyn.</p>
+            
+            <p>Etter at du har bekreftet e-postadressen din, kan du:</p>
+            <ul>
+                <li>Ta teoriprøver og forbedre kunnskapen din</li>
+                <li>Se instruksjonsvideoer</li>
+                <li>Spille lærerike spill</li>
+                <li>Følge din fremgang og oppnå prestasjoner</li>
+                <li>Konkurrere med andre på topplisten</li>
+            </ul>
+            
+            <p>Hvis du ikke opprettet denne kontoen, kan du ignorere denne e-posten.</p>
+            
+            <p>Lykke til med øvingen!</p>
+            
+            <p>Med vennlig hilsen,<br>
+            Teamet på Sertifikatet.no</p>
+        </div>
+        
+        <div class="footer">
+            <p>&copy; {{ current_year }} Sertifikatet.no. Alle rettigheter forbeholdt.</p>
+            <p>Har du spørsmål? <a href="mailto:support@sertifikatet.no">Kontakt oss</a></p>
+        </div>
+    </div>
+</body>
+</html>

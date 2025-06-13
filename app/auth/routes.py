@@ -8,6 +8,8 @@ from . import auth_bp
 from .. import db
 from ..models import User, UserProgress, QuizSession
 from flask_login import login_user, logout_user, login_required, current_user
+from ..utils.email import (send_verification_email, send_password_reset_email, 
+                          verify_email_token, verify_reset_token)
 
 
 @auth_bp.route('/login', methods=['GET', 'POST'])
@@ -20,6 +22,11 @@ def login():
         user = User.query.filter_by(username=username).first()
         
         if user and check_password_hash(user.password_hash, password):
+            # Check if email is verified
+            if not user.is_verified:
+                flash('Du må bekrefte e-postadressen din før du kan logge inn. Sjekk innboksen din.', 'warning')
+                return redirect(url_for('auth.login'))
+            
             # Update last login
             user.last_login = datetime.utcnow()
             db.session.commit()
@@ -74,11 +81,12 @@ def register():
         
         db.session.commit()
         
-        # Auto-login after registration
-        login_user(user)
+        # Send verification email
+        send_verification_email(user)
         
-        flash('Velkommen til TeoriTest! La oss starte din læringsreise.', 'success')
-        return redirect(url_for('main.dashboard'))
+        flash('Registrering vellykket! Vi har sendt en bekreftelse til din e-postadresse. '
+              'Vennligst sjekk innboksen din for å aktivere kontoen.', 'success')
+        return redirect(url_for('auth.login'))
     
     return render_template('auth/register.html')
 
@@ -120,3 +128,102 @@ def profile():
                          recent_sessions=recent_sessions,
                          achievements=achievements,
                          total_score=total_score)
+
+
+@auth_bp.route('/verify/<token>')
+def verify_email(token):
+    """Verify email address with token"""
+    email = verify_email_token(token)
+    
+    if not email:
+        flash('Bekreftelseslenken er ugyldig eller utløpt.', 'error')
+        return redirect(url_for('auth.login'))
+    
+    user = User.query.filter_by(email=email).first()
+    
+    if not user:
+        flash('Ingen bruker funnet med denne e-postadressen.', 'error')
+        return redirect(url_for('auth.login'))
+    
+    if user.is_verified:
+        flash('E-postadressen din er allerede bekreftet.', 'info')
+        return redirect(url_for('auth.login'))
+    
+    # Verify the user
+    user.is_verified = True
+    db.session.commit()
+    
+    flash('E-postadressen din er nå bekreftet! Du kan logge inn.', 'success')
+    return redirect(url_for('auth.login'))
+
+
+@auth_bp.route('/forgot-password', methods=['GET', 'POST'])
+def forgot_password():
+    """Request password reset"""
+    if request.method == 'POST':
+        email = request.form.get('email')
+        
+        user = User.query.filter_by(email=email).first()
+        
+        # Always show success message to prevent email enumeration
+        flash('Hvis denne e-postadressen er registrert, vil du motta en e-post '
+              'med instruksjoner for å tilbakestille passordet.', 'info')
+        
+        if user:
+            send_password_reset_email(user)
+        
+        return redirect(url_for('auth.login'))
+    
+    return render_template('auth/forgot_password.html')
+
+
+@auth_bp.route('/reset/<token>', methods=['GET', 'POST'])
+def reset_password(token):
+    """Reset password with token"""
+    email = verify_reset_token(token)
+    
+    if not email:
+        flash('Tilbakestillingslenken er ugyldig eller utløpt.', 'error')
+        return redirect(url_for('auth.forgot_password'))
+    
+    user = User.query.filter_by(email=email).first()
+    
+    if not user:
+        flash('Ingen bruker funnet.', 'error')
+        return redirect(url_for('auth.login'))
+    
+    if request.method == 'POST':
+        password = request.form.get('password')
+        confirm_password = request.form.get('confirm_password')
+        
+        if not password or len(password) < 8:
+            flash('Passordet må være minst 8 tegn langt.', 'error')
+            return render_template('auth/reset_password.html', token=token)
+        
+        if password != confirm_password:
+            flash('Passordene er ikke like.', 'error')
+            return render_template('auth/reset_password.html', token=token)
+        
+        # Update password
+        user.password_hash = generate_password_hash(password)
+        db.session.commit()
+        
+        flash('Passordet ditt har blitt oppdatert! Du kan nå logge inn.', 'success')
+        return redirect(url_for('auth.login'))
+    
+    return render_template('auth/reset_password.html', token=token)
+
+
+@auth_bp.route('/resend-verification')
+def resend_verification():
+    """Resend verification email"""
+    if current_user.is_authenticated:
+        if current_user.is_verified:
+            flash('E-postadressen din er allerede bekreftet.', 'info')
+        else:
+            send_verification_email(current_user)
+            flash('En ny bekreftelsese-post har blitt sendt.', 'success')
+    else:
+        flash('Du må logge inn før du kan be om ny bekreftelse.', 'error')
+    
+    return redirect(url_for('auth.login'))
