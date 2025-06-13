@@ -121,8 +121,18 @@ th {
                                     {% for col in rows[0].keys() %}
                                         <td data-column="{{ col }}" style="color: black;">
                                             {% if table == 'traffic_signs' and col == 'filename' %}
-                                                <img src="{{ url_for('static', filename='images/signs/' ~ row[col]) }}" 
-                                                     alt="{{ row[col] }}" 
+                                                {% set matching = images | selectattr('filename', 'equalto', row[col]) | list %}
+                                                {% if matching %}
+                                                    {% set current_folder = matching[0].folder %}
+                                                {% else %}
+                                                    {% set current_folder = '' %}
+                                                {% endif %}
+                                                <img src="{{ url_for('static',
+                                                    filename=( 'images/' ~ current_folder ~ '/' ~ row[col] )
+                                                             if current_folder
+                                                             else 'images/' ~ row[col]
+                                                ) }}"
+                                                     alt="{{ row[col] }}"
                                                      style="max-width: 100px;">
                                             {% else %}
                                                 {{ row[col] }}
