@@ -31,6 +31,9 @@
                     <a href="{{ url_for('main.quiz_categories') }}" class="hover:text-purple-400 transition">Quiz</a>
                     
                     {% if session.user_id %}
+                        <a href="{{ url_for('main.dashboard') }}" class="hover:text-purple-400 transition">Dashboard</a>
+                        <a href="{{ url_for('main.achievements') }}" class="hover:text-purple-400 transition">Utmerkelser</a>
+                        <a href="{{ url_for('main.leaderboard') }}" class="hover:text-purple-400 transition">Ledertavle</a>
                         <a href="{{ url_for('auth.profile') }}" class="hover:text-purple-400 transition">Profil</a>
                         <a href="{{ url_for('auth.logout') }}" class="hover:text-purple-400 transition">Logg ut</a>
                     {% else %}

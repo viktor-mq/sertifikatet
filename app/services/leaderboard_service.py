@@ -3,7 +3,7 @@ from datetime import datetime, timedelta
 from typing import List, Dict, Optional
 from sqlalchemy import and_, func, desc
 from .. import db
-from ..models import User, UserProgress, LeaderboardEntry, UserAchievement
+from ..models import User, UserProgress, LeaderboardEntry, UserAchievement, Achievement
 
 class LeaderboardService:
     """Service for managing leaderboards and rankings"""

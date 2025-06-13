@@ -1,1 +1,241 @@
-<!-- Placeholder for achievements.html in templates/progress -->
+{% extends "base.html" %}
+
+{% block title %}Utmerkelser - TeoriTest{% endblock %}
+
+{% block content %}
+<div class="min-h-screen bg-gradient-to-br from-purple-900 via-blue-900 to-indigo-900">
+    <div class="container mx-auto px-4 py-8">
+        <!-- Header -->
+        <div class="text-center mb-12">
+            <h1 class="text-4xl font-bold text-white mb-4">
+                <i class="fas fa-trophy text-yellow-400 mr-3"></i>
+                Utmerkelser
+            </h1>
+            <p class="text-xl text-gray-300">Vis frem dine prestasjoner og fremgang</p>
+        </div>
+
+        <!-- Achievement Stats -->
+        <div class="grid md:grid-cols-3 gap-6 mb-8">
+            <div class="glass rounded-xl p-6 text-center hover-card">
+                <div class="text-3xl text-green-400 mb-2">
+                    <i class="fas fa-check-circle"></i>
+                </div>
+                <div class="text-2xl font-bold text-white" id="earned-count">{{ total_earned }}</div>
+                <div class="text-gray-300">Oppnådd</div>
+            </div>
+            <div class="glass rounded-xl p-6 text-center hover-card">
+                <div class="text-3xl text-blue-400 mb-2">
+                    <i class="fas fa-star"></i>
+                </div>
+                <div class="text-2xl font-bold text-white" id="total-count">{{ total_available }}</div>
+                <div class="text-gray-300">Totalt</div>
+            </div>
+            <div class="glass rounded-xl p-6 text-center hover-card">
+                <div class="text-3xl text-purple-400 mb-2">
+                    <i class="fas fa-percentage"></i>
+                </div>
+                <div class="text-2xl font-bold text-white" id="completion-rate">
+                    {{ ((total_earned / total_available * 100) | round(1)) if total_available > 0 else 0 }}%
+                </div>
+                <div class="text-gray-300">Fullført</div>
+            </div>
+        </div>
+
+        <!-- Achievement Categories Filter -->
+        <div class="mb-8">
+            <div class="flex flex-wrap justify-center gap-4">
+                <button class="achievement-filter active px-6 py-2 rounded-full bg-purple-600 text-white transition" data-category="all">
+                    Alle
+                </button>
+                <button class="achievement-filter px-6 py-2 rounded-full bg-gray-600 text-white transition" data-category="quiz">
+                    Quiz
+                </button>
+                <button class="achievement-filter px-6 py-2 rounded-full bg-gray-600 text-white transition" data-category="consistency">
+                    Kontinuitet
+                </button>
+                <button class="achievement-filter px-6 py-2 rounded-full bg-gray-600 text-white transition" data-category="mastery">
+                    Mestring
+                </button>
+            </div>
+        </div>
+
+        <!-- Achievements Grid -->
+        <div class="grid md:grid-cols-2 lg:grid-cols-3 gap-6" id="achievements-grid">
+            <!-- Achievements will be loaded here via JavaScript -->
+        </div>
+    </div>
+</div>
+
+<!-- Achievement Details Modal -->
+<div id="achievement-modal" class="fixed inset-0 bg-black bg-opacity-50 hidden z-50 flex items-center justify-center">
+    <div class="bg-gray-800 rounded-xl p-8 max-w-md mx-4">
+        <div class="text-center">
+            <div id="modal-icon" class="text-6xl mb-4"></div>
+            <h3 id="modal-title" class="text-2xl font-bold text-white mb-2"></h3>
+            <p id="modal-description" class="text-gray-300 mb-4"></p>
+            <div class="grid grid-cols-2 gap-4 text-sm">
+                <div>
+                    <div class="text-gray-400">Poeng</div>
+                    <div id="modal-points" class="text-white font-bold"></div>
+                </div>
+                <div>
+                    <div class="text-gray-400">Kategori</div>
+                    <div id="modal-category" class="text-white font-bold"></div>
+                </div>
+            </div>
+            <div id="modal-earned-date" class="mt-4 text-green-400 hidden">
+                <i class="fas fa-check-circle mr-2"></i>
+                <span>Oppnådd: <span id="earned-date"></span></span>
+            </div>
+        </div>
+        <button onclick="closeModal()" class="w-full mt-6 bg-purple-600 text-white py-3 rounded-lg hover:bg-purple-700 transition">
+            Lukk
+        </button>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+let allAchievements = [];
+
+// Load achievements when page loads
+document.addEventListener('DOMContentLoaded', function() {
+    loadAchievements();
+    setupFilters();
+});
+
+async function loadAchievements() {
+    try {
+        const response = await fetch('/api/achievements');
+        const data = await response.json();
+        allAchievements = data.achievements;
+        displayAchievements(allAchievements);
+        updateStats(data);
+    } catch (error) {
+        console.error('Error loading achievements:', error);
+    }
+}
+
+function displayAchievements(achievements) {
+    const grid = document.getElementById('achievements-grid');
+    grid.innerHTML = '';
+    
+    achievements.forEach(achievement => {
+        const card = createAchievementCard(achievement);
+        grid.appendChild(card);
+    });
+}
+
+function createAchievementCard(achievement) {
+    const card = document.createElement('div');
+    card.className = `achievement-card glass rounded-xl p-6 hover-card cursor-pointer ${achievement.earned ? 'earned' : 'locked'}`;
+    card.setAttribute('data-category', achievement.category);
+    card.onclick = () => showAchievementDetails(achievement);
+    
+    const earnedClass = achievement.earned ? 'text-green-400' : 'text-gray-500';
+    const iconClass = achievement.earned ? achievement.icon : 'fa-lock';
+    
+    card.innerHTML = `
+        <div class="text-center">
+            <div class="text-4xl ${earnedClass} mb-4">
+                <i class="fas ${iconClass}"></i>
+            </div>
+            <h3 class="text-lg font-bold text-white mb-2">${achievement.name}</h3>
+            <p class="text-sm text-gray-300 mb-4">${achievement.description}</p>
+            <div class="flex justify-between items-center">
+                <span class="text-sm text-gray-400">${achievement.points} poeng</span>
+                ${achievement.earned ? 
+                    '<span class="text-green-400 text-sm"><i class="fas fa-check-circle mr-1"></i>Oppnådd</span>' : 
+                    '<span class="text-gray-500 text-sm"><i class="fas fa-lock mr-1"></i>Låst</span>'
+                }
+            </div>
+        </div>
+    `;
+    
+    return card;
+}
+
+function setupFilters() {
+    const filters = document.querySelectorAll('.achievement-filter');
+    filters.forEach(filter => {
+        filter.addEventListener('click', function() {
+            // Update active filter
+            filters.forEach(f => f.classList.remove('active', 'bg-purple-600'));
+            filters.forEach(f => f.classList.add('bg-gray-600'));
+            
+            this.classList.add('active', 'bg-purple-600');
+            this.classList.remove('bg-gray-600');
+            
+            // Filter achievements
+            const category = this.getAttribute('data-category');
+            const filtered = category === 'all' ? 
+                allAchievements : 
+                allAchievements.filter(a => a.category === category);
+            
+            displayAchievements(filtered);
+        });
+    });
+}
+
+function showAchievementDetails(achievement) {
+    document.getElementById('modal-icon').innerHTML = `<i class="fas ${achievement.earned ? achievement.icon : 'fa-lock'} ${achievement.earned ? 'text-yellow-400' : 'text-gray-500'}"></i>`;
+    document.getElementById('modal-title').textContent = achievement.name;
+    document.getElementById('modal-description').textContent = achievement.description;
+    document.getElementById('modal-points').textContent = achievement.points;
+    document.getElementById('modal-category').textContent = getCategoryName(achievement.category);
+    
+    const earnedDateElement = document.getElementById('modal-earned-date');
+    if (achievement.earned && achievement.earned_at) {
+        const date = new Date(achievement.earned_at).toLocaleDateString('nb-NO');
+        document.getElementById('earned-date').textContent = date;
+        earnedDateElement.classList.remove('hidden');
+    } else {
+        earnedDateElement.classList.add('hidden');
+    }
+    
+    document.getElementById('achievement-modal').classList.remove('hidden');
+}
+
+function closeModal() {
+    document.getElementById('achievement-modal').classList.add('hidden');
+}
+
+function getCategoryName(category) {
+    const names = {
+        'quiz': 'Quiz',
+        'consistency': 'Kontinuitet',
+        'mastery': 'Mestring'
+    };
+    return names[category] || category;
+}
+
+function updateStats(data) {
+    document.getElementById('earned-count').textContent = data.total_earned;
+    document.getElementById('total-count').textContent = data.total_available;
+    const rate = data.total_available > 0 ? (data.total_earned / data.total_available * 100).toFixed(1) : 0;
+    document.getElementById('completion-rate').textContent = rate + '%';
+}
+
+// Close modal when clicking outside
+document.getElementById('achievement-modal').addEventListener('click', function(e) {
+    if (e.target === this) {
+        closeModal();
+    }
+});
+</script>
+
+<style>
+.achievement-card.locked {
+    opacity: 0.6;
+}
+
+.achievement-card.earned {
+    border: 2px solid #10B981;
+}
+
+.achievement-filter.active {
+    transform: scale(1.05);
+}
+</style>
+{% endblock %}

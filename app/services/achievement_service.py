@@ -30,9 +30,9 @@ class QuizAchievementRule(AchievementRule):
     
     def check_condition(self, user_id: int) -> bool:
         if self.requirement_type == 'quizzes_completed':
-            count = QuizSession.query.filter_by(
-                user_id=user_id,
-                completed_at__isnot=None
+            count = QuizSession.query.filter(
+                QuizSession.user_id == user_id,
+                QuizSession.completed_at.isnot(None)
             ).count()
             return count >= self.requirement_value
         

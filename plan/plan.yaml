@@ -64,6 +64,7 @@ database:
       - is_active
       - profile_picture
       - preferred_language
+      - total_xp
     user_progress:
       - id
       - user_id

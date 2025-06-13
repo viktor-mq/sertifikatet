@@ -1,1 +1,319 @@
-<!-- Placeholder for leaderboard.html in templates/progress -->
+{% extends "base.html" %}
+
+{% block title %}Ledertavle - TeoriTest{% endblock %}
+
+{% block content %}
+<div class="min-h-screen bg-gradient-to-br from-purple-900 via-blue-900 to-indigo-900">
+    <div class="container mx-auto px-4 py-8">
+        <!-- Header -->
+        <div class="text-center mb-12">
+            <h1 class="text-4xl font-bold text-white mb-4">
+                <i class="fas fa-crown text-yellow-400 mr-3"></i>
+                Ledertavle
+            </h1>
+            <p class="text-xl text-gray-300">Se hvor du rangerer blant andre brukere</p>
+        </div>
+
+        <!-- Filters -->
+        <div class="mb-8">
+            <div class="grid md:grid-cols-2 gap-4 max-w-4xl mx-auto">
+                <!-- Time Period Filter -->
+                <div>
+                    <label class="block text-gray-300 mb-2">Tidsperiode</label>
+                    <select id="time-filter" class="w-full bg-gray-800 text-white p-3 rounded-lg border border-gray-600 focus:border-purple-500">
+                        <option value="daily">I dag</option>
+                        <option value="weekly" selected>Denne uken</option>
+                        <option value="monthly">Denne måneden</option>
+                        <option value="all_time">Alle tider</option>
+                    </select>
+                </div>
+                
+                <!-- Category Filter -->
+                <div>
+                    <label class="block text-gray-300 mb-2">Kategori</label>
+                    <select id="category-filter" class="w-full bg-gray-800 text-white p-3 rounded-lg border border-gray-600 focus:border-purple-500">
+                        <option value="overall" selected>Samlet</option>
+                        <option value="quiz_score">Quiz Score</option>
+                        <option value="achievements">Utmerkelser</option>
+                        <option value="streak">Streak</option>
+                    </select>
+                </div>
+            </div>
+        </div>
+
+        <div class="grid lg:grid-cols-3 gap-8">
+            <!-- Main Leaderboard -->
+            <div class="lg:col-span-2">
+                <div class="glass rounded-xl p-6">
+                    <h2 class="text-2xl font-bold text-white mb-6 text-center">
+                        <span id="leaderboard-title">Ukentlig Samlet Ledertavle</span>
+                    </h2>
+                    
+                    <!-- Top 3 Podium -->
+                    <div id="podium" class="grid grid-cols-3 gap-4 mb-8">
+                        <!-- Podium will be populated by JavaScript -->
+                    </div>
+                    
+                    <!-- Rest of Leaderboard -->
+                    <div id="leaderboard-list" class="space-y-3">
+                        <!-- Leaderboard entries will be loaded here -->
+                    </div>
+                    
+                    <!-- Loading State -->
+                    <div id="loading" class="text-center py-8 text-gray-400">
+                        <i class="fas fa-spinner fa-spin text-2xl mb-2"></i>
+                        <p>Laster ledertavle...</p>
+                    </div>
+                </div>
+            </div>
+
+            <!-- User Stats Sidebar -->
+            <div class="space-y-6">
+                <!-- Your Rank -->
+                <div class="glass rounded-xl p-6">
+                    <h3 class="text-xl font-bold text-white mb-4">Din plassering</h3>
+                    <div id="user-rank-info" class="text-center">
+                        <!-- User rank info will be loaded here -->
+                    </div>
+                </div>
+
+                <!-- Quick Stats -->
+                <div class="glass rounded-xl p-6">
+                    <h3 class="text-xl font-bold text-white mb-4">Hurtigstatistikk</h3>
+                    <div id="quick-stats" class="space-y-3">
+                        <!-- Quick stats will be loaded here -->
+                    </div>
+                </div>
+
+                <!-- Recent Activity -->
+                <div class="glass rounded-xl p-6">
+                    <h3 class="text-xl font-bold text-white mb-4">Siste aktivitet</h3>
+                    <div id="recent-activity" class="space-y-2 text-sm">
+                        <!-- Recent activity will be loaded here -->
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+let currentType = 'weekly';
+let currentCategory = 'overall';
+
+document.addEventListener('DOMContentLoaded', function() {
+    setupFilters();
+    loadLeaderboard();
+    loadUserStats();
+});
+
+function setupFilters() {
+    const timeFilter = document.getElementById('time-filter');
+    const categoryFilter = document.getElementById('category-filter');
+    
+    timeFilter.addEventListener('change', function() {
+        currentType = this.value;
+        updateTitle();
+        loadLeaderboard();
+        loadUserStats();
+    });
+    
+    categoryFilter.addEventListener('change', function() {
+        currentCategory = this.value;
+        updateTitle();
+        loadLeaderboard();
+        loadUserStats();
+    });
+}
+
+function updateTitle() {
+    const timeNames = {
+        'daily': 'Daglig',
+        'weekly': 'Ukentlig',
+        'monthly': 'Månedlig',
+        'all_time': 'Alle Tider'
+    };
+    
+    const categoryNames = {
+        'overall': 'Samlet',
+        'quiz_score': 'Quiz Score',
+        'achievements': 'Utmerkelser',
+        'streak': 'Streak'
+    };
+    
+    const title = `${timeNames[currentType]} ${categoryNames[currentCategory]} Ledertavle`;
+    document.getElementById('leaderboard-title').textContent = title;
+}
+
+async function loadLeaderboard() {
+    const loading = document.getElementById('loading');
+    loading.classList.remove('hidden');
+    
+    try {
+        const response = await fetch(`/api/leaderboard?type=${currentType}&category=${currentCategory}&limit=20`);
+        const data = await response.json();
+        
+        displayLeaderboard(data.leaderboard);
+        loading.classList.add('hidden');
+    } catch (error) {
+        console.error('Error loading leaderboard:', error);
+        loading.innerHTML = '<p class="text-red-400">Feil ved lasting av ledertavle</p>';
+    }
+}
+
+function displayLeaderboard(leaderboard) {
+    const podium = document.getElementById('podium');
+    const list = document.getElementById('leaderboard-list');
+    
+    // Clear previous content
+    podium.innerHTML = '';
+    list.innerHTML = '';
+    
+    if (leaderboard.length === 0) {
+        list.innerHTML = '<p class="text-gray-400 text-center py-8">Ingen data tilgjengelig for denne perioden</p>';
+        return;
+    }
+    
+    // Create podium (top 3)
+    const podiumRanks = [2, 1, 3]; // Middle, Left, Right for visual balance
+    const podiumHeights = ['h-20', 'h-24', 'h-16'];
+    const podiumColors = ['bg-gray-400', 'bg-yellow-400', 'bg-orange-400'];
+    
+    podiumRanks.forEach((displayRank, index) => {
+        const actualIndex = displayRank - 1;
+        const user = leaderboard[actualIndex];
+        
+        const podiumDiv = document.createElement('div');
+        podiumDiv.className = `text-center ${index === 1 ? 'order-1' : index === 0 ? 'order-2' : 'order-3'}`;
+        
+        if (user) {
+            podiumDiv.innerHTML = `
+                <div class="mb-2">
+                    <div class="w-16 h-16 rounded-full bg-purple-600 mx-auto flex items-center justify-center text-2xl font-bold">
+                        ${user.avatar}
+                    </div>
+                </div>
+                <div class="${podiumHeights[actualIndex]} ${podiumColors[actualIndex]} rounded-t-lg flex items-end justify-center pb-2">
+                    <span class="text-white font-bold text-lg">${displayRank}</span>
+                </div>
+                <div class="mt-2">
+                    <div class="text-white font-bold text-sm">${user.username}</div>
+                    <div class="text-gray-300 text-xs">${user.score} poeng</div>
+                </div>
+            `;
+        } else {
+            podiumDiv.innerHTML = `
+                <div class="mb-2">
+                    <div class="w-16 h-16 rounded-full bg-gray-600 mx-auto flex items-center justify-center">
+                        <i class="fas fa-user text-gray-400"></i>
+                    </div>
+                </div>
+                <div class="${podiumHeights[actualIndex]} bg-gray-600 rounded-t-lg flex items-end justify-center pb-2">
+                    <span class="text-gray-400 font-bold text-lg">${displayRank}</span>
+                </div>
+                <div class="mt-2">
+                    <div class="text-gray-400 text-sm">-</div>
+                </div>
+            `;
+        }
+        
+        podium.appendChild(podiumDiv);
+    });
+    
+    // Create list for remaining users (4th place and below)
+    leaderboard.slice(3).forEach(user => {
+        const listItem = createLeaderboardItem(user);
+        list.appendChild(listItem);
+    });
+}
+
+function createLeaderboardItem(user) {
+    const item = document.createElement('div');
+    item.className = 'flex items-center justify-between bg-gray-800 p-4 rounded-lg hover:bg-gray-700 transition';
+    
+    item.innerHTML = `
+        <div class="flex items-center space-x-4">
+            <div class="w-8 h-8 rounded-full bg-purple-600 flex items-center justify-center text-sm font-bold">
+                ${user.rank}
+            </div>
+            <div class="w-10 h-10 rounded-full bg-purple-600 flex items-center justify-center font-bold">
+                ${user.avatar}
+            </div>
+            <div>
+                <div class="text-white font-medium">${user.username}</div>
+                <div class="text-gray-400 text-sm">${user.full_name || ''}</div>
+            </div>
+        </div>
+        <div class="text-right">
+            <div class="text-white font-bold">${user.score}</div>
+            <div class="text-gray-400 text-sm">poeng</div>
+        </div>
+    `;
+    
+    return item;
+}
+
+async function loadUserStats() {
+    try {
+        const [rankResponse, dashboardResponse] = await Promise.all([
+            fetch(`/api/leaderboard/user-rank?type=${currentType}&category=${currentCategory}`),
+            fetch('/api/progress/dashboard')
+        ]);
+        
+        const rankData = await rankResponse.json();
+        const dashboardData = await dashboardResponse.json();
+        
+        displayUserRank(rankData);
+        displayQuickStats(dashboardData);
+    } catch (error) {
+        console.error('Error loading user stats:', error);
+    }
+}
+
+function displayUserRank(rankData) {
+    const container = document.getElementById('user-rank-info');
+    
+    if (rankData.rank) {
+        container.innerHTML = `
+            <div class="text-3xl font-bold text-purple-400 mb-2">#${rankData.rank}</div>
+            <div class="text-gray-300 mb-2">${rankData.score} poeng</div>
+            <div class="text-sm text-gray-400">av ${rankData.total_players} spillere</div>
+        `;
+    } else {
+        container.innerHTML = `
+            <div class="text-gray-400">
+                <i class="fas fa-chart-line text-2xl mb-2"></i>
+                <p>Ingen rangering ennå</p>
+                <p class="text-sm">Fullfør en quiz for å komme på ledertavlen!</p>
+            </div>
+        `;
+    }
+}
+
+function displayQuickStats(dashboardData) {
+    const container = document.getElementById('quick-stats');
+    const stats = dashboardData.basic_stats || {};
+    
+    container.innerHTML = `
+        <div class="flex justify-between">
+            <span class="text-gray-400">Quizer:</span>
+            <span class="text-white">${stats.total_quizzes || 0}</span>
+        </div>
+        <div class="flex justify-between">
+            <span class="text-gray-400">Nøyaktighet:</span>
+            <span class="text-white">${stats.accuracy_rate || 0}%</span>
+        </div>
+        <div class="flex justify-between">
+            <span class="text-gray-400">Streak:</span>
+            <span class="text-white">${dashboardData.streak_info?.current_streak || 0} dager</span>
+        </div>
+        <div class="flex justify-between">
+            <span class="text-gray-400">Denne uken:</span>
+            <span class="text-white">${stats.recent_quizzes_7_days || 0} quizer</span>
+        </div>
+    `;
+}
+</script>
+{% endblock %}

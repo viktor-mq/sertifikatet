@@ -17,6 +17,7 @@ class User(db.Model):
     is_active = db.Column(db.Boolean, default=True)
     profile_picture = db.Column(db.String(255))
     preferred_language = db.Column(db.String(10), default='no')
+    total_xp = db.Column(db.Integer, default=0)
     
     # Relationships
     progress = db.relationship('UserProgress', backref='user', uselist=False, cascade='all, delete-orphan')

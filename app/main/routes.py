@@ -4,6 +4,9 @@ from datetime import datetime
 from . import main_bp
 from .. import db
 from ..models import Question, Option, QuizSession, QuizResponse, User, UserProgress
+from ..services.progress_service import ProgressService
+from ..services.achievement_service import AchievementService
+from ..services.leaderboard_service import LeaderboardService
 
 
 @main_bp.route('/')
@@ -31,10 +34,32 @@ def dashboard():
         flash('Bruker ikke funnet', 'error')
         return redirect(url_for('main.index'))
     
-    # Get user progress
-    progress = user.progress
+    # Get comprehensive dashboard data using services
+    progress_service = ProgressService()
+    achievement_service = AchievementService()
+    leaderboard_service = LeaderboardService()
     
-    return render_template('dashboard.html', user=user, progress=progress)
+    # Get user data
+    dashboard_data = progress_service.get_user_dashboard_data(session['user_id'])
+    achievements = achievement_service.get_user_achievements(session['user_id'])
+    user_rank = leaderboard_service.get_user_rank(session['user_id'])
+    
+    # Get recent achievements (last 5 earned)
+    recent_achievements = [a for a in achievements if a['earned']][-5:]
+    
+    # Get achievement stats
+    achievement_stats = {
+        'total_earned': len([a for a in achievements if a['earned']]),
+        'total_available': len(achievements),
+        'recent': recent_achievements
+    }
+    
+    return render_template('dashboard.html', 
+                         user=user, 
+                         progress=user.progress,
+                         dashboard_data=dashboard_data,
+                         achievement_stats=achievement_stats,
+                         user_rank=user_rank)
 
 
 @main_bp.route('/practice')
@@ -169,31 +194,30 @@ def submit_quiz():
             )
             db.session.add(response)
         
-        # Update user progress
-        user = User.query.get(user_id)
-        if user and user.progress:
-            progress = user.progress
-            progress.total_quizzes_taken += 1
-            progress.total_questions_answered += total_questions
-            progress.correct_answers += correct_count
-            progress.last_activity_date = datetime.utcnow().date()
-            
-            # Update streak
-            today = datetime.utcnow().date()
-            if progress.last_activity_date:
-                days_diff = (today - progress.last_activity_date).days
-                if days_diff == 1:
-                    progress.current_streak_days += 1
-                elif days_diff > 1:
-                    progress.current_streak_days = 1
-            else:
-                progress.current_streak_days = 1
-            
-            # Update longest streak
-            if progress.current_streak_days > progress.longest_streak_days:
-                progress.longest_streak_days = progress.current_streak_days
-        
         db.session.commit()
+        
+        # Update user progress using the service
+        progress_service = ProgressService()
+        progress_service.update_user_progress(user_id, quiz_session)
+        
+        # Check for new achievements
+        achievement_service = AchievementService()
+        new_achievements = achievement_service.check_achievements(user_id)
+        
+        # Update leaderboards
+        leaderboard_service = LeaderboardService()
+        leaderboard_service.update_leaderboards(user_id)
+        
+        # Store new achievements in session to show in results
+        if new_achievements:
+            session['new_achievements'] = [
+                {
+                    'name': ach.name,
+                    'description': ach.description,
+                    'points': ach.points,
+                    'icon': ach.icon_filename
+                } for ach in new_achievements
+            ]
         
         # Redirect to results page
         return redirect(url_for('main.quiz_results', session_id=quiz_session.id))
@@ -380,3 +404,28 @@ def categories():
     category_list = [cat[0] for cat in cats if cat[0]]
     
     return jsonify(category_list)
+
+
+@main_bp.route('/achievements')
+def achievements():
+    """Achievements page"""
+    if 'user_id' not in session:
+        flash('Du må logge inn for å se utmerkelser', 'warning')
+        return redirect(url_for('auth.login', next=request.url))
+    
+    # Get achievement stats for template
+    achievement_service = AchievementService()
+    achievements_data = achievement_service.get_user_achievements(session['user_id'])
+    
+    total_earned = len([a for a in achievements_data if a['earned']])
+    total_available = len(achievements_data)
+    
+    return render_template('progress/achievements.html',
+                         total_earned=total_earned,
+                         total_available=total_available)
+
+
+@main_bp.route('/leaderboard')
+def leaderboard():
+    """Leaderboard page"""
+    return render_template('progress/leaderboard.html')
