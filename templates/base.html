@@ -15,8 +15,13 @@
     <script src="https://cdn.tailwindcss.com"></script>
     
     {% block extra_css %}{% endblock %}
+    
     <!-- Favicon -->
-    <link rel="icon" type="image/png" href="{{ url_for('static', filename='images/profiles/selskapslogo.png') }}">
+    <link rel="icon" type="image/png" sizes="32x32" href="{{ url_for('static', filename='images/profiles/selskapslogo.png') }}?v=2">
+    <link rel="icon" type="image/png" sizes="16x16" href="{{ url_for('static', filename='images/profiles/selskapslogo.png') }}?v=2">
+    <link rel="shortcut icon" type="image/png" href="{{ url_for('static', filename='images/profiles/selskapslogo.png') }}?v=2">
+    <meta name="msapplication-TileImage" content="{{ url_for('static', filename='images/profiles/selskapslogo.png') }}?v=2">
+    <meta name="theme-color" content="#7c3aed">
 </head>
 <body class="bg-gray-900 text-white">
     <!-- Navigation -->
