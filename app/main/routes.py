@@ -1,4 +1,5 @@
 from flask import render_template, request, redirect, url_for, session, jsonify, flash, current_app
+from flask_login import login_required, current_user
 import random
 import os
 from datetime import datetime
@@ -24,16 +25,10 @@ def index_redirect():
 
 
 @main_bp.route('/dashboard')
+@login_required
 def dashboard():
     """User dashboard"""
-    if 'user_id' not in session:
-        flash('Du må logge inn for å se dashboardet', 'warning')
-        return redirect(url_for('auth.login', next=request.url))
-    
-    user = User.query.get(session['user_id'])
-    if not user:
-        flash('Bruker ikke funnet', 'error')
-        return redirect(url_for('main.index'))
+    user = current_user
     
     # Get comprehensive dashboard data using services
     progress_service = ProgressService()
@@ -42,9 +37,9 @@ def dashboard():
     
     # Get user data with error handling
     try:
-        dashboard_data = progress_service.get_user_dashboard_data(session['user_id'])
-        achievements = achievement_service.get_user_achievements(session['user_id'])
-        user_rank = leaderboard_service.get_user_rank(session['user_id'])
+        dashboard_data = progress_service.get_user_dashboard_data(user.id)
+        achievements = achievement_service.get_user_achievements(user.id)
+        user_rank = leaderboard_service.get_user_rank(user.id)
         
         # Get recent achievements (last 5 earned)
         recent_achievements = [a for a in achievements if a['earned']][-5:]
@@ -190,8 +185,8 @@ def submit_quiz():
     score = (correct_count / total_questions * 100) if total_questions > 0 else 0
     
     # If user is logged in, save to database
-    if 'user_id' in session:
-        user_id = session['user_id']
+    if current_user.is_authenticated:
+        user_id = current_user.id
         
         # Create quiz session
         quiz_session = QuizSession(
@@ -264,16 +259,13 @@ def submit_quiz():
 
 
 @main_bp.route('/quiz/results/<int:session_id>')
+@login_required
 def quiz_results(session_id):
     """Display quiz results"""
-    if 'user_id' not in session:
-        flash('Du må logge inn for å se resultatene', 'warning')
-        return redirect(url_for('auth.login'))
-    
     # Get quiz session
     quiz_session = QuizSession.query.filter_by(
         id=session_id,
-        user_id=session['user_id']
+        user_id=current_user.id
     ).first()
     
     if not quiz_session:
@@ -448,15 +440,12 @@ def categories():
 
 
 @main_bp.route('/achievements')
+@login_required
 def achievements():
     """Achievements page"""
-    if 'user_id' not in session:
-        flash('Du må logge inn for å se utmerkelser', 'warning')
-        return redirect(url_for('auth.login', next=request.url))
-    
     # Get achievement stats for template
     achievement_service = AchievementService()
-    achievements_data = achievement_service.get_user_achievements(session['user_id'])
+    achievements_data = achievement_service.get_user_achievements(current_user.id)
     
     total_earned = len([a for a in achievements_data if a['earned']])
     total_available = len(achievements_data)

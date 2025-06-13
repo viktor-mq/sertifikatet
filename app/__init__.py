@@ -2,15 +2,29 @@ from flask import Flask
 from flask_sqlalchemy import SQLAlchemy
 from flask_migrate import Migrate
 from config import Config
+from flask_login import LoginManager
+
 
 db = SQLAlchemy()
 migrate = Migrate()
+login_manager = LoginManager()
+login_manager.login_view = 'auth.login'
+
+
+# User loader callback for Flask-Login
+@login_manager.user_loader
+def load_user(user_id):
+    from .models import User
+    return User.query.get(int(user_id))
 
 def create_app():
     app = Flask(__name__, static_folder='../static', template_folder='../templates')
     
-    # Load configuration
+    # Load configuration first
     app.config.from_object(Config)
+    
+    # Initialize Flask-Login
+    login_manager.init_app(app)
     
     # Initialize extensions
     db.init_app(app)

@@ -1,10 +1,12 @@
 import os
 import csv
 from flask import render_template, request, redirect, url_for, session, current_app, send_file, flash, jsonify
+from flask_login import login_required, current_user
 from werkzeug.utils import secure_filename
 from io import StringIO
 from sqlalchemy import text, inspect
 from . import admin_bp
+from functools import wraps
 
 from .utils import validate_question
 from .. import db
@@ -12,28 +14,30 @@ from ..models import Question, Option, TrafficSign, QuizImage
 
 # Blueprint is already created in __init__.py, using the imported one
 
-@admin_bp.route('/', methods=['GET', 'POST'])
+def admin_required(f):
+    @wraps(f)
+    @login_required
+    def decorated_function(*args, **kwargs):
+        if not current_user.is_authenticated or current_user.username != 'admin':
+            flash('Du har ikke tilgang til denne siden', 'error')
+            return redirect(url_for('main.index'))
+        return f(*args, **kwargs)
+    return decorated_function
+
+@admin_bp.route('/')
 def login():
-    error = None
-    if request.method == 'POST':
-        password = request.form.get('password')
-        # Use ADMIN_PASSWORD from config or default 'creative'
-        if password and password == current_app.config.get('ADMIN_PASSWORD', 'creative'):
-            session['admin'] = True
-            return redirect(url_for('admin.admin_dashboard'))
-        else:
-            error = 'Feil passord'
-    return render_template('admin/admin_login.html', error=error)
+    # Redirect to main login page
+    flash('Logg inn som admin for å få tilgang til administrasjonspanelet', 'info')
+    return redirect(url_for('auth.login', next=url_for('admin.admin_dashboard')))
 
 @admin_bp.route('/logout')
 def logout():
-    session.pop('admin', None)
-    return redirect(url_for('admin.login'))
+    # Use the main logout
+    return redirect(url_for('auth.logout'))
 
 @admin_bp.route('/dashboard', methods=['GET', 'POST'])
+@admin_required
 def admin_dashboard():
-    if not session.get('admin'):
-        return redirect(url_for('admin.login'))
 
     # Handle search/filter parameters
     search_query = request.args.get('search', '').strip()
@@ -287,9 +291,8 @@ def admin_dashboard():
     )
 
 @admin_bp.route('/delete_question/<int:question_id>', methods=['POST'])
+@admin_required
 def delete_question(question_id):
-    if not session.get('admin'):
-        return redirect(url_for('admin.login'))
     
     # Delete question and its options (cascade will handle options)
     question = Question.query.get(question_id)
@@ -300,9 +303,8 @@ def delete_question(question_id):
     return redirect(url_for('admin.admin_dashboard'))
 
 @admin_bp.route('/bulk_delete', methods=['POST'])
+@admin_required
 def bulk_delete():
-    if not session.get('admin'):
-        return redirect(url_for('admin.login'))
     
     ids = request.form.getlist('question_ids')
     
@@ -316,9 +318,8 @@ def bulk_delete():
     return redirect(url_for('admin.admin_dashboard'))
 
 @admin_bp.route('/export_questions')
+@admin_required
 def export_questions():
-    if not session.get('admin'):
-        return redirect(url_for('admin.login'))
     
     # Get all questions with their options
     questions = Question.query.all()

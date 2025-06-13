@@ -1,11 +1,13 @@
 # app/auth/routes.py
-from flask import render_template, request, redirect, url_for, session, flash
+from flask import render_template, request, redirect, url_for, flash
 from werkzeug.security import generate_password_hash, check_password_hash
 from datetime import datetime
 from sqlalchemy import desc
+from sqlalchemy.orm import Query
 from . import auth_bp
 from .. import db
-from ..models import User, UserProgress
+from ..models import User, UserProgress, QuizSession
+from flask_login import login_user, logout_user, login_required, current_user
 
 
 @auth_bp.route('/login', methods=['GET', 'POST'])
@@ -18,11 +20,10 @@ def login():
         user = User.query.filter_by(username=username).first()
         
         if user and check_password_hash(user.password_hash, password):
-            session['user_id'] = user.id
-            session['username'] = user.username
             # Update last login
             user.last_login = datetime.utcnow()
             db.session.commit()
+            login_user(user)
             flash(f'Velkommen tilbake, {user.full_name or user.username}!', 'success')
             # Redirect to dashboard or intended page
             next_page = request.args.get('next')
@@ -74,8 +75,7 @@ def register():
         db.session.commit()
         
         # Auto-login after registration
-        session['user_id'] = user.id
-        session['username'] = user.username
+        login_user(user)
         
         flash('Velkommen til TeoriTest! La oss starte din læringsreise.', 'success')
         return redirect(url_for('main.dashboard'))
@@ -84,29 +84,23 @@ def register():
 
 
 @auth_bp.route('/logout')
+@login_required
 def logout():
     """User logout"""
-    session.pop('user_id', None)
-    session.pop('username', None)
+    logout_user()
     flash('Du har blitt logget ut. Vi sees!', 'info')
     return redirect(url_for('main.index'))
 
 
 @auth_bp.route('/profile')
+@login_required
 def profile():
     """User profile page"""
-    if 'user_id' not in session:
-        flash('Du må logge inn for å se profilen din', 'warning')
-        return redirect(url_for('auth.login', next=request.url))
-    
-    user = User.query.get(session['user_id'])
-    if not user:
-        flash('Bruker ikke funnet', 'error')
-        return redirect(url_for('main.index'))
+    user = current_user
     
     # Get user progress and statistics
     progress = user.progress
-    recent_sessions = user.quiz_sessions.order_by(desc('completed_at')).limit(5).all()
+    recent_sessions = user.quiz_sessions.order_by(QuizSession.completed_at.desc()).limit(5).all()
     achievements = user.achievements
     
     # Calculate statistics

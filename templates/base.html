@@ -31,7 +31,7 @@
                     <a href="{{ url_for('main.quiz_categories') }}" class="hover:text-purple-400 transition">Quiz</a>
                     <a href="{{ url_for('learning.index') }}" class="hover:text-purple-400 transition">Læringsveier</a>
                     
-                    {% if session.user_id %}
+                    {% if current_user.is_authenticated %}
                         <a href="{{ url_for('main.dashboard') }}" class="hover:text-purple-400 transition">Dashboard</a>
                         <a href="{{ url_for('main.achievements') }}" class="hover:text-purple-400 transition">Utmerkelser</a>
                         <a href="{{ url_for('main.leaderboard') }}" class="hover:text-purple-400 transition">Ledertavle</a>
@@ -44,7 +44,7 @@
                         </a>
                     {% endif %}
                     
-                    {% if session.admin %}
+                    {% if current_user.is_authenticated and current_user.username == 'admin' %}
                         <a href="{{ url_for('admin.admin_dashboard') }}" class="text-yellow-400 hover:text-yellow-300 transition">
                             <i class="fas fa-cog"></i> Admin
                         </a>
