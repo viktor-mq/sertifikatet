@@ -170,7 +170,17 @@
           <td data-column="category">{{ question.category or 'Ukategorisert' }}</td>
           <td data-column="image">
             {% if question.image_filename %}
-              <img src="{{ url_for('static', filename='images/signs/' ~ question.image_filename) }}"
+              {% set matching = images | selectattr('filename', 'equalto', question.image_filename) | list %}
+              {% if matching %}
+                {% set current_folder = matching[0].folder %}
+              {% else %}
+                {% set current_folder = '' %}
+              {% endif %}
+              <img src="{{ url_for('static',
+                filename=( 'images/' ~ current_folder ~ '/' ~ question.image_filename )
+                         if current_folder
+                         else 'images/' ~ question.image_filename
+              ) }}"
                    alt="" class="question-image">
             {% else %}
               <span style="color: #999;">Ingen bilde</span>
@@ -312,30 +322,44 @@ function editQuestionFromRow(button, id) {
   // Fill category
   document.getElementById('categoryInput').value = category === 'Ukategorisert' ? '' : category;
   
-  // Handle image
+  // Handle image (generic for any folder depth and category)
   const imgElem = imageCell.querySelector('img');
   let imageName = '';
   let folder = '';
   if (imgElem) {
     const parts = imgElem.src.split('/images/');
     if (parts.length === 2) {
-      const path = parts[1]; // e.g. signs/fare/fil.gif or quiz/Pyss.png
+      const path = parts[1];                // e.g. "quiz/promille.png" or "signs/forbuds/file.gif"
       const pathParts = path.split('/');
-      // Corrected logic: set folder to category if signs, else leave blank
-      if (pathParts.length >= 3 && pathParts[0] === 'signs') {
-        folder = pathParts[1]; // Use category as folder
-        imageName = pathParts[pathParts.length - 1];
-      }
+      imageName = pathParts.pop();          // last segment is filename
+      folder = pathParts.join('/');         // the rest is the folder path (possibly multi-level)
     }
   }
-  document.getElementById('imageSelect').value = imageName;
-  // Update selected image in gallery
-  document.querySelectorAll('.selectable-img').forEach(img => {
-    img.classList.remove('selected');
-    if (img.dataset.filename === imageName) {
-      img.classList.add('selected');
+
+  // Set dropdown and gallery selection
+  const select = document.getElementById('imageSelect');
+  if (imageName) {
+    select.value = imageName;
+    const opt = Array.from(select.options)
+                     .find(o => o.value === imageName);
+    if (opt) {
+      // Sync the gallery folder filter
+      const folderSelect = document.getElementById('galleryFolderFilter');
+      if (folderSelect) {
+        folderSelect.value = folder || 'all';
+        filterGalleryByFolder();
+      }
+      // Highlight the correct thumbnail
+      document.querySelectorAll('.selectable-img').forEach(img => {
+        img.classList.toggle('selected', img.dataset.filename === imageName);
+      });
     }
-  });
+  } else {
+    select.value = '';
+    document.querySelectorAll('.selectable-img.selected').forEach(img => {
+      img.classList.remove('selected');
+    });
+  }
   
   // Parse options
   const optionDivs = optionsCell.querySelectorAll('div');
