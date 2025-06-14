@@ -10,6 +10,7 @@ from ..models import User, UserProgress, QuizSession
 from flask_login import login_user, logout_user, login_required, current_user
 from ..utils.email import (send_verification_email, send_password_reset_email, 
                           verify_email_token, verify_reset_token, send_welcome_email)
+from .utils import validate_password
 
 
 @auth_bp.route('/login', methods=['GET', 'POST'])
@@ -53,6 +54,13 @@ def register():
         # Validate inputs
         if not all([username, email, password]):
             flash('Alle felt må fylles ut', 'error')
+            return redirect(url_for('auth.register'))
+        
+        # Validate password requirements
+        password_errors = validate_password(password)
+        if password_errors:
+            for error in password_errors:
+                flash(error, 'error')
             return redirect(url_for('auth.register'))
             
         # Check if user exists
@@ -157,12 +165,17 @@ def verify_email(token):
     send_welcome_email(user)
     
     flash('E-postadressen din er nå bekreftet! Du kan logge inn.', 'success')
-    return redirect(url_for('auth.login'))
+    return redirect(url_for('main.index'))
 
 
 @auth_bp.route('/forgot-password', methods=['GET', 'POST'])
 def forgot_password():
     """Request password reset"""
+    # If user is already logged in, redirect them
+    if current_user.is_authenticated:
+        flash('Du er allerede innlogget. Bruk endre passord-funksjonen i profilen din.', 'info')
+        return redirect(url_for('auth.profile'))
+    
     if request.method == 'POST':
         email = request.form.get('email')
         
@@ -183,6 +196,11 @@ def forgot_password():
 @auth_bp.route('/reset/<token>', methods=['GET', 'POST'])
 def reset_password(token):
     """Reset password with token"""
+    # If user is already logged in, redirect them
+    if current_user.is_authenticated:
+        flash('Du er allerede innlogget. Bruk endre passord-funksjonen i profilen din.', 'info')
+        return redirect(url_for('auth.profile'))
+    
     email = verify_reset_token(token)
     
     if not email:
@@ -199,8 +217,11 @@ def reset_password(token):
         password = request.form.get('password')
         confirm_password = request.form.get('confirm_password')
         
-        if not password or len(password) < 8:
-            flash('Passordet må være minst 8 tegn langt.', 'error')
+        # Validate password requirements
+        password_errors = validate_password(password)
+        if password_errors:
+            for error in password_errors:
+                flash(error, 'error')
             return render_template('auth/reset_password.html', token=token)
         
         if password != confirm_password:
@@ -247,8 +268,10 @@ def change_password():
             return render_template('auth/change_password.html')
         
         # Validate new password
-        if not new_password or len(new_password) < 8:
-            flash('Nytt passord må være minst 8 tegn langt.', 'error')
+        password_errors = validate_password(new_password)
+        if password_errors:
+            for error in password_errors:
+                flash(error, 'error')
             return render_template('auth/change_password.html')
         
         if new_password != confirm_password:
