@@ -1,0 +1,224 @@
+<!DOCTYPE html>
+<html lang="no">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Velkommen til Sertifikatet.no!</title>
+    <style>
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+            line-height: 1.6;
+            color: #333;
+            background-color: #f4f4f4;
+            margin: 0;
+            padding: 0;
+        }
+        .container {
+            max-width: 600px;
+            margin: 40px auto;
+            background: #ffffff;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+            overflow: hidden;
+        }
+        .header {
+            background: linear-gradient(135deg, #1a73e8 0%, #4285f4 100%);
+            color: white;
+            padding: 40px 30px;
+            text-align: center;
+        }
+        .header h1 {
+            margin: 0;
+            font-size: 32px;
+            font-weight: 500;
+        }
+        .welcome-icon {
+            font-size: 64px;
+            margin-bottom: 20px;
+        }
+        .content {
+            padding: 40px 30px;
+        }
+        .content h2 {
+            color: #1a73e8;
+            margin-top: 0;
+        }
+        .button {
+            display: inline-block;
+            padding: 14px 32px;
+            background: #1a73e8;
+            color: white;
+            text-decoration: none;
+            border-radius: 4px;
+            font-weight: 500;
+            margin: 20px 5px;
+        }
+        .button:hover {
+            background: #155ab7;
+        }
+        .button-secondary {
+            background: #f1f3f4;
+            color: #1a73e8;
+        }
+        .button-secondary:hover {
+            background: #e8eaed;
+        }
+        .features {
+            background: #f8f9fa;
+            padding: 30px;
+            border-radius: 8px;
+            margin: 20px 0;
+        }
+        .feature-item {
+            display: flex;
+            align-items: center;
+            margin: 15px 0;
+        }
+        .feature-icon {
+            font-size: 24px;
+            margin-right: 15px;
+            color: #1a73e8;
+        }
+        .tips-section {
+            background: #e8f4f8;
+            padding: 25px;
+            border-radius: 8px;
+            border-left: 4px solid #1a73e8;
+            margin: 30px 0;
+        }
+        .footer {
+            background: #f8f9fa;
+            padding: 20px;
+            text-align: center;
+            color: #666;
+            font-size: 14px;
+        }
+        .footer a {
+            color: #1a73e8;
+            text-decoration: none;
+        }
+        @media only screen and (max-width: 600px) {
+            .container {
+                margin: 0;
+                border-radius: 0;
+            }
+            .header {
+                padding: 30px 20px;
+            }
+            .content {
+                padding: 30px 20px;
+            }
+            .button {
+                display: block;
+                text-align: center;
+                margin: 10px 0;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <div class="welcome-icon">🎉</div>
+            <h1>Velkommen til Sertifikatet.no!</h1>
+        </div>
+        
+        <div class="content">
+            <h2>Gratulerer, {{ user.full_name or user.username }}!</h2>
+            
+            <p>E-postadressen din er nå bekreftet, og kontoen din er aktivert. Du er klar til å starte din reise mot å bestå teoriprøven!</p>
+            
+            <div class="features">
+                <h3>Hva kan du gjøre nå?</h3>
+                <div class="feature-item">
+                    <span class="feature-icon">📚</span>
+                    <div>
+                        <strong>Ta øvingsprøver</strong><br>
+                        Over 2000 spørsmål i alle kategorier
+                    </div>
+                </div>
+                <div class="feature-item">
+                    <span class="feature-icon">🎥</span>
+                    <div>
+                        <strong>Se instruksjonsvideoer</strong><br>
+                        Lær av eksperter med våre videoer
+                    </div>
+                </div>
+                <div class="feature-item">
+                    <span class="feature-icon">🎮</span>
+                    <div>
+                        <strong>Spill læringsspill</strong><br>
+                        Lær gjennom morsomme og interaktive spill
+                    </div>
+                </div>
+                <div class="feature-item">
+                    <span class="feature-icon">📊</span>
+                    <div>
+                        <strong>Følg din fremgang</strong><br>
+                        Se statistikk og forbedring over tid
+                    </div>
+                </div>
+                <div class="feature-item">
+                    <span class="feature-icon">🏆</span>
+                    <div>
+                        <strong>Lås opp prestasjoner</strong><br>
+                        Få belønninger for din innsats
+                    </div>
+                </div>
+            </div>
+            
+            <div class="tips-section">
+                <h3>💡 Tips for å komme i gang:</h3>
+                <ol>
+                    <li>Start med en diagnostisk test for å se ditt kunnskapsnivå</li>
+                    <li>Fokuser på kategoriene du trenger mest øving i</li>
+                    <li>Sett av minst 15 minutter hver dag for øving</li>
+                    <li>Bygg opp en øvingsstreak for å holde motivasjonen oppe</li>
+                </ol>
+            </div>
+            
+            <p style="text-align: center;">
+                <a href="{{ quiz_url }}" class="button">Start din første quiz</a>
+                <a href="{{ dashboard_url }}" class="button button-secondary">Gå til dashbordet</a>
+            </p>
+            
+            <p style="text-align: center; margin-top: 30px;">
+                <em>"Veien til suksess starter med det første steget. Ta det nå!"</em>
+            </p>
+        </div>
+        
+        <div class="footer">
+            <p>&copy; {{ current_year }} Sertifikatet.no. Alle rettigheter forbeholdt.</p>
+            <p>Har du spørsmål? <a href="mailto:support@sertifikatet.no">Kontakt oss</a></p>
+            <p><small>Du mottar denne e-posten fordi du nettopp bekreftet kontoen din.</small></p>
+        </div>
+    </div>
+    
+    <!-- Plain text version for email clients that don't support HTML -->
+    <div style="display: none;">
+        Velkommen til Sertifikatet.no!
+        
+        Gratulerer, {{ user.full_name or user.username }}!
+        
+        E-postadressen din er nå bekreftet, og kontoen din er aktivert. Du er klar til å starte din reise mot å bestå teoriprøven!
+        
+        Hva kan du gjøre nå?
+        - Ta øvingsprøver: Over 2000 spørsmål i alle kategorier
+        - Se instruksjonsvideoer: Lær av eksperter med våre videoer
+        - Spill læringsspill: Lær gjennom morsomme og interaktive spill
+        - Følg din fremgang: Se statistikk og forbedring over tid
+        - Lås opp prestasjoner: Få belønninger for din innsats
+        
+        Tips for å komme i gang:
+        1. Start med en diagnostisk test for å se ditt kunnskapsnivå
+        2. Fokuser på kategoriene du trenger mest øving i
+        3. Sett av minst 15 minutter hver dag for øving
+        4. Bygg opp en øvingsstreak for å holde motivasjonen oppe
+        
+        Start din første quiz: {{ quiz_url }}
+        Gå til dashbordet: {{ dashboard_url }}
+        
+        Har du spørsmål? Kontakt oss på support@sertifikatet.no
+    </div>
+</body>
+</html>

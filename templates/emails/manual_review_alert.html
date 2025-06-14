@@ -1,0 +1,227 @@
+<!DOCTYPE html>
+<html lang="no">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Manuell gjennomgang påkrevd</title>
+    <style>
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+            line-height: 1.6;
+            color: #333;
+            background-color: #f4f4f4;
+            margin: 0;
+            padding: 0;
+        }
+        .container {
+            max-width: 600px;
+            margin: 40px auto;
+            background: #ffffff;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+            overflow: hidden;
+        }
+        .header {
+            background: #ffc107;
+            color: #212529;
+            padding: 20px;
+            text-align: center;
+        }
+        .header h1 {
+            margin: 0;
+            font-size: 24px;
+            font-weight: 500;
+        }
+        .alert-icon {
+            font-size: 48px;
+            margin: 10px 0;
+        }
+        .content {
+            padding: 30px;
+        }
+        .content h2 {
+            color: #ffc107;
+            margin-top: 0;
+        }
+        .review-box {
+            background: #fff3cd;
+            border: 1px solid #ffeaa7;
+            color: #856404;
+            padding: 20px;
+            border-radius: 4px;
+            margin: 20px 0;
+        }
+        .details-section {
+            background: #f8f9fa;
+            padding: 20px;
+            border-radius: 4px;
+            margin: 20px 0;
+        }
+        .detail-row {
+            display: flex;
+            margin: 10px 0;
+            padding: 10px 0;
+            border-bottom: 1px solid #e9ecef;
+        }
+        .detail-label {
+            font-weight: bold;
+            width: 140px;
+            color: #555;
+        }
+        .detail-value {
+            flex: 1;
+        }
+        .action-required {
+            background: #dc3545;
+            color: white;
+            padding: 15px;
+            border-radius: 4px;
+            margin: 20px 0;
+            text-align: center;
+        }
+        .button {
+            display: inline-block;
+            padding: 12px 24px;
+            background: #ffc107;
+            color: #212529;
+            text-decoration: none;
+            border-radius: 4px;
+            font-weight: 500;
+            margin: 10px 5px;
+        }
+        .button:hover {
+            background: #e0a800;
+        }
+        .checklist {
+            background: #e9ecef;
+            padding: 20px;
+            border-radius: 4px;
+            margin: 20px 0;
+        }
+        .checklist-item {
+            margin: 10px 0;
+            padding-left: 25px;
+            position: relative;
+        }
+        .checklist-item::before {
+            content: "☐";
+            position: absolute;
+            left: 0;
+            color: #6c757d;
+        }
+        .footer {
+            background: #f8f9fa;
+            padding: 20px;
+            text-align: center;
+            color: #666;
+            font-size: 14px;
+        }
+        .code-block {
+            background: #f5f5f5;
+            padding: 10px;
+            border-radius: 4px;
+            font-family: monospace;
+            margin: 10px 0;
+        }
+        @media only screen and (max-width: 600px) {
+            .container {
+                margin: 0;
+                border-radius: 0;
+            }
+            .detail-row {
+                flex-direction: column;
+            }
+            .detail-label {
+                width: 100%;
+                margin-bottom: 5px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <div class="alert-icon">⚠️</div>
+            <h1>Manuell gjennomgang påkrevd</h1>
+        </div>
+        
+        <div class="content">
+            <div class="action-required">
+                <strong>HANDLING PÅKREVD:</strong> {{ review_type }}
+            </div>
+            
+            <div class="review-box">
+                <h3>Årsak til manuell gjennomgang:</h3>
+                <p>{{ details.reason|default('Systemet har flagget innhold som krever manuell godkjenning før publisering.') }}</p>
+            </div>
+            
+            <div class="details-section">
+                <h3>Detaljer</h3>
+                <div class="detail-row">
+                    <div class="detail-label">Type innhold:</div>
+                    <div class="detail-value">{{ details.content_type|default('Ukjent') }}</div>
+                </div>
+                <div class="detail-row">
+                    <div class="detail-label">ID:</div>
+                    <div class="detail-value">{{ details.content_id|default('N/A') }}</div>
+                </div>
+                <div class="detail-row">
+                    <div class="detail-label">Sendt inn av:</div>
+                    <div class="detail-value">{{ details.submitted_by|default('System') }}</div>
+                </div>
+                <div class="detail-row">
+                    <div class="detail-label">Tidspunkt:</div>
+                    <div class="detail-value">{{ timestamp.strftime('%d.%m.%Y kl. %H:%M') }}</div>
+                </div>
+                <div class="detail-row">
+                    <div class="detail-label">Status:</div>
+                    <div class="detail-value">Venter på gjennomgang</div>
+                </div>
+            </div>
+            
+            {% if details.content_preview %}
+            <div class="details-section">
+                <h3>Forhåndsvisning av innhold</h3>
+                <div class="code-block">
+                    {{ details.content_preview|truncate(200) }}
+                </div>
+            </div>
+            {% endif %}
+            
+            {% if details.flags %}
+            <div class="review-box">
+                <h3>🚩 Automatiske flagg:</h3>
+                <ul>
+                {% for flag in details.flags %}
+                    <li>{{ flag }}</li>
+                {% endfor %}
+                </ul>
+            </div>
+            {% endif %}
+            
+            <div class="checklist">
+                <h3>Sjekkliste for gjennomgang:</h3>
+                <div class="checklist-item">Verifiser at innholdet følger retningslinjene</div>
+                <div class="checklist-item">Sjekk for upassende språk eller innhold</div>
+                <div class="checklist-item">Bekreft at teknisk informasjon er korrekt</div>
+                <div class="checklist-item">Vurder om innholdet er relevant for plattformen</div>
+                <div class="checklist-item">Dokumenter avgjørelsen i admin-panelet</div>
+            </div>
+            
+            <p style="text-align: center; margin: 30px 0;">
+                <a href="{{ admin_url }}" class="button">Gå til admin panel</a>
+            </p>
+            
+            <p style="text-align: center; color: #666;">
+                <small>Denne gjennomgangen bør fullføres innen 24 timer for å opprettholde god brukeropplevelse.</small>
+            </p>
+        </div>
+        
+        <div class="footer">
+            <p>&copy; {{ current_year }} Sertifikatet.no - Admin System</p>
+            <p>Sendt fra: info@sertifikatet.no</p>
+            <p><small>Dette er en automatisk varsling som krever manuell oppfølging.</small></p>
+        </div>
+    </div>
+</body>
+</html>

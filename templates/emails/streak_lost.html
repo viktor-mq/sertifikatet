@@ -1,0 +1,187 @@
+<!DOCTYPE html>
+<html lang="no">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Din streak er brutt</title>
+    <style>
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+            line-height: 1.6;
+            color: #333;
+            background-color: #f4f4f4;
+            margin: 0;
+            padding: 0;
+        }
+        .container {
+            max-width: 600px;
+            margin: 40px auto;
+            background: #ffffff;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+            overflow: hidden;
+        }
+        .header {
+            background: linear-gradient(135deg, #ff6b6b 0%, #ee5a24 100%);
+            color: white;
+            padding: 40px 30px;
+            text-align: center;
+        }
+        .header h1 {
+            margin: 0;
+            font-size: 28px;
+            font-weight: 500;
+        }
+        .streak-icon {
+            font-size: 64px;
+            margin-bottom: 20px;
+        }
+        .content {
+            padding: 40px 30px;
+        }
+        .content h2 {
+            color: #ff6b6b;
+            margin-top: 0;
+        }
+        .button {
+            display: inline-block;
+            padding: 14px 32px;
+            background: #ff6b6b;
+            color: white;
+            text-decoration: none;
+            border-radius: 4px;
+            font-weight: 500;
+            margin: 20px 0;
+        }
+        .button:hover {
+            background: #ee5a24;
+        }
+        .streak-stats {
+            background: #fff5f5;
+            padding: 25px;
+            border-radius: 8px;
+            margin: 20px 0;
+            border-left: 4px solid #ff6b6b;
+        }
+        .stat-number {
+            font-size: 36px;
+            font-weight: bold;
+            color: #ff6b6b;
+        }
+        .motivation-box {
+            background: #f8f9fa;
+            padding: 25px;
+            border-radius: 8px;
+            margin: 30px 0;
+        }
+        .tips-list {
+            background: #e8f4f8;
+            padding: 20px;
+            border-radius: 8px;
+            margin: 20px 0;
+        }
+        .tips-list li {
+            margin: 10px 0;
+        }
+        .footer {
+            background: #f8f9fa;
+            padding: 20px;
+            text-align: center;
+            color: #666;
+            font-size: 14px;
+        }
+        .footer a {
+            color: #ff6b6b;
+            text-decoration: none;
+        }
+        @media only screen and (max-width: 600px) {
+            .container {
+                margin: 0;
+                border-radius: 0;
+            }
+            .header {
+                padding: 30px 20px;
+            }
+            .content {
+                padding: 30px 20px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <div class="streak-icon">💔</div>
+            <h1>Din streak er brutt</h1>
+        </div>
+        
+        <div class="content">
+            <h2>Hei {{ user.full_name or user.username }},</h2>
+            
+            <p>Vi la merke til at du ikke øvde i går, og din streak på <strong>{{ lost_streak_days }} dager</strong> er dessverre brutt.</p>
+            
+            <div class="streak-stats">
+                <p style="margin: 0;">Du hadde bygget opp en imponerende streak på</p>
+                <div class="stat-number">{{ lost_streak_days }} dager 🔥</div>
+                <p>Det viser dedikasjon og fremgang!</p>
+            </div>
+            
+            <div class="motivation-box">
+                <h3>Men ikke gi opp! 💪</h3>
+                <p>Alle som har lykkes har opplevd tilbakeslag. Det viktigste er ikke at streaken ble brutt, men at du kommer tilbake sterkere.</p>
+                <p><strong>Visste du at:</strong> Forskning viser at det tar i gjennomsnitt 66 dager å bygge en vane. Du er allerede godt på vei!</p>
+            </div>
+            
+            <div class="tips-list">
+                <h3>Tips for å komme tilbake på sporet:</h3>
+                <ul>
+                    <li>🎯 Start med en kort økt i dag - bare 5 minutter teller!</li>
+                    <li>📅 Sett en påminnelse på telefonen din</li>
+                    <li>🏆 Fokuser på fremgang, ikke perfeksjon</li>
+                    <li>🤝 Del målene dine med en venn for ekstra motivasjon</li>
+                    <li>🎁 Belønning deg selv for hver uke du fullfører</li>
+                </ul>
+            </div>
+            
+            <p style="text-align: center;">
+                <a href="{{ login_url }}" class="button">Start en ny streak nå!</a>
+            </p>
+            
+            <p style="text-align: center; font-style: italic; color: #666; margin-top: 30px;">
+                "Suksess er ikke endelig, fiasko er ikke dødelig: det er motet til å fortsette som teller."<br>
+                - Winston Churchill
+            </p>
+            
+            <p>Vi tror på deg og gleder oss til å se deg bygge en enda lengre streak! 🚀</p>
+        </div>
+        
+        <div class="footer">
+            <p>&copy; {{ current_year }} Sertifikatet.no. Alle rettigheter forbeholdt.</p>
+            <p><a href="{{ login_url }}">Logg inn</a> | <a href="mailto:support@sertifikatet.no">Kontakt support</a></p>
+            <p><small>Du mottar denne e-posten fordi du hadde en aktiv øvingsstreak.</small></p>
+        </div>
+    </div>
+    
+    <!-- Plain text version -->
+    <div style="display: none;">
+        Din streak er brutt
+        
+        Hei {{ user.full_name or user.username }},
+        
+        Vi la merke til at du ikke øvde i går, og din streak på {{ lost_streak_days }} dager er dessverre brutt.
+        
+        Men ikke gi opp! Alle som har lykkes har opplevd tilbakeslag. Det viktigste er ikke at streaken ble brutt, men at du kommer tilbake sterkere.
+        
+        Tips for å komme tilbake på sporet:
+        - Start med en kort økt i dag - bare 5 minutter teller!
+        - Sett en påminnelse på telefonen din
+        - Fokuser på fremgang, ikke perfeksjon
+        - Del målene dine med en venn for ekstra motivasjon
+        - Belønning deg selv for hver uke du fullfører
+        
+        Start en ny streak nå: {{ login_url }}
+        
+        Vi tror på deg og gleder oss til å se deg bygge en enda lengre streak!
+    </div>
+</body>
+</html>

@@ -188,7 +188,7 @@
             <h2 class="text-2xl font-bold mb-6">Kontoinnstillinger</h2>
             
             <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
-                <button class="text-left bg-gray-800/50 rounded-lg p-4 hover:bg-gray-800 transition">
+                <a href="{{ url_for('auth.change_password') }}" class="text-left bg-gray-800/50 rounded-lg p-4 hover:bg-gray-800 transition block">
                     <div class="flex items-center justify-between">
                         <div>
                             <h3 class="font-semibold mb-1">Endre Passord</h3>
@@ -196,39 +196,81 @@
                         </div>
                         <i class="fas fa-chevron-right text-gray-400"></i>
                     </div>
-                </button>
+                </a>
                 
-                <button class="text-left bg-gray-800/50 rounded-lg p-4 hover:bg-gray-800 transition">
+                <button class="text-left bg-gray-800/50 rounded-lg p-4 hover:bg-gray-800 transition opacity-50 cursor-not-allowed" disabled>
                     <div class="flex items-center justify-between">
                         <div>
                             <h3 class="font-semibold mb-1">Varslingsinnstillinger</h3>
-                            <p class="text-sm text-gray-400">Administrer e-postvarsler</p>
+                            <p class="text-sm text-gray-400">Kommer snart</p>
                         </div>
                         <i class="fas fa-chevron-right text-gray-400"></i>
                     </div>
                 </button>
                 
-                <button class="text-left bg-gray-800/50 rounded-lg p-4 hover:bg-gray-800 transition">
+                <button class="text-left bg-gray-800/50 rounded-lg p-4 hover:bg-gray-800 transition opacity-50 cursor-not-allowed" disabled>
                     <div class="flex items-center justify-between">
                         <div>
                             <h3 class="font-semibold mb-1">Abonnement</h3>
                             <p class="text-sm text-gray-400">Gratis bruker</p>
                         </div>
-                        <span class="px-3 py-1 bg-purple-600 rounded-full text-xs">Oppgrader</span>
+                        <span class="px-3 py-1 bg-gray-600 rounded-full text-xs">Kommer snart</span>
                     </div>
                 </button>
                 
-                <button class="text-left bg-gray-800/50 rounded-lg p-4 hover:bg-gray-800 transition">
-                    <div class="flex items-center justify-between">
-                        <div>
-                            <h3 class="font-semibold mb-1">Last ned data</h3>
-                            <p class="text-sm text-gray-400">Eksporter din fremgang</p>
+                <div class="relative">
+                    <button onclick="showDownloadOptions()" class="text-left bg-gray-800/50 rounded-lg p-4 hover:bg-gray-800 transition w-full">
+                        <div class="flex items-center justify-between">
+                            <div>
+                                <h3 class="font-semibold mb-1">Last ned data</h3>
+                                <p class="text-sm text-gray-400">Eksporter din fremgang</p>
+                            </div>
+                            <i class="fas fa-download text-gray-400"></i>
                         </div>
-                        <i class="fas fa-download text-gray-400"></i>
+                    </button>
+                    
+                    <!-- Download Options Dropdown -->
+                    <div id="downloadOptions" class="hidden absolute bottom-full left-0 w-full mb-2 bg-gray-800 border border-gray-700 rounded-lg shadow-lg overflow-hidden">
+                        <a href="{{ url_for('auth.download_data', format='json') }}" class="block px-4 py-3 hover:bg-gray-700 transition">
+                            <div class="flex items-center">
+                                <i class="fas fa-file-code mr-3 text-blue-400"></i>
+                                <div>
+                                    <div class="font-medium">Last ned som JSON</div>
+                                    <div class="text-xs text-gray-400">Komplett data i strukturert format</div>
+                                </div>
+                            </div>
+                        </a>
+                        <a href="{{ url_for('auth.download_data', format='csv') }}" class="block px-4 py-3 hover:bg-gray-700 transition">
+                            <div class="flex items-center">
+                                <i class="fas fa-file-csv mr-3 text-green-400"></i>
+                                <div>
+                                    <div class="font-medium">Last ned som CSV</div>
+                                    <div class="text-xs text-gray-400">Åpne i Excel eller Google Sheets</div>
+                                </div>
+                            </div>
+                        </a>
                     </div>
-                </button>
+                </div>
             </div>
         </div>
     </div>
 </section>
+
+<script>
+// Show/hide download options dropdown
+function showDownloadOptions() {
+    const dropdown = document.getElementById('downloadOptions');
+    dropdown.classList.toggle('hidden');
+}
+
+// Close dropdown when clicking outside
+document.addEventListener('click', function(event) {
+    const dropdown = document.getElementById('downloadOptions');
+    const button = event.target.closest('button[onclick="showDownloadOptions()"]');
+    
+    if (!button && !dropdown.contains(event.target)) {
+        dropdown.classList.add('hidden');
+    }
+});
+</script>
 {% endblock %}

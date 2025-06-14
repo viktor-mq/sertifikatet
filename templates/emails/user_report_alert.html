@@ -1,0 +1,242 @@
+<!DOCTYPE html>
+<html lang="no">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Brukerrapport mottatt</title>
+    <style>
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+            line-height: 1.6;
+            color: #333;
+            background-color: #f4f4f4;
+            margin: 0;
+            padding: 0;
+        }
+        .container {
+            max-width: 600px;
+            margin: 40px auto;
+            background: #ffffff;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+            overflow: hidden;
+        }
+        .header {
+            background: #17a2b8;
+            color: white;
+            padding: 20px;
+            text-align: center;
+        }
+        .header h1 {
+            margin: 0;
+            font-size: 24px;
+            font-weight: 500;
+        }
+        .alert-icon {
+            font-size: 48px;
+            margin: 10px 0;
+        }
+        .content {
+            padding: 30px;
+        }
+        .content h2 {
+            color: #17a2b8;
+            margin-top: 0;
+        }
+        .report-details {
+            background: #f8f9fa;
+            padding: 20px;
+            border-radius: 4px;
+            margin: 20px 0;
+            border-left: 4px solid #17a2b8;
+        }
+        .detail-row {
+            display: flex;
+            margin: 10px 0;
+            padding: 10px 0;
+            border-bottom: 1px solid #e9ecef;
+        }
+        .detail-label {
+            font-weight: bold;
+            width: 120px;
+            color: #555;
+        }
+        .detail-value {
+            flex: 1;
+        }
+        .message-box {
+            background: #fff;
+            padding: 20px;
+            border: 1px solid #dee2e6;
+            border-radius: 4px;
+            margin: 20px 0;
+        }
+        .priority-high {
+            background: #f8d7da;
+            color: #721c24;
+            padding: 10px;
+            border-radius: 4px;
+            margin: 10px 0;
+        }
+        .priority-medium {
+            background: #fff3cd;
+            color: #856404;
+            padding: 10px;
+            border-radius: 4px;
+            margin: 10px 0;
+        }
+        .priority-low {
+            background: #d1ecf1;
+            color: #0c5460;
+            padding: 10px;
+            border-radius: 4px;
+            margin: 10px 0;
+        }
+        .action-buttons {
+            margin: 20px 0;
+            text-align: center;
+        }
+        .button {
+            display: inline-block;
+            padding: 10px 20px;
+            background: #17a2b8;
+            color: white;
+            text-decoration: none;
+            border-radius: 4px;
+            font-weight: 500;
+            margin: 0 5px;
+        }
+        .button:hover {
+            background: #138496;
+        }
+        .button-secondary {
+            background: #6c757d;
+        }
+        .button-secondary:hover {
+            background: #5a6268;
+        }
+        .user-info {
+            background: #e9ecef;
+            padding: 15px;
+            border-radius: 4px;
+            margin: 20px 0;
+        }
+        .footer {
+            background: #f8f9fa;
+            padding: 20px;
+            text-align: center;
+            color: #666;
+            font-size: 14px;
+        }
+        @media only screen and (max-width: 600px) {
+            .container {
+                margin: 0;
+                border-radius: 0;
+            }
+            .detail-row {
+                flex-direction: column;
+            }
+            .detail-label {
+                width: 100%;
+                margin-bottom: 5px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <div class="alert-icon">📮</div>
+            <h1>Ny brukerrapport mottatt</h1>
+        </div>
+        
+        <div class="content">
+            <h2>Rapportdetaljer</h2>
+            
+            <div class="report-details">
+                <div class="detail-row">
+                    <div class="detail-label">Type:</div>
+                    <div class="detail-value">{{ report_data.type|default('Generell tilbakemelding') }}</div>
+                </div>
+                <div class="detail-row">
+                    <div class="detail-label">Tidspunkt:</div>
+                    <div class="detail-value">{{ timestamp.strftime('%d.%m.%Y kl. %H:%M') }}</div>
+                </div>
+                <div class="detail-row">
+                    <div class="detail-label">Kategori:</div>
+                    <div class="detail-value">{{ report_data.category|default('Annet') }}</div>
+                </div>
+                <div class="detail-row">
+                    <div class="detail-label">Prioritet:</div>
+                    <div class="detail-value">
+                        {% if report_data.priority == 'high' %}
+                        <span class="priority-high">🔴 Høy prioritet</span>
+                        {% elif report_data.priority == 'medium' %}
+                        <span class="priority-medium">🟡 Medium prioritet</span>
+                        {% else %}
+                        <span class="priority-low">🟢 Lav prioritet</span>
+                        {% endif %}
+                    </div>
+                </div>
+            </div>
+            
+            <div class="user-info">
+                <h3>Brukerinformasjon</h3>
+                <div class="detail-row">
+                    <div class="detail-label">Brukernavn:</div>
+                    <div class="detail-value">{{ user.username }}</div>
+                </div>
+                <div class="detail-row">
+                    <div class="detail-label">E-post:</div>
+                    <div class="detail-value">{{ user.email }}</div>
+                </div>
+                <div class="detail-row">
+                    <div class="detail-label">Navn:</div>
+                    <div class="detail-value">{{ user.full_name|default('Ikke oppgitt') }}</div>
+                </div>
+                <div class="detail-row">
+                    <div class="detail-label">Medlem siden:</div>
+                    <div class="detail-value">{{ user.created_at.strftime('%d.%m.%Y') }}</div>
+                </div>
+            </div>
+            
+            <div class="message-box">
+                <h3>Melding fra bruker:</h3>
+                <p>{{ report_data.message|default('Ingen melding oppgitt.')|safe }}</p>
+                
+                {% if report_data.attachment %}
+                <p><strong>Vedlegg:</strong> {{ report_data.attachment }}</p>
+                {% endif %}
+            </div>
+            
+            {% if report_data.type == 'bug' %}
+            <div class="report-details">
+                <h3>Teknisk informasjon</h3>
+                <div class="detail-row">
+                    <div class="detail-label">URL:</div>
+                    <div class="detail-value">{{ report_data.url|default('Ikke oppgitt') }}</div>
+                </div>
+                <div class="detail-row">
+                    <div class="detail-label">Nettleser:</div>
+                    <div class="detail-value">{{ report_data.browser|default('Ukjent') }}</div>
+                </div>
+            </div>
+            {% endif %}
+            
+            <div class="action-buttons">
+                <a href="{{ url_for('admin.reports', _external=True) }}" class="button">Se i admin panel</a>
+                <a href="mailto:{{ user.email }}" class="button button-secondary">Svar bruker</a>
+            </div>
+            
+            <p style="text-align: center; color: #666; margin-top: 30px;">
+                <small>Dette er en automatisk generert e-post fra Sertifikatet.no support system.</small>
+            </p>
+        </div>
+        
+        <div class="footer">
+            <p>&copy; {{ current_year }} Sertifikatet.no - Admin System</p>
+            <p>Sendt fra: info@sertifikatet.no</p>
+        </div>
+    </div>
+</body>
+</html>

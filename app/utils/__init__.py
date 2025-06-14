@@ -10,7 +10,13 @@ from .email import (
     send_admin_alert,
     send_batch_reminders,
     verify_email_token,
-    verify_reset_token
+    verify_reset_token,
+    send_welcome_email,
+    send_streak_lost_email,
+    send_weekly_summary_email,
+    send_study_tip_email,
+    send_user_report_alert,
+    send_manual_review_alert
 )
 
 __all__ = [
@@ -22,5 +28,11 @@ __all__ = [
     'send_admin_alert',
     'send_batch_reminders',
     'verify_email_token',
-    'verify_reset_token'
+    'verify_reset_token',
+    'send_welcome_email',
+    'send_streak_lost_email',
+    'send_weekly_summary_email',
+    'send_study_tip_email',
+    'send_user_report_alert',
+    'send_manual_review_alert'
 ]

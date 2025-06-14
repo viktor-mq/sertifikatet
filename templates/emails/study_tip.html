@@ -1,0 +1,234 @@
+<!DOCTYPE html>
+<html lang="no">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Personlige studietips</title>
+    <style>
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+            line-height: 1.6;
+            color: #333;
+            background-color: #f4f4f4;
+            margin: 0;
+            padding: 0;
+        }
+        .container {
+            max-width: 600px;
+            margin: 40px auto;
+            background: #ffffff;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+            overflow: hidden;
+        }
+        .header {
+            background: linear-gradient(135deg, #00b894 0%, #00cec9 100%);
+            color: white;
+            padding: 40px 30px;
+            text-align: center;
+        }
+        .header h1 {
+            margin: 0;
+            font-size: 28px;
+            font-weight: 500;
+        }
+        .tip-icon {
+            font-size: 64px;
+            margin-bottom: 20px;
+        }
+        .content {
+            padding: 40px 30px;
+        }
+        .content h2 {
+            color: #00b894;
+            margin-top: 0;
+        }
+        .weakness-alert {
+            background: #fff5f5;
+            border: 1px solid #ffdddd;
+            padding: 20px;
+            border-radius: 8px;
+            margin: 20px 0;
+            border-left: 4px solid #ff6b6b;
+        }
+        .tip-card {
+            background: #f0fff4;
+            padding: 25px;
+            border-radius: 8px;
+            margin: 20px 0;
+            border-left: 4px solid #00b894;
+        }
+        .tip-number {
+            display: inline-block;
+            width: 30px;
+            height: 30px;
+            background: #00b894;
+            color: white;
+            text-align: center;
+            line-height: 30px;
+            border-radius: 50%;
+            margin-right: 10px;
+            font-weight: bold;
+        }
+        .resource-list {
+            background: #f8f9fa;
+            padding: 20px;
+            border-radius: 8px;
+            margin: 20px 0;
+        }
+        .resource-item {
+            display: flex;
+            align-items: center;
+            margin: 10px 0;
+            padding: 10px;
+            background: white;
+            border-radius: 4px;
+            text-decoration: none;
+            color: #333;
+        }
+        .resource-item:hover {
+            background: #f0f0f0;
+        }
+        .resource-icon {
+            font-size: 24px;
+            margin-right: 15px;
+        }
+        .button {
+            display: inline-block;
+            padding: 14px 32px;
+            background: #00b894;
+            color: white;
+            text-decoration: none;
+            border-radius: 4px;
+            font-weight: 500;
+            margin: 20px 0;
+        }
+        .button:hover {
+            background: #00a085;
+        }
+        .progress-insight {
+            background: #e8f4ff;
+            padding: 20px;
+            border-radius: 8px;
+            margin: 20px 0;
+        }
+        .footer {
+            background: #f8f9fa;
+            padding: 20px;
+            text-align: center;
+            color: #666;
+            font-size: 14px;
+        }
+        .footer a {
+            color: #00b894;
+            text-decoration: none;
+        }
+        @media only screen and (max-width: 600px) {
+            .container {
+                margin: 0;
+                border-radius: 0;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <div class="tip-icon">🎯</div>
+            <h1>Personlige studietips for deg</h1>
+        </div>
+        
+        <div class="content">
+            <h2>Hei {{ user.full_name or user.username }}!</h2>
+            
+            <p>Basert på din nylige aktivitet har vi laget noen personlige tips for å hjelpe deg å forbedre deg:</p>
+            
+            <div class="weakness-alert">
+                <h3>🔍 Vi har lagt merke til at du sliter med:</h3>
+                <p><strong>{{ tip_data.weak_area|default('Trafikkskilt') }}</strong></p>
+                <p>Din nåværende score i denne kategorien: <strong>{{ tip_data.current_score|default(45) }}%</strong></p>
+                <p>{{ tip_data.weakness_description|default('Mange gjør feil i denne kategorien fordi de ikke husker forskjellen mellom lignende skilt.') }}</p>
+            </div>
+            
+            <div class="tip-card">
+                <h3>💡 Slik kan du forbedre deg:</h3>
+                
+                <p><span class="tip-number">1</span> <strong>Fokusert øving</strong><br>
+                Ta 2-3 quizer daglig kun i kategorien {{ tip_data.weak_area|default('Trafikkskilt') }}. Gjentakelse er nøkkelen!</p>
+                
+                <p><span class="tip-number">2</span> <strong>Lær mønstre</strong><br>
+                {{ tip_data.pattern_tip|default('Legg merke til at forbudsskilt ofte er runde med rød kant, mens påbudsskilt er blå og runde.') }}</p>
+                
+                <p><span class="tip-number">3</span> <strong>Bruk husketeknikker</strong><br>
+                {{ tip_data.memory_tip|default('Lag assosiasjoner: \"Rød trekant = advarsel om fare fremover\"') }}</p>
+                
+                <p><span class="tip-number">4</span> <strong>Praktisk anvendelse</strong><br>
+                Neste gang du er ute, legg aktivt merke til {{ tip_data.weak_area|default('trafikkskilt') }} og tenk på hva de betyr.</p>
+            </div>
+            
+            <div class="resource-list">
+                <h3>📚 Anbefalte ressurser:</h3>
+                <a href="{{ quiz_url }}?category={{ tip_data.category_id|default('traffic-signs') }}" class="resource-item">
+                    <span class="resource-icon">📝</span>
+                    <div>
+                        <strong>Målrettet quiz</strong><br>
+                        <small>Øv spesifikt på {{ tip_data.weak_area|default('trafikkskilt') }}</small>
+                    </div>
+                </a>
+                <div class="resource-item">
+                    <span class="resource-icon">🎥</span>
+                    <div>
+                        <strong>Video: {{ tip_data.video_title|default('Forstå trafikkskilt på 10 minutter') }}</strong><br>
+                        <small>Se vår mest populære video om temaet</small>
+                    </div>
+                </div>
+                <div class="resource-item">
+                    <span class="resource-icon">🎮</span>
+                    <div>
+                        <strong>Interaktivt spill</strong><br>
+                        <small>Lær gjennom morsomme utfordringer</small>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="progress-insight">
+                <h3>📈 Din fremgang:</h3>
+                <p>Hvis du følger disse tipsene og øver 15 minutter daglig, kan du forvente å se forbedring på <strong>15-20% innen 2 uker</strong>.</p>
+                <p>Andre brukere som fulgte disse tipsene forbedret seg i gjennomsnitt med <strong>{{ tip_data.avg_improvement|default(23) }}%</strong>!</p>
+            </div>
+            
+            <p style="text-align: center;">
+                <a href="{{ quiz_url }}" class="button">Start målrettet øving nå</a>
+            </p>
+            
+            <p style="text-align: center; font-style: italic; color: #666;">
+                "Eksperter er ikke de som aldri gjør feil, men de som lærer av hver feil."
+            </p>
+        </div>
+        
+        <div class="footer">
+            <p>&copy; {{ current_year }} Sertifikatet.no. Alle rettigheter forbeholdt.</p>
+            <p><a href="{{ quiz_url }}">Ta quiz</a> | <a href="mailto:support@sertifikatet.no">Kontakt support</a></p>
+            <p><small>Disse tipsene er generert basert på din læringshistorikk.</small></p>
+        </div>
+    </div>
+    
+    <!-- Plain text version -->
+    <div style="display: none;">
+        Personlige studietips for deg
+        
+        Hei {{ user.full_name or user.username }}!
+        
+        Vi har lagt merke til at du sliter med: {{ tip_data.weak_area|default('Trafikkskilt') }}
+        Din nåværende score: {{ tip_data.current_score|default(45) }}%
+        
+        Slik kan du forbedre deg:
+        1. Ta 2-3 quizer daglig kun i denne kategorien
+        2. {{ tip_data.pattern_tip|default('Legg merke til mønstre i skiltene') }}
+        3. {{ tip_data.memory_tip|default('Bruk husketeknikker og assosiasjoner') }}
+        4. Øv på å gjenkjenne disse i virkeligheten
+        
+        Start målrettet øving nå: {{ quiz_url }}
+    </div>
+</body>
+</html>

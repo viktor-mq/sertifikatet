@@ -9,7 +9,7 @@ from .. import db
 from ..models import User, UserProgress, QuizSession
 from flask_login import login_user, logout_user, login_required, current_user
 from ..utils.email import (send_verification_email, send_password_reset_email, 
-                          verify_email_token, verify_reset_token)
+                          verify_email_token, verify_reset_token, send_welcome_email)
 
 
 @auth_bp.route('/login', methods=['GET', 'POST'])
@@ -153,6 +153,9 @@ def verify_email(token):
     user.is_verified = True
     db.session.commit()
     
+    # Send welcome email
+    send_welcome_email(user)
+    
     flash('E-postadressen din er nå bekreftet! Du kan logge inn.', 'success')
     return redirect(url_for('auth.login'))
 
@@ -227,3 +230,160 @@ def resend_verification():
         flash('Du må logge inn før du kan be om ny bekreftelse.', 'error')
     
     return redirect(url_for('auth.login'))
+
+
+@auth_bp.route('/change-password', methods=['GET', 'POST'])
+@login_required
+def change_password():
+    """Change user password"""
+    if request.method == 'POST':
+        current_password = request.form.get('current_password')
+        new_password = request.form.get('new_password')
+        confirm_password = request.form.get('confirm_password')
+        
+        # Validate current password
+        if not check_password_hash(current_user.password_hash, current_password):
+            flash('Nåværende passord er feil.', 'error')
+            return render_template('auth/change_password.html')
+        
+        # Validate new password
+        if not new_password or len(new_password) < 8:
+            flash('Nytt passord må være minst 8 tegn langt.', 'error')
+            return render_template('auth/change_password.html')
+        
+        if new_password != confirm_password:
+            flash('Passordene er ikke like.', 'error')
+            return render_template('auth/change_password.html')
+        
+        if current_password == new_password:
+            flash('Nytt passord kan ikke være det samme som det gamle.', 'error')
+            return render_template('auth/change_password.html')
+        
+        # Update password
+        current_user.password_hash = generate_password_hash(new_password)
+        db.session.commit()
+        
+        flash('Passordet ditt har blitt oppdatert!', 'success')
+        return redirect(url_for('auth.profile'))
+    
+    return render_template('auth/change_password.html')
+
+
+@auth_bp.route('/download-data')
+@login_required
+def download_data():
+    """Download user data as JSON or CSV"""
+    import json
+    import csv
+    from io import StringIO, BytesIO
+    from flask import Response
+    
+    format_type = request.args.get('format', 'json')
+    
+    # Gather user data
+    user_data = {
+        'user_info': {
+            'username': current_user.username,
+            'email': current_user.email,
+            'full_name': current_user.full_name,
+            'member_since': current_user.created_at.isoformat() if current_user.created_at else None,
+            'last_login': current_user.last_login.isoformat() if current_user.last_login else None,
+            'total_xp': current_user.total_xp,
+            'preferred_language': current_user.preferred_language
+        },
+        'progress': {},
+        'quiz_history': [],
+        'achievements': []
+    }
+    
+    # Add progress data
+    if current_user.progress:
+        progress = current_user.progress
+        user_data['progress'] = {
+            'total_quizzes_taken': progress.total_quizzes_taken,
+            'total_questions_answered': progress.total_questions_answered,
+            'correct_answers': progress.correct_answers,
+            'accuracy_percentage': round((progress.correct_answers / progress.total_questions_answered * 100) if progress.total_questions_answered > 0 else 0, 2),
+            'current_streak_days': progress.current_streak_days,
+            'longest_streak_days': progress.longest_streak_days,
+            'last_activity_date': progress.last_activity_date.isoformat() if progress.last_activity_date else None
+        }
+    
+    # Add quiz history
+    for session in current_user.quiz_sessions:
+        user_data['quiz_history'].append({
+            'date': session.completed_at.isoformat() if session.completed_at else session.started_at.isoformat(),
+            'quiz_type': session.quiz_type,
+            'category': session.category,
+            'total_questions': session.total_questions,
+            'correct_answers': session.correct_answers,
+            'score': float(session.score) if session.score else 0,
+            'time_spent_seconds': session.time_spent_seconds
+        })
+    
+    # Add achievements
+    for achievement in current_user.achievements:
+        user_data['achievements'].append({
+            'name': achievement.achievement.name,
+            'description': achievement.achievement.description,
+            'earned_at': achievement.earned_at.isoformat(),
+            'points': achievement.achievement.points
+        })
+    
+    if format_type == 'csv':
+        # Create CSV format
+        output = StringIO()
+        
+        # Write user info
+        writer = csv.writer(output)
+        writer.writerow(['User Information'])
+        writer.writerow(['Field', 'Value'])
+        for key, value in user_data['user_info'].items():
+            writer.writerow([key.replace('_', ' ').title(), value])
+        
+        writer.writerow([])
+        writer.writerow(['Progress Statistics'])
+        writer.writerow(['Metric', 'Value'])
+        for key, value in user_data['progress'].items():
+            writer.writerow([key.replace('_', ' ').title(), value])
+        
+        writer.writerow([])
+        writer.writerow(['Quiz History'])
+        if user_data['quiz_history']:
+            writer.writerow(['Date', 'Type', 'Category', 'Questions', 'Correct', 'Score', 'Time (seconds)'])
+            for quiz in user_data['quiz_history']:
+                writer.writerow([
+                    quiz['date'],
+                    quiz['quiz_type'] or 'Standard',
+                    quiz['category'] or 'Mixed',
+                    quiz['total_questions'],
+                    quiz['correct_answers'],
+                    quiz['score'],
+                    quiz['time_spent_seconds']
+                ])
+        
+        writer.writerow([])
+        writer.writerow(['Achievements'])
+        if user_data['achievements']:
+            writer.writerow(['Name', 'Description', 'Earned Date', 'Points'])
+            for ach in user_data['achievements']:
+                writer.writerow([ach['name'], ach['description'], ach['earned_at'], ach['points']])
+        
+        # Create response
+        output.seek(0)
+        return Response(
+            output.getvalue(),
+            mimetype='text/csv',
+            headers={
+                'Content-Disposition': f'attachment; filename=sertifikatet_data_{current_user.username}_{datetime.now().strftime("%Y%m%d")}.csv'
+            }
+        )
+    else:
+        # Return JSON format
+        return Response(
+            json.dumps(user_data, indent=2, ensure_ascii=False),
+            mimetype='application/json',
+            headers={
+                'Content-Disposition': f'attachment; filename=sertifikatet_data_{current_user.username}_{datetime.now().strftime("%Y%m%d")}.json'
+            }
+        )
