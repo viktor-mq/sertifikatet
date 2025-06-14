@@ -1,0 +1,365 @@
+{% extends "base.html" %}
+
+{% block title %}Gamification - Sertifikatet{% endblock %}
+
+{% block content %}
+<section class="py-12">
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+        <!-- Level & XP Header -->
+        <div class="glass rounded-2xl p-8 mb-8">
+            <div class="flex flex-col md:flex-row items-center justify-between">
+                <div class="flex items-center space-x-6 mb-6 md:mb-0">
+                    <!-- Level Badge -->
+                    <div class="relative">
+                        <div class="w-24 h-24 rounded-full bg-gradient-to-r from-purple-600 to-pink-600 flex items-center justify-center">
+                            <div class="text-3xl font-bold">{{ user_level.current_level }}</div>
+                        </div>
+                        <div class="absolute -bottom-2 left-0 right-0 text-center">
+                            <span class="px-3 py-1 bg-gray-800 rounded-full text-xs">Nivå</span>
+                        </div>
+                    </div>
+                    
+                    <!-- XP Progress -->
+                    <div class="flex-1">
+                        <h1 class="text-2xl font-bold mb-2">{{ current_user.full_name or current_user.username }}</h1>
+                        <div class="mb-2">
+                            <div class="flex justify-between text-sm text-gray-400 mb-1">
+                                <span>{{ user_level.current_xp }} / {{ user_level.next_level_xp }} XP</span>
+                                <span>{{ ((user_level.current_xp / user_level.next_level_xp) * 100)|round|int }}%</span>
+                            </div>
+                            <div class="h-4 bg-gray-700 rounded-full overflow-hidden">
+                                <div class="h-full bg-gradient-to-r from-purple-600 to-pink-600 transition-all duration-500"
+                                     style="width: {{ ((user_level.current_xp / user_level.next_level_xp) * 100)|round|int }}%"></div>
+                            </div>
+                        </div>
+                        <p class="text-gray-400">Total XP: <span class="text-white font-semibold">{{ current_user.total_xp }}</span></p>
+                    </div>
+                </div>
+                
+                <!-- Quick Stats -->
+                <div class="grid grid-cols-3 gap-4 text-center">
+                    <div>
+                        <div class="text-2xl font-bold text-purple-400">{{ current_user.achievements|length }}</div>
+                        <div class="text-xs text-gray-400">Prestasjoner</div>
+                    </div>
+                    <div>
+                        <div class="text-2xl font-bold text-pink-400">{{ rankings.user_rank }}</div>
+                        <div class="text-xs text-gray-400">Rangering</div>
+                    </div>
+                    <div>
+                        <div class="text-2xl font-bold text-blue-400">{{ current_user.progress.current_streak_days if current_user.progress else 0 }}</div>
+                        <div class="text-xs text-gray-400">Dager streak</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Daily Challenges -->
+        <div class="mb-8">
+            <div class="flex items-center justify-between mb-4">
+                <h2 class="text-2xl font-bold">Daglige utfordringer</h2>
+                <a href="{{ url_for('gamification.daily_challenges') }}" class="text-purple-400 hover:text-purple-300">
+                    Se alle <i class="fas fa-arrow-right ml-1"></i>
+                </a>
+            </div>
+            
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+                {% for challenge in daily_challenges[:3] %}
+                <div class="glass rounded-xl p-6 hover-card {{ 'opacity-50' if challenge.completed else '' }}">
+                    <div class="flex items-center justify-between mb-4">
+                        <div class="w-12 h-12 bg-gradient-to-r from-blue-600 to-purple-600 rounded-lg flex items-center justify-center">
+                            {% if challenge.challenge.challenge_type == 'quiz' %}
+                                <i class="fas fa-brain text-xl"></i>
+                            {% elif challenge.challenge.challenge_type == 'streak' %}
+                                <i class="fas fa-fire text-xl"></i>
+                            {% elif challenge.challenge.challenge_type == 'perfect_score' %}
+                                <i class="fas fa-star text-xl"></i>
+                            {% else %}
+                                <i class="fas fa-trophy text-xl"></i>
+                            {% endif %}
+                        </div>
+                        <span class="text-yellow-400 font-semibold">+{{ challenge.challenge.xp_reward }} XP</span>
+                    </div>
+                    
+                    <h3 class="font-semibold mb-2">{{ challenge.challenge.title }}</h3>
+                    <p class="text-sm text-gray-400 mb-3">{{ challenge.challenge.description }}</p>
+                    
+                    <div class="mb-2">
+                        <div class="flex justify-between text-xs text-gray-400 mb-1">
+                            <span>Fremgang</span>
+                            <span>{{ challenge.progress }} / {{ challenge.challenge.requirement_value }}</span>
+                        </div>
+                        <div class="h-2 bg-gray-700 rounded-full overflow-hidden">
+                            <div class="h-full bg-gradient-to-r from-blue-600 to-purple-600"
+                                 style="width: {{ ((challenge.progress / challenge.challenge.requirement_value) * 100)|round|int }}%"></div>
+                        </div>
+                    </div>
+                    
+                    {% if challenge.completed %}
+                    <div class="text-center text-green-400 text-sm">
+                        <i class="fas fa-check-circle mr-1"></i> Fullført!
+                    </div>
+                    {% endif %}
+                </div>
+                {% endfor %}
+            </div>
+        </div>
+
+        <!-- Active Tournaments & Leaderboard -->
+        <div class="grid grid-cols-1 lg:grid-cols-2 gap-8 mb-8">
+            <!-- Active Tournaments -->
+            <div>
+                <div class="flex items-center justify-between mb-4">
+                    <h2 class="text-xl font-bold">Aktive turneringer</h2>
+                    <a href="{{ url_for('gamification.tournaments') }}" class="text-purple-400 hover:text-purple-300">
+                        Se alle <i class="fas fa-arrow-right ml-1"></i>
+                    </a>
+                </div>
+                
+                <div class="space-y-4">
+                    {% for tournament in active_tournaments[:3] %}
+                    <div class="glass rounded-lg p-4 hover:bg-gray-800/70 transition">
+                        <div class="flex items-center justify-between">
+                            <div>
+                                <h3 class="font-semibold">{{ tournament.name }}</h3>
+                                <p class="text-sm text-gray-400">
+                                    Slutter {{ tournament.end_date.strftime('%d.%m kl %H:%M') }}
+                                </p>
+                            </div>
+                            <div class="text-right">
+                                <div class="text-yellow-400 font-semibold">{{ tournament.prize_pool_xp }} XP</div>
+                                <a href="{{ url_for('gamification.tournament_detail', tournament_id=tournament.id) }}" 
+                                   class="text-xs text-purple-400 hover:text-purple-300">
+                                    Se detaljer →
+                                </a>
+                            </div>
+                        </div>
+                    </div>
+                    {% endfor %}
+                    
+                    {% if not active_tournaments %}
+                    <div class="text-center py-8 text-gray-400">
+                        <i class="fas fa-trophy text-4xl mb-2 opacity-20"></i>
+                        <p>Ingen aktive turneringer akkurat nå</p>
+                    </div>
+                    {% endif %}
+                </div>
+            </div>
+            
+            <!-- Weekly Leaderboard -->
+            <div>
+                <div class="flex items-center justify-between mb-4">
+                    <h2 class="text-xl font-bold">Ukentlig toppliste</h2>
+                    <a href="{{ url_for('gamification.leaderboard') }}" class="text-purple-400 hover:text-purple-300">
+                        Full toppliste <i class="fas fa-arrow-right ml-1"></i>
+                    </a>
+                </div>
+                
+                <div class="glass rounded-lg overflow-hidden">
+                    <table class="w-full">
+                        {% for ranking in rankings.rankings %}
+                        <tr class="border-b border-gray-700/50 hover:bg-gray-800/50 transition {{ 'bg-purple-900/20' if ranking.id == current_user.id else '' }}">
+                            <td class="p-3 text-center w-12">
+                                {% if loop.index == 1 %}
+                                    <i class="fas fa-trophy text-yellow-400"></i>
+                                {% elif loop.index == 2 %}
+                                    <i class="fas fa-medal text-gray-300"></i>
+                                {% elif loop.index == 3 %}
+                                    <i class="fas fa-medal text-orange-400"></i>
+                                {% else %}
+                                    {{ loop.index }}
+                                {% endif %}
+                            </td>
+                            <td class="p-3">
+                                <span class="{{ 'font-semibold text-purple-400' if ranking.id == current_user.id else '' }}">
+                                    {{ ranking.username }}
+                                    {% if ranking.id == current_user.id %}
+                                        <span class="text-xs text-gray-400">(deg)</span>
+                                    {% endif %}
+                                </span>
+                            </td>
+                            <td class="p-3 text-right">
+                                <span class="font-semibold">{{ ranking.xp_earned }}</span>
+                                <span class="text-xs text-gray-400">XP</span>
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </table>
+                    
+                    {% if rankings.user_rank > 10 %}
+                    <div class="p-3 text-center text-sm text-gray-400 border-t border-gray-700/50">
+                        Din plassering: #{{ rankings.user_rank }} av {{ rankings.total_players }} spillere
+                    </div>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+
+        <!-- Recent Achievements & XP History -->
+        <div class="grid grid-cols-1 lg:grid-cols-2 gap-8">
+            <!-- Recent Achievements -->
+            <div>
+                <div class="flex items-center justify-between mb-4">
+                    <h2 class="text-xl font-bold">Nylige prestasjoner</h2>
+                    <a href="{{ url_for('gamification.achievements') }}" class="text-purple-400 hover:text-purple-300">
+                        Se alle <i class="fas fa-arrow-right ml-1"></i>
+                    </a>
+                </div>
+                
+                <div class="space-y-3">
+                    {% for user_achievement in recent_achievements %}
+                    <div class="glass rounded-lg p-4 flex items-center space-x-4">
+                        <div class="w-12 h-12 bg-gradient-to-r from-yellow-600 to-orange-600 rounded-lg flex items-center justify-center">
+                            <i class="fas fa-award text-xl"></i>
+                        </div>
+                        <div class="flex-1">
+                            <h3 class="font-semibold">{{ user_achievement.achievement.name }}</h3>
+                            <p class="text-sm text-gray-400">{{ user_achievement.earned_at.strftime('%d.%m.%Y') }}</p>
+                        </div>
+                        <div class="text-yellow-400 font-semibold">
+                            +{{ user_achievement.achievement.points }} XP
+                        </div>
+                    </div>
+                    {% endfor %}
+                    
+                    {% if not recent_achievements %}
+                    <div class="text-center py-8 text-gray-400">
+                        <i class="fas fa-award text-4xl mb-2 opacity-20"></i>
+                        <p>Ta quizer for å låse opp prestasjoner!</p>
+                    </div>
+                    {% endif %}
+                </div>
+            </div>
+            
+            <!-- Recent XP Transactions -->
+            <div>
+                <h2 class="text-xl font-bold mb-4">XP-historikk</h2>
+                
+                <div class="glass rounded-lg p-4 max-h-96 overflow-y-auto">
+                    <div class="space-y-2">
+                        {% for transaction in recent_xp %}
+                        <div class="flex items-center justify-between py-2 border-b border-gray-700/50">
+                            <div>
+                                <p class="text-sm">{{ transaction.description or transaction.transaction_type }}</p>
+                                <p class="text-xs text-gray-400">{{ transaction.created_at.strftime('%d.%m %H:%M') }}</p>
+                            </div>
+                            <div class="font-semibold {{ 'text-green-400' if transaction.amount > 0 else 'text-red-400' }}">
+                                {{ '+' if transaction.amount > 0 }}{{ transaction.amount }} XP
+                            </div>
+                        </div>
+                        {% endfor %}
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Power-ups -->
+        <div class="mt-8">
+            <div class="flex items-center justify-between mb-4">
+                <h2 class="text-xl font-bold">Dine power-ups</h2>
+                <a href="{{ url_for('gamification.power_ups') }}" class="text-purple-400 hover:text-purple-300">
+                    Kjøp flere <i class="fas fa-arrow-right ml-1"></i>
+                </a>
+            </div>
+            
+            <div class="grid grid-cols-2 md:grid-cols-4 gap-4">
+                {% for powerup in user_powerups[:4] %}
+                <div class="glass rounded-lg p-4 text-center hover-card">
+                    <div class="w-12 h-12 bg-gradient-to-r from-green-600 to-blue-600 rounded-lg mx-auto mb-2 flex items-center justify-center">
+                        <i class="fas fa-bolt text-xl"></i>
+                    </div>
+                    <h3 class="font-semibold text-sm">{{ powerup.powerup.name }}</h3>
+                    <p class="text-xs text-gray-400">x{{ powerup.quantity }}</p>
+                </div>
+                {% endfor %}
+                
+                {% if not user_powerups %}
+                <div class="col-span-full text-center py-8 text-gray-400">
+                    <i class="fas fa-bolt text-4xl mb-2 opacity-20"></i>
+                    <p>Ingen power-ups ennå</p>
+                    <a href="{{ url_for('gamification.power_ups') }}" class="text-purple-400 hover:text-purple-300 text-sm">
+                        Kjøp din første →
+                    </a>
+                </div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+</section>
+
+<!-- Achievement Notification Modal -->
+<div id="achievementModal" class="hidden fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+    <div class="bg-gray-900 rounded-2xl p-8 max-w-md mx-4 transform scale-0 transition-transform duration-300" id="achievementContent">
+        <div class="text-center">
+            <div class="w-24 h-24 bg-gradient-to-r from-yellow-400 to-orange-400 rounded-full mx-auto mb-4 flex items-center justify-center animate-bounce">
+                <i class="fas fa-trophy text-4xl text-white"></i>
+            </div>
+            <h2 class="text-2xl font-bold mb-2">Ny prestasjon låst opp!</h2>
+            <h3 class="text-xl text-yellow-400 mb-4" id="achievementName"></h3>
+            <p class="text-gray-400 mb-6" id="achievementDescription"></p>
+            <p class="text-2xl font-bold text-yellow-400 mb-6">+<span id="achievementPoints"></span> XP</p>
+            <button onclick="closeAchievementModal()" class="px-6 py-3 bg-gradient-to-r from-purple-600 to-pink-600 rounded-lg hover:from-purple-700 hover:to-pink-700 transition">
+                Fantastisk!
+            </button>
+        </div>
+    </div>
+</div>
+
+<script>
+// Check for new achievements periodically
+function checkAchievements(context = {}) {
+    fetch('{{ url_for("gamification.check_achievements") }}', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(context)
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.new_achievements && data.new_achievements.length > 0) {
+            // Show achievement notifications
+            data.new_achievements.forEach((achievement, index) => {
+                setTimeout(() => showAchievementModal(achievement), index * 2000);
+            });
+        }
+    });
+}
+
+function showAchievementModal(achievement) {
+    document.getElementById('achievementName').textContent = achievement.name;
+    document.getElementById('achievementDescription').textContent = achievement.description;
+    document.getElementById('achievementPoints').textContent = achievement.points;
+    
+    const modal = document.getElementById('achievementModal');
+    const content = document.getElementById('achievementContent');
+    
+    modal.classList.remove('hidden');
+    setTimeout(() => {
+        content.classList.remove('scale-0');
+        content.classList.add('scale-100');
+    }, 10);
+    
+    // Play sound effect if available
+    const audio = new Audio('/static/sounds/achievement.mp3');
+    audio.play().catch(() => {});
+}
+
+function closeAchievementModal() {
+    const modal = document.getElementById('achievementModal');
+    const content = document.getElementById('achievementContent');
+    
+    content.classList.remove('scale-100');
+    content.classList.add('scale-0');
+    
+    setTimeout(() => {
+        modal.classList.add('hidden');
+    }, 300);
+}
+
+// Check achievements on page load
+document.addEventListener('DOMContentLoaded', () => {
+    checkAchievements();
+});
+</script>
+{% endblock %}

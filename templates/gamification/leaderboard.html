@@ -1,0 +1,180 @@
+{% extends "base.html" %}
+
+{% block title %}Toppliste - Sertifikatet{% endblock %}
+
+{% block content %}
+<section class="py-12">
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+        <!-- Header -->
+        <div class="mb-8">
+            <h1 class="text-4xl font-bold mb-4">
+                <span class="bg-gradient-to-r from-purple-400 to-pink-400 bg-clip-text text-transparent">
+                    Toppliste
+                </span>
+            </h1>
+            <p class="text-gray-400 text-lg">Konkurrer med andre og klatre til toppen!</p>
+        </div>
+
+        <!-- Period Selector -->
+        <div class="flex justify-center mb-8">
+            <div class="glass rounded-full p-1 inline-flex">
+                <a href="?period=weekly" 
+                   class="px-6 py-2 rounded-full transition {{ 'bg-gradient-to-r from-purple-600 to-pink-600' if current_period == 'weekly' else 'hover:bg-gray-800' }}">
+                    Ukentlig
+                </a>
+                <a href="?period=monthly" 
+                   class="px-6 py-2 rounded-full transition {{ 'bg-gradient-to-r from-purple-600 to-pink-600' if current_period == 'monthly' else 'hover:bg-gray-800' }}">
+                    Månedlig
+                </a>
+                <a href="?period=all-time" 
+                   class="px-6 py-2 rounded-full transition {{ 'bg-gradient-to-r from-purple-600 to-pink-600' if current_period == 'all-time' else 'hover:bg-gray-800' }}">
+                    All-time
+                </a>
+            </div>
+        </div>
+
+        <!-- Main Leaderboard -->
+        <div class="grid grid-cols-1 lg:grid-cols-3 gap-8 mb-12">
+            <!-- Weekly Leaders -->
+            <div class="glass rounded-2xl p-6">
+                <h2 class="text-xl font-bold mb-4 text-center">
+                    <i class="fas fa-calendar-week mr-2 text-purple-400"></i>
+                    Ukentlig
+                </h2>
+                <div class="space-y-3">
+                    {% for ranking in weekly_rankings.rankings[:5] %}
+                    <div class="flex items-center justify-between p-3 rounded-lg {{ 'bg-purple-900/30' if ranking.id == current_user.id else 'bg-gray-800/50' }}">
+                        <div class="flex items-center">
+                            <span class="w-8 text-center font-bold">
+                                {% if loop.index == 1 %}
+                                    <i class="fas fa-trophy text-yellow-400"></i>
+                                {% elif loop.index == 2 %}
+                                    <i class="fas fa-medal text-gray-300"></i>
+                                {% elif loop.index == 3 %}
+                                    <i class="fas fa-medal text-orange-400"></i>
+                                {% else %}
+                                    {{ loop.index }}
+                                {% endif %}
+                            </span>
+                            <span class="ml-3 {{ 'text-purple-400 font-semibold' if ranking.id == current_user.id else '' }}">
+                                {{ ranking.username }}
+                            </span>
+                        </div>
+                        <span class="font-semibold">{{ ranking.xp_earned }} XP</span>
+                    </div>
+                    {% endfor %}
+                </div>
+            </div>
+
+            <!-- Monthly Leaders -->
+            <div class="glass rounded-2xl p-6">
+                <h2 class="text-xl font-bold mb-4 text-center">
+                    <i class="fas fa-calendar-alt mr-2 text-pink-400"></i>
+                    Månedlig
+                </h2>
+                <div class="space-y-3">
+                    {% for ranking in monthly_rankings.rankings[:5] %}
+                    <div class="flex items-center justify-between p-3 rounded-lg {{ 'bg-purple-900/30' if ranking.id == current_user.id else 'bg-gray-800/50' }}">
+                        <div class="flex items-center">
+                            <span class="w-8 text-center font-bold">
+                                {% if loop.index == 1 %}
+                                    <i class="fas fa-trophy text-yellow-400"></i>
+                                {% elif loop.index == 2 %}
+                                    <i class="fas fa-medal text-gray-300"></i>
+                                {% elif loop.index == 3 %}
+                                    <i class="fas fa-medal text-orange-400"></i>
+                                {% else %}
+                                    {{ loop.index }}
+                                {% endif %}
+                            </span>
+                            <span class="ml-3 {{ 'text-purple-400 font-semibold' if ranking.id == current_user.id else '' }}">
+                                {{ ranking.username }}
+                            </span>
+                        </div>
+                        <span class="font-semibold">{{ ranking.xp_earned }} XP</span>
+                    </div>
+                    {% endfor %}
+                </div>
+            </div>
+
+            <!-- All-Time Leaders -->
+            <div class="glass rounded-2xl p-6">
+                <h2 class="text-xl font-bold mb-4 text-center">
+                    <i class="fas fa-crown mr-2 text-yellow-400"></i>
+                    All-time
+                </h2>
+                <div class="space-y-3">
+                    {% for ranking in alltime_rankings.rankings[:5] %}
+                    <div class="flex items-center justify-between p-3 rounded-lg {{ 'bg-purple-900/30' if ranking.id == current_user.id else 'bg-gray-800/50' }}">
+                        <div class="flex items-center">
+                            <span class="w-8 text-center font-bold">
+                                {% if loop.index == 1 %}
+                                    <i class="fas fa-trophy text-yellow-400"></i>
+                                {% elif loop.index == 2 %}
+                                    <i class="fas fa-medal text-gray-300"></i>
+                                {% elif loop.index == 3 %}
+                                    <i class="fas fa-medal text-orange-400"></i>
+                                {% else %}
+                                    {{ loop.index }}
+                                {% endif %}
+                            </span>
+                            <span class="ml-3 {{ 'text-purple-400 font-semibold' if ranking.id == current_user.id else '' }}">
+                                {{ ranking.username }}
+                            </span>
+                        </div>
+                        <span class="font-semibold">{{ ranking.xp_earned }} XP</span>
+                    </div>
+                    {% endfor %}
+                </div>
+            </div>
+        </div>
+
+        <!-- Category Leaderboards -->
+        <div class="mb-12">
+            <h2 class="text-2xl font-bold mb-6">Kategori-mestere</h2>
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+                {% for category, leaders in category_leaders.items() %}
+                <div class="glass rounded-xl p-6">
+                    <h3 class="text-lg font-semibold mb-4">
+                        <i class="fas fa-{{ 'sign' if 'skilt' in category.lower() else 'book' if 'regler' in category.lower() else 'exclamation-triangle' }} mr-2 text-purple-400"></i>
+                        {{ category }}
+                    </h3>
+                    <div class="space-y-2">
+                        {% for leader in leaders[:3] %}
+                        <div class="flex items-center justify-between text-sm">
+                            <span class="{{ 'text-purple-400 font-semibold' if leader.id == current_user.id else '' }}">
+                                {{ loop.index }}. {{ leader.username }}
+                            </span>
+                            <span class="text-gray-400">{{ "%.1f"|format(leader.avg_score) }}%</span>
+                        </div>
+                        {% endfor %}
+                    </div>
+                </div>
+                {% endfor %}
+            </div>
+        </div>
+
+        <!-- Your Position -->
+        <div class="glass rounded-2xl p-8 text-center">
+            <h2 class="text-2xl font-bold mb-6">Din posisjon</h2>
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+                <div>
+                    <p class="text-gray-400 mb-2">Ukentlig</p>
+                    <p class="text-3xl font-bold text-purple-400">#{{ weekly_rankings.user_rank }}</p>
+                    <p class="text-sm text-gray-400">av {{ weekly_rankings.total_players }} spillere</p>
+                </div>
+                <div>
+                    <p class="text-gray-400 mb-2">Månedlig</p>
+                    <p class="text-3xl font-bold text-pink-400">#{{ monthly_rankings.user_rank }}</p>
+                    <p class="text-sm text-gray-400">av {{ monthly_rankings.total_players }} spillere</p>
+                </div>
+                <div>
+                    <p class="text-gray-400 mb-2">All-time</p>
+                    <p class="text-3xl font-bold text-yellow-400">#{{ alltime_rankings.user_rank }}</p>
+                    <p class="text-sm text-gray-400">av {{ alltime_rankings.total_players }} spillere</p>
+                </div>
+            </div>
+        </div>
+    </div>
+</section>
+{% endblock %}

@@ -49,8 +49,13 @@ def create_app():
     from .learning import learning_bp
     app.register_blueprint(learning_bp, url_prefix='/learning')
     
+    from .gamification import gamification_bp
+    app.register_blueprint(gamification_bp, url_prefix='/gamification')
+    
     # Create tables if they don't exist
     with app.app_context():
+        # Import all models to ensure they're registered
+        from . import models, gamification_models
         db.create_all()
     
     return app
