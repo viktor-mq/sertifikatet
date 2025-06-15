@@ -20,6 +20,8 @@ class User(UserMixin, db.Model):
     preferred_language = db.Column(db.String(10), default='no')
     total_xp = db.Column(db.Integer, default=0)
     is_verified = db.Column(db.Boolean, default=False)
+    subscription_tier = db.Column(db.String(20), default='free')  # 'free', 'premium', 'pro'
+    is_admin = db.Column(db.Boolean, default=False)
     
     # Relationships
     progress = db.relationship('UserProgress', backref='user', uselist=False, cascade='all, delete-orphan')
@@ -187,10 +189,13 @@ class Video(db.Model):
     youtube_url = db.Column(db.String(255))
     duration_seconds = db.Column(db.Integer)
     category = db.Column(db.String(100))
+    category_id = db.Column(db.Integer, db.ForeignKey('video_categories.id'))
     difficulty_level = db.Column(db.Integer, default=1)
     order_index = db.Column(db.Integer)
     thumbnail_filename = db.Column(db.String(255))
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
+    is_active = db.Column(db.Boolean, default=True)
+    view_count = db.Column(db.Integer, default=0)
     
     # Relationships
     checkpoints = db.relationship('VideoCheckpoint', backref='video', cascade='all, delete-orphan')
@@ -219,6 +224,7 @@ class VideoProgress(db.Model):
     total_checkpoints = db.Column(db.Integer)
     started_at = db.Column(db.DateTime, default=datetime.utcnow)
     completed_at = db.Column(db.DateTime)
+    updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
     
     __table_args__ = (db.UniqueConstraint('user_id', 'video_id', name='_user_video_uc'),)
 

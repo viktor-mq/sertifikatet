@@ -1,0 +1,167 @@
+{% extends "base.html" %}
+
+{% block title %}Spillelister - {{ config.SITE_NAME }}{% endblock %}
+
+{% block content %}
+<div class="min-h-screen bg-gray-900">
+    <!-- Header -->
+    <div class="bg-gradient-to-r from-purple-600 to-blue-600 py-12">
+        <div class="max-w-7xl mx-auto px-4">
+            <div class="flex justify-between items-center">
+                <div>
+                    <h1 class="text-3xl md:text-4xl font-bold text-white mb-2 flex items-center">
+                        <i class="fas fa-list-alt mr-3"></i>Spillelister
+                    </h1>
+                    <p class="text-gray-200">
+                        Organiserte videosamlinger for strukturert læring
+                    </p>
+                </div>
+                {% if current_user.subscription_tier in ['premium', 'pro'] %}
+                <a href="{{ url_for('video.create_playlist') }}" class="bg-white text-purple-600 px-6 py-3 rounded-lg font-semibold hover:bg-gray-100 transition inline-flex items-center">
+                    <i class="fas fa-plus-circle mr-2"></i>Opprett spilleliste
+                </a>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+
+    <div class="max-w-7xl mx-auto px-4 py-12">
+        <!-- Official Playlists -->
+        {% if official_playlists %}
+        <section class="mb-12">
+            <h2 class="text-2xl font-bold text-white mb-6 flex items-center">
+                <i class="fas fa-star mr-3 text-purple-400"></i>Offisielle spillelister
+            </h2>
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                {% for playlist in official_playlists %}
+                <a href="{{ url_for('video.playlist', playlist_id=playlist.id) }}"
+                   class="bg-gray-800 p-6 rounded-lg hover:bg-gray-700 transition group">
+                    <div class="flex gap-4">
+                        {% if playlist.thumbnail_url %}
+                        <img src="{{ playlist.thumbnail_url }}" 
+                             class="w-32 h-20 object-cover rounded" 
+                             alt="{{ playlist.name }}">
+                        {% else %}
+                        <div class="w-32 h-20 bg-gray-700 rounded flex items-center justify-center flex-shrink-0">
+                            <i class="fas fa-list text-2xl text-gray-600"></i>
+                        </div>
+                        {% endif %}
+                        <div class="flex-1">
+                            <h3 class="text-white font-semibold text-lg mb-2 group-hover:text-purple-400 transition">
+                                {{ playlist.name }}
+                            </h3>
+                            <p class="text-gray-400 text-sm mb-3 line-clamp-2">{{ playlist.description }}</p>
+                            <div class="flex items-center gap-4 text-sm">
+                                <span class="bg-purple-600 text-white px-3 py-1 rounded-full">
+                                    <i class="fas fa-video mr-1"></i>{{ playlist.items|length }} videoer
+                                </span>
+                                <span class="text-gray-500">
+                                    <i class="fas fa-clock mr-1"></i>
+                                    {% set total_duration = playlist.items|sum(attribute='video.duration_seconds', start=0) %}
+                                    {{ total_duration|format_duration if total_duration else 'N/A' }}
+                                </span>
+                            </div>
+                        </div>
+                    </div>
+                </a>
+                {% endfor %}
+            </div>
+        </section>
+        {% endif %}
+
+        <!-- User Playlists -->
+        {% if user_playlists %}
+        <section class="mb-12">
+            <h2 class="text-2xl font-bold text-white mb-6 flex items-center">
+                <i class="fas fa-user mr-3 text-purple-400"></i>Mine spillelister
+            </h2>
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                {% for playlist in user_playlists %}
+                <div class="bg-gray-800 rounded-lg overflow-hidden">
+                    <a href="{{ url_for('video.playlist', playlist_id=playlist.id) }}"
+                       class="block p-6 hover:bg-gray-700 transition">
+                        <div class="flex gap-4">
+                            {% if playlist.thumbnail_url %}
+                            <img src="{{ playlist.thumbnail_url }}" 
+                                 class="w-32 h-20 object-cover rounded" 
+                                 alt="{{ playlist.name }}">
+                            {% else %}
+                            <div class="w-32 h-20 bg-gray-700 rounded flex items-center justify-center flex-shrink-0">
+                                <i class="fas fa-list text-2xl text-gray-600"></i>
+                            </div>
+                            {% endif %}
+                            <div class="flex-1">
+                                <h3 class="text-white font-semibold text-lg mb-2">{{ playlist.name }}</h3>
+                                <p class="text-gray-400 text-sm mb-3 line-clamp-2">{{ playlist.description }}</p>
+                                <div class="flex items-center gap-4 text-sm">
+                                    <span class="bg-gray-700 text-gray-300 px-3 py-1 rounded-full">
+                                        <i class="fas fa-video mr-1"></i>{{ playlist.items|length }} videoer
+                                    </span>
+                                    <span class="text-gray-500">
+                                        Opprettet {{ playlist.created_at.strftime('%d.%m.%Y') }}
+                                    </span>
+                                </div>
+                            </div>
+                        </div>
+                    </a>
+                    <div class="bg-gray-700 px-6 py-3 flex gap-2">
+                        <a href="{{ url_for('video.playlist', playlist_id=playlist.id) }}" 
+                           class="text-blue-400 hover:text-blue-300 flex items-center">
+                            <i class="fas fa-play mr-1"></i>Se
+                        </a>
+                        <button class="text-gray-400 hover:text-gray-300 flex items-center">
+                            <i class="fas fa-edit mr-1"></i>Rediger
+                        </button>
+                        <button class="text-red-400 hover:text-red-300 flex items-center" 
+                                onclick="deletePlaylist({{ playlist.id }})">
+                            <i class="fas fa-trash mr-1"></i>Slett
+                        </button>
+                    </div>
+                </div>
+                {% endfor %}
+            </div>
+        </section>
+        {% elif current_user.subscription_tier in ['premium', 'pro'] %}
+        <section class="text-center py-16">
+            <i class="fas fa-folder-open text-6xl text-gray-600 mb-4"></i>
+            <h3 class="text-2xl font-bold text-white mb-2">Du har ingen spillelister ennå</h3>
+            <p class="text-gray-400 mb-6">Opprett din første spilleliste for å organisere videoer</p>
+            <a href="{{ url_for('video.create_playlist') }}" class="bg-purple-600 text-white px-6 py-3 rounded-lg hover:bg-purple-700 transition inline-flex items-center">
+                <i class="fas fa-plus-circle mr-2"></i>Opprett spilleliste
+            </a>
+        </section>
+        {% endif %}
+
+        <!-- Upgrade prompt for free users -->
+        {% if current_user.subscription_tier == 'free' %}
+        <div class="bg-blue-900 bg-opacity-30 border border-blue-700 rounded-lg p-6">
+            <h3 class="text-xl font-semibold text-white mb-2 flex items-center">
+                <i class="fas fa-info-circle mr-2 text-blue-400"></i>Oppgrader for å lage egne spillelister
+            </h3>
+            <p class="text-gray-300 mb-4">Med Premium eller Pro abonnement kan du lage dine egne spillelister og organisere videoer som du vil.</p>
+            <a href="{{ url_for('main.dashboard') }}" class="bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700 transition inline-flex items-center">
+                <i class="fas fa-crown mr-2"></i>Se abonnementsplaner
+            </a>
+        </div>
+        {% endif %}
+    </div>
+</div>
+
+<style>
+.line-clamp-2 {
+    overflow: hidden;
+    display: -webkit-box;
+    -webkit-line-clamp: 2;
+    -webkit-box-orient: vertical;
+}
+</style>
+
+<script>
+function deletePlaylist(playlistId) {
+    if (confirm('Er du sikker på at du vil slette denne spillelisten?')) {
+        // TODO: Implement delete functionality
+        alert('Sletting ikke implementert ennå');
+    }
+}
+</script>
+{% endblock %}

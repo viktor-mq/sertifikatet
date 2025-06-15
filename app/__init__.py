@@ -52,10 +52,16 @@ def create_app():
     from .gamification import gamification_bp
     app.register_blueprint(gamification_bp, url_prefix='/gamification')
     
+    # Register video blueprints
+    from .video import video_bp, video_api_bp, register_filters
+    app.register_blueprint(video_bp)
+    app.register_blueprint(video_api_bp)
+    register_filters(app)  # Register video-specific Jinja2 filters
+    
     # Create tables if they don't exist
     with app.app_context():
         # Import all models to ensure they're registered
-        from . import models, gamification_models
+        from . import models, gamification_models, video_models
         db.create_all()
     
     return app

@@ -1,0 +1,237 @@
+{% extends "base.html" %}
+
+{% block title %}Last opp video - Admin - {{ config.SITE_NAME }}{% endblock %}
+
+{% block content %}
+<div class="admin-upload-video">
+    <div class="container">
+        <div class="row justify-content-center">
+            <div class="col-lg-8">
+                <div class="card shadow">
+                    <div class="card-header bg-primary text-white">
+                        <h4 class="mb-0">
+                            <i class="fas fa-upload me-2"></i>Last opp ny video
+                        </h4>
+                    </div>
+                    <div class="card-body">
+                        <form method="POST" enctype="multipart/form-data" id="upload-form">
+                            {{ form.hidden_tag() if form else '' }}
+                            
+                            <!-- Title -->
+                            <div class="mb-3">
+                                <label for="title" class="form-label">Tittel *</label>
+                                <input type="text" class="form-control" id="title" name="title" required>
+                            </div>
+                            
+                            <!-- Description -->
+                            <div class="mb-3">
+                                <label for="description" class="form-label">Beskrivelse</label>
+                                <textarea class="form-control" id="description" name="description" rows="3"></textarea>
+                            </div>
+                            
+                            <!-- Category -->
+                            <div class="mb-3">
+                                <label for="category_id" class="form-label">Kategori</label>
+                                <select class="form-control" id="category_id" name="category_id">
+                                    <option value="">-- Velg kategori --</option>
+                                    {% for category in categories %}
+                                    <option value="{{ category.id }}">{{ category.name }}</option>
+                                    {% endfor %}
+                                </select>
+                            </div>
+                            
+                            <!-- Video Source -->
+                            <div class="mb-4">
+                                <label class="form-label">Videokilde</label>
+                                <div class="btn-group w-100" role="group">
+                                    <input type="radio" class="btn-check" name="video_source" id="source_upload" value="upload" checked>
+                                    <label class="btn btn-outline-primary" for="source_upload">
+                                        <i class="fas fa-file-video me-2"></i>Last opp fil
+                                    </label>
+                                    
+                                    <input type="radio" class="btn-check" name="video_source" id="source_youtube" value="youtube">
+                                    <label class="btn btn-outline-primary" for="source_youtube">
+                                        <i class="fab fa-youtube me-2"></i>YouTube URL
+                                    </label>
+                                </div>
+                            </div>
+                            
+                            <!-- File Upload -->
+                            <div class="mb-3" id="file-upload-section">
+                                <label for="video_file" class="form-label">Videofil</label>
+                                <input type="file" class="form-control" id="video_file" name="video_file" 
+                                       accept="video/mp4,video/webm,video/ogg,video/mov,video/avi">
+                                <small class="text-muted">Støttede formater: MP4, WebM, OGG, MOV, AVI</small>
+                            </div>
+                            
+                            <!-- YouTube URL -->
+                            <div class="mb-3 d-none" id="youtube-url-section">
+                                <label for="youtube_url" class="form-label">YouTube URL</label>
+                                <input type="url" class="form-control" id="youtube_url" name="youtube_url" 
+                                       placeholder="https://www.youtube.com/watch?v=...">
+                                <small class="text-muted">Lim inn hele YouTube URL-en</small>
+                            </div>
+                            
+                            <!-- Additional Options -->
+                            <div class="accordion mb-4" id="advancedOptions">
+                                <div class="accordion-item">
+                                    <h2 class="accordion-header">
+                                        <button class="accordion-button collapsed" type="button" 
+                                                data-bs-toggle="collapse" data-bs-target="#collapseOptions">
+                                            Avanserte innstillinger
+                                        </button>
+                                    </h2>
+                                    <div id="collapseOptions" class="accordion-collapse collapse" 
+                                         data-bs-parent="#advancedOptions">
+                                        <div class="accordion-body">
+                                            <!-- Duration -->
+                                            <div class="mb-3">
+                                                <label for="duration" class="form-label">Varighet (sekunder)</label>
+                                                <input type="number" class="form-control" id="duration" name="duration">
+                                                <small class="text-muted">La stå tom for automatisk deteksjon</small>
+                                            </div>
+                                            
+                                            <!-- Order Index -->
+                                            <div class="mb-3">
+                                                <label for="order_index" class="form-label">Sorteringsindeks</label>
+                                                <input type="number" class="form-control" id="order_index" 
+                                                       name="order_index" value="0">
+                                                <small class="text-muted">Lavere tall vises først</small>
+                                            </div>
+                                            
+                                            <!-- Difficulty -->
+                                            <div class="mb-3">
+                                                <label for="difficulty_level" class="form-label">Vanskelighetsgrad</label>
+                                                <select class="form-control" id="difficulty_level" name="difficulty_level">
+                                                    <option value="beginner">Nybegynner</option>
+                                                    <option value="intermediate">Middels</option>
+                                                    <option value="advanced">Avansert</option>
+                                                </select>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                            
+                            <!-- Submit Buttons -->
+                            <div class="d-flex justify-content-between">
+                                <a href="{{ url_for('video.index') }}" class="btn btn-secondary">
+                                    <i class="fas fa-times me-2"></i>Avbryt
+                                </a>
+                                <button type="submit" class="btn btn-primary" id="submit-btn">
+                                    <i class="fas fa-upload me-2"></i>Last opp video
+                                </button>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+                
+                <!-- Upload Progress -->
+                <div class="card mt-4 d-none" id="upload-progress-card">
+                    <div class="card-body">
+                        <h5 class="card-title">Laster opp...</h5>
+                        <div class="progress mb-3">
+                            <div class="progress-bar progress-bar-striped progress-bar-animated" 
+                                 id="upload-progress-bar"
+                                 role="progressbar" 
+                                 style="width: 0%">0%</div>
+                        </div>
+                        <p class="text-muted mb-0" id="upload-status">Forbereder opplasting...</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    // Toggle between file upload and YouTube URL
+    const sourceRadios = document.querySelectorAll('input[name="video_source"]');
+    const fileSection = document.getElementById('file-upload-section');
+    const youtubeSection = document.getElementById('youtube-url-section');
+    
+    sourceRadios.forEach(radio => {
+        radio.addEventListener('change', function() {
+            if (this.value === 'upload') {
+                fileSection.classList.remove('d-none');
+                youtubeSection.classList.add('d-none');
+                document.getElementById('video_file').required = true;
+                document.getElementById('youtube_url').required = false;
+            } else {
+                fileSection.classList.add('d-none');
+                youtubeSection.classList.remove('d-none');
+                document.getElementById('video_file').required = false;
+                document.getElementById('youtube_url').required = true;
+            }
+        });
+    });
+    
+    // File upload with progress
+    const form = document.getElementById('upload-form');
+    const progressCard = document.getElementById('upload-progress-card');
+    const progressBar = document.getElementById('upload-progress-bar');
+    const statusText = document.getElementById('upload-status');
+    
+    form.addEventListener('submit', function(e) {
+        const fileInput = document.getElementById('video_file');
+        const videoSource = document.querySelector('input[name="video_source"]:checked').value;
+        
+        // Only show progress for file uploads
+        if (videoSource === 'upload' && fileInput.files.length > 0) {
+            e.preventDefault();
+            
+            const formData = new FormData(form);
+            progressCard.classList.remove('d-none');
+            document.getElementById('submit-btn').disabled = true;
+            
+            const xhr = new XMLHttpRequest();
+            
+            // Upload progress
+            xhr.upload.addEventListener('progress', function(e) {
+                if (e.lengthComputable) {
+                    const percentComplete = Math.round((e.loaded / e.total) * 100);
+                    progressBar.style.width = percentComplete + '%';
+                    progressBar.textContent = percentComplete + '%';
+                    
+                    if (percentComplete < 100) {
+                        statusText.textContent = `Laster opp: ${formatBytes(e.loaded)} av ${formatBytes(e.total)}`;
+                    } else {
+                        statusText.textContent = 'Behandler video...';
+                    }
+                }
+            });
+            
+            // Upload complete
+            xhr.addEventListener('load', function() {
+                if (xhr.status === 200) {
+                    window.location.href = xhr.responseURL;
+                } else {
+                    alert('Feil ved opplasting. Prøv igjen.');
+                    progressCard.classList.add('d-none');
+                    document.getElementById('submit-btn').disabled = false;
+                }
+            });
+            
+            // Upload error
+            xhr.addEventListener('error', function() {
+                alert('Nettverksfeil. Prøv igjen.');
+                progressCard.classList.add('d-none');
+                document.getElementById('submit-btn').disabled = false;
+            });
+            
+            xhr.open('POST', form.action);
+            xhr.send(formData);
+        }
+    });
+    
+    function formatBytes(bytes) {
+        if (bytes === 0) return '0 Bytes';
+        const k = 1024;
+        const sizes = ['Bytes', 'KB', 'MB', 'GB'];
+        const i = Math.floor(Math.log(bytes) / Math.log(k));
+        return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
+    }
+});
+</script>
+{% endblock %}

@@ -65,6 +65,9 @@ database:
       - profile_picture
       - preferred_language
       - total_xp
+      - is_verified
+      - subscription_tier
+      - is_admin
     user_progress:
       - id
       - user_id
@@ -105,6 +108,11 @@ database:
       - updated_at
       - is_active
       - question_type
+    options:
+      - id
+      - question_id
+      - option_letter
+      - option_text
     question_images:
       - question_id
       - image_id
@@ -163,10 +171,13 @@ database:
       - youtube_url
       - duration_seconds
       - category
+      - category_id
       - difficulty_level
       - order_index
       - thumbnail_filename
       - created_at
+      - is_active
+      - view_count
     video_checkpoints:
       - id
       - video_id
@@ -183,6 +194,7 @@ database:
       - total_checkpoints
       - started_at
       - completed_at
+      - updated_at
     learning_paths:
       - id
       - name
@@ -205,6 +217,53 @@ database:
       - progress_percentage
       - started_at
       - completed_at
+    video_categories:
+      - id
+      - name
+      - description
+      - icon
+      - order_index
+    video_playlists:
+      - id
+      - name
+      - description  
+      - thumbnail_url
+      - is_official
+      - created_by
+      - created_at
+      - updated_at
+    playlist_items:
+      - id
+      - playlist_id
+      - video_id
+      - order_index
+      - added_at
+    video_notes:
+      - id
+      - user_id
+      - video_id
+      - timestamp_seconds
+      - note_text
+      - created_at
+      - updated_at
+    video_subtitles:
+      - id
+      - video_id
+      - language_code
+      - subtitle_file
+      - is_auto_generated
+      - created_at
+    video_ratings:
+      - id
+      - user_id
+      - video_id
+      - rating
+      - created_at
+    video_bookmarks:
+      - id
+      - user_id
+      - video_id
+      - created_at
     leaderboard_entries:
       - id
       - user_id

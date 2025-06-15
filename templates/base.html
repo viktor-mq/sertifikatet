@@ -36,6 +36,7 @@
                 
                 <div class="flex items-center space-x-4">
                     <a href="{{ url_for('main.quiz_categories') }}" class="hover:text-purple-400 transition">Quiz</a>
+                    <a href="{{ url_for('video.index') }}" class="hover:text-purple-400 transition">Videoer</a>
                     <a href="{{ url_for('learning.index') }}" class="hover:text-purple-400 transition">Læringsveier</a>
                     
                     {% if current_user.is_authenticated %}
