@@ -37,7 +37,7 @@
   <!-- Action Buttons -->
   <div style="margin-bottom: 20px;">
     <a href="#" onclick="toggleForm()" class="btn">➕ Legg til nytt spørsmål</a>
-    <a href="{{ url_for('admin.export_questions') }}" class="btn btn-success">📥 Eksporter spørsmål</a>
+    <button onclick="showImportExportModal()" class="btn btn-success">📂 Import/Export</button>
     <button onclick="toggleBulkMode()" class="btn btn-warning" id="bulkModeBtn">✅ Bulk-operasjoner</button>
     <button type="button" class="btn btn-secondary btn-small" onclick="showUploadModal()">📷 Last opp bilde</button>
     {% include 'admin/upload_image.html' %}
@@ -442,11 +442,41 @@ function closePreview() {
   document.getElementById('previewModal').style.display = 'none';
 }
 
+// Import/Export Modal Functions
+function showImportExportModal() {
+  document.getElementById('importExportModal').style.display = 'block';
+}
+
+function closeImportExportModal() {
+  document.getElementById('importExportModal').style.display = 'none';
+}
+
+function confirmImport() {
+  const fileInput = document.getElementById('csvFile');
+  if (!fileInput.files.length) {
+    alert('Vennligst velg en CSV-fil først.');
+    return false;
+  }
+  
+  const fileName = fileInput.files[0].name;
+  if (!fileName.toLowerCase().endsWith('.csv')) {
+    alert('Filen må være en CSV-fil (.csv)');
+    return false;
+  }
+  
+  return confirm(`Er du sikker på at du vil importere spørsmål fra "${fileName}"?\n\nDette kan overskrive eksisterende data hvis du har valgt det alternativet.`);
+}
+
 // Close modal when clicking outside
 window.onclick = function(event) {
-  const modal = document.getElementById('previewModal');
-  if (event.target === modal) {
-    modal.style.display = 'none';
+  const previewModal = document.getElementById('previewModal');
+  const importExportModal = document.getElementById('importExportModal');
+  
+  if (event.target === previewModal) {
+    previewModal.style.display = 'none';
+  }
+  if (event.target === importExportModal) {
+    importExportModal.style.display = 'none';
   }
 }
 
@@ -471,6 +501,60 @@ document.addEventListener('DOMContentLoaded', function() {
     <span class="close" onclick="closePreview()">&times;</span>
     <h2>👁️ Forhåndsvisning av spørsmål</h2>
     <div id="previewContent"></div>
+  </div>
+</div>
+
+<!-- Import/Export Modal -->
+<div id="importExportModal" class="modal">
+  <div class="modal-content" style="max-width: 600px;">
+    <span class="close" onclick="closeImportExportModal()">&times;</span>
+    <h2 style="text-align: center; color: #333; margin-bottom: 30px;">📂 Import/Export Spørsmål</h2>
+    
+    <!-- Export Section -->
+    <div style="background: #e8f5e8; padding: 20px; border-radius: 8px; margin-bottom: 20px; border-left: 4px solid #28a745;">
+      <h3 style="margin-top: 0; color: #28a745; display: flex; align-items: center; gap: 10px;">
+        📥 Eksporter Spørsmål
+      </h3>
+      <p style="margin-bottom: 15px; color: #555;">Last ned alle spørsmål som en CSV-fil for backup eller redigering i Excel.</p>
+      <a href="{{ url_for('admin.export_questions') }}" class="btn btn-success" style="width: 100%;">
+        📥 Last ned CSV-fil
+      </a>
+    </div>
+
+    <!-- Import Section -->
+    <div style="background: #fff3cd; padding: 20px; border-radius: 8px; border-left: 4px solid #ffc107;">
+      <h3 style="margin-top: 0; color: #e67e22; display: flex; align-items: center; gap: 10px;">
+        📤 Importer Spørsmål
+      </h3>
+      <p style="margin-bottom: 15px; color: #555;">Last opp en CSV-fil med spørsmål. Filen må ha samme format som eksport-filen.</p>
+      
+      <!-- Import Form -->
+      <form id="importForm" method="POST" action="{{ url_for('admin.import_questions') }}" enctype="multipart/form-data">
+        <div style="margin-bottom: 15px;">
+          <label for="csvFile" style="display: block; font-weight: bold; margin-bottom: 5px;">Velg CSV-fil:</label>
+          <input type="file" id="csvFile" name="csv_file" accept=".csv" required 
+                 style="width: 100%; padding: 8px; border: 2px solid #ddd; border-radius: 4px;">
+        </div>
+        
+        <div style="margin-bottom: 15px;">
+          <label style="display: flex; align-items: center; gap: 8px; cursor: pointer;">
+            <input type="checkbox" name="overwrite_existing" value="1">
+            <span style="color: #555;">Overskriv eksisterende spørsmål med samme ID</span>
+          </label>
+        </div>
+        
+        <button type="submit" class="btn btn-warning" style="width: 100%;" onclick="return confirmImport()">
+          📤 Last opp og importer
+        </button>
+      </form>
+      
+      <!-- CSV Format Help -->
+      <div style="background: #f8f9fa; padding: 15px; border-radius: 4px; margin-top: 15px; border: 1px solid #dee2e6;">
+        <h4 style="margin-top: 0; font-size: 14px; color: #495057;">📄 CSV-format:</h4>
+        <p style="margin: 5px 0; font-size: 12px; color: #6c757d;">Kolonner: id, question, option_a, option_b, option_c, option_d, correct_option, category, image_filename</p>
+        <p style="margin: 5px 0 0 0; font-size: 12px; color: #6c757d;">Tips: Last ned en eksport-fil først for å se det korrekte formatet.</p>
+      </div>
+    </div>
   </div>
 </div>
 
@@ -574,5 +658,29 @@ document.addEventListener('DOMContentLoaded', function() {
 /* Make correct answers more visible */
 td[data-column="options"] div {
   padding: 2px 0;
+}
+
+/* Import/Export Modal Styling */
+#importExportModal .modal-content {
+  max-width: 650px;
+  margin: 5% auto;
+}
+
+#importExportModal input[type="file"] {
+  transition: border-color 0.3s ease;
+}
+
+#importExportModal input[type="file"]:focus {
+  border-color: #0077cc;
+  box-shadow: 0 0 0 2px rgba(0, 119, 204, 0.2);
+}
+
+#importExportModal .btn {
+  transition: all 0.3s ease;
+}
+
+#importExportModal .btn:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
 }
 </style>

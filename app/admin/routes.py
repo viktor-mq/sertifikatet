@@ -3,7 +3,7 @@ import csv
 from flask import render_template, request, redirect, url_for, session, current_app, send_file, flash, jsonify
 from flask_login import login_required, current_user
 from werkzeug.utils import secure_filename
-from io import StringIO
+from io import StringIO, BytesIO
 from sqlalchemy import text, inspect
 from . import admin_bp
 from functools import wraps
@@ -416,16 +416,160 @@ def bulk_delete():
     db.session.commit()
     return redirect(url_for('admin.admin_dashboard'))
 
+@admin_bp.route('/import_questions', methods=['POST'])
+@admin_required
+def import_questions():
+    """Import questions from CSV file"""
+    
+    if 'csv_file' not in request.files:
+        flash('Ingen fil ble lastet opp', 'error')
+        return redirect(url_for('admin.admin_dashboard'))
+    
+    file = request.files['csv_file']
+    if file.filename == '':
+        flash('Ingen fil valgt', 'error')
+        return redirect(url_for('admin.admin_dashboard'))
+    
+    if not file.filename.lower().endswith('.csv'):
+        flash('Filen må være en CSV-fil (.csv)', 'error')
+        return redirect(url_for('admin.admin_dashboard'))
+    
+    overwrite_existing = request.form.get('overwrite_existing') == '1'
+    
+    try:
+        # Read CSV content
+        csv_content = file.read().decode('utf-8-sig')
+        csv_reader = csv.DictReader(StringIO(csv_content))
+        
+        # Validate CSV headers
+        expected_headers = ['id', 'question', 'option_a', 'option_b', 'option_c', 'option_d', 'correct_option', 'category', 'image_filename']
+        if not all(header in csv_reader.fieldnames for header in expected_headers):
+            flash(f'CSV-filen må inneholde følgende kolonner: {", ".join(expected_headers)}', 'error')
+            return redirect(url_for('admin.admin_dashboard'))
+        
+        imported_count = 0
+        updated_count = 0
+        error_count = 0
+        errors = []
+        
+        for row_num, row in enumerate(csv_reader, start=2):  # Start at 2 because row 1 is headers
+            try:
+                # Validate required fields
+                if not row.get('question', '').strip():
+                    errors.append(f'Rad {row_num}: Spørsmål er påkrevd')
+                    error_count += 1
+                    continue
+                
+                if not row.get('correct_option', '').strip().lower() in ['a', 'b', 'c', 'd']:
+                    errors.append(f'Rad {row_num}: Riktig svar må være a, b, c eller d')
+                    error_count += 1
+                    continue
+                
+                # Check if question exists (if ID is provided)
+                question_id = row.get('id', '').strip()
+                existing_question = None
+                if question_id and question_id.isdigit():
+                    existing_question = Question.query.get(int(question_id))
+                
+                if existing_question and not overwrite_existing:
+                    errors.append(f'Rad {row_num}: Spørsmål med ID {question_id} eksisterer allerede (bruk overskriv-alternativet for å oppdatere)')
+                    error_count += 1
+                    continue
+                
+                # Create or update question
+                if existing_question and overwrite_existing:
+                    # Update existing question
+                    question = existing_question
+                    updated_count += 1
+                else:
+                    # Create new question
+                    question = Question()
+                    imported_count += 1
+                
+                # Set question data
+                question.question = row['question'].strip()
+                question.correct_option = row['correct_option'].strip().lower()
+                question.category = row.get('category', '').strip() or 'Ukategoriseret'
+                question.image_filename = row.get('image_filename', '').strip() or None
+                
+                # Add new question to session if it's new
+                if not existing_question:
+                    db.session.add(question)
+                    db.session.flush()  # Get the ID
+                
+                # Delete existing options if updating
+                if existing_question:
+                    Option.query.filter_by(question_id=question.id).delete()
+                
+                # Add options
+                for letter, option_key in [('a', 'option_a'), ('b', 'option_b'), ('c', 'option_c'), ('d', 'option_d')]:
+                    option_text = row.get(option_key, '').strip()
+                    if option_text:
+                        option = Option(
+                            question_id=question.id,
+                            option_letter=letter,
+                            option_text=option_text
+                        )
+                        db.session.add(option)
+                
+            except Exception as e:
+                errors.append(f'Rad {row_num}: {str(e)}')
+                error_count += 1
+                continue
+        
+        # Commit changes
+        db.session.commit()
+        
+        # Create success message
+        success_parts = []
+        if imported_count > 0:
+            success_parts.append(f'{imported_count} nye spørsmål importert')
+        if updated_count > 0:
+            success_parts.append(f'{updated_count} spørsmål oppdatert')
+        
+        if success_parts:
+            flash(' og '.join(success_parts) + '!', 'success')
+        
+        if error_count > 0:
+            flash(f'{error_count} feil oppstod under import. Se detaljene nedenfor.', 'warning')
+            for error in errors[:10]:  # Show max 10 errors
+                flash(error, 'error')
+            if len(errors) > 10:
+                flash(f'... og {len(errors) - 10} flere feil', 'error')
+        
+        # Log the import action
+        AdminSecurityService.log_admin_action(
+            admin_user=current_user,
+            action='questions_import',
+            additional_info=json.dumps({
+                'filename': file.filename,
+                'imported': imported_count,
+                'updated': updated_count,
+                'errors': error_count,
+                'overwrite_mode': overwrite_existing
+            })
+        )
+        
+    except Exception as e:
+        db.session.rollback()
+        flash(f'Feil ved lesing av CSV-fil: {str(e)}', 'error')
+    
+    return redirect(url_for('admin.admin_dashboard'))
+
 @admin_bp.route('/export_questions')
 @admin_required
 def export_questions():
+    """Export all questions to CSV file"""
     
     # Get all questions with their options
     questions = Question.query.all()
     
-    # Create CSV
-    si = StringIO()
-    writer = csv.writer(si)
+    # Create CSV in memory using BytesIO
+    output = BytesIO()
+    
+    # Create a text wrapper for CSV writing
+    text_stream = StringIO()
+    writer = csv.writer(text_stream)
     writer.writerow(['id', 'question', 'option_a', 'option_b', 'option_c', 'option_d', 'correct_option', 'category', 'image_filename'])
     
     for q in questions:
@@ -440,15 +584,26 @@ def export_questions():
             opts.get('c', ''),
             opts.get('d', ''),
             q.correct_option,
-            q.category,
+            q.category or 'Ukategoriseret',
             q.image_filename or ''
         ])
     
-    output = si.getvalue()
-    si.seek(0)
+    # Convert string to bytes and write to BytesIO
+    csv_content = text_stream.getvalue()
+    output.write(csv_content.encode('utf-8-sig'))  # utf-8-sig adds BOM for Excel compatibility
+    output.seek(0)
+    
+    # Log the export action
+    AdminSecurityService.log_admin_action(
+        admin_user=current_user,
+        action='questions_export',
+        additional_info=json.dumps({
+            'question_count': len(questions)
+        })
+    )
     
     return send_file(
-        StringIO(output),
+        output,
         mimetype='text/csv',
         as_attachment=True,
         download_name='questions_export.csv'

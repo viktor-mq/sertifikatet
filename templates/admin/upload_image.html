@@ -1,67 +1,322 @@
 <div id="uploadModal" class="modal">
-  <div class="modal-content">
+  <div class="modal-content" style="max-width: 700px;">
     <span class="close-modal" onclick="closeUploadModal()">&times;</span>
-    <h2>Last opp nytt bilde</h2>
-    <form method="POST" action="{{ url_for('admin.admin_dashboard') }}" enctype="multipart/form-data">
-      <label for="folderSelect">Velg mappe:</label>
-      <select name="folder" id="folderSelect" required onchange="onFolderChange()">
-        {% for f in folders %}
-          <option value="{{ f }}">{{ f }}</option>
-        {% endfor %}
-      </select>
-
-      <label for="imageUploadInput">Velg fil:</label>
-      <input type="file" name="image" id="imageUploadInput" accept="image/*" required onchange="onFileSelect()">
-
-      <div id="metadataFields">
-        <div id="signsFields" class="metadata">
-          <label for="sign_code">Skiltkode:</label>
-          <input type="text" name="sign_code" id="sign_code">
-
-          <label for="name">Navn:</label>
-          <input type="text" name="name" id="name">
-
-          <label for="descriptionSign">Forklaring:</label>
-          <textarea name="description" id="descriptionSign" rows="3"></textarea>
+    <h2 style="text-align: center; color: #333; margin-bottom: 30px; display: flex; align-items: center; justify-content: center; gap: 10px;">
+      📷 Last opp nytt bilde
+    </h2>
+    
+    <form method="POST" action="{{ url_for('admin.admin_dashboard') }}" enctype="multipart/form-data" id="uploadForm">
+      
+      <!-- File Upload Section -->
+      <div style="background: #f8f9fa; padding: 25px; border-radius: 12px; margin-bottom: 25px; border: 2px dashed #dee2e6; text-align: center; transition: all 0.3s ease;" id="uploadArea">
+        <div style="margin-bottom: 20px;">
+          <div style="font-size: 48px; color: #6c757d; margin-bottom: 10px;">📁</div>
+          <h3 style="margin: 0 0 10px 0; color: #495057;">Velg bildefil</h3>
+          <p style="margin: 0; color: #6c757d; font-size: 14px;">Dra og slipp eller klikk for å velge fil</p>
         </div>
-        <div id="quizFields" class="metadata">
-          <label for="title">Tittel:</label>
-          <input type="text" name="title" id="title">
-
-          <label for="descriptionQuiz">Beskrivelse:</label>
-          <textarea name="description" id="descriptionQuiz" rows="3"></textarea>
-        </div>
-        <div id="customFields" class="metadata">
-          <label for="titleCustom">Tittel:</label>
-          <input type="text" name="title" id="titleCustom">
-
-          <label for="descriptionCustom">Beskrivelse:</label>
-          <textarea name="description" id="descriptionCustom" rows="3"></textarea>
+        
+        <input type="file" name="image" id="imageUploadInput" accept="image/*" required 
+               style="width: 100%; padding: 12px; border: 2px solid #e9ecef; border-radius: 8px; background: white; cursor: pointer; font-size: 14px;"
+               onchange="onFileSelect()">
+        
+        <div id="imagePreview" style="margin-top: 20px; display: none;">
+          <img id="previewImg" style="max-width: 200px; max-height: 200px; border-radius: 8px; box-shadow: 0 4px 8px rgba(0,0,0,0.1);">
+          <p id="fileName" style="margin: 10px 0 0 0; font-weight: bold; color: #495057;"></p>
         </div>
       </div>
 
-      <div style="margin-top:15px;">
-        <button type="submit" class="btn">💾 Lagre bilde</button>
-        <button type="button" class="btn" onclick="closeUploadModal()">Avbryt</button>
+      <!-- Folder Selection -->
+      <div style="background: rgba(255, 255, 255, 0.9); padding: 20px; border-radius: 12px; margin-bottom: 20px; box-shadow: 0 2px 4px rgba(0,0,0,0.1);">
+        <h3 style="margin-top: 0; color: #333; display: flex; align-items: center; gap: 10px;">
+          📂 Velg destinasjonsmappe
+        </h3>
+        <select name="folder" id="folderSelect" required onchange="onFolderChange()" 
+                style="width: 100%; padding: 12px; border: 2px solid #e9ecef; border-radius: 8px; font-size: 14px; background: white;">
+          {% for f in folders %}
+            <option value="{{ f }}">📁 {{ f|title }}</option>
+          {% endfor %}
+        </select>
+      </div>
+
+      <!-- Metadata Fields -->
+      <div id="metadataFields" style="display: none;">
+        
+        <!-- Traffic Signs Metadata -->
+        <div id="signsFields" class="metadata" style="background: #e8f4fd; padding: 20px; border-radius: 12px; border-left: 4px solid #0ea5e9; display: none;">
+          <h3 style="margin-top: 0; color: #0369a1; display: flex; align-items: center; gap: 10px;">
+            🚦 Trafikkskilt informasjon
+          </h3>
+          
+          <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 15px; margin-bottom: 15px;">
+            <div>
+              <label for="sign_code" style="display: block; font-weight: bold; margin-bottom: 5px; color: #374151;">Skiltkode:</label>
+              <input type="text" name="sign_code" id="sign_code" 
+                     style="width: 100%; padding: 10px; border: 2px solid #e5e7eb; border-radius: 8px; font-size: 14px;"
+                     placeholder="f.eks. C01, B02">
+            </div>
+            <div>
+              <label for="name" style="display: block; font-weight: bold; margin-bottom: 5px; color: #374151;">Navn:</label>
+              <input type="text" name="name" id="name" 
+                     style="width: 100%; padding: 10px; border: 2px solid #e5e7eb; border-radius: 8px; font-size: 14px;"
+                     placeholder="Kort navn for skiltet">
+            </div>
+          </div>
+          
+          <div>
+            <label for="descriptionSign" style="display: block; font-weight: bold; margin-bottom: 5px; color: #374151;">Forklaring:</label>
+            <textarea name="description" id="descriptionSign" rows="3" 
+                      style="width: 100%; padding: 10px; border: 2px solid #e5e7eb; border-radius: 8px; font-size: 14px; resize: vertical;"
+                      placeholder="Detaljert beskrivelse av hva skiltet betyr..."></textarea>
+          </div>
+        </div>
+        
+        <!-- Quiz Images Metadata -->
+        <div id="quizFields" class="metadata" style="background: #fef3e2; padding: 20px; border-radius: 12px; border-left: 4px solid #f59e0b; display: none;">
+          <h3 style="margin-top: 0; color: #d97706; display: flex; align-items: center; gap: 10px;">
+            🧠 Quiz-bilde informasjon
+          </h3>
+          
+          <div style="margin-bottom: 15px;">
+            <label for="title" style="display: block; font-weight: bold; margin-bottom: 5px; color: #374151;">Tittel:</label>
+            <input type="text" name="title" id="title" 
+                   style="width: 100%; padding: 10px; border: 2px solid #e5e7eb; border-radius: 8px; font-size: 14px;"
+                   placeholder="Beskrivende tittel for bildet">
+          </div>
+          
+          <div>
+            <label for="descriptionQuiz" style="display: block; font-weight: bold; margin-bottom: 5px; color: #374151;">Beskrivelse:</label>
+            <textarea name="description" id="descriptionQuiz" rows="3" 
+                      style="width: 100%; padding: 10px; border: 2px solid #e5e7eb; border-radius: 8px; font-size: 14px; resize: vertical;"
+                      placeholder="Detaljert beskrivelse av bildet og når det skal brukes..."></textarea>
+          </div>
+        </div>
+        
+        <!-- Custom Images Metadata -->
+        <div id="customFields" class="metadata" style="background: #f3e8ff; padding: 20px; border-radius: 12px; border-left: 4px solid #8b5cf6; display: none;">
+          <h3 style="margin-top: 0; color: #7c3aed; display: flex; align-items: center; gap: 10px;">
+            🎨 Tilpasset bilde informasjon
+          </h3>
+          
+          <div style="margin-bottom: 15px;">
+            <label for="titleCustom" style="display: block; font-weight: bold; margin-bottom: 5px; color: #374151;">Tittel:</label>
+            <input type="text" name="title" id="titleCustom" 
+                   style="width: 100%; padding: 10px; border: 2px solid #e5e7eb; border-radius: 8px; font-size: 14px;"
+                   placeholder="Beskrivende tittel for bildet">
+          </div>
+          
+          <div>
+            <label for="descriptionCustom" style="display: block; font-weight: bold; margin-bottom: 5px; color: #374151;">Beskrivelse:</label>
+            <textarea name="description" id="descriptionCustom" rows="3" 
+                      style="width: 100%; padding: 10px; border: 2px solid #e5e7eb; border-radius: 8px; font-size: 14px; resize: vertical;"
+                      placeholder="Detaljert beskrivelse av bildet og dets formål..."></textarea>
+          </div>
+        </div>
+      </div>
+
+      <!-- Action Buttons -->
+      <div style="margin-top: 25px; display: flex; gap: 10px; justify-content: center;">
+        <button type="submit" class="btn btn-success" style="padding: 12px 30px; font-size: 16px;" id="submitBtn" disabled>
+          💾 Last opp bilde
+        </button>
+        <button type="button" class="btn btn-secondary" style="padding: 12px 30px; font-size: 16px;" onclick="closeUploadModal()">
+          ❌ Avbryt
+        </button>
+      </div>
+      
+      <!-- Upload Progress -->
+      <div id="uploadProgress" style="margin-top: 20px; display: none;">
+        <div style="background: #e9ecef; border-radius: 10px; overflow: hidden;">
+          <div id="progressBar" style="height: 8px; background: linear-gradient(90deg, #28a745, #20c997); width: 0%; transition: width 0.3s ease;"></div>
+        </div>
+        <p style="text-align: center; margin: 10px 0 0 0; color: #6c757d; font-size: 14px;">Laster opp...</p>
       </div>
     </form>
   </div>
 </div>
 
 <script>
-  function showUploadModal() {
-    document.getElementById('uploadModal').style.display = 'flex';
-  }
-  function closeUploadModal() {
-    document.getElementById('uploadModal').style.display = 'none';
-  }
-  function onFileSelect() {
+function showUploadModal() {
+  document.getElementById('uploadModal').style.display = 'flex';
+}
+
+function closeUploadModal() {
+  document.getElementById('uploadModal').style.display = 'none';
+  // Reset form
+  document.getElementById('uploadForm').reset();
+  document.getElementById('imagePreview').style.display = 'none';
+  document.getElementById('metadataFields').style.display = 'none';
+  document.getElementById('submitBtn').disabled = true;
+  document.getElementById('uploadProgress').style.display = 'none';
+}
+
+function onFileSelect() {
+  const fileInput = document.getElementById('imageUploadInput');
+  const file = fileInput.files[0];
+  
+  if (file) {
+    // Show image preview
+    const reader = new FileReader();
+    reader.onload = function(e) {
+      const preview = document.getElementById('previewImg');
+      preview.src = e.target.result;
+      document.getElementById('imagePreview').style.display = 'block';
+      document.getElementById('fileName').textContent = file.name;
+    };
+    reader.readAsDataURL(file);
+    
+    // Enable form sections
     document.getElementById('metadataFields').style.display = 'block';
+    document.getElementById('submitBtn').disabled = false;
     onFolderChange();
+    
+    // Add drag-and-drop styling
+    const uploadArea = document.getElementById('uploadArea');
+    uploadArea.style.borderColor = '#28a745';
+    uploadArea.style.backgroundColor = '#f8fff9';
   }
-  function onFolderChange() {
-    var folder = document.getElementById('folderSelect').value;
-    document.querySelectorAll('.metadata').forEach(div => div.style.display = 'none');
-    document.getElementById(folder + 'Fields').style.display = 'block';
+}
+
+function onFolderChange() {
+  const folder = document.getElementById('folderSelect').value;
+  document.querySelectorAll('.metadata').forEach(div => div.style.display = 'none');
+  const targetField = document.getElementById(folder + 'Fields');
+  if (targetField) {
+    targetField.style.display = 'block';
   }
+}
+
+// Form submission with progress
+document.getElementById('uploadForm').addEventListener('submit', function(e) {
+  // Show progress bar
+  document.getElementById('uploadProgress').style.display = 'block';
+  document.getElementById('submitBtn').disabled = true;
+  document.getElementById('submitBtn').textContent = '⏳ Laster opp...';
+  
+  // Simulate progress (replace with actual progress if using AJAX)
+  let progress = 0;
+  const progressBar = document.getElementById('progressBar');
+  const interval = setInterval(() => {
+    progress += 10;
+    progressBar.style.width = progress + '%';
+    if (progress >= 90) {
+      clearInterval(interval);
+    }
+  }, 100);
+});
+
+// Drag and drop functionality
+const uploadArea = document.getElementById('uploadArea');
+
+uploadArea.addEventListener('dragover', function(e) {
+  e.preventDefault();
+  uploadArea.style.borderColor = '#0ea5e9';
+  uploadArea.style.backgroundColor = '#f0f9ff';
+});
+
+uploadArea.addEventListener('dragleave', function(e) {
+  e.preventDefault();
+  uploadArea.style.borderColor = '#dee2e6';
+  uploadArea.style.backgroundColor = '#f8f9fa';
+});
+
+uploadArea.addEventListener('drop', function(e) {
+  e.preventDefault();
+  const files = e.dataTransfer.files;
+  if (files.length > 0) {
+    document.getElementById('imageUploadInput').files = files;
+    onFileSelect();
+  }
+});
 </script>
+
+<style>
+/* Upload Modal Specific Styling */
+#uploadModal .modal-content {
+  max-width: 700px;
+  margin: 3% auto;
+  animation: slideIn 0.3s ease;
+}
+
+@keyframes slideIn {
+  from {
+    opacity: 0;
+    transform: translateY(-50px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+#uploadModal input[type="file"] {
+  transition: all 0.3s ease;
+}
+
+#uploadModal input[type="file"]:focus {
+  border-color: #0ea5e9;
+  box-shadow: 0 0 0 3px rgba(14, 165, 233, 0.1);
+}
+
+#uploadModal input[type="text"], 
+#uploadModal textarea, 
+#uploadModal select {
+  transition: all 0.3s ease;
+}
+
+#uploadModal input[type="text"]:focus, 
+#uploadModal textarea:focus, 
+#uploadModal select:focus {
+  border-color: #0ea5e9;
+  box-shadow: 0 0 0 3px rgba(14, 165, 233, 0.1);
+  outline: none;
+}
+
+#uploadModal .btn {
+  transition: all 0.3s ease;
+}
+
+#uploadModal .btn:hover:not(:disabled) {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+}
+
+#uploadModal .btn:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+/* Metadata sections animation */
+.metadata {
+  animation: fadeIn 0.4s ease;
+}
+
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* Image preview styling */
+#imagePreview img {
+  transition: all 0.3s ease;
+}
+
+#imagePreview img:hover {
+  transform: scale(1.05);
+}
+
+/* Upload area hover effects */
+#uploadArea {
+  cursor: pointer;
+}
+
+#uploadArea:hover {
+  border-color: #0ea5e9 !important;
+  background-color: #f0f9ff !important;
+}
+</style>
