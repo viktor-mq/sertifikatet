@@ -11,7 +11,7 @@ from functools import wraps
 from .utils import validate_question
 from .. import db
 from ..models import Question, Option, TrafficSign, QuizImage, User, AdminAuditLog, AdminReport, UserFeedback
-from ..security import AdminSecurityService
+from ..security.admin_security import AdminSecurityService
 import json
 from datetime import datetime, timedelta
 
@@ -226,19 +226,23 @@ def admin_dashboard():
     
     # Traffic signs
     images_dir = os.path.join(current_app.static_folder, 'images')
-    for ts in TrafficSign.query.all():
-        # Dynamically find the subfolder under static/images containing this filename
-        folder = ''
-        for root, dirs, files in os.walk(images_dir):
-            if ts.filename in files:
-                folder = os.path.relpath(root, images_dir).replace(os.sep, '/')
-                break
-        images.append({
-            'id': ts.id,
-            'filename': ts.filename,
-            'name': ts.description or ts.name,
-            'folder': folder
-        })
+    try:
+        for ts in TrafficSign.query.all():
+            # Dynamically find the subfolder under static/images containing this filename
+            folder = ''
+            if ts.filename:
+                for root, dirs, files in os.walk(images_dir):
+                    if ts.filename in files:
+                        folder = os.path.relpath(root, images_dir).replace(os.sep, '/')
+                        break
+                images.append({
+                    'id': ts.id,
+                    'filename': ts.filename,
+                    'name': ts.description or getattr(ts, 'name', '') or ts.filename,
+                    'folder': folder
+                })
+    except Exception as e:
+        print(f"[ADMIN] Error processing traffic signs: {e}")
 
     # Quiz images
     for qi in QuizImage.query.all():
@@ -285,6 +289,75 @@ def admin_dashboard():
             print(f"[ADMIN] Feil ved henting av data fra tabell '{tbl}': {e}")
             tables[tbl] = [{"error": str(e)}]
 
+    # Get data for Reports & Security section
+    try:
+        reports_stats = {
+            'total': AdminReport.query.count(),
+            'new': AdminReport.query.filter_by(status='new').count(),
+            'in_progress': AdminReport.query.filter_by(status='in_progress').count(),
+            'critical': AdminReport.query.filter_by(priority='critical', status='new').count(),
+            'high': AdminReport.query.filter_by(priority='high', status='new').count()
+        }
+    except Exception as e:
+        print(f"[ADMIN] Error fetching reports stats: {e}")
+        reports_stats = {'total': 0, 'new': 0, 'in_progress': 0, 'critical': 0, 'high': 0}
+    
+    # Get recent security alerts
+    try:
+        recent_security_alerts = AdminReport.query.filter(
+            AdminReport.report_type.in_(['security_alert', 'suspicious_activity', 'admin_change']),
+            AdminReport.created_at >= datetime.now() - timedelta(days=7)
+        ).order_by(AdminReport.created_at.desc()).limit(10).all()
+    except Exception as e:
+        print(f"[ADMIN] Error fetching security alerts: {e}")
+        recent_security_alerts = []
+    
+    # Get unresolved user feedback
+    try:
+        user_feedback = UserFeedback.query.filter_by(status='new').order_by(
+            UserFeedback.created_at.desc()
+        ).limit(10).all()
+    except Exception as e:
+        print(f"[ADMIN] Error fetching user feedback: {e}")
+        user_feedback = []
+    
+    # Get recent reports for display
+    try:
+        recent_reports = AdminReport.query.order_by(AdminReport.created_at.desc()).limit(20).all()
+    except Exception as e:
+        print(f"[ADMIN] Error fetching recent reports: {e}")
+        recent_reports = []
+    
+    # Get data for Manage Users section
+    try:
+        users = User.query.order_by(User.created_at.desc()).all()
+        recent_logs = AdminSecurityService.get_admin_audit_log(limit=50)
+    except Exception as e:
+        print(f"[ADMIN] Error fetching users data: {e}")
+        users = []
+        recent_logs = []
+    
+    try:
+        user_stats = {
+            'total_users': User.query.count(),
+            'admin_users': User.query.filter_by(is_admin=True).count(),
+            'active_users': User.query.filter_by(is_active=True).count(),
+            'inactive_users': User.query.count() - User.query.filter_by(is_active=True).count()
+        }
+    except Exception as e:
+        print(f"[ADMIN] Error fetching user stats: {e}")
+        user_stats = {'total_users': 0, 'admin_users': 0, 'active_users': 0, 'inactive_users': 0}
+    
+    # Get data for Audit Log section
+    try:
+        audit_logs = AdminSecurityService.get_admin_audit_log(limit=100)
+        audit_actions = db.session.query(AdminAuditLog.action).distinct().all()
+        audit_actions = [action[0] for action in audit_actions]
+    except Exception as e:
+        print(f"[ADMIN] Error fetching audit log data: {e}")
+        audit_logs = []
+        audit_actions = []
+
     return render_template(
         'admin/admin_dashboard.html',
         questions=questions,
@@ -296,7 +369,24 @@ def admin_dashboard():
         images=images,
         folders=folders,
         tables=tables,
-        message=message
+        message=message,
+        # Reports & Security data
+        reports_stats=reports_stats,
+        recent_security_alerts=recent_security_alerts,
+        user_feedback=user_feedback,
+        reports=recent_reports,
+        report_type_filter='',
+        status_filter='',
+        priority_filter='',
+        # Manage Users data
+        users=users,
+        recent_logs=recent_logs,
+        user_stats=user_stats,
+        # Audit Log data
+        logs=audit_logs,
+        actions=audit_actions,
+        action_filter='',
+        user_filter=''
     )
 
 @admin_bp.route('/delete_question/<int:question_id>', methods=['POST'])

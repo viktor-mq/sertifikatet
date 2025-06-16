@@ -1,0 +1,268 @@
+{# templates/admin/reports_section.html #}
+
+<!-- Reports & Security Section -->
+<div id="reportsSection" class="section" style="margin-top: 30px;">
+  
+  <!-- Security Alert Banner for Critical Issues -->
+  {% if reports_stats and reports_stats.critical > 0 %}
+  <div class="validation-errors" style="background: #f8d7da; border-color: #f5c6cb; color: #721c24;">
+    <strong>⚠️ CRITICAL:</strong> {{ reports_stats.critical }} critical report(s) require immediate attention!
+  </div>
+  {% endif %}
+
+  <!-- Statistics Section -->
+  <div class="stats-container">
+    <div class="stat-card">
+      <h3>{{ reports_stats.total if reports_stats else 0 }}</h3>
+      <p>Total Reports</p>
+    </div>
+    <div class="stat-card">
+      <h3>{{ reports_stats.new if reports_stats else 0 }}</h3>
+      <p>New Reports</p>
+    </div>
+    <div class="stat-card">
+      <h3>{{ reports_stats.in_progress if reports_stats else 0 }}</h3>
+      <p>In Progress</p>
+    </div>
+    <div class="stat-card">
+      <h3>{{ (reports_stats.high + reports_stats.critical) if reports_stats else 0 }}</h3>
+      <p>High Priority</p>
+    </div>
+  </div>
+
+  <!-- Recent Security Alerts -->
+  {% if recent_security_alerts %}
+  <div style="background: rgba(255, 255, 255, 0.9); padding: 20px; border-radius: 12px; margin-bottom: 20px; box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1); border-left: 4px solid #dc3545;">
+    <h3 style="color: #dc3545; margin-bottom: 15px; display: flex; align-items: center; gap: 10px;">
+      🚨 Recent Security Alerts
+    </h3>
+    <div class="table-container">
+      <table>
+        <thead>
+          <tr>
+            <th>Time</th>
+            <th>Type</th>
+            <th>Description</th>
+            <th>User</th>
+            <th>Action</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for alert in recent_security_alerts %}
+          <tr>
+            <td>{{ alert.created_at.strftime('%d.%m %H:%M') }}</td>
+            <td>
+              <span class="btn btn-danger btn-small" style="cursor: default;">{{ alert.report_type }}</span>
+            </td>
+            <td>{{ alert.title[:50] }}...</td>
+            <td>
+              {% if alert.affected_user %}
+                {{ alert.affected_user.username }}
+              {% else %}
+                -
+              {% endif %}
+            </td>
+            <td>
+              <a href="{{ url_for('admin.view_report', report_id=alert.id) }}" 
+                 class="btn btn-danger btn-small">
+                👁️ View
+              </a>
+            </td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+  {% endif %}
+
+  <!-- Filters -->
+  <form method="GET" action="{{ url_for('admin.reports') }}">
+    <div class="search-filter-container">
+      <select name="type">
+        <option value="">All Types</option>
+        <option value="user_feedback" {% if report_type_filter == 'user_feedback' %}selected{% endif %}>
+          User Feedback
+        </option>
+        <option value="system_error" {% if report_type_filter == 'system_error' %}selected{% endif %}>
+          System Error
+        </option>
+        <option value="security_alert" {% if report_type_filter == 'security_alert' %}selected{% endif %}>
+          Security Alert
+        </option>
+        <option value="admin_change" {% if report_type_filter == 'admin_change' %}selected{% endif %}>
+          Admin Change
+        </option>
+        <option value="suspicious_activity" {% if report_type_filter == 'suspicious_activity' %}selected{% endif %}>
+          Suspicious Activity
+        </option>
+      </select>
+
+      <select name="status">
+        <option value="">All Status</option>
+        <option value="new" {% if status_filter == 'new' %}selected{% endif %}>New</option>
+        <option value="in_progress" {% if status_filter == 'in_progress' %}selected{% endif %}>
+          In Progress
+        </option>
+        <option value="resolved" {% if status_filter == 'resolved' %}selected{% endif %}>Resolved</option>
+        <option value="archived" {% if status_filter == 'archived' %}selected{% endif %}>Archived</option>
+      </select>
+
+      <select name="priority">
+        <option value="">All Priorities</option>
+        <option value="critical" {% if priority_filter == 'critical' %}selected{% endif %}>Critical</option>
+        <option value="high" {% if priority_filter == 'high' %}selected{% endif %}>High</option>
+        <option value="medium" {% if priority_filter == 'medium' %}selected{% endif %}>Medium</option>
+        <option value="low" {% if priority_filter == 'low' %}selected{% endif %}>Low</option>
+      </select>
+
+      <button type="submit" class="btn">🔍 Filter</button>
+      <a href="{{ url_for('admin.reports') }}" class="btn btn-secondary">🗑️ Clear</a>
+    </div>
+  </form>
+
+  <!-- Reports Table -->
+  <div class="table-container">
+    <table>
+      <thead>
+        <tr>
+          <th>ID</th>
+          <th>Priority</th>
+          <th>Type</th>
+          <th>Title</th>
+          <th>Reported By</th>
+          <th>Status</th>
+          <th>Created</th>
+          <th>Assigned To</th>
+          <th>Actions</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% if reports %}
+          {% for report in reports %}
+          <tr class="{% if report.priority == 'critical' %}table-danger{% elif report.priority == 'high' %}table-warning{% endif %}">
+            <td>#{{ report.id }}</td>
+            <td>
+              {% if report.priority == 'critical' %}
+                <span class="btn btn-danger btn-small" style="cursor: default;">CRITICAL</span>
+              {% elif report.priority == 'high' %}
+                <span class="btn btn-warning btn-small" style="cursor: default;">HIGH</span>
+              {% elif report.priority == 'medium' %}
+                <span class="btn btn-secondary btn-small" style="cursor: default;">MEDIUM</span>
+              {% else %}
+                <span class="btn btn-secondary btn-small" style="cursor: default;">LOW</span>
+              {% endif %}
+            </td>
+            <td>
+              <span class="btn btn-secondary btn-small" style="cursor: default;">{{ report.report_type }}</span>
+            </td>
+            <td>
+              <strong>{{ report.title[:50] }}{% if report.title|length > 50 %}...{% endif %}</strong>
+            </td>
+            <td>
+              {% if report.reported_by %}
+                {{ report.reported_by.username }}
+              {% else %}
+                <em>System</em>
+              {% endif %}
+            </td>
+            <td>
+              {% if report.status == 'new' %}
+                <span class="btn btn-secondary btn-small" style="cursor: default;">NEW</span>
+              {% elif report.status == 'in_progress' %}
+                <span class="btn btn-warning btn-small" style="cursor: default;">IN PROGRESS</span>
+              {% elif report.status == 'resolved' %}
+                <span class="btn btn-success btn-small" style="cursor: default;">RESOLVED</span>
+              {% else %}
+                <span class="btn btn-secondary btn-small" style="cursor: default;">{{ report.status|upper }}</span>
+              {% endif %}
+            </td>
+            <td>{{ report.created_at.strftime('%d.%m.%Y %H:%M') }}</td>
+            <td>
+              {% if report.assigned_to %}
+                {{ report.assigned_to.username }}
+              {% else %}
+                <em>Unassigned</em>
+              {% endif %}
+            </td>
+            <td>
+              <a href="{{ url_for('admin.view_report', report_id=report.id) }}" 
+                 class="btn btn-small">
+                👁️ View
+              </a>
+              {% if report.status == 'new' and not report.assigned_to %}
+              <form method="POST" action="{{ url_for('admin.update_report', report_id=report.id) }}" 
+                    class="d-inline">
+                <input type="hidden" name="action" value="assign">
+                <button type="submit" class="btn btn-warning btn-small">
+                  👤 Assign
+                </button>
+              </form>
+              {% endif %}
+            </td>
+          </tr>
+          {% endfor %}
+        {% else %}
+          <tr>
+            <td colspan="9" style="text-align: center; color: #999; font-style: italic;">No reports found</td>
+          </tr>
+        {% endif %}
+      </tbody>
+    </table>
+  </div>
+
+  <!-- Unresolved User Feedback -->
+  {% if user_feedback %}
+  <div style="background: rgba(255, 255, 255, 0.9); padding: 20px; border-radius: 12px; margin-top: 20px; box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);">
+    <h3 style="color: #333; margin-bottom: 15px; display: flex; align-items: center; gap: 10px;">
+      💬 Unresolved User Feedback
+    </h3>
+    <div class="table-container">
+      <table>
+        <thead>
+          <tr>
+            <th>User</th>
+            <th>Type</th>
+            <th>Subject</th>
+            <th>Date</th>
+            <th>Action</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for feedback in user_feedback %}
+          <tr>
+            <td>{{ feedback.user.username }}</td>
+            <td>
+              <span class="btn {% if feedback.feedback_type == 'bug' %}btn-danger{% elif feedback.feedback_type == 'feature' %}btn-secondary{% else %}btn-secondary{% endif %} btn-small" style="cursor: default;">
+                {{ feedback.feedback_type }}
+              </span>
+            </td>
+            <td>{{ feedback.subject[:40] }}{% if feedback.subject|length > 40 %}...{% endif %}</td>
+            <td>{{ feedback.created_at.strftime('%d.%m.%Y') }}</td>
+            <td>
+              <form method="POST" action="{{ url_for('admin.create_report_from_feedback', feedback_id=feedback.id) }}" class="d-inline">
+                <button type="submit" class="btn btn-success btn-small">
+                  📄 Create Report
+                </button>
+              </form>
+            </td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+  {% endif %}
+</div>
+
+<style>
+.table-danger {
+    background-color: rgba(220, 53, 69, 0.1);
+}
+.table-warning {
+    background-color: rgba(255, 193, 7, 0.1);
+}
+#reportsSection form.d-inline {
+    display: inline-block;
+}
+</style>

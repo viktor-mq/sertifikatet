@@ -1,0 +1,191 @@
+{# templates/admin/manage_users_section.html #}
+
+<!-- Manage Users Section -->
+<div id="manageUsersSection" class="section" style="margin-top: 30px;">
+  
+  <!-- Security Alert -->
+  <div class="validation-errors" style="background: #fff3cd; color: #856404; border: 1px solid #ffeaa7;">
+    <strong>🔒 Security Notice:</strong> Admin privilege management is a critical security operation. All admin changes are:
+    <ul style="margin: 10px 0 0 20px;">
+      <li>📧 <strong>Email notifications</strong> sent to all existing admins</li>
+      <li>📝 <strong>Audit logged</strong> with IP address and timestamp</li>
+      <li>🔒 <strong>Security validated</strong> to prevent unauthorized escalation</li>
+    </ul>
+    <p style="margin: 10px 0 0 0;"><strong>Only grant admin privileges to trusted users.</strong></p>
+  </div>
+
+  <!-- Statistics Section -->
+  <div class="stats-container">
+    <div class="stat-card">
+      <h3>{{ user_stats.total_users if user_stats else 0 }}</h3>
+      <p>Total Users</p>
+    </div>
+    <div class="stat-card">
+      <h3>{{ user_stats.admin_users if user_stats else 0 }}</h3>
+      <p>Admin Users</p>
+    </div>
+    <div class="stat-card">
+      <h3>{{ user_stats.active_users if user_stats else 0 }}</h3>
+      <p>Active Users</p>
+    </div>
+    <div class="stat-card">
+      <h3>{{ user_stats.inactive_users if user_stats else 0 }}</h3>
+      <p>Inactive Users</p>
+    </div>
+  </div>
+
+  <!-- Users Table -->
+  <div class="table-container">
+    <table>
+      <thead>
+        <tr>
+          <th>ID</th>
+          <th>Username</th>
+          <th>Email</th>
+          <th>Full Name</th>
+          <th>Status</th>
+          <th>Admin</th>
+          <th>Created</th>
+          <th>Last Login</th>
+          <th>Actions</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% if users %}
+          {% for user in users %}
+          <tr class="{% if user.is_admin %}table-warning{% endif %}">
+            <td>{{ user.id }}</td>
+            <td>
+              <strong>{{ user.username }}</strong>
+              {% if user.id == current_user.id %}
+              <span class="btn btn-secondary btn-small" style="cursor: default; margin-left: 5px;">You</span>
+              {% endif %}
+            </td>
+            <td>{{ user.email }}</td>
+            <td>{{ user.full_name or '-' }}</td>
+            <td>
+              {% if user.is_active %}
+              <span class="btn btn-success btn-small" style="cursor: default;">Active</span>
+              {% else %}
+              <span class="btn btn-secondary btn-small" style="cursor: default;">Inactive</span>
+              {% endif %}
+              
+              {% if user.is_verified %}
+              <span class="btn btn-secondary btn-small" style="cursor: default;">Verified</span>
+              {% endif %}
+            </td>
+            <td>
+              {% if user.is_admin %}
+              <span class="btn btn-danger btn-small" style="cursor: default;">🛡️ Admin</span>
+              {% else %}
+              <span class="btn btn-secondary btn-small" style="cursor: default;">User</span>
+              {% endif %}
+            </td>
+            <td>
+              <small>{{ user.created_at.strftime('%Y-%m-%d %H:%M') if user.created_at else '-' }}</small>
+            </td>
+            <td>
+              <small>{{ user.last_login.strftime('%Y-%m-%d %H:%M') if user.last_login else 'Never' }}</small>
+            </td>
+            <td>
+              {% if user.id != current_user.id %}
+                {% if user.is_admin %}
+                <!-- Revoke Admin Button -->
+                <form method="POST" action="{{ url_for('admin.revoke_admin_privileges', user_id=user.id) }}" 
+                      class="d-inline" 
+                      onsubmit="return confirm('Are you sure you want to REVOKE admin privileges from {{ user.username }}?\\n\\nThis action will:\\n- Remove all admin access\\n- Send email notifications to all admins\\n- Be logged in the security audit trail')">
+                  <button type="submit" class="btn btn-danger btn-small">
+                    👤❌ Revoke Admin
+                  </button>
+                </form>
+                {% else %}
+                <!-- Grant Admin Button -->
+                <form method="POST" action="{{ url_for('admin.grant_admin_privileges', user_id=user.id) }}" 
+                      class="d-inline" 
+                      onsubmit="return confirm('Are you sure you want to GRANT admin privileges to {{ user.username }}?\\n\\nThis action will:\\n- Give full admin access\\n- Send email alerts to all existing admins\\n- Be permanently logged for security audit\\n\\nOnly proceed if you trust this user completely.')">
+                  <button type="submit" class="btn btn-warning btn-small">
+                    🛡️ Grant Admin
+                  </button>
+                </form>
+                {% endif %}
+              {% else %}
+              <small style="color: #999; font-style: italic;">Cannot modify own privileges</small>
+              {% endif %}
+            </td>
+          </tr>
+          {% endfor %}
+        {% else %}
+          <tr>
+            <td colspan="9" style="text-align: center; color: #999; font-style: italic;">No users found</td>
+          </tr>
+        {% endif %}
+      </tbody>
+    </table>
+  </div>
+
+  <!-- Recent Admin Activity -->
+  {% if recent_logs %}
+  <div style="background: rgba(255, 255, 255, 0.9); padding: 20px; border-radius: 12px; margin-top: 20px; box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);">
+    <h3 style="color: #333; margin-bottom: 15px; display: flex; align-items: center; gap: 10px;">
+      📋 Recent Admin Activity (Last 50 entries)
+    </h3>
+    <div class="table-container">
+      <table>
+        <thead>
+          <tr>
+            <th>Timestamp</th>
+            <th>Action</th>
+            <th>Target User</th>
+            <th>Admin</th>
+            <th>IP Address</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for log in recent_logs %}
+          <tr>
+            <td><small>{{ log.created_at.strftime('%Y-%m-%d %H:%M:%S') }}</small></td>
+            <td>
+              {% if log.action == 'grant_admin' %}
+              <span class="btn btn-warning btn-small" style="cursor: default;">🛡️ Admin Granted</span>
+              {% elif log.action == 'revoke_admin' %}
+              <span class="btn btn-danger btn-small" style="cursor: default;">❌ Admin Revoked</span>
+              {% elif log.action == 'admin_login_success' %}
+              <span class="btn btn-success btn-small" style="cursor: default;">✅ Admin Login</span>
+              {% elif log.action == 'admin_login_failure' %}
+              <span class="btn btn-danger btn-small" style="cursor: default;">❌ Login Failed</span>
+              {% else %}
+              <span class="btn btn-secondary btn-small" style="cursor: default;">{{ log.action }}</span>
+              {% endif %}
+            </td>
+            <td>{{ log.target_user.username if log.target_user else 'Unknown' }}</td>
+            <td>{{ log.admin_user.username if log.admin_user else 'System' }}</td>
+            <td><small><code>{{ log.ip_address or '-' }}</code></small></td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+    <div style="text-align: center; margin-top: 15px;">
+      <a href="{{ url_for('admin.security_audit_log') }}" class="btn">
+        🛡️ View Full Security Audit Log
+      </a>
+    </div>
+  </div>
+  {% endif %}
+</div>
+
+<style>
+.table-warning {
+    background-color: rgba(255, 193, 7, 0.1);
+}
+#manageUsersSection form.d-inline {
+    display: inline-block;
+}
+#manageUsersSection code {
+    background-color: rgba(0, 0, 0, 0.1);
+    padding: 2px 4px;
+    border-radius: 3px;
+    font-family: 'Courier New', monospace;
+    font-size: 12px;
+}
+</style>

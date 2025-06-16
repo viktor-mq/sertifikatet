@@ -27,9 +27,9 @@
         <div class="section-tabs">
             <a href="#" class="btn active" onclick="showSection('questions')" id="questionsTab">📋 Spørsmål</a>
             <a href="#" class="btn" onclick="showSection('database')" id="databaseTab">💾 Database</a>
-            <a href="{{ url_for('admin.reports') }}" class="btn">🛡️ Reports & Security</a>
-            <a href="{{ url_for('admin.manage_users') }}" class="btn">👥 Manage Users</a>
-            <a href="{{ url_for('admin.security_audit_log') }}" class="btn">📜 Audit Log</a>
+            <a href="#" class="btn" onclick="showSection('reports')" id="reportsTab">🛡️ Reports & Security</a>
+            <a href="#" class="btn" onclick="showSection('manageUsers')" id="manageUsersTab">👥 Manage Users</a>
+            <a href="#" class="btn" onclick="showSection('auditLog')" id="auditLogTab">📜 Audit Log</a>
         </div>
 
         <!-- Questions Section -->
@@ -37,6 +37,15 @@
 
         <!-- Database Section -->
         {% include 'admin/database_section.html' %}
+
+        <!-- Reports & Security Section -->
+        {% include 'admin/reports_section.html' %}
+
+        <!-- Manage Users Section -->
+        {% include 'admin/manage_users_section.html' %}
+
+        <!-- Audit Log Section -->
+        {% include 'admin/audit_log_section.html' %}
     </div>
 
     <script>
