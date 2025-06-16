@@ -6,7 +6,7 @@ import logging
 from datetime import datetime, timedelta
 from flask import request, current_app
 from sqlalchemy import and_
-from ..models import User, AdminAuditLog, db
+from ..models import User, AdminAuditLog, AdminReport, db
 from .email_service import EmailService
 
 logger = logging.getLogger(__name__)
@@ -63,6 +63,17 @@ class AdminSecurityService:
             )
             
             db.session.commit()
+            
+            # Create security report
+            AdminSecurityService._create_security_report(
+                report_type='admin_change',
+                priority='high',
+                title=f'Admin Privileges Granted to {target_user.username}',
+                description=f'Admin privileges were granted to user {target_user.username} (ID: {target_user.id}) by {granting_admin.username if granting_admin else "system"}.',
+                affected_user=target_user,
+                reported_by=granting_admin,
+                metadata={'action': 'grant_admin', 'warnings': warnings}
+            )
             
             # Send email notifications to all existing admins
             try:
@@ -141,6 +152,17 @@ class AdminSecurityService:
             )
             
             db.session.commit()
+            
+            # Create security report
+            AdminSecurityService._create_security_report(
+                report_type='admin_change',
+                priority='high',
+                title=f'Admin Privileges Revoked from {target_user.username}',
+                description=f'Admin privileges were revoked from user {target_user.username} (ID: {target_user.id}) by {revoking_admin.username if revoking_admin else "system"}. Remaining admins: {remaining_admins}',
+                affected_user=target_user,
+                reported_by=revoking_admin,
+                metadata={'action': 'revoke_admin', 'remaining_admins': remaining_admins}
+            )
             
             # Send email notifications
             try:
@@ -281,6 +303,74 @@ class AdminSecurityService:
                 target_user=user,
                 additional_info={'success': success}
             )
+            
+            # Create security report for failed admin login attempts
+            if not success:
+                AdminSecurityService._create_security_report(
+                    report_type='security_alert',
+                    priority='medium',
+                    title=f'Failed Admin Login Attempt - {user.username}',
+                    description=f'Failed admin login attempt for user {user.username} from IP {AdminSecurityService._get_client_ip()}',
+                    affected_user=user,
+                    metadata={'ip_address': AdminSecurityService._get_client_ip()}
+                )
+            
             db.session.commit()
         except Exception as e:
             logger.error(f"Failed to log admin login attempt: {e}")
+    
+    @staticmethod
+    def _create_security_report(report_type, priority, title, description, affected_user=None, reported_by=None, metadata=None):
+        """Create an AdminReport for security tracking"""
+        try:
+            report = AdminReport(
+                report_type=report_type,
+                priority=priority,
+                title=title,
+                description=description,
+                affected_user_id=affected_user.id if affected_user else None,
+                reported_by_user_id=reported_by.id if reported_by else None,
+                ip_address=AdminSecurityService._get_client_ip(),
+                user_agent=request.headers.get('User-Agent', '') if request else '',
+                metadata_json=json.dumps(metadata) if metadata else None
+            )
+            db.session.add(report)
+            # Note: commit is handled by the calling function
+        except Exception as e:
+            logger.error(f"Failed to create security report: {e}")
+    
+    @staticmethod
+    def log_admin_action(admin_user, action, target_user_id=None, additional_info=None):
+        """Public method to log admin actions with report creation"""
+        try:
+            # Get target user if ID provided
+            target_user = None
+            if target_user_id:
+                target_user = User.query.get(target_user_id)
+            
+            # Log the action
+            AdminSecurityService._log_admin_action(
+                action=action,
+                target_user=target_user or admin_user,
+                admin_user=admin_user,
+                additional_info=additional_info
+            )
+            
+            # Create report for certain actions
+            if action.startswith('report_'):
+                # This is a report action, no need to create another report
+                pass
+            elif action in ['suspicious_activity', 'security_violation']:
+                AdminSecurityService._create_security_report(
+                    report_type='security_alert',
+                    priority='high',
+                    title=f'Security Alert: {action}',
+                    description=f'Security action logged: {action}',
+                    affected_user=target_user,
+                    reported_by=admin_user,
+                    metadata=additional_info
+                )
+            
+            db.session.commit()
+        except Exception as e:
+            logger.error(f"Failed to log admin action: {e}")

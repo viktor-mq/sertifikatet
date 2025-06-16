@@ -1,0 +1,285 @@
+{% extends "base.html" %}
+
+{% block title %}View Report #{{ report.id }}{% endblock %}
+
+{% block content %}
+<div class="container-fluid mt-4">
+    <div class="row">
+        <div class="col-12">
+            <nav aria-label="breadcrumb">
+                <ol class="breadcrumb">
+                    <li class="breadcrumb-item"><a href="{{ url_for('admin.admin_dashboard') }}">Admin</a></li>
+                    <li class="breadcrumb-item"><a href="{{ url_for('admin.reports') }}">Reports</a></li>
+                    <li class="breadcrumb-item active">Report #{{ report.id }}</li>
+                </ol>
+            </nav>
+        </div>
+    </div>
+
+    <div class="row">
+        <div class="col-md-8">
+            <!-- Report Details Card -->
+            <div class="card mb-4">
+                <div class="card-header">
+                    <h4 class="mb-0">
+                        Report #{{ report.id }}: {{ report.title }}
+                    </h4>
+                </div>
+                <div class="card-body">
+                    <!-- Priority and Status -->
+                    <div class="mb-3">
+                        {% if report.priority == 'critical' %}
+                            <span class="badge badge-danger">CRITICAL PRIORITY</span>
+                        {% elif report.priority == 'high' %}
+                            <span class="badge badge-warning">HIGH PRIORITY</span>
+                        {% elif report.priority == 'medium' %}
+                            <span class="badge badge-info">MEDIUM PRIORITY</span>
+                        {% else %}
+                            <span class="badge badge-secondary">LOW PRIORITY</span>
+                        {% endif %}
+
+                        {% if report.status == 'new' %}
+                            <span class="badge badge-primary">NEW</span>
+                        {% elif report.status == 'in_progress' %}
+                            <span class="badge badge-warning">IN PROGRESS</span>
+                        {% elif report.status == 'resolved' %}
+                            <span class="badge badge-success">RESOLVED</span>
+                        {% else %}
+                            <span class="badge badge-secondary">{{ report.status|upper }}</span>
+                        {% endif %}
+
+                        <span class="badge badge-dark">{{ report.report_type }}</span>
+                    </div>
+
+                    <!-- Description -->
+                    <div class="mb-4">
+                        <h5>Description</h5>
+                        <div class="alert alert-light">
+                            {{ report.description|safe if report.description else 'No description provided.' }}
+                        </div>
+                    </div>
+
+                    <!-- Technical Details (if any) -->
+                    {% if report.ip_address or report.user_agent or report.url %}
+                    <div class="mb-4">
+                        <h5>Technical Details</h5>
+                        <table class="table table-sm">
+                            {% if report.ip_address %}
+                            <tr>
+                                <td width="150"><strong>IP Address:</strong></td>
+                                <td>{{ report.ip_address }}</td>
+                            </tr>
+                            {% endif %}
+                            {% if report.url %}
+                            <tr>
+                                <td><strong>URL:</strong></td>
+                                <td><a href="{{ report.url }}" target="_blank">{{ report.url }}</a></td>
+                            </tr>
+                            {% endif %}
+                            {% if report.user_agent %}
+                            <tr>
+                                <td><strong>User Agent:</strong></td>
+                                <td><small>{{ report.user_agent }}</small></td>
+                            </tr>
+                            {% endif %}
+                        </table>
+                    </div>
+                    {% endif %}
+
+                    <!-- Error Details (if any) -->
+                    {% if report.error_message or report.stack_trace %}
+                    <div class="mb-4">
+                        <h5>Error Information</h5>
+                        {% if report.error_message %}
+                        <div class="alert alert-danger">
+                            <strong>Error Message:</strong><br>
+                            {{ report.error_message }}
+                        </div>
+                        {% endif %}
+                        {% if report.stack_trace %}
+                        <div class="card bg-dark text-white">
+                            <div class="card-body">
+                                <pre class="mb-0"><code>{{ report.stack_trace }}</code></pre>
+                            </div>
+                        </div>
+                        {% endif %}
+                    </div>
+                    {% endif %}
+
+                    <!-- Metadata -->
+                    {% if metadata %}
+                    <div class="mb-4">
+                        <h5>Additional Information</h5>
+                        <table class="table table-sm">
+                            {% for key, value in metadata.items() %}
+                            <tr>
+                                <td width="150"><strong>{{ key }}:</strong></td>
+                                <td>{{ value }}</td>
+                            </tr>
+                            {% endfor %}
+                        </table>
+                    </div>
+                    {% endif %}
+
+                    <!-- Resolution Notes -->
+                    {% if report.resolution_notes %}
+                    <div class="mb-4">
+                        <h5>Resolution Notes</h5>
+                        <div class="alert alert-success">
+                            {{ report.resolution_notes|safe }}
+                        </div>
+                    </div>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+
+        <div class="col-md-4">
+            <!-- Actions Card -->
+            <div class="card mb-4">
+                <div class="card-header">
+                    <h5 class="mb-0">Actions</h5>
+                </div>
+                <div class="card-body">
+                    {% if report.status == 'new' and not report.assigned_to %}
+                    <form method="POST" action="{{ url_for('admin.update_report', report_id=report.id) }}" class="mb-2">
+                        <input type="hidden" name="action" value="assign">
+                        <button type="submit" class="btn btn-warning btn-block">
+                            <i class="fas fa-user-check"></i> Assign to Me
+                        </button>
+                    </form>
+                    {% endif %}
+
+                    {% if report.status in ['new', 'in_progress'] %}
+                    <button type="button" class="btn btn-success btn-block mb-2" data-toggle="modal" data-target="#resolveModal">
+                        <i class="fas fa-check-circle"></i> Mark as Resolved
+                    </button>
+
+                    <form method="POST" action="{{ url_for('admin.update_report', report_id=report.id) }}" class="mb-2">
+                        <input type="hidden" name="action" value="change_priority">
+                        <div class="input-group">
+                            <select name="priority" class="form-control">
+                                <option value="critical" {% if report.priority == 'critical' %}selected{% endif %}>Critical</option>
+                                <option value="high" {% if report.priority == 'high' %}selected{% endif %}>High</option>
+                                <option value="medium" {% if report.priority == 'medium' %}selected{% endif %}>Medium</option>
+                                <option value="low" {% if report.priority == 'low' %}selected{% endif %}>Low</option>
+                            </select>
+                            <div class="input-group-append">
+                                <button type="submit" class="btn btn-primary">Update Priority</button>
+                            </div>
+                        </div>
+                    </form>
+                    {% endif %}
+
+                    {% if report.status != 'archived' %}
+                    <form method="POST" action="{{ url_for('admin.update_report', report_id=report.id) }}">
+                        <input type="hidden" name="action" value="archive">
+                        <button type="submit" class="btn btn-secondary btn-block">
+                            <i class="fas fa-archive"></i> Archive Report
+                        </button>
+                    </form>
+                    {% endif %}
+                </div>
+            </div>
+
+            <!-- Report Info Card -->
+            <div class="card mb-4">
+                <div class="card-header">
+                    <h5 class="mb-0">Report Information</h5>
+                </div>
+                <div class="card-body">
+                    <table class="table table-sm">
+                        <tr>
+                            <td><strong>Created:</strong></td>
+                            <td>{{ report.created_at.strftime('%d.%m.%Y %H:%M') }}</td>
+                        </tr>
+                        <tr>
+                            <td><strong>Updated:</strong></td>
+                            <td>{{ report.updated_at.strftime('%d.%m.%Y %H:%M') }}</td>
+                        </tr>
+                        {% if report.resolved_at %}
+                        <tr>
+                            <td><strong>Resolved:</strong></td>
+                            <td>{{ report.resolved_at.strftime('%d.%m.%Y %H:%M') }}</td>
+                        </tr>
+                        {% endif %}
+                    </table>
+                </div>
+            </div>
+
+            <!-- Users Involved Card -->
+            <div class="card">
+                <div class="card-header">
+                    <h5 class="mb-0">Users Involved</h5>
+                </div>
+                <div class="card-body">
+                    <table class="table table-sm">
+                        {% if report.reported_by %}
+                        <tr>
+                            <td><strong>Reported By:</strong></td>
+                            <td>
+                                <a href="{{ url_for('admin.manage_users') }}">
+                                    {{ report.reported_by.username }}
+                                </a>
+                            </td>
+                        </tr>
+                        {% endif %}
+                        {% if report.affected_user %}
+                        <tr>
+                            <td><strong>Affected User:</strong></td>
+                            <td>
+                                <a href="{{ url_for('admin.manage_users') }}">
+                                    {{ report.affected_user.username }}
+                                </a>
+                            </td>
+                        </tr>
+                        {% endif %}
+                        {% if report.assigned_to %}
+                        <tr>
+                            <td><strong>Assigned To:</strong></td>
+                            <td>{{ report.assigned_to.username }}</td>
+                        </tr>
+                        {% endif %}
+                        {% if report.resolved_by %}
+                        <tr>
+                            <td><strong>Resolved By:</strong></td>
+                            <td>{{ report.resolved_by.username }}</td>
+                        </tr>
+                        {% endif %}
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Resolve Modal -->
+<div class="modal fade" id="resolveModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <form method="POST" action="{{ url_for('admin.update_report', report_id=report.id) }}">
+                <input type="hidden" name="action" value="resolve">
+                <div class="modal-header">
+                    <h5 class="modal-title">Resolve Report</h5>
+                    <button type="button" class="close" data-dismiss="modal">
+                        <span>&times;</span>
+                    </button>
+                </div>
+                <div class="modal-body">
+                    <div class="form-group">
+                        <label for="resolution_notes">Resolution Notes</label>
+                        <textarea name="resolution_notes" id="resolution_notes" class="form-control" rows="4" 
+                                  placeholder="Describe how this issue was resolved..."></textarea>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-dismiss="modal">Cancel</button>
+                    <button type="submit" class="btn btn-success">
+                        <i class="fas fa-check-circle"></i> Mark as Resolved
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+{% endblock %}

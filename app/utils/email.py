@@ -169,7 +169,7 @@ def send_badge_notification(user, badge_name):
     html_body = render_template('emails/badge_earned.html',
                                user=user,
                                badge_name=badge_name,
-                               profile_url=url_for('main.profile', _external=True),
+                               profile_url=url_for('auth.profile', _external=True),
                                current_year=datetime.now().year)
     
     send_email(
@@ -283,7 +283,7 @@ def send_welcome_email(user):
     html_body = render_template('emails/welcome_email.html',
                                user=user,
                                dashboard_url=url_for('main.dashboard', _external=True),
-                               quiz_url=url_for('quiz.index', _external=True),
+                               quiz_url=url_for('main.quiz', _external=True),
                                current_year=datetime.now().year)
     
     send_email(
@@ -346,7 +346,7 @@ def send_study_tip_email(user, tip_data):
     html_body = render_template('emails/study_tip.html',
                                user=user,
                                tip_data=tip_data,
-                               quiz_url=url_for('quiz.index', _external=True),
+                               quiz_url=url_for('main.quiz', _external=True),
                                current_year=datetime.now().year)
     
     send_email(
@@ -359,11 +359,38 @@ def send_study_tip_email(user, tip_data):
 def send_user_report_alert(user, report_data):
     """
     Send alert to admin when user submits a report/feedback.
+    Also creates an AdminReport for tracking.
     
     Args:
         user: User model instance
         report_data (dict): Report details
     """
+    # Create AdminReport for tracking
+    from app.models import AdminReport
+    import json
+    
+    priority_map = {
+        'bug': 'high',
+        'security': 'critical',
+        'feature': 'low',
+        'High': 'high',
+        'Medium': 'medium',
+        'Low': 'low'
+    }
+    
+    report = AdminReport(
+        report_type='user_feedback',
+        priority=priority_map.get(report_data.get('priority', 'medium'), 'medium'),
+        title=f"User Report: {report_data.get('type', 'General')}",
+        description=report_data.get('message', ''),
+        reported_by_user_id=user.id,
+        metadata_json=json.dumps(report_data)
+    )
+    
+    from app import db
+    db.session.add(report)
+    db.session.commit()
+    
     admin_emails = os.environ.get('ADMIN_EMAILS', '').split(',')
     if not admin_emails or not admin_emails[0]:
         logger.warning("No admin emails configured")
@@ -400,7 +427,7 @@ def send_manual_review_alert(review_type, details):
                                review_type=review_type,
                                details=details,
                                timestamp=datetime.now(),
-                               admin_url=url_for('admin.index', _external=True),
+                               admin_url=url_for('admin.admin_dashboard', _external=True),
                                current_year=datetime.now().year)
     
     send_email(

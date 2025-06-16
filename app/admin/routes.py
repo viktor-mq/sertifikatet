@@ -10,8 +10,10 @@ from functools import wraps
 
 from .utils import validate_question
 from .. import db
-from ..models import Question, Option, TrafficSign, QuizImage, User, AdminAuditLog
+from ..models import Question, Option, TrafficSign, QuizImage, User, AdminAuditLog, AdminReport, UserFeedback
 from ..security import AdminSecurityService
+import json
+from datetime import datetime, timedelta
 
 # Blueprint is already created in __init__.py, using the imported one
 
@@ -492,3 +494,170 @@ def security_audit_log():
         action_filter=action_filter,
         user_filter=user_filter
     )
+
+@admin_bp.route('/reports')
+@admin_required
+def reports():
+    """View all admin reports - security critical page"""
+    
+    # Get filter parameters
+    report_type_filter = request.args.get('type', '')
+    status_filter = request.args.get('status', '')
+    priority_filter = request.args.get('priority', '')
+    page = request.args.get('page', 1, type=int)
+    per_page = 20
+    
+    # Build query
+    query = AdminReport.query
+    
+    if report_type_filter:
+        query = query.filter(AdminReport.report_type == report_type_filter)
+    
+    if status_filter:
+        query = query.filter(AdminReport.status == status_filter)
+    
+    if priority_filter:
+        query = query.filter(AdminReport.priority == priority_filter)
+    
+    # Order by priority and date
+    priority_order = db.case(
+        (AdminReport.priority == 'critical', 1),
+        (AdminReport.priority == 'high', 2),
+        (AdminReport.priority == 'medium', 3),
+        (AdminReport.priority == 'low', 4),
+        else_=5
+    )
+    
+    reports = query.order_by(priority_order, AdminReport.created_at.desc()).paginate(
+        page=page, per_page=per_page, error_out=False
+    )
+    
+    # Get counts for dashboard
+    stats = {
+        'total': AdminReport.query.count(),
+        'new': AdminReport.query.filter_by(status='new').count(),
+        'in_progress': AdminReport.query.filter_by(status='in_progress').count(),
+        'critical': AdminReport.query.filter_by(priority='critical', status='new').count(),
+        'high': AdminReport.query.filter_by(priority='high', status='new').count()
+    }
+    
+    # Get recent security alerts
+    recent_security_alerts = AdminReport.query.filter(
+        AdminReport.report_type.in_(['security_alert', 'suspicious_activity', 'admin_change']),
+        AdminReport.created_at >= datetime.now() - timedelta(days=7)
+    ).order_by(AdminReport.created_at.desc()).limit(10).all()
+    
+    # Get unresolved user feedback
+    user_feedback = UserFeedback.query.filter_by(status='new').order_by(
+        UserFeedback.created_at.desc()
+    ).limit(10).all()
+    
+    return render_template(
+        'admin/reports.html',
+        reports=reports,
+        stats=stats,
+        recent_security_alerts=recent_security_alerts,
+        user_feedback=user_feedback,
+        report_type_filter=report_type_filter,
+        status_filter=status_filter,
+        priority_filter=priority_filter
+    )
+
+@admin_bp.route('/reports/<int:report_id>')
+@admin_required
+def view_report(report_id):
+    """View detailed report"""
+    
+    report = AdminReport.query.get_or_404(report_id)
+    
+    # Parse metadata if exists
+    metadata = {}
+    if report.metadata_json:
+        try:
+            metadata = json.loads(report.metadata_json)
+        except:
+            metadata = {'raw': report.metadata_json}
+    
+    return render_template(
+        'admin/view_report.html',
+        report=report,
+        metadata=metadata
+    )
+
+@admin_bp.route('/reports/<int:report_id>/update', methods=['POST'])
+@admin_required
+def update_report(report_id):
+    """Update report status or assignment"""
+    
+    report = AdminReport.query.get_or_404(report_id)
+    
+    action = request.form.get('action')
+    
+    if action == 'assign':
+        report.assigned_to_user_id = current_user.id
+        report.status = 'in_progress'
+        flash('Report assigned to you', 'success')
+    
+    elif action == 'resolve':
+        report.resolved_by_user_id = current_user.id
+        report.resolved_at = datetime.now()
+        report.status = 'resolved'
+        report.resolution_notes = request.form.get('resolution_notes', '')
+        flash('Report marked as resolved', 'success')
+    
+    elif action == 'change_priority':
+        new_priority = request.form.get('priority')
+        if new_priority in ['low', 'medium', 'high', 'critical']:
+            report.priority = new_priority
+            flash(f'Priority changed to {new_priority}', 'success')
+    
+    elif action == 'archive':
+        report.status = 'archived'
+        flash('Report archived', 'success')
+    
+    db.session.commit()
+    
+    # Log the action
+    AdminSecurityService.log_admin_action(
+        admin_user=current_user,
+        action=f'report_{action}',
+        target_user_id=report.affected_user_id,
+        additional_info=json.dumps({
+            'report_id': report_id,
+            'report_type': report.report_type,
+            'action': action
+        })
+    )
+    
+    return redirect(url_for('admin.view_report', report_id=report_id))
+
+@admin_bp.route('/reports/create-from-feedback/<int:feedback_id>', methods=['POST'])
+@admin_required
+def create_report_from_feedback(feedback_id):
+    """Convert user feedback to admin report"""
+    
+    feedback = UserFeedback.query.get_or_404(feedback_id)
+    
+    # Create admin report from feedback
+    report = AdminReport(
+        report_type='user_feedback',
+        priority='medium' if feedback.feedback_type != 'bug' else 'high',
+        title=feedback.subject or f'User Feedback: {feedback.feedback_type}',
+        description=feedback.message,
+        reported_by_user_id=feedback.user_id,
+        created_at=feedback.created_at,
+        metadata_json=json.dumps({
+            'original_feedback_id': feedback.id,
+            'feedback_type': feedback.feedback_type
+        })
+    )
+    
+    db.session.add(report)
+    
+    # Update feedback status
+    feedback.status = 'in-progress'
+    
+    db.session.commit()
+    
+    flash('Report created from user feedback', 'success')
+    return redirect(url_for('admin.view_report', report_id=report.id))

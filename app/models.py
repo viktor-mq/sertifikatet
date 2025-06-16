@@ -300,6 +300,49 @@ class UserFeedback(db.Model):
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
 
 
+class AdminReport(db.Model):
+    """Store all types of admin reports for security monitoring"""
+    __tablename__ = 'admin_reports'
+    
+    id = db.Column(db.Integer, primary_key=True)
+    report_type = db.Column(db.String(50), nullable=False)  # 'user_feedback', 'system_error', 'security_alert', 'admin_change', 'suspicious_activity'
+    priority = db.Column(db.String(20), default='medium')  # 'low', 'medium', 'high', 'critical'
+    status = db.Column(db.String(20), default='new')  # 'new', 'in_progress', 'resolved', 'archived'
+    title = db.Column(db.String(255), nullable=False)
+    description = db.Column(db.Text)
+    
+    # User related
+    reported_by_user_id = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=True)
+    affected_user_id = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=True)
+    
+    # Technical details
+    ip_address = db.Column(db.String(45))  # Support IPv6
+    user_agent = db.Column(db.Text)
+    url = db.Column(db.Text)  # URL where issue occurred
+    error_message = db.Column(db.Text)  # For system errors
+    stack_trace = db.Column(db.Text)  # For technical errors
+    
+    # Additional data
+    metadata_json = db.Column(db.Text)  # JSON string with extra details
+    screenshot_filename = db.Column(db.String(255))  # If user uploaded screenshot
+    
+    # Handling
+    assigned_to_user_id = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=True)
+    resolved_by_user_id = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=True)
+    resolution_notes = db.Column(db.Text)
+    
+    # Timestamps
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+    updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+    resolved_at = db.Column(db.DateTime)
+    
+    # Relationships
+    reported_by = db.relationship('User', foreign_keys=[reported_by_user_id], backref='reports_created')
+    affected_user = db.relationship('User', foreign_keys=[affected_user_id], backref='reports_affecting')
+    assigned_to = db.relationship('User', foreign_keys=[assigned_to_user_id], backref='reports_assigned')
+    resolved_by = db.relationship('User', foreign_keys=[resolved_by_user_id], backref='reports_resolved')
+
+
 class AdminAuditLog(db.Model):
     """Track admin privilege changes for security auditing"""
     __tablename__ = 'admin_audit_log'

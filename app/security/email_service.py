@@ -146,14 +146,21 @@ class EmailService:
         from ..models import User
         total_admins = User.query.filter_by(is_admin=True).count()
         
+        # Ensure we have valid values for template rendering
+        server_name = current_app.config.get('SERVER_NAME', 'localhost:5000')
+        if not server_name.startswith(('http://', 'https://')):
+            admin_url = f"http://{server_name}/admin"
+        else:
+            admin_url = f"{server_name}/admin"
+        
         html_content = render_template_string(email_template,
             site_name=current_app.config.get('SITE_NAME', 'Sertifikatet'),
             new_admin=new_admin_user,
             granting_admin=granting_admin_user,
-            ip_address=ip_address,
+            ip_address=ip_address or 'Unknown',
             timestamp=datetime.utcnow().strftime('%Y-%m-%d %H:%M:%S UTC'),
             total_admins=total_admins,
-            admin_url=current_app.config.get('SERVER_NAME', 'localhost') + '/admin'
+            admin_url=admin_url
         )
         
         # Send email to all admin recipients

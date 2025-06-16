@@ -1,0 +1,357 @@
+{% extends "base.html" %}
+
+{% block title %}Admin Reports - Security Monitoring{% endblock %}
+
+{% block content %}
+<div class="container-fluid mt-4">
+    <!-- Security Alert Banner for Critical Issues -->
+    {% if stats.critical > 0 %}
+    <div class="alert alert-danger alert-dismissible fade show mb-4" role="alert">
+        <i class="fas fa-exclamation-triangle"></i>
+        <strong>CRITICAL:</strong> {{ stats.critical }} critical report(s) require immediate attention!
+        <button type="button" class="close" data-dismiss="alert">
+            <span>&times;</span>
+        </button>
+    </div>
+    {% endif %}
+
+    <div class="row">
+        <div class="col-12">
+            <h1 class="mb-4">
+                <i class="fas fa-shield-alt"></i> Security & Reports Dashboard
+            </h1>
+        </div>
+    </div>
+
+    <!-- Statistics Cards -->
+    <div class="row mb-4">
+        <div class="col-md-3">
+            <div class="card bg-primary text-white">
+                <div class="card-body">
+                    <h5 class="card-title">Total Reports</h5>
+                    <h2 class="mb-0">{{ stats.total }}</h2>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card bg-warning text-white">
+                <div class="card-body">
+                    <h5 class="card-title">New Reports</h5>
+                    <h2 class="mb-0">{{ stats.new }}</h2>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card bg-info text-white">
+                <div class="card-body">
+                    <h5 class="card-title">In Progress</h5>
+                    <h2 class="mb-0">{{ stats.in_progress }}</h2>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card bg-danger text-white">
+                <div class="card-body">
+                    <h5 class="card-title">High Priority</h5>
+                    <h2 class="mb-0">{{ stats.high + stats.critical }}</h2>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Recent Security Alerts -->
+    {% if recent_security_alerts %}
+    <div class="row mb-4">
+        <div class="col-12">
+            <div class="card border-danger">
+                <div class="card-header bg-danger text-white">
+                    <h5 class="mb-0"><i class="fas fa-exclamation-circle"></i> Recent Security Alerts</h5>
+                </div>
+                <div class="card-body">
+                    <div class="table-responsive">
+                        <table class="table table-sm">
+                            <thead>
+                                <tr>
+                                    <th>Time</th>
+                                    <th>Type</th>
+                                    <th>Description</th>
+                                    <th>User</th>
+                                    <th>Action</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for alert in recent_security_alerts %}
+                                <tr>
+                                    <td>{{ alert.created_at.strftime('%d.%m %H:%M') }}</td>
+                                    <td>
+                                        <span class="badge badge-danger">{{ alert.report_type }}</span>
+                                    </td>
+                                    <td>{{ alert.title[:50] }}...</td>
+                                    <td>
+                                        {% if alert.affected_user %}
+                                            {{ alert.affected_user.username }}
+                                        {% else %}
+                                            -
+                                        {% endif %}
+                                    </td>
+                                    <td>
+                                        <a href="{{ url_for('admin.view_report', report_id=alert.id) }}" 
+                                           class="btn btn-sm btn-danger">
+                                            <i class="fas fa-eye"></i> View
+                                        </a>
+                                    </td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    {% endif %}
+
+    <!-- Filters -->
+    <div class="row mb-4">
+        <div class="col-12">
+            <form method="GET" class="form-inline">
+                <select name="type" class="form-control mr-2">
+                    <option value="">All Types</option>
+                    <option value="user_feedback" {% if report_type_filter == 'user_feedback' %}selected{% endif %}>
+                        User Feedback
+                    </option>
+                    <option value="system_error" {% if report_type_filter == 'system_error' %}selected{% endif %}>
+                        System Error
+                    </option>
+                    <option value="security_alert" {% if report_type_filter == 'security_alert' %}selected{% endif %}>
+                        Security Alert
+                    </option>
+                    <option value="admin_change" {% if report_type_filter == 'admin_change' %}selected{% endif %}>
+                        Admin Change
+                    </option>
+                    <option value="suspicious_activity" {% if report_type_filter == 'suspicious_activity' %}selected{% endif %}>
+                        Suspicious Activity
+                    </option>
+                </select>
+
+                <select name="status" class="form-control mr-2">
+                    <option value="">All Status</option>
+                    <option value="new" {% if status_filter == 'new' %}selected{% endif %}>New</option>
+                    <option value="in_progress" {% if status_filter == 'in_progress' %}selected{% endif %}>
+                        In Progress
+                    </option>
+                    <option value="resolved" {% if status_filter == 'resolved' %}selected{% endif %}>Resolved</option>
+                    <option value="archived" {% if status_filter == 'archived' %}selected{% endif %}>Archived</option>
+                </select>
+
+                <select name="priority" class="form-control mr-2">
+                    <option value="">All Priorities</option>
+                    <option value="critical" {% if priority_filter == 'critical' %}selected{% endif %}>Critical</option>
+                    <option value="high" {% if priority_filter == 'high' %}selected{% endif %}>High</option>
+                    <option value="medium" {% if priority_filter == 'medium' %}selected{% endif %}>Medium</option>
+                    <option value="low" {% if priority_filter == 'low' %}selected{% endif %}>Low</option>
+                </select>
+
+                <button type="submit" class="btn btn-primary">
+                    <i class="fas fa-filter"></i> Filter
+                </button>
+                <a href="{{ url_for('admin.reports') }}" class="btn btn-secondary ml-2">
+                    <i class="fas fa-times"></i> Clear
+                </a>
+            </form>
+        </div>
+    </div>
+
+    <!-- Reports Table -->
+    <div class="row">
+        <div class="col-12">
+            <div class="card">
+                <div class="card-header">
+                    <h5 class="mb-0">All Reports</h5>
+                </div>
+                <div class="card-body">
+                    <div class="table-responsive">
+                        <table class="table table-hover">
+                            <thead>
+                                <tr>
+                                    <th>ID</th>
+                                    <th>Priority</th>
+                                    <th>Type</th>
+                                    <th>Title</th>
+                                    <th>Reported By</th>
+                                    <th>Status</th>
+                                    <th>Created</th>
+                                    <th>Assigned To</th>
+                                    <th>Actions</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for report in reports.items %}
+                                <tr class="{% if report.priority == 'critical' %}table-danger{% elif report.priority == 'high' %}table-warning{% endif %}">
+                                    <td>#{{ report.id }}</td>
+                                    <td>
+                                        {% if report.priority == 'critical' %}
+                                            <span class="badge badge-danger">CRITICAL</span>
+                                        {% elif report.priority == 'high' %}
+                                            <span class="badge badge-warning">HIGH</span>
+                                        {% elif report.priority == 'medium' %}
+                                            <span class="badge badge-info">MEDIUM</span>
+                                        {% else %}
+                                            <span class="badge badge-secondary">LOW</span>
+                                        {% endif %}
+                                    </td>
+                                    <td>
+                                        <span class="badge badge-dark">{{ report.report_type }}</span>
+                                    </td>
+                                    <td>
+                                        <strong>{{ report.title[:50] }}{% if report.title|length > 50 %}...{% endif %}</strong>
+                                    </td>
+                                    <td>
+                                        {% if report.reported_by %}
+                                            <a href="{{ url_for('admin.manage_users') }}">
+                                                {{ report.reported_by.username }}
+                                            </a>
+                                        {% else %}
+                                            <em>System</em>
+                                        {% endif %}
+                                    </td>
+                                    <td>
+                                        {% if report.status == 'new' %}
+                                            <span class="badge badge-primary">NEW</span>
+                                        {% elif report.status == 'in_progress' %}
+                                            <span class="badge badge-warning">IN PROGRESS</span>
+                                        {% elif report.status == 'resolved' %}
+                                            <span class="badge badge-success">RESOLVED</span>
+                                        {% else %}
+                                            <span class="badge badge-secondary">{{ report.status|upper }}</span>
+                                        {% endif %}
+                                    </td>
+                                    <td>{{ report.created_at.strftime('%d.%m.%Y %H:%M') }}</td>
+                                    <td>
+                                        {% if report.assigned_to %}
+                                            {{ report.assigned_to.username }}
+                                        {% else %}
+                                            <em>Unassigned</em>
+                                        {% endif %}
+                                    </td>
+                                    <td>
+                                        <a href="{{ url_for('admin.view_report', report_id=report.id) }}" 
+                                           class="btn btn-sm btn-primary">
+                                            <i class="fas fa-eye"></i> View
+                                        </a>
+                                        {% if report.status == 'new' and not report.assigned_to %}
+                                        <form method="POST" action="{{ url_for('admin.update_report', report_id=report.id) }}" 
+                                              class="d-inline">
+                                            <input type="hidden" name="action" value="assign">
+                                            <button type="submit" class="btn btn-sm btn-warning">
+                                                <i class="fas fa-user-check"></i> Assign
+                                            </button>
+                                        </form>
+                                        {% endif %}
+                                    </td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+
+                    <!-- Pagination -->
+                    {% if reports.pages > 1 %}
+                    <nav aria-label="Reports pagination">
+                        <ul class="pagination justify-content-center">
+                            {% if reports.has_prev %}
+                            <li class="page-item">
+                                <a class="page-link" href="{{ url_for('admin.reports', page=reports.prev_num, type=report_type_filter, status=status_filter, priority=priority_filter) }}">
+                                    Previous
+                                </a>
+                            </li>
+                            {% endif %}
+
+                            {% for page_num in reports.iter_pages(left_edge=1, right_edge=1, left_current=2, right_current=3) %}
+                                {% if page_num %}
+                                    <li class="page-item {% if page_num == reports.page %}active{% endif %}">
+                                        <a class="page-link" href="{{ url_for('admin.reports', page=page_num, type=report_type_filter, status=status_filter, priority=priority_filter) }}">
+                                            {{ page_num }}
+                                        </a>
+                                    </li>
+                                {% else %}
+                                    <li class="page-item disabled">
+                                        <span class="page-link">...</span>
+                                    </li>
+                                {% endif %}
+                            {% endfor %}
+
+                            {% if reports.has_next %}
+                            <li class="page-item">
+                                <a class="page-link" href="{{ url_for('admin.reports', page=reports.next_num, type=report_type_filter, status=status_filter, priority=priority_filter) }}">
+                                    Next
+                                </a>
+                            </li>
+                            {% endif %}
+                        </ul>
+                    </nav>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Unresolved User Feedback -->
+    {% if user_feedback %}
+    <div class="row mt-4">
+        <div class="col-12">
+            <div class="card">
+                <div class="card-header">
+                    <h5 class="mb-0"><i class="fas fa-comments"></i> Unresolved User Feedback</h5>
+                </div>
+                <div class="card-body">
+                    <div class="table-responsive">
+                        <table class="table table-sm">
+                            <thead>
+                                <tr>
+                                    <th>User</th>
+                                    <th>Type</th>
+                                    <th>Subject</th>
+                                    <th>Date</th>
+                                    <th>Action</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for feedback in user_feedback %}
+                                <tr>
+                                    <td>{{ feedback.user.username }}</td>
+                                    <td>
+                                        <span class="badge badge-{% if feedback.feedback_type == 'bug' %}danger{% elif feedback.feedback_type == 'feature' %}info{% else %}secondary{% endif %}">
+                                            {{ feedback.feedback_type }}
+                                        </span>
+                                    </td>
+                                    <td>{{ feedback.subject[:40] }}{% if feedback.subject|length > 40 %}...{% endif %}</td>
+                                    <td>{{ feedback.created_at.strftime('%d.%m.%Y') }}</td>
+                                    <td>
+                                        <form method="POST" action="{{ url_for('admin.create_report_from_feedback', feedback_id=feedback.id) }}" class="d-inline">
+                                            <button type="submit" class="btn btn-sm btn-success">
+                                                <i class="fas fa-file-import"></i> Create Report
+                                            </button>
+                                        </form>
+                                    </td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    {% endif %}
+</div>
+
+<style>
+.table-danger {
+    background-color: rgba(220, 53, 69, 0.1);
+}
+.table-warning {
+    background-color: rgba(255, 193, 7, 0.1);
+}
+</style>
+{% endblock %}
