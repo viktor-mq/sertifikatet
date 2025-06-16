@@ -78,6 +78,17 @@ TEORITEST PROJECT IMPLEMENTATION CHECKLIST
 [✅] Admin alert system
 [✅] User report notifications
 [✅] Manual review alerts
+[✅] Dual email sender system:
+    - noreply@sertifikatet.no (user notifications: verification, password reset, welcome, etc.)
+    - info@sertifikatet.no (admin security alerts, reports, manual reviews)
+[✅] Admin security email notifications:
+    - New admin user created alerts
+    - Admin privilege revocation alerts
+    - Security audit notifications
+    - Sent to viktorandreas@hotmail.com and all existing admins
+[✅] Async email sending with threading
+[✅] HTML and plain text email support
+[✅] Secure token generation for email verification and password reset
 
 ## Phase 6.6: Profile Page Enhancements ✅
 [✅] Change password functionality

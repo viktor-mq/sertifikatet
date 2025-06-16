@@ -300,6 +300,24 @@ class UserFeedback(db.Model):
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
 
 
+class AdminAuditLog(db.Model):
+    """Track admin privilege changes for security auditing"""
+    __tablename__ = 'admin_audit_log'
+    
+    id = db.Column(db.Integer, primary_key=True)
+    target_user_id = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=False)
+    admin_user_id = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=True)  # Who made the change
+    action = db.Column(db.String(50), nullable=False)  # 'grant_admin', 'revoke_admin', 'login_attempt'
+    ip_address = db.Column(db.String(45))  # Support IPv6
+    user_agent = db.Column(db.Text)
+    additional_info = db.Column(db.Text)  # JSON string with extra details
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+    
+    # Relationships
+    target_user = db.relationship('User', foreign_keys=[target_user_id], backref='admin_logs_target')
+    admin_user = db.relationship('User', foreign_keys=[admin_user_id], backref='admin_logs_performed')
+
+
 # Legacy table for image management (keeping for compatibility)
 class QuizImage(db.Model):
     __tablename__ = 'quiz_images'

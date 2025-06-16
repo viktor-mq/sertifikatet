@@ -10,7 +10,8 @@ from functools import wraps
 
 from .utils import validate_question
 from .. import db
-from ..models import Question, Option, TrafficSign, QuizImage
+from ..models import Question, Option, TrafficSign, QuizImage, User, AdminAuditLog
+from ..security import AdminSecurityService
 
 # Blueprint is already created in __init__.py, using the imported one
 
@@ -18,9 +19,15 @@ def admin_required(f):
     @wraps(f)
     @login_required
     def decorated_function(*args, **kwargs):
-        if not current_user.is_authenticated or current_user.username != 'Viktor':
+        if not AdminSecurityService.is_admin_required(current_user):
+            # Log the failed attempt
+            if current_user.is_authenticated:
+                AdminSecurityService.log_admin_login_attempt(current_user, success=False)
             flash('Du har ikke tilgang til denne siden', 'error')
             return redirect(url_for('main.index'))
+        
+        # Log successful admin access
+        AdminSecurityService.log_admin_login_attempt(current_user, success=True)
         return f(*args, **kwargs)
     return decorated_function
 
@@ -353,4 +360,135 @@ def export_questions():
         mimetype='text/csv',
         as_attachment=True,
         download_name='questions_export.csv'
+    )
+
+# ========================================
+# ADMIN USER MANAGEMENT ROUTES
+# ========================================
+
+@admin_bp.route('/users')
+@admin_required
+def manage_users():
+    """Admin user management page"""
+    
+    # Get all users with admin status
+    users = User.query.order_by(User.created_at.desc()).all()
+    
+    # Get recent admin audit logs
+    recent_logs = AdminSecurityService.get_admin_audit_log(limit=50)
+    
+    # Get admin statistics
+    total_users = User.query.count()
+    admin_users = User.query.filter_by(is_admin=True).count()
+    active_users = User.query.filter_by(is_active=True).count()
+    
+    stats = {
+        'total_users': total_users,
+        'admin_users': admin_users,
+        'active_users': active_users,
+        'inactive_users': total_users - active_users
+    }
+    
+    return render_template(
+        'admin/manage_users.html',
+        users=users,
+        recent_logs=recent_logs,
+        stats=stats
+    )
+
+@admin_bp.route('/users/<int:user_id>/grant_admin', methods=['POST'])
+@admin_required
+def grant_admin_privileges(user_id):
+    """Grant admin privileges to a user"""
+    
+    target_user = User.query.get_or_404(user_id)
+    
+    # Use the security service to safely grant admin privileges
+    result = AdminSecurityService.grant_admin_privileges(
+        target_user=target_user,
+        granting_admin=current_user
+    )
+    
+    if result['success']:
+        flash(result['message'], 'success')
+        if result['warnings']:
+            for warning in result['warnings']:
+                flash(f"Warning: {warning}", 'warning')
+    else:
+        flash(result['message'], 'error')
+        if result['warnings']:
+            for warning in result['warnings']:
+                flash(f"Warning: {warning}", 'warning')
+    
+    return redirect(url_for('admin.manage_users'))
+
+@admin_bp.route('/users/<int:user_id>/revoke_admin', methods=['POST'])
+@admin_required
+def revoke_admin_privileges(user_id):
+    """Revoke admin privileges from a user"""
+    
+    target_user = User.query.get_or_404(user_id)
+    
+    # Prevent self-revocation
+    if target_user.id == current_user.id:
+        flash('Du kan ikke fjerne dine egne admin-rettigheter', 'error')
+        return redirect(url_for('admin.manage_users'))
+    
+    # Use the security service to safely revoke admin privileges
+    result = AdminSecurityService.revoke_admin_privileges(
+        target_user=target_user,
+        revoking_admin=current_user
+    )
+    
+    if result['success']:
+        flash(result['message'], 'success')
+        if result['warnings']:
+            for warning in result['warnings']:
+                flash(f"Warning: {warning}", 'warning')
+    else:
+        flash(result['message'], 'error')
+        if result['warnings']:
+            for warning in result['warnings']:
+                flash(f"Warning: {warning}", 'warning')
+    
+    return redirect(url_for('admin.manage_users'))
+
+@admin_bp.route('/security/audit-log')
+@admin_required
+def security_audit_log():
+    """View detailed security audit log"""
+    
+    # Get pagination parameters
+    page = request.args.get('page', 1, type=int)
+    per_page = 50
+    
+    # Filter parameters
+    action_filter = request.args.get('action', '')
+    user_filter = request.args.get('user', '')
+    
+    # Build query
+    query = AdminAuditLog.query
+    
+    if action_filter:
+        query = query.filter(AdminAuditLog.action == action_filter)
+    
+    if user_filter:
+        query = query.join(User, AdminAuditLog.target_user_id == User.id)
+        query = query.filter(User.username.ilike(f'%{user_filter}%'))
+    
+    # Paginate results
+    logs = query.order_by(AdminAuditLog.created_at.desc()).paginate(
+        page=page, per_page=per_page, error_out=False
+    )
+    
+    # Get unique actions for filter dropdown
+    actions = db.session.query(AdminAuditLog.action).distinct().all()
+    actions = [action[0] for action in actions]
+    
+    return render_template(
+        'admin/security_audit_log.html',
+        logs=logs,
+        actions=actions,
+        action_filter=action_filter,
+        user_filter=user_filter
     )
