@@ -1,0 +1,362 @@
+{% extends "base.html" %}
+{% block title %}Trafikkskiltgjenkjenning - Teoritest{% endblock %}
+
+{% block content %}
+<div class="min-h-screen bg-gradient-to-br from-slate-900 via-purple-900 to-slate-900">
+    <div class="container mx-auto px-4 py-8">
+        <!-- Game Header -->
+        <div class="text-center mb-8">
+            <h1 class="text-4xl font-bold text-white mb-2">
+                <i class="fas fa-road mr-3"></i>Trafikkskiltgjenkjenning
+            </h1>
+            <p class="text-xl text-purple-200">Hvor godt kjenner du norske trafikkskilt?</p>
+        </div>
+
+        <!-- Game Container -->
+        <div class="max-w-4xl mx-auto">
+            <!-- Score and Timer -->
+            <div class="grid grid-cols-3 gap-4 mb-8">
+                <div class="bg-white/10 backdrop-blur-md rounded-lg p-4 text-center">
+                    <h3 class="text-sm text-purple-300 uppercase tracking-wide mb-1">Poengsum</h3>
+                    <p class="text-3xl font-bold text-yellow-400" id="score">0</p>
+                </div>
+                <div class="bg-white/10 backdrop-blur-md rounded-lg p-4 text-center">
+                    <h3 class="text-sm text-purple-300 uppercase tracking-wide mb-1">Spørsmål</h3>
+                    <p class="text-3xl font-bold text-white"><span id="current-question">1</span> / <span id="total-questions">10</span></p>
+                </div>
+                <div class="bg-white/10 backdrop-blur-md rounded-lg p-4 text-center">
+                    <h3 class="text-sm text-purple-300 uppercase tracking-wide mb-1">Tid</h3>
+                    <p class="text-3xl font-bold text-green-400" id="timer">0:00</p>
+                </div>
+            </div>
+
+            <!-- Game Area -->
+            <div id="game-area" class="bg-white/10 backdrop-blur-md rounded-xl p-8">
+                <!-- Start Screen -->
+                <div id="start-screen" class="text-center">
+                    <i class="fas fa-road text-8xl text-purple-400 mb-8"></i>
+                    <h2 class="text-3xl font-bold text-white mb-4">Klar for å teste dine kunnskaper?</h2>
+                    <p class="text-lg text-purple-200 mb-8">Du vil få se 10 tilfeldige trafikkskilt. Identifiser hvert skilt så raskt som mulig!</p>
+                    <button id="start-button" class="bg-gradient-to-r from-purple-600 to-pink-600 text-white px-8 py-4 rounded-lg font-semibold text-lg hover:from-purple-700 hover:to-pink-700 transition-all transform hover:scale-105">
+                        <i class="fas fa-play mr-2"></i>Start spillet
+                    </button>
+                </div>
+
+                <!-- Game Screen -->
+                <div id="game-screen" class="hidden">
+                    <div class="text-center mb-8">
+                        <img id="sign-image" src="" alt="Trafikkskilt" class="mx-auto max-w-sm rounded-lg shadow-2xl mb-8">
+                        <h3 class="text-2xl font-semibold text-white mb-4">Hva betyr dette skiltet?</h3>
+                    </div>
+                    
+                    <!-- Multiple Choice Options -->
+                    <div id="options-container" class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <!-- Options will be dynamically added here -->
+                    </div>
+                    
+                    <!-- Feedback -->
+                    <div id="feedback" class="mt-8 p-4 rounded-lg hidden">
+                        <p id="feedback-text" class="text-lg font-semibold"></p>
+                        <p id="explanation" class="text-md mt-2"></p>
+                        <button id="next-button" class="mt-4 bg-gradient-to-r from-purple-600 to-pink-600 text-white px-6 py-2 rounded-lg font-semibold hover:from-purple-700 hover:to-pink-700 transition-all">
+                            Neste spørsmål <i class="fas fa-arrow-right ml-2"></i>
+                        </button>
+                    </div>
+                </div>
+
+                <!-- End Screen -->
+                <div id="end-screen" class="hidden text-center">
+                    <i class="fas fa-trophy text-8xl text-yellow-400 mb-8"></i>
+                    <h2 class="text-3xl font-bold text-white mb-4">Spillet er ferdig!</h2>
+                    <div class="grid grid-cols-2 gap-6 max-w-md mx-auto mb-8">
+                        <div class="bg-white/20 rounded-lg p-4">
+                            <p class="text-sm text-purple-300 uppercase tracking-wide mb-1">Endelig poengsum</p>
+                            <p class="text-3xl font-bold text-yellow-400" id="final-score">0</p>
+                        </div>
+                        <div class="bg-white/20 rounded-lg p-4">
+                            <p class="text-sm text-purple-300 uppercase tracking-wide mb-1">Tid brukt</p>
+                            <p class="text-3xl font-bold text-green-400" id="final-time">0:00</p>
+                        </div>
+                    </div>
+                    <div class="mb-8">
+                        <p class="text-xl text-purple-200 mb-2" id="result-message"></p>
+                        <p class="text-lg text-purple-300">Du fikk <span id="correct-count" class="font-bold text-green-400">0</span> av <span id="total-count" class="font-bold">10</span> riktige!</p>
+                    </div>
+                    <div class="flex gap-4 justify-center">
+                        <button onclick="location.reload()" class="bg-gradient-to-r from-purple-600 to-pink-600 text-white px-6 py-3 rounded-lg font-semibold hover:from-purple-700 hover:to-pink-700 transition-all">
+                            <i class="fas fa-redo mr-2"></i>Spill igjen
+                        </button>
+                        <a href="{{ url_for('game.index') }}" class="bg-white/20 text-white px-6 py-3 rounded-lg font-semibold hover:bg-white/30 transition-all">
+                            <i class="fas fa-th mr-2"></i>Tilbake til spill
+                        </a>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+// Game state
+let currentQuestionIndex = 0;
+let score = 0;
+let correctAnswers = 0;
+let questions = [];
+let startTime;
+let timerInterval;
+let sessionId;
+
+// DOM elements
+const startScreen = document.getElementById('start-screen');
+const gameScreen = document.getElementById('game-screen');
+const endScreen = document.getElementById('end-screen');
+const scoreElement = document.getElementById('score');
+const currentQuestionElement = document.getElementById('current-question');
+const totalQuestionsElement = document.getElementById('total-questions');
+const timerElement = document.getElementById('timer');
+const signImage = document.getElementById('sign-image');
+const optionsContainer = document.getElementById('options-container');
+const feedbackElement = document.getElementById('feedback');
+const feedbackText = document.getElementById('feedback-text');
+const explanationElement = document.getElementById('explanation');
+const nextButton = document.getElementById('next-button');
+
+// Start game
+document.getElementById('start-button').addEventListener('click', startGame);
+nextButton.addEventListener('click', nextQuestion);
+
+async function startGame() {
+    // Hide start screen, show game screen
+    startScreen.classList.add('hidden');
+    gameScreen.classList.remove('hidden');
+    
+    // Reset game state
+    currentQuestionIndex = 0;
+    score = 0;
+    correctAnswers = 0;
+    
+    // Start timer
+    startTime = Date.now();
+    timerInterval = setInterval(updateTimer, 1000);
+    
+    // Load questions
+    try {
+        const response = await fetch('{{ url_for("game.get_random_traffic_signs") }}');
+        const data = await response.json();
+        questions = data.signs;
+        totalQuestionsElement.textContent = questions.length;
+        
+        // Show first question
+        showQuestion();
+    } catch (error) {
+        console.error('Error loading questions:', error);
+        alert('Kunne ikke laste spørsmål. Prøv igjen.');
+    }
+}
+
+function showQuestion() {
+    const question = questions[currentQuestionIndex];
+    currentQuestionElement.textContent = currentQuestionIndex + 1;
+    
+    // Display sign image
+    signImage.src = `/static/images/${question.filename}`;
+    
+    // Clear previous options
+    optionsContainer.innerHTML = '';
+    feedbackElement.classList.add('hidden');
+    
+    // Create options (including correct answer and 3 random wrong answers)
+    const options = generateOptions(question);
+    
+    options.forEach((option, index) => {
+        const button = document.createElement('button');
+        button.className = 'bg-white/20 hover:bg-white/30 text-white p-4 rounded-lg text-left transition-all transform hover:scale-105';
+        button.innerHTML = `
+            <span class="font-semibold">${String.fromCharCode(65 + index)}.</span> ${option.text}
+        `;
+        button.onclick = () => checkAnswer(option.isCorrect, question);
+        optionsContainer.appendChild(button);
+    });
+}
+
+function generateOptions(correctSign) {
+    const options = [];
+    
+    // Add correct answer
+    options.push({
+        text: correctSign.description,
+        isCorrect: true
+    });
+    
+    // Add wrong answers (hardcoded for now, should come from backend)
+    const wrongAnswers = [
+        'Farlig sving',
+        'Vikeplikt',
+        'Stopp forbudt',
+        'Parkering forbudt',
+        'Enveiskjøring',
+        'Gangfelt',
+        'Rundkjøring',
+        'Tunnel',
+        'Vegarbeid',
+        'Barn'
+    ].filter(answer => answer !== correctSign.description);
+    
+    // Shuffle and pick 3 wrong answers
+    const shuffled = wrongAnswers.sort(() => 0.5 - Math.random());
+    for (let i = 0; i < 3 && i < shuffled.length; i++) {
+        options.push({
+            text: shuffled[i],
+            isCorrect: false
+        });
+    }
+    
+    // Shuffle all options
+    return options.sort(() => 0.5 - Math.random());
+}
+
+async function checkAnswer(isCorrect, question) {
+    // Disable all buttons
+    const buttons = optionsContainer.querySelectorAll('button');
+    buttons.forEach(btn => btn.disabled = true);
+    
+    // Show feedback
+    feedbackElement.classList.remove('hidden');
+    
+    if (isCorrect) {
+        score += 10;
+        correctAnswers++;
+        feedbackElement.className = 'mt-8 p-4 rounded-lg bg-green-500/20 border-2 border-green-500';
+        feedbackText.className = 'text-lg font-semibold text-green-400';
+        feedbackText.textContent = 'Riktig! 🎉';
+    } else {
+        feedbackElement.className = 'mt-8 p-4 rounded-lg bg-red-500/20 border-2 border-red-500';
+        feedbackText.className = 'text-lg font-semibold text-red-400';
+        feedbackText.textContent = `Feil. Riktig svar er: ${question.description}`;
+    }
+    
+    if (question.explanation) {
+        explanationElement.textContent = question.explanation;
+        explanationElement.classList.remove('hidden');
+    } else {
+        explanationElement.classList.add('hidden');
+    }
+    
+    // Update score display
+    scoreElement.textContent = score;
+    
+    // Send answer to backend
+    try {
+        await fetch('{{ url_for("game.check_traffic_sign") }}', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+                sign_id: question.id,
+                answer: isCorrect ? question.description : 'wrong'
+            })
+        });
+    } catch (error) {
+        console.error('Error submitting answer:', error);
+    }
+}
+
+function nextQuestion() {
+    currentQuestionIndex++;
+    
+    if (currentQuestionIndex < questions.length) {
+        showQuestion();
+    } else {
+        endGame();
+    }
+}
+
+async function endGame() {
+    // Stop timer
+    clearInterval(timerInterval);
+    const totalTime = Math.floor((Date.now() - startTime) / 1000);
+    
+    // Hide game screen, show end screen
+    gameScreen.classList.add('hidden');
+    endScreen.classList.remove('hidden');
+    
+    // Display results
+    document.getElementById('final-score').textContent = score;
+    document.getElementById('final-time').textContent = formatTime(totalTime);
+    document.getElementById('correct-count').textContent = correctAnswers;
+    document.getElementById('total-count').textContent = questions.length;
+    
+    // Result message based on performance
+    const percentage = (correctAnswers / questions.length) * 100;
+    let message = '';
+    if (percentage === 100) {
+        message = 'Perfekt! Du er en mester på trafikkskilt! 🏆';
+    } else if (percentage >= 80) {
+        message = 'Veldig bra! Du har god kontroll på trafikkskiltene! 🌟';
+    } else if (percentage >= 60) {
+        message = 'Bra jobbet! Fortsett å øve for å bli enda bedre! 👍';
+    } else if (percentage >= 40) {
+        message = 'Det er rom for forbedring. Fortsett å øve! 💪';
+    } else {
+        message = 'Ikke gi opp! Øvelse gjør mester! 📚';
+    }
+    document.getElementById('result-message').textContent = message;
+    
+    // Submit game completion
+    try {
+        const response = await fetch(`{{ url_for('game.complete_game', session_id=0) }}`.replace('0', sessionId), {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+                score: score,
+                mistakes: questions.length - correctAnswers,
+                time_played: totalTime
+            })
+        });
+        
+        const result = await response.json();
+        if (result.xp_earned) {
+            // Show XP earned notification
+            showXPNotification(result.xp_earned);
+        }
+    } catch (error) {
+        console.error('Error completing game:', error);
+    }
+}
+
+function updateTimer() {
+    const elapsed = Math.floor((Date.now() - startTime) / 1000);
+    timerElement.textContent = formatTime(elapsed);
+}
+
+function formatTime(seconds) {
+    const minutes = Math.floor(seconds / 60);
+    const secs = seconds % 60;
+    return `${minutes}:${secs.toString().padStart(2, '0')}`;
+}
+
+function showXPNotification(xp) {
+    const notification = document.createElement('div');
+    notification.className = 'fixed top-4 right-4 bg-gradient-to-r from-purple-600 to-pink-600 text-white px-6 py-3 rounded-lg shadow-lg transform transition-all duration-500 translate-x-full';
+    notification.innerHTML = `
+        <i class="fas fa-star mr-2"></i>
+        <span class="font-bold">+${xp} XP</span> opptjent!
+    `;
+    document.body.appendChild(notification);
+    
+    // Animate in
+    setTimeout(() => {
+        notification.classList.remove('translate-x-full');
+    }, 100);
+    
+    // Remove after 3 seconds
+    setTimeout(() => {
+        notification.classList.add('translate-x-full');
+        setTimeout(() => notification.remove(), 500);
+    }, 3000);
+}
+</script>
+{% endblock %}

@@ -155,11 +155,16 @@ class GameScenario(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     name = db.Column(db.String(255), nullable=False)
     description = db.Column(db.Text)
-    scenario_type = db.Column(db.String(50))
+    scenario_type = db.Column(db.String(50))  # 'traffic_signs', 'driving_sim', 'memory', 'puzzle', 'time_challenge', 'multiplayer'
     difficulty_level = db.Column(db.Integer, default=1)
     max_score = db.Column(db.Integer)
     time_limit_seconds = db.Column(db.Integer)
     config_json = db.Column(db.Text)  # JSON configuration for the scenario
+    template_name = db.Column(db.String(100))  # Template file name for the game
+    is_active = db.Column(db.Boolean, default=True)
+    order_index = db.Column(db.Integer, default=0)
+    min_level_required = db.Column(db.Integer, default=1)  # Minimum user level to play
+    is_premium = db.Column(db.Boolean, default=False)  # Premium-only game
     
     # Relationships
     game_sessions = db.relationship('GameSession', backref='scenario')

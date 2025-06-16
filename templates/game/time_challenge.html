@@ -1,0 +1,28 @@
+{% extends "base.html" %}
+{% block title %}Tidsutfordring - Teoritest{% endblock %}
+
+{% block content %}
+<div class="min-h-screen bg-gradient-to-br from-slate-900 via-purple-900 to-slate-900">
+    <div class="container mx-auto px-4 py-8">
+        <!-- Game Header -->
+        <div class="text-center mb-8">
+            <h1 class="text-4xl font-bold text-white mb-2">
+                <i class="fas fa-stopwatch mr-3"></i>Tidsutfordring
+            </h1>
+            <p class="text-xl text-purple-200">Svar på flest mulig spørsmål på kortest tid!</p>
+        </div>
+
+        <!-- Coming Soon -->
+        <div class="max-w-4xl mx-auto">
+            <div class="bg-white/10 backdrop-blur-md rounded-xl p-12 text-center">
+                <i class="fas fa-hard-hat text-8xl text-yellow-400 mb-6"></i>
+                <h2 class="text-3xl font-bold text-white mb-4">Under utvikling</h2>
+                <p class="text-lg text-purple-200 mb-8">Dette spillet er under utvikling og vil snart være tilgjengelig!</p>
+                <a href="{{ url_for('game.index') }}" class="bg-gradient-to-r from-purple-600 to-pink-600 text-white px-6 py-3 rounded-lg font-semibold hover:from-purple-700 hover:to-pink-700 transition-all">
+                    <i class="fas fa-arrow-left mr-2"></i>Tilbake til spill
+                </a>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

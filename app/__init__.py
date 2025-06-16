@@ -58,6 +58,10 @@ def create_app():
     app.register_blueprint(video_api_bp)
     register_filters(app)  # Register video-specific Jinja2 filters
     
+    # Register game blueprint
+    from .game import game_bp
+    app.register_blueprint(game_bp)
+    
     # Create tables if they don't exist
     with app.app_context():
         # Import all models to ensure they're registered
