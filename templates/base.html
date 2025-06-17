@@ -69,6 +69,7 @@
                         <a href="{{ url_for('auth.profile') }}" class="hover:text-purple-400 transition">Profil</a>
                         <a href="{{ url_for('auth.logout') }}" class="hover:text-purple-400 transition">Logg ut</a>
                     {% else %}
+                        <a href="{{ url_for('subscription.pricing') }}" class="hover:text-purple-400 transition">Priser</a>
                         <a href="{{ url_for('auth.login') }}" class="hover:text-purple-400 transition">Logg inn</a>
                         <a href="{{ url_for('auth.register') }}" class="bg-purple-600 px-4 py-2 rounded-lg hover:bg-purple-700 transition">
                             Registrer
@@ -122,6 +123,9 @@
                         </a>
                     {% else %}
                         <hr class="border-gray-700 my-2">
+                        <a href="{{ url_for('subscription.pricing') }}" class="block hover:text-purple-400 transition py-2">
+                            <i class="fas fa-tags mr-2"></i> Priser
+                        </a>
                         <a href="{{ url_for('auth.login') }}" class="block hover:text-purple-400 transition py-2">
                             <i class="fas fa-sign-in-alt mr-2"></i> Logg inn
                         </a>

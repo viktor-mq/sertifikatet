@@ -1,0 +1,217 @@
+{% extends "base.html" %}
+
+{% block title %}Administrer Abonnement - Sertifikatet{% endblock %}
+
+{% block content %}
+<section class="py-12">
+    <div class="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8">
+        <!-- Header -->
+        <div class="text-center mb-8">
+            <h1 class="text-3xl font-bold mb-4">
+                <span class="bg-gradient-to-r from-purple-400 to-pink-400 bg-clip-text text-transparent">
+                    Administrer Abonnement
+                </span>
+            </h1>
+            <p class="text-xl text-gray-400">
+                Oversikt over din plan og betalingshistorikk
+            </p>
+        </div>
+
+        <div class="grid grid-cols-1 lg:grid-cols-2 gap-8">
+            <!-- Current Subscription -->
+            <div class="glass rounded-2xl p-8">
+                <h2 class="text-xl font-bold mb-6">Din Nåværende Plan</h2>
+                
+                <div class="mb-6">
+                    <div class="flex items-center justify-between mb-4">
+                        <div>
+                            <h3 class="text-2xl font-bold">{{ subscription_stats.plan_display_name or subscription_stats.plan.title() }}</h3>
+                            <p class="text-gray-400">
+                                {% if subscription_stats.plan == 'free' %}
+                                    Gratis plan med begrensninger
+                                {% else %}
+                                    Premium plan med full tilgang
+                                {% endif %}
+                            </p>
+                        </div>
+                        <div class="text-right">
+                            {% if subscription_stats.plan != 'free' %}
+                            <p class="text-2xl font-bold">149 NOK</p>
+                            <p class="text-sm text-gray-400">per måned</p>
+                            {% else %}
+                            <p class="text-2xl font-bold text-green-400">Gratis</p>
+                            {% endif %}
+                        </div>
+                    </div>
+
+                    {% if subscription_stats.expires_at %}
+                    <div class="bg-gray-800/50 rounded-lg p-4">
+                        <div class="flex items-center justify-between">
+                            <span class="text-sm text-gray-400">
+                                {% if subscription_stats.is_trial %}Prøveperiode utløper{% else %}Neste fakturering{% endif %}
+                            </span>
+                            <span class="font-medium">{{ subscription_stats.expires_at.strftime('%d.%m.%Y') }}</span>
+                        </div>
+                        {% if subscription_stats.days_remaining %}
+                        <div class="mt-2">
+                            <div class="flex items-center justify-between text-sm">
+                                <span class="text-gray-400">{{ subscription_stats.days_remaining }} dager igjen</span>
+                                <span class="text-gray-400">
+                                    {% if subscription_stats.auto_renew %}Fornyes automatisk{% else %}Kansellert{% endif %}
+                                </span>
+                            </div>
+                        </div>
+                        {% endif %}
+                    </div>
+                    {% endif %}
+                </div>
+
+                <!-- Usage Stats for Free Users -->
+                {% if subscription_stats.plan == 'free' and usage_stats %}
+                <div class="mb-6">
+                    <h4 class="font-semibold mb-3">Din Bruk</h4>
+                    <div class="space-y-4">
+                        <div>
+                            <div class="flex items-center justify-between mb-2">
+                                <span class="text-sm text-gray-400">Daglige Quiz</span>
+                                <span class="text-sm font-medium">{{ usage_stats.daily_quizzes.taken }}/{{ usage_stats.daily_quizzes.limit }}</span>
+                            </div>
+                            <div class="w-full bg-gray-700 rounded-full h-2">
+                                <div class="bg-purple-600 h-2 rounded-full" style="width: {{ (usage_stats.daily_quizzes.taken / usage_stats.daily_quizzes.limit * 100) }}%"></div>
+                            </div>
+                            <p class="text-xs text-gray-500 mt-1">Tilbakestilles daglig</p>
+                        </div>
+                        <div>
+                            <div class="flex items-center justify-between mb-2">
+                                <span class="text-sm text-gray-400">Ukentlige Eksamener</span>
+                                <span class="text-sm font-medium">{{ usage_stats.weekly_exams.taken }}/{{ usage_stats.weekly_exams.limit }}</span>
+                            </div>
+                            <div class="w-full bg-gray-700 rounded-full h-2">
+                                <div class="bg-pink-600 h-2 rounded-full" style="width: {{ (usage_stats.weekly_exams.taken / usage_stats.weekly_exams.limit * 100) }}%"></div>
+                            </div>
+                            <p class="text-xs text-gray-500 mt-1">Tilbakestilles ukentlig</p>
+                        </div>
+                    </div>
+                </div>
+                {% endif %}
+
+                <!-- Action Buttons -->
+                <div class="space-y-3">
+                    {% if subscription_stats.plan == 'free' %}
+                    <a href="{{ url_for('subscription.plans') }}" 
+                       class="block w-full py-3 bg-gradient-to-r from-purple-600 to-pink-600 text-center rounded-lg font-semibold hover:from-purple-700 hover:to-pink-700 transition">
+                        Oppgrader til Premium
+                    </a>
+                    {% else %}
+                    {% if subscription_stats.plan == 'premium' %}
+                    <a href="{{ url_for('subscription.upgrade', plan_name='pro') }}" 
+                       class="block w-full py-3 bg-gradient-to-r from-blue-600 to-purple-600 text-center rounded-lg font-semibold hover:from-blue-700 hover:to-purple-700 transition">
+                        Oppgrader til Pro
+                    </a>
+                    {% endif %}
+                    
+                    {% if subscription_stats.status == 'active' and subscription_stats.auto_renew %}
+                    <button onclick="showCancelModal()" 
+                            class="w-full py-3 bg-gray-700 text-white rounded-lg font-semibold hover:bg-gray-600 transition">
+                        Kanseller Abonnement
+                    </button>
+                    {% endif %}
+                    {% endif %}
+                </div>
+            </div>
+
+            <!-- Payment History -->
+            <div class="glass rounded-2xl p-8">
+                <h2 class="text-xl font-bold mb-6">Betalingshistorikk</h2>
+                
+                {% if payment_history %}
+                <div class="space-y-4">
+                    {% for payment in payment_history %}
+                    <div class="flex items-center justify-between p-4 bg-gray-800/50 rounded-lg">
+                        <div>
+                            <p class="font-medium">{{ payment.description }}</p>
+                            <p class="text-sm text-gray-400">
+                                {{ payment.created_at.strftime('%d.%m.%Y') }}
+                                {% if payment.invoice_number %}
+                                - Faktura: {{ payment.invoice_number }}
+                                {% endif %}
+                            </p>
+                        </div>
+                        <div class="text-right">
+                            <p class="font-bold">{{ payment.amount_nok }} NOK</p>
+                            <span class="text-xs px-2 py-1 rounded-full 
+                                {% if payment.status == 'completed' %}bg-green-600/20 text-green-400
+                                {% elif payment.status == 'pending' %}bg-yellow-600/20 text-yellow-400
+                                {% else %}bg-red-600/20 text-red-400{% endif %}">
+                                {% if payment.status == 'completed' %}Betalt
+                                {% elif payment.status == 'pending' %}Venter
+                                {% elif payment.status == 'failed' %}Feilet
+                                {% else %}{{ payment.status.title() }}{% endif %}
+                            </span>
+                        </div>
+                    </div>
+                    {% endfor %}
+                </div>
+                {% else %}
+                <div class="text-center py-8">
+                    <i class="fas fa-receipt text-gray-600 text-4xl mb-4"></i>
+                    <p class="text-gray-400">Ingen betalingshistorikk ennå</p>
+                </div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+</section>
+
+<!-- Cancel Subscription Modal -->
+<div id="cancelModal" class="fixed inset-0 bg-black bg-opacity-50 hidden z-50 flex items-center justify-center">
+    <div class="glass rounded-2xl p-8 max-w-md mx-4">
+        <h3 class="text-xl font-bold mb-4">Kanseller Abonnement</h3>
+        <p class="text-gray-400 mb-6">
+            Er du sikker på at du vil kansellere abonnementet? Du beholder tilgang til premium funksjoner til slutten av faktureringsperioden.
+        </p>
+        
+        <form action="{{ url_for('subscription.cancel') }}" method="POST">
+            <div class="mb-6">
+                <label class="block text-sm font-medium mb-2">Årsak til kansellering (valgfritt)</label>
+                <select name="reason" class="w-full px-4 py-2 bg-gray-800 border border-gray-700 rounded-lg focus:border-purple-500 focus:outline-none">
+                    <option value="">Velg en årsak...</option>
+                    <option value="too_expensive">For dyrt</option>
+                    <option value="not_using">Bruker det ikke nok</option>
+                    <option value="found_alternative">Fant et alternativ</option>
+                    <option value="technical_issues">Tekniske problemer</option>
+                    <option value="other">Annet</option>
+                </select>
+            </div>
+            
+            <div class="flex space-x-3">
+                <button type="button" onclick="hideCancelModal()" 
+                        class="flex-1 py-3 bg-gray-700 text-white rounded-lg font-semibold hover:bg-gray-600 transition">
+                    Avbryt
+                </button>
+                <button type="submit" 
+                        class="flex-1 py-3 bg-red-600 text-white rounded-lg font-semibold hover:bg-red-700 transition">
+                    Kanseller Abonnement
+                </button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<script>
+function showCancelModal() {
+    document.getElementById('cancelModal').classList.remove('hidden');
+}
+
+function hideCancelModal() {
+    document.getElementById('cancelModal').classList.add('hidden');
+}
+
+// Close modal when clicking outside
+document.getElementById('cancelModal').addEventListener('click', function(e) {
+    if (e.target === this) {
+        hideCancelModal();
+    }
+});
+</script>
+{% endblock %}

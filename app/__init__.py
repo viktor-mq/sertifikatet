@@ -62,10 +62,14 @@ def create_app():
     from .game import game_bp
     app.register_blueprint(game_bp)
     
+    # Register subscription blueprint
+    from .subscription import subscription_bp
+    app.register_blueprint(subscription_bp)
+    
     # Create tables if they don't exist
     with app.app_context():
         # Import all models to ensure they're registered
-        from . import models, gamification_models, video_models
+        from . import models, gamification_models, video_models, payment_models
         db.create_all()
     
     return app

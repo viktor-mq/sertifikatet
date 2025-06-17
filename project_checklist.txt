@@ -156,14 +156,27 @@ TEORITEST PROJECT IMPLEMENTATION CHECKLIST
 [✅] Offline page with network status
 [✅] PWA notifications and update prompts
 
-## Phase 11: Payment & Subscriptions ⏳
-[⏳] Payment gateway integration
-[⏳] Subscription plans
-[⏳] Free tier limitations
-[⏳] Premium features
-[⏳] Payment history
-[⏳] Auto-renewal
-[⏳] Refund handling
+## Phase 11: Payment & Subscriptions ✅
+[✅] Payment gateway integration (Stripe + Vipps mock)
+[✅] Three subscription plans (Free, Premium, Pro)
+[✅] Usage limits and enforcement for free users
+[✅] Subscription management and billing
+[✅] Payment history and invoicing
+[✅] Discount codes and promotions system
+[✅] Refund request handling
+[✅] Billing address management
+[✅] Subscription upgrade/downgrade flow
+[✅] Norwegian payment methods (Vipps)
+[✅] Subscription status and feature checks
+[✅] Integration with quiz system for limits
+[✅] Mobile-friendly payment forms
+[✅] Comprehensive subscription dashboard
+[✅] **Database restructure with foreign key relationships**
+[✅] **Automatic plan updates via current_plan_id FK**
+[✅] **Single source of truth for subscription data**
+[✅] **Profile-based subscription management**
+[✅] **Seamless plan upgrades/downgrades**
+[⏳] **Automatic subscription expiration handling (requires webhook integration)**
 
 ## Phase 12: Advanced Features ⏳
 [⏳] AI-powered wrong answer analysis
@@ -239,6 +252,9 @@ TEORITEST PROJECT IMPLEMENTATION CHECKLIST
 23. ✅ Security dashboard with real-time monitoring
 24. ✅ Automatic security report generation
 25. ✅ Admin privilege change tracking and alerts
+26. ✅ **Foreign key subscription architecture with referential integrity**
+27. ✅ **Profile-integrated subscription management**
+28. ✅ **Automatic plan updates and single source of truth**
 
 ## Next Steps:
 1. Complete remaining game implementations (beyond placeholders)

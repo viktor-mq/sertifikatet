@@ -20,10 +20,13 @@ class User(UserMixin, db.Model):
     preferred_language = db.Column(db.String(10), default='no')
     total_xp = db.Column(db.Integer, default=0)
     is_verified = db.Column(db.Boolean, default=False)
-    subscription_tier = db.Column(db.String(20), default='free')  # 'free', 'premium', 'pro'
+    subscription_tier = db.Column(db.String(20), default='free')  # 'free', 'premium', 'pro' - DEPRECATED
+    current_plan_id = db.Column(db.Integer, db.ForeignKey('subscription_plans.id'), nullable=False)
+    subscription_status = db.Column(db.Enum('active', 'cancelled', 'expired', 'trial'), default='active')
     is_admin = db.Column(db.Boolean, default=False)
     
     # Relationships
+    current_plan = db.relationship('SubscriptionPlan', foreign_keys=[current_plan_id], backref='users')
     progress = db.relationship('UserProgress', backref='user', uselist=False, cascade='all, delete-orphan')
     achievements = db.relationship('UserAchievement', backref='user', cascade='all, delete-orphan')
     quiz_sessions = db.relationship('QuizSession', backref='user', cascade='all, delete-orphan')

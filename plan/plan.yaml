@@ -66,7 +66,9 @@ database:
       - preferred_language
       - total_xp
       - is_verified
-      - subscription_tier
+      - subscription_tier          # DEPRECATED - kept for backward compatibility
+      - current_plan_id            # FK → subscription_plans.id (NEW - single source of truth)
+      - subscription_status        # ENUM('active', 'cancelled', 'expired', 'trial')
       - is_admin
     user_progress:
       - id
@@ -279,6 +281,25 @@ database:
       - period_start
       - period_end
       - created_at
+    subscription_plans:
+      - id
+      - name                       # 'free', 'premium', 'pro'
+      - display_name               # 'Premium Plan'
+      - price_nok                  # Price in NOK
+      - billing_cycle              # 'monthly', 'yearly'
+      - description
+      - features_json              # JSON list of features
+      - max_daily_quizzes          # null = unlimited
+      - max_weekly_exams           # null = unlimited
+      - has_ads
+      - has_detailed_stats
+      - has_ai_adaptive
+      - has_offline_mode
+      - has_personal_tutor
+      - has_video_access
+      - priority_support
+      - is_active
+      - created_at
     user_feedback:
       - id
       - user_id
@@ -286,6 +307,80 @@ database:
       - subject
       - message
       - status
+      - created_at
+    admin_reports:
+      - id
+      - report_type
+      - priority
+      - status
+      - title
+      - description
+      - reported_by_user_id
+      - affected_user_id
+      - ip_address
+      - created_at
+      - resolved_at
+    user_subscriptions:
+      - id
+      - user_id                    # FK → users.id
+      - plan_id                    # FK → subscription_plans.id
+      - status                     # 'active', 'cancelled', 'expired', 'pending'
+      - started_at
+      - expires_at
+      - cancelled_at
+      - auto_renew
+      - next_billing_date
+      - stripe_subscription_id
+      - payment_method_id
+      - is_trial
+      - trial_ends_at
+      - cancelled_reason
+      - notes
+      - created_at
+      - updated_at
+    payments:
+      - id
+      - user_id                    # FK → users.id
+      - subscription_id            # FK → user_subscriptions.id
+      - plan_id                    # FK → subscription_plans.id
+      - amount_nok
+      - currency
+      - status                     # 'pending', 'completed', 'failed', 'refunded'
+      - payment_method             # 'card', 'vipps', 'bank_transfer'
+      - stripe_payment_intent_id
+      - stripe_charge_id
+      - vipps_transaction_id
+      - invoice_number
+      - invoice_pdf_path
+      - billing_name
+      - billing_email
+      - billing_address
+      - payment_date
+      - failure_reason
+      - description
+      - created_at
+      - updated_at
+    usage_limits:
+      - id
+      - user_id                    # FK → users.id
+      - daily_quizzes_taken
+      - daily_limit_date
+      - weekly_exams_taken
+      - weekly_limit_start
+      - monthly_videos_watched
+      - created_at
+      - updated_at
+    discount_codes:
+      - id
+      - code
+      - description
+      - discount_type              # 'percentage', 'fixed_amount', 'free_trial'
+      - discount_value
+      - valid_from
+      - valid_until
+      - max_uses
+      - current_uses
+      - is_active
       - created_at
 
 file_structure:

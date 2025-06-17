@@ -94,6 +94,15 @@ def quiz():
     limit = request.args.get('limit', type=int)
     learning_path_id = request.args.get('learning_path_id', type=int)
     
+    # Check subscription limits for authenticated users
+    if current_user.is_authenticated:
+        from ..services.payment_service import SubscriptionService, UsageLimitService
+        
+        can_take, message = SubscriptionService.can_user_take_quiz(current_user.id, quiz_type)
+        if not can_take:
+            flash(message, 'warning')
+            return redirect(url_for('subscription.plans'))
+    
     # If from learning path, set quiz_type
     if learning_path_id:
         quiz_type = 'learning_path'
@@ -238,6 +247,10 @@ def submit_quiz():
         # Update leaderboards
         leaderboard_service = LeaderboardService()
         leaderboard_service.update_leaderboards(user_id)
+        
+        # Record quiz usage for subscription limits
+        from ..services.payment_service import UsageLimitService
+        UsageLimitService.record_quiz_taken(user_id, quiz_type)
         
         # Store new achievements in session to show in results
         if new_achievements:

@@ -125,6 +125,11 @@ def profile():
     )
     achievements = user.achievements
     
+    # Get subscription information
+    from ..services.payment_service import SubscriptionService, UsageLimitService
+    subscription_stats = SubscriptionService.get_subscription_stats(current_user.id)
+    usage_stats = UsageLimitService.get_usage_stats(current_user.id)
+    
     # Calculate statistics
     total_score = 0
     if progress and progress.total_questions_answered > 0:
@@ -135,6 +140,8 @@ def profile():
                          progress=progress,
                          recent_sessions=recent_sessions,
                          achievements=achievements,
+                         subscription_stats=subscription_stats,
+                         usage_stats=usage_stats,
                          total_score=total_score)
 
 
