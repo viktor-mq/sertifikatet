@@ -1,0 +1,280 @@
+# Marketing Email Routes for Admin Panel
+# Add these to app/admin/routes.py
+
+from flask import request, render_template, redirect, url_for, flash, jsonify
+from flask_login import login_required, current_user
+from ..marketing_models import MarketingEmail, MarketingTemplate, MarketingEmailLog
+from ..marketing_service import MarketingEmailService
+from .. import db
+import os
+from werkzeug.utils import secure_filename
+
+@admin_bp.route('/marketing-emails')
+@login_required
+@admin_required
+def marketing_emails():
+    """Marketing emails dashboard"""
+    page = request.args.get('page', 1, type=int)
+    status = request.args.get('status', '')
+    search = request.args.get('search', '')
+    
+    query = MarketingEmail.query
+    
+    # Apply filters
+    if status:
+        query = query.filter(MarketingEmail.status == status)
+    
+    if search:
+        query = query.filter(MarketingEmail.title.contains(search))
+    
+    # Paginate
+    emails = query.order_by(MarketingEmail.created_at.desc()).paginate(
+        page=page, per_page=20, error_out=False
+    )
+    
+    # Get statistics
+    stats = MarketingEmailService.get_marketing_statistics()
+    
+    return render_template('admin/marketing_emails.html', 
+                         emails=emails, 
+                         stats=stats)
+
+@admin_bp.route('/marketing-emails/create', methods=['GET', 'POST'])
+@login_required
+@admin_required
+def create_marketing_email():
+    """Create new marketing email campaign"""
+    if request.method == 'POST':
+        title = request.form.get('title')
+        subject = request.form.get('subject')
+        html_content = request.form.get('html_content')
+        action = request.form.get('action')
+        
+        # Handle file upload
+        html_file = request.files.get('html_file')
+        if html_file and html_file.filename:
+            html_content = html_file.read().decode('utf-8')
+        
+        # Targeting options
+        target_free = bool(request.form.get('target_free_users'))
+        target_premium = bool(request.form.get('target_premium_users'))
+        target_pro = bool(request.form.get('target_pro_users'))
+        target_active = bool(request.form.get('target_active_only'))
+        
+        # Validation
+        if not all([title, subject, html_content]):
+            flash('Please fill in all required fields', 'error')
+            return render_template('admin/create_marketing_email.html', 
+                                 templates=MarketingTemplate.query.filter_by(is_active=True).all())
+        
+        try:
+            # Create email campaign
+            email = MarketingEmailService.create_marketing_email(
+                title=title,
+                subject=subject,
+                html_content=html_content,
+                created_by_user_id=current_user.id,
+                target_free=target_free,
+                target_premium=target_premium,
+                target_pro=target_pro,
+                target_active_only=target_active
+            )
+            
+            if action == 'send_now':
+                # Send immediately
+                result = MarketingEmailService.send_marketing_email(email.id)
+                if result['success']:
+                    flash(f'Marketing email campaign created and is being sent to {result["recipient_count"]} users!', 'success')
+                else:
+                    flash(f'Campaign created but failed to send: {result["error"]}', 'error')
+            else:
+                # Save as draft
+                flash('Marketing email campaign saved as draft', 'success')
+            
+            return redirect(url_for('admin.marketing_emails'))
+            
+        except Exception as e:
+            flash(f'Error creating campaign: {str(e)}', 'error')
+    
+    # GET request - show form
+    templates = MarketingTemplate.query.filter_by(is_active=True).all()
+    return render_template('admin/create_marketing_email.html', templates=templates)
+
+@admin_bp.route('/marketing-emails/<int:id>')
+@login_required
+@admin_required
+def view_marketing_email(id):
+    """View marketing email campaign details"""
+    email = MarketingEmail.query.get_or_404(id)
+    
+    # Get send statistics
+    logs = MarketingEmailLog.query.filter_by(marketing_email_id=id).all()
+    
+    return render_template('admin/view_marketing_email.html', 
+                         email=email, 
+                         logs=logs)
+
+@admin_bp.route('/marketing-emails/<int:id>/edit', methods=['GET', 'POST'])
+@login_required
+@admin_required
+def edit_marketing_email(id):
+    """Edit marketing email campaign (only drafts)"""
+    email = MarketingEmail.query.get_or_404(id)
+    
+    if email.status != 'draft':
+        flash('Only draft campaigns can be edited', 'error')
+        return redirect(url_for('admin.view_marketing_email', id=id))
+    
+    if request.method == 'POST':
+        email.title = request.form.get('title')
+        email.subject = request.form.get('subject')
+        email.html_content = request.form.get('html_content')
+        
+        # Update targeting
+        email.target_free_users = bool(request.form.get('target_free_users'))
+        email.target_premium_users = bool(request.form.get('target_premium_users'))
+        email.target_pro_users = bool(request.form.get('target_pro_users'))
+        email.target_active_only = bool(request.form.get('target_active_only'))
+        
+        # Recalculate recipient count
+        recipients = MarketingEmailService.get_eligible_recipients(
+            email.target_free_users,
+            email.target_premium_users,
+            email.target_pro_users,
+            email.target_active_only
+        )
+        email.recipients_count = len(recipients)
+        
+        db.session.commit()
+        flash('Marketing email campaign updated', 'success')
+        return redirect(url_for('admin.view_marketing_email', id=id))
+    
+    templates = MarketingTemplate.query.filter_by(is_active=True).all()
+    return render_template('admin/edit_marketing_email.html', 
+                         email=email, 
+                         templates=templates)
+
+@admin_bp.route('/api/marketing-recipients', methods=['GET', 'POST'])
+@login_required
+@admin_required
+def get_marketing_recipients():
+    """Get count of marketing email recipients"""
+    if request.method == 'POST':
+        target_free = bool(request.form.get('target_free_users'))
+        target_premium = bool(request.form.get('target_premium_users'))
+        target_pro = bool(request.form.get('target_pro_users'))
+        target_active = bool(request.form.get('target_active_only'))
+    else:
+        email_id = request.args.get('email_id')
+        if email_id:
+            email = MarketingEmail.query.get(email_id)
+            target_free = email.target_free_users
+            target_premium = email.target_premium_users
+            target_pro = email.target_pro_users
+            target_active = email.target_active_only
+        else:
+            target_free = target_premium = target_pro = True
+            target_active = False
+    
+    recipients = MarketingEmailService.get_eligible_recipients(
+        target_free, target_premium, target_pro, target_active
+    )
+    
+    return jsonify({'count': len(recipients)})
+
+@admin_bp.route('/api/marketing-send', methods=['POST'])
+@login_required
+@admin_required
+def send_marketing_email():
+    """Send marketing email campaign"""
+    data = request.get_json()
+    email_id = data.get('email_id')
+    
+    if not email_id:
+        return jsonify({'success': False, 'error': 'Email ID required'})
+    
+    result = MarketingEmailService.send_marketing_email(email_id)
+    return jsonify(result)
+
+@admin_bp.route('/marketing-emails/<int:id>/logs')
+@login_required
+@admin_required
+def marketing_email_logs(id):
+    """View marketing email send logs"""
+    email = MarketingEmail.query.get_or_404(id)
+    
+    page = request.args.get('page', 1, type=int)
+    status = request.args.get('status', '')
+    
+    query = MarketingEmailLog.query.filter_by(marketing_email_id=id)
+    
+    if status:
+        query = query.filter(MarketingEmailLog.status == status)
+    
+    logs = query.order_by(MarketingEmailLog.created_at.desc()).paginate(
+        page=page, per_page=50, error_out=False
+    )
+    
+    return render_template('admin/marketing_email_logs.html', 
+                         email=email, 
+                         logs=logs)
+
+# Marketing Templates Routes
+
+@admin_bp.route('/marketing-templates')
+@login_required
+@admin_required
+def marketing_templates():
+    """Marketing email templates management"""
+    templates = MarketingTemplate.query.order_by(MarketingTemplate.created_at.desc()).all()
+    return render_template('admin/marketing_templates.html', templates=templates)
+
+@admin_bp.route('/marketing-templates/create', methods=['GET', 'POST'])
+@login_required
+@admin_required
+def create_marketing_template():
+    """Create new marketing email template"""
+    if request.method == 'POST':
+        name = request.form.get('name')
+        description = request.form.get('description')
+        html_content = request.form.get('html_content')
+        category = request.form.get('category')
+        
+        # Handle file upload
+        html_file = request.files.get('html_file')
+        if html_file and html_file.filename:
+            html_content = html_file.read().decode('utf-8')
+        
+        if not all([name, html_content]):
+            flash('Name and HTML content are required', 'error')
+            return render_template('admin/create_marketing_template.html')
+        
+        template = MarketingTemplate(
+            name=name,
+            description=description,
+            html_content=html_content,
+            category=category,
+            created_by_user_id=current_user.id
+        )
+        
+        db.session.add(template)
+        db.session.commit()
+        
+        flash('Marketing template created successfully', 'success')
+        return redirect(url_for('admin.marketing_templates'))
+    
+    return render_template('admin/create_marketing_template.html')
+
+@admin_bp.route('/api/marketing-template')
+@login_required
+@admin_required
+def get_marketing_template():
+    """Get marketing template content"""
+    template_id = request.args.get('id')
+    template = MarketingTemplate.query.get_or_404(template_id)
+    
+    return jsonify({
+        'html_content': template.html_content,
+        'name': template.name,
+        'description': template.description
+    })

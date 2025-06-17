@@ -1,0 +1,380 @@
+<!-- templates/admin/create_marketing_template.html -->
+{% extends "admin/base.html" %}
+
+{% block title %}Create Marketing Template - Admin{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <!-- Header -->
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <h1 class="h3 mb-0 text-gray-800">Create Marketing Email Template</h1>
+        <a href="{{ url_for('admin.marketing_templates') }}" class="btn btn-secondary">
+            <i class="fas fa-arrow-left"></i> Back to Templates
+        </a>
+    </div>
+
+    <form method="POST" enctype="multipart/form-data">
+        <div class="row">
+            <!-- Main Content -->
+            <div class="col-lg-8">
+                <!-- Template Information -->
+                <div class="card shadow mb-4">
+                    <div class="card-header py-3">
+                        <h6 class="m-0 font-weight-bold text-primary">Template Details</h6>
+                    </div>
+                    <div class="card-body">
+                        <div class="mb-3">
+                            <label for="name" class="form-label">Template Name *</label>
+                            <input type="text" class="form-control" id="name" name="name" required
+                                   placeholder="Enter a descriptive name for this template">
+                        </div>
+
+                        <div class="mb-3">
+                            <label for="description" class="form-label">Description</label>
+                            <textarea class="form-control" id="description" name="description" rows="3"
+                                      placeholder="Optional description of what this template is for"></textarea>
+                        </div>
+
+                        <div class="mb-3">
+                            <label for="category" class="form-label">Category</label>
+                            <select class="form-control" id="category" name="category">
+                                <option value="">Select category...</option>
+                                <option value="newsletter">Newsletter</option>
+                                <option value="promotion">Promotion</option>
+                                <option value="announcement">Announcement</option>
+                                <option value="welcome">Welcome Email</option>
+                                <option value="reminder">Reminder</option>
+                                <option value="other">Other</option>
+                            </select>
+                        </div>
+
+                        <div class="mb-3">
+                            <label class="form-label">Content Method</label>
+                            <div class="form-check">
+                                <input class="form-check-input" type="radio" name="content_method" id="content_editor" value="editor" checked>
+                                <label class="form-check-label" for="content_editor">
+                                    Use Built-in Editor
+                                </label>
+                            </div>
+                            <div class="form-check">
+                                <input class="form-check-input" type="radio" name="content_method" id="content_upload" value="upload">
+                                <label class="form-check-label" for="content_upload">
+                                    Import HTML File
+                                </label>
+                            </div>
+                        </div>
+
+                        <!-- HTML Upload -->
+                        <div id="upload_section" style="display: none;">
+                            <div class="mb-3">
+                                <label for="html_file" class="form-label">HTML Template File</label>
+                                <input type="file" class="form-control" id="html_file" name="html_file" accept=".html,.htm">
+                                <small class="form-text text-muted">Upload an HTML file with your email template</small>
+                            </div>
+                        </div>
+
+                        <!-- HTML Editor -->
+                        <div id="editor_section">
+                            <div class="mb-3">
+                                <label for="html_content" class="form-label">Template Content *</label>
+                                <textarea class="form-control" id="html_content" name="html_content" rows="20" required
+                                          placeholder="Enter your HTML template content here..."></textarea>
+                                <small class="form-text text-muted">HTML content for the email template. Use variables like {{user.full_name}} for personalization.</small>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Preview Section -->
+                <div class="card shadow mb-4">
+                    <div class="card-header py-3">
+                        <h6 class="m-0 font-weight-bold text-primary">Preview</h6>
+                    </div>
+                    <div class="card-body">
+                        <button type="button" class="btn btn-outline-info" onclick="previewTemplate()">
+                            <i class="fas fa-eye"></i> Preview Template
+                        </button>
+                        <div id="preview_container" class="mt-3" style="display: none;">
+                            <div class="border p-3" style="max-height: 400px; overflow-y: auto;">
+                                <div id="preview_content"></div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Sidebar -->
+            <div class="col-lg-4">
+                <!-- Template Variables -->
+                <div class="card shadow mb-4">
+                    <div class="card-header py-3">
+                        <h6 class="m-0 font-weight-bold text-primary">Available Variables</h6>
+                    </div>
+                    <div class="card-body">
+                        <p><small class="text-muted">You can use these variables in your template:</small></p>
+                        <ul class="list-unstyled small">
+                            <li><code>{{user.full_name}}</code> - User's full name</li>
+                            <li><code>{{user.username}}</code> - Username</li>
+                            <li><code>{{user.email}}</code> - Email address</li>
+                            <li><code>{{user.current_plan}}</code> - Subscription plan</li>
+                            <li><code>{{unsubscribe_url}}</code> - Unsubscribe link</li>
+                            <li><code>{{settings_url}}</code> - Settings page link</li>
+                        </ul>
+                        
+                        <hr>
+                        <button type="button" class="btn btn-outline-secondary btn-sm w-100 mb-2" onclick="insertVariable('{{user.full_name}}')">
+                            Insert Name
+                        </button>
+                        <button type="button" class="btn btn-outline-secondary btn-sm w-100 mb-2" onclick="insertVariable('{{user.username}}')">
+                            Insert Username
+                        </button>
+                        <button type="button" class="btn btn-outline-secondary btn-sm w-100 mb-2" onclick="insertVariable('{{settings_url}}')">
+                            Insert Settings Link
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Quick Templates -->
+                <div class="card shadow mb-4">
+                    <div class="card-header py-3">
+                        <h6 class="m-0 font-weight-bold text-primary">Quick Start Templates</h6>
+                    </div>
+                    <div class="card-body">
+                        <button type="button" class="btn btn-outline-secondary btn-sm mb-2 w-100" onclick="loadQuickTemplate('newsletter')">
+                            <i class="fas fa-newspaper"></i> Newsletter Template
+                        </button>
+                        <button type="button" class="btn btn-outline-secondary btn-sm mb-2 w-100" onclick="loadQuickTemplate('promotion')">
+                            <i class="fas fa-percent"></i> Promotion Template
+                        </button>
+                        <button type="button" class="btn btn-outline-secondary btn-sm mb-2 w-100" onclick="loadQuickTemplate('announcement')">
+                            <i class="fas fa-bullhorn"></i> Announcement Template
+                        </button>
+                        <button type="button" class="btn btn-outline-secondary btn-sm mb-2 w-100" onclick="loadQuickTemplate('welcome')">
+                            <i class="fas fa-hand-wave"></i> Welcome Template
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Actions -->
+                <div class="card shadow mb-4">
+                    <div class="card-header py-3">
+                        <h6 class="m-0 font-weight-bold text-primary">Actions</h6>
+                    </div>
+                    <div class="card-body">
+                        <button type="submit" class="btn btn-primary w-100 mb-2">
+                            <i class="fas fa-save"></i> Save Template
+                        </button>
+                        <a href="{{ url_for('admin.marketing_templates') }}" class="btn btn-outline-secondary w-100">
+                            <i class="fas fa-times"></i> Cancel
+                        </a>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </form>
+</div>
+
+<script>
+// Content method switching
+document.querySelectorAll('input[name="content_method"]').forEach(radio => {
+    radio.addEventListener('change', function() {
+        const editorSection = document.getElementById('editor_section');
+        const uploadSection = document.getElementById('upload_section');
+        
+        if (this.value === 'editor') {
+            editorSection.style.display = 'block';
+            uploadSection.style.display = 'none';
+        } else if (this.value === 'upload') {
+            editorSection.style.display = 'none';
+            uploadSection.style.display = 'block';
+        }
+    });
+});
+
+// File upload handling
+document.getElementById('html_file').addEventListener('change', function() {
+    const file = this.files[0];
+    if (file) {
+        const reader = new FileReader();
+        reader.onload = function(e) {
+            document.getElementById('html_content').value = e.target.result;
+        };
+        reader.readAsText(file);
+    }
+});
+
+// Preview functionality
+function previewTemplate() {
+    const htmlContent = document.getElementById('html_content').value;
+    if (!htmlContent.trim()) {
+        alert('Please enter template content first');
+        return;
+    }
+    
+    // Replace variables with sample data for preview
+    let previewContent = htmlContent
+        .replace(/\{\{user\.full_name\}\}/g, 'Ola Nordmann')
+        .replace(/\{\{user\.username\}\}/g, 'olanordmann')
+        .replace(/\{\{user\.email\}\}/g, 'ola@example.com')
+        .replace(/\{\{user\.current_plan\}\}/g, 'Premium')
+        .replace(/\{\{unsubscribe_url\}\}/g, '#unsubscribe')
+        .replace(/\{\{settings_url\}\}/g, '#settings');
+    
+    document.getElementById('preview_content').innerHTML = previewContent;
+    document.getElementById('preview_container').style.display = 'block';
+}
+
+// Insert variable at cursor position
+function insertVariable(variable) {
+    const textarea = document.getElementById('html_content');
+    const start = textarea.selectionStart;
+    const end = textarea.selectionEnd;
+    const text = textarea.value;
+    
+    textarea.value = text.substring(0, start) + variable + text.substring(end);
+    textarea.focus();
+    textarea.setSelectionRange(start + variable.length, start + variable.length);
+}
+
+// Load quick template
+function loadQuickTemplate(type) {
+    let template = '';
+    
+    if (type === 'newsletter') {
+        template = `<!DOCTYPE html>
+<html>
+<head>
+    <title>Sertifikatet Newsletter</title>
+    <style>
+        body { font-family: Arial, sans-serif; line-height: 1.6; color: #333; }
+        .container { max-width: 600px; margin: 0 auto; padding: 20px; }
+        .header { background: #007bff; color: white; padding: 20px; text-align: center; }
+        .content { padding: 20px; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>Sertifikatet Newsletter</h1>
+        </div>
+        <div class="content">
+            <h2>Hei {{user.full_name}}!</h2>
+            <p>Velkommen til vår månedlige newsletter med de siste oppdateringene fra Sertifikatet.</p>
+            
+            <h3>Hva er nytt?</h3>
+            <ul>
+                <li>Nye spørsmål lagt til</li>
+                <li>Forbedret mobilapp</li>
+                <li>Nye prestasjoner</li>
+            </ul>
+            
+            <p><a href="https://sertifikatet.no" style="background: #007bff; color: white; padding: 10px 20px; text-decoration: none; border-radius: 5px;">Logg inn og øv nå</a></p>
+        </div>
+    </div>
+</body>
+</html>`;
+    } else if (type === 'promotion') {
+        template = `<!DOCTYPE html>
+<html>
+<head>
+    <title>Spesialtilbud - Sertifikatet</title>
+    <style>
+        body { font-family: Arial, sans-serif; line-height: 1.6; color: #333; }
+        .container { max-width: 600px; margin: 0 auto; padding: 20px; }
+        .header { background: #28a745; color: white; padding: 20px; text-align: center; }
+        .promo { background: #fff3cd; border: 2px solid #ffc107; padding: 20px; margin: 20px 0; text-align: center; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>🎉 Spesialtilbud!</h1>
+        </div>
+        <div class="content">
+            <h2>Hei {{user.full_name}}!</h2>
+            
+            <div class="promo">
+                <h3>50% rabatt på Premium!</h3>
+                <p>Kun denne uken - oppgrader til Premium og få tilgang til alle funksjoner.</p>
+            </div>
+            
+            <p><a href="https://sertifikatet.no/subscription" style="background: #28a745; color: white; padding: 15px 30px; text-decoration: none; border-radius: 5px; font-weight: bold;">Oppgrader nå</a></p>
+        </div>
+    </div>
+</body>
+</html>`;
+    } else if (type === 'announcement') {
+        template = `<!DOCTYPE html>
+<html>
+<head>
+    <title>Viktig kunngjøring - Sertifikatet</title>
+    <style>
+        body { font-family: Arial, sans-serif; line-height: 1.6; color: #333; }
+        .container { max-width: 600px; margin: 0 auto; padding: 20px; }
+        .header { background: #6c757d; color: white; padding: 20px; text-align: center; }
+        .announcement { background: #d1ecf1; border-left: 4px solid #bee5eb; padding: 20px; margin: 20px 0; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>📢 Viktig kunngjøring</h1>
+        </div>
+        <div class="content">
+            <h2>Hei {{user.full_name}}!</h2>
+            
+            <div class="announcement">
+                <h3>Viktig informasjon</h3>
+                <p>Vi har en viktig oppdatering å dele med deg...</p>
+            </div>
+            
+            <p>Med vennlig hilsen,<br>
+            <strong>Sertifikatet-teamet</strong></p>
+        </div>
+    </div>
+</body>
+</html>`;
+    } else if (type === 'welcome') {
+        template = `<!DOCTYPE html>
+<html>
+<head>
+    <title>Velkommen til Sertifikatet!</title>
+    <style>
+        body { font-family: Arial, sans-serif; line-height: 1.6; color: #333; }
+        .container { max-width: 600px; margin: 0 auto; padding: 20px; }
+        .header { background: #007bff; color: white; padding: 20px; text-align: center; }
+        .welcome { background: #e7f3ff; border: 1px solid #007bff; padding: 20px; margin: 20px 0; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>🎉 Velkommen!</h1>
+        </div>
+        <div class="content">
+            <div class="welcome">
+                <h2>Hei {{user.full_name}}!</h2>
+                <p>Velkommen til Sertifikatet! Vi er glade for å ha deg med oss på veien mot førerkortet.</p>
+            </div>
+            
+            <h3>Kom i gang:</h3>
+            <ol>
+                <li>Ta din første quiz</li>
+                <li>Se introduksjonsvideoene</li>
+                <li>Sett opp ditt daglige mål</li>
+            </ol>
+            
+            <p><a href="https://sertifikatet.no" style="background: #007bff; color: white; padding: 15px 30px; text-decoration: none; border-radius: 5px; font-weight: bold;">Start å øve nå</a></p>
+        </div>
+    </div>
+</body>
+</html>`;
+    }
+    
+    document.getElementById('html_content').value = template;
+    document.getElementById('content_editor').checked = true;
+    document.getElementById('editor_section').style.display = 'block';
+    document.getElementById('upload_section').style.display = 'none';
+}
+</script>
+{% endblock %}

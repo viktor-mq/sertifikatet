@@ -1,0 +1,335 @@
+<!-- templates/admin/marketing_emails.html -->
+{% extends "admin/base.html" %}
+
+{% block title %}Marketing Emails - Admin{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <!-- Header -->
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <h1 class="h3 mb-0 text-gray-800">Marketing Email Campaigns</h1>
+        <div>
+            <a href="{{ url_for('admin.marketing_templates') }}" class="btn btn-secondary me-2">
+                <i class="fas fa-file-alt"></i> Templates
+            </a>
+            <a href="{{ url_for('admin.create_marketing_email') }}" class="btn btn-primary">
+                <i class="fas fa-plus"></i> Create Campaign
+            </a>
+        </div>
+    </div>
+
+    <!-- Statistics Cards -->
+    <div class="row mb-4">
+        <div class="col-xl-3 col-md-6 mb-4">
+            <div class="card border-left-primary shadow h-100 py-2">
+                <div class="card-body">
+                    <div class="row no-gutters align-items-center">
+                        <div class="col mr-2">
+                            <div class="text-xs font-weight-bold text-primary text-uppercase mb-1">
+                                Total Campaigns</div>
+                            <div class="h5 mb-0 font-weight-bold text-gray-800">{{ stats.total_campaigns }}</div>
+                        </div>
+                        <div class="col-auto">
+                            <i class="fas fa-envelope fa-2x text-gray-300"></i>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-xl-3 col-md-6 mb-4">
+            <div class="card border-left-success shadow h-100 py-2">
+                <div class="card-body">
+                    <div class="row no-gutters align-items-center">
+                        <div class="col mr-2">
+                            <div class="text-xs font-weight-bold text-success text-uppercase mb-1">
+                                Opted-in Users</div>
+                            <div class="h5 mb-0 font-weight-bold text-gray-800">{{ stats.opted_in_users }}</div>
+                        </div>
+                        <div class="col-auto">
+                            <i class="fas fa-users fa-2x text-gray-300"></i>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-xl-3 col-md-6 mb-4">
+            <div class="card border-left-info shadow h-100 py-2">
+                <div class="card-body">
+                    <div class="row no-gutters align-items-center">
+                        <div class="col mr-2">
+                            <div class="text-xs font-weight-bold text-info text-uppercase mb-1">
+                                This Month</div>
+                            <div class="h5 mb-0 font-weight-bold text-gray-800">{{ stats.sent_this_month }}</div>
+                        </div>
+                        <div class="col-auto">
+                            <i class="fas fa-calendar fa-2x text-gray-300"></i>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-xl-3 col-md-6 mb-4">
+            <div class="card border-left-warning shadow h-100 py-2">
+                <div class="card-body">
+                    <div class="row no-gutters align-items-center">
+                        <div class="col mr-2">
+                            <div class="text-xs font-weight-bold text-warning text-uppercase mb-1">
+                                Success Rate</div>
+                            <div class="h5 mb-0 font-weight-bold text-gray-800">{{ "%.1f"|format(stats.success_rate) }}%</div>
+                        </div>
+                        <div class="col-auto">
+                            <i class="fas fa-chart-line fa-2x text-gray-300"></i>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Filters -->
+    <div class="card shadow mb-4">
+        <div class="card-header py-3">
+            <h6 class="m-0 font-weight-bold text-primary">Filters</h6>
+        </div>
+        <div class="card-body">
+            <form method="GET" class="row g-3">
+                <div class="col-md-3">
+                    <select name="status" class="form-control">
+                        <option value="">All Statuses</option>
+                        <option value="draft" {{ 'selected' if request.args.get('status') == 'draft' }}>Draft</option>
+                        <option value="scheduled" {{ 'selected' if request.args.get('status') == 'scheduled' }}>Scheduled</option>
+                        <option value="sent" {{ 'selected' if request.args.get('status') == 'sent' }}>Sent</option>
+                        <option value="failed" {{ 'selected' if request.args.get('status') == 'failed' }}>Failed</option>
+                    </select>
+                </div>
+                <div class="col-md-3">
+                    <input type="text" name="search" class="form-control" placeholder="Search title..." 
+                           value="{{ request.args.get('search', '') }}">
+                </div>
+                <div class="col-md-3">
+                    <button type="submit" class="btn btn-primary">Filter</button>
+                    <a href="{{ url_for('admin.marketing_emails') }}" class="btn btn-outline-secondary">Clear</a>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Campaigns Table -->
+    <div class="card shadow mb-4">
+        <div class="card-header py-3">
+            <h6 class="m-0 font-weight-bold text-primary">Email Campaigns</h6>
+        </div>
+        <div class="card-body">
+            {% if emails %}
+            <div class="table-responsive">
+                <table class="table table-bordered" width="100%" cellspacing="0">
+                    <thead>
+                        <tr>
+                            <th>Title</th>
+                            <th>Subject</th>
+                            <th>Status</th>
+                            <th>Recipients</th>
+                            <th>Success Rate</th>
+                            <th>Created</th>
+                            <th>Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for email in emails %}
+                        <tr>
+                            <td>
+                                <strong>{{ email.title }}</strong>
+                                <br><small class="text-muted">by {{ email.created_by.username }}</small>
+                            </td>
+                            <td>{{ email.subject }}</td>
+                            <td>
+                                {% if email.status == 'draft' %}
+                                    <span class="badge badge-secondary">Draft</span>
+                                {% elif email.status == 'scheduled' %}
+                                    <span class="badge badge-warning">Scheduled</span>
+                                {% elif email.status == 'sending' %}
+                                    <span class="badge badge-info">Sending</span>
+                                {% elif email.status == 'sent' %}
+                                    <span class="badge badge-success">Sent</span>
+                                {% elif email.status == 'failed' %}
+                                    <span class="badge badge-danger">Failed</span>
+                                {% endif %}
+                            </td>
+                            <td>
+                                {{ email.sent_count }} / {{ email.recipients_count }}
+                                {% if email.failed_count > 0 %}
+                                    <br><small class="text-danger">{{ email.failed_count }} failed</small>
+                                {% endif %}
+                            </td>
+                            <td>
+                                {% if email.recipients_count > 0 %}
+                                    {{ "%.1f"|format((email.sent_count / email.recipients_count) * 100) }}%
+                                {% else %}
+                                    N/A
+                                {% endif %}
+                            </td>
+                            <td>
+                                {{ email.created_at.strftime('%d.%m.%Y %H:%M') }}
+                                {% if email.sent_at %}
+                                    <br><small class="text-muted">Sent: {{ email.sent_at.strftime('%d.%m.%Y %H:%M') }}</small>
+                                {% endif %}
+                            </td>
+                            <td>
+                                <div class="btn-group" role="group">
+                                    <a href="{{ url_for('admin.view_marketing_email', id=email.id) }}" 
+                                       class="btn btn-sm btn-outline-primary" title="View">
+                                        <i class="fas fa-eye"></i>
+                                    </a>
+                                    {% if email.status == 'draft' %}
+                                    <a href="{{ url_for('admin.edit_marketing_email', id=email.id) }}" 
+                                       class="btn btn-sm btn-outline-warning" title="Edit">
+                                        <i class="fas fa-edit"></i>
+                                    </a>
+                                    <button class="btn btn-sm btn-outline-success" 
+                                            onclick="sendEmail({{ email.id }})" title="Send Now">
+                                        <i class="fas fa-paper-plane"></i>
+                                    </button>
+                                    {% endif %}
+                                    {% if email.status in ['sent', 'failed'] %}
+                                    <a href="{{ url_for('admin.marketing_email_logs', id=email.id) }}" 
+                                       class="btn btn-sm btn-outline-info" title="View Logs">
+                                        <i class="fas fa-list"></i>
+                                    </a>
+                                    {% endif %}
+                                </div>
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+
+            <!-- Pagination -->
+            {% if emails.pages > 1 %}
+            <nav aria-label="Page navigation">
+                <ul class="pagination justify-content-center">
+                    {% if emails.has_prev %}
+                    <li class="page-item">
+                        <a class="page-link" href="{{ url_for('admin.marketing_emails', page=emails.prev_num, **request.args) }}">Previous</a>
+                    </li>
+                    {% endif %}
+                    
+                    {% for page_num in emails.iter_pages() %}
+                        {% if page_num %}
+                            {% if page_num != emails.page %}
+                            <li class="page-item">
+                                <a class="page-link" href="{{ url_for('admin.marketing_emails', page=page_num, **request.args) }}">{{ page_num }}</a>
+                            </li>
+                            {% else %}
+                            <li class="page-item active">
+                                <span class="page-link">{{ page_num }}</span>
+                            </li>
+                            {% endif %}
+                        {% else %}
+                        <li class="page-item disabled">
+                            <span class="page-link">...</span>
+                        </li>
+                        {% endif %}
+                    {% endfor %}
+                    
+                    {% if emails.has_next %}
+                    <li class="page-item">
+                        <a class="page-link" href="{{ url_for('admin.marketing_emails', page=emails.next_num, **request.args) }}">Next</a>
+                    </li>
+                    {% endif %}
+                </ul>
+            </nav>
+            {% endif %}
+
+            {% else %}
+            <div class="text-center py-5">
+                <i class="fas fa-envelope fa-3x text-gray-300 mb-3"></i>
+                <h5 class="text-gray-500">No marketing campaigns yet</h5>
+                <p class="text-gray-400">Create your first marketing email campaign to get started.</p>
+                <a href="{{ url_for('admin.create_marketing_email') }}" class="btn btn-primary">
+                    <i class="fas fa-plus"></i> Create Campaign
+                </a>
+            </div>
+            {% endif %}
+        </div>
+    </div>
+</div>
+
+<!-- Send Email Modal -->
+<div class="modal fade" id="sendEmailModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Send Marketing Email</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <p>Are you sure you want to send this marketing email campaign?</p>
+                <div id="recipientCount"></div>
+                <div class="alert alert-warning">
+                    <i class="fas fa-exclamation-triangle"></i>
+                    <strong>Warning:</strong> This action cannot be undone. The email will be sent to all eligible recipients.
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                <button type="button" class="btn btn-primary" id="confirmSend">Send Now</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+let currentEmailId = null;
+
+function sendEmail(emailId) {
+    currentEmailId = emailId;
+    
+    // Get recipient count
+    fetch(`{{ url_for('admin.get_marketing_recipients') }}?email_id=${emailId}`)
+        .then(response => response.json())
+        .then(data => {
+            document.getElementById('recipientCount').innerHTML = 
+                `<p><strong>Recipients:</strong> ${data.count} users will receive this email</p>`;
+            
+            const modal = new bootstrap.Modal(document.getElementById('sendEmailModal'));
+            modal.show();
+        });
+}
+
+document.getElementById('confirmSend').addEventListener('click', function() {
+    if (currentEmailId) {
+        // Show loading state
+        this.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Sending...';
+        this.disabled = true;
+        
+        // Send the email
+        fetch(`{{ url_for('admin.send_marketing_email') }}`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({email_id: currentEmailId})
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                location.reload();
+            } else {
+                alert('Error sending email: ' + data.error);
+                this.innerHTML = 'Send Now';
+                this.disabled = false;
+            }
+        })
+        .catch(error => {
+            alert('Error sending email: ' + error);
+            this.innerHTML = 'Send Now';
+            this.disabled = false;
+        });
+    }
+});
+</script>
+{% endblock %}

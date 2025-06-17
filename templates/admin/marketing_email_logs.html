@@ -1,0 +1,238 @@
+<!-- templates/admin/marketing_email_logs.html -->
+{% extends "admin/base.html" %}
+
+{% block title %}Marketing Email Logs - Admin{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <!-- Header -->
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <div>
+            <h1 class="h3 mb-0 text-gray-800">Email Send Logs</h1>
+            <p class="text-muted">{{ email.title }} - {{ email.subject }}</p>
+        </div>
+        <div>
+            <a href="{{ url_for('admin.view_marketing_email', id=email.id) }}" class="btn btn-outline-secondary me-2">
+                <i class="fas fa-arrow-left"></i> Back to Campaign
+            </a>
+            <a href="{{ url_for('admin.marketing_emails') }}" class="btn btn-outline-secondary">
+                <i class="fas fa-list"></i> All Campaigns
+            </a>
+        </div>
+    </div>
+
+    <!-- Summary Stats -->
+    <div class="row mb-4">
+        <div class="col-lg-3 col-md-6 mb-4">
+            <div class="card border-left-success shadow h-100 py-2">
+                <div class="card-body">
+                    <div class="row no-gutters align-items-center">
+                        <div class="col mr-2">
+                            <div class="text-xs font-weight-bold text-success text-uppercase mb-1">Sent Successfully</div>
+                            <div class="h5 mb-0 font-weight-bold text-gray-800">{{ email.sent_count }}</div>
+                        </div>
+                        <div class="col-auto">
+                            <i class="fas fa-check fa-2x text-gray-300"></i>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-lg-3 col-md-6 mb-4">
+            <div class="card border-left-danger shadow h-100 py-2">
+                <div class="card-body">
+                    <div class="row no-gutters align-items-center">
+                        <div class="col mr-2">
+                            <div class="text-xs font-weight-bold text-danger text-uppercase mb-1">Failed</div>
+                            <div class="h5 mb-0 font-weight-bold text-gray-800">{{ email.failed_count }}</div>
+                        </div>
+                        <div class="col-auto">
+                            <i class="fas fa-times fa-2x text-gray-300"></i>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-lg-3 col-md-6 mb-4">
+            <div class="card border-left-info shadow h-100 py-2">
+                <div class="card-body">
+                    <div class="row no-gutters align-items-center">
+                        <div class="col mr-2">
+                            <div class="text-xs font-weight-bold text-info text-uppercase mb-1">Total Recipients</div>
+                            <div class="h5 mb-0 font-weight-bold text-gray-800">{{ email.recipients_count }}</div>
+                        </div>
+                        <div class="col-auto">
+                            <i class="fas fa-users fa-2x text-gray-300"></i>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-lg-3 col-md-6 mb-4">
+            <div class="card border-left-warning shadow h-100 py-2">
+                <div class="card-body">
+                    <div class="row no-gutters align-items-center">
+                        <div class="col mr-2">
+                            <div class="text-xs font-weight-bold text-warning text-uppercase mb-1">Success Rate</div>
+                            <div class="h5 mb-0 font-weight-bold text-gray-800">
+                                {% if email.recipients_count > 0 %}
+                                    {{ "%.1f"|format((email.sent_count / email.recipients_count) * 100) }}%
+                                {% else %}
+                                    N/A
+                                {% endif %}
+                            </div>
+                        </div>
+                        <div class="col-auto">
+                            <i class="fas fa-chart-line fa-2x text-gray-300"></i>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Filters -->
+    <div class="card shadow mb-4">
+        <div class="card-header py-3">
+            <h6 class="m-0 font-weight-bold text-primary">Filters</h6>
+        </div>
+        <div class="card-body">
+            <form method="GET" class="row g-3">
+                <div class="col-md-3">
+                    <select name="status" class="form-control">
+                        <option value="">All Statuses</option>
+                        <option value="sent" {{ 'selected' if request.args.get('status') == 'sent' }}>Sent</option>
+                        <option value="failed" {{ 'selected' if request.args.get('status') == 'failed' }}>Failed</option>
+                        <option value="bounced" {{ 'selected' if request.args.get('status') == 'bounced' }}>Bounced</option>
+                    </select>
+                </div>
+                <div class="col-md-3">
+                    <button type="submit" class="btn btn-primary">Filter</button>
+                    <a href="{{ url_for('admin.marketing_email_logs', id=email.id) }}" class="btn btn-outline-secondary">Clear</a>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Logs Table -->
+    <div class="card shadow mb-4">
+        <div class="card-header py-3">
+            <h6 class="m-0 font-weight-bold text-primary">Send Logs</h6>
+        </div>
+        <div class="card-body">
+            {% if logs %}
+            <div class="table-responsive">
+                <table class="table table-bordered" width="100%" cellspacing="0">
+                    <thead>
+                        <tr>
+                            <th>Recipient</th>
+                            <th>Status</th>
+                            <th>Sent At</th>
+                            <th>Error Message</th>
+                            <th>Provider Response</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for log in logs %}
+                        <tr>
+                            <td>
+                                <div>
+                                    <strong>{{ log.recipient_email }}</strong>
+                                    {% if log.user %}
+                                    <br><small class="text-muted">{{ log.user.full_name or log.user.username }}</small>
+                                    {% endif %}
+                                </div>
+                            </td>
+                            <td>
+                                {% if log.status == 'sent' %}
+                                    <span class="badge bg-success">Sent</span>
+                                {% elif log.status == 'failed' %}
+                                    <span class="badge bg-danger">Failed</span>
+                                {% elif log.status == 'bounced' %}
+                                    <span class="badge bg-warning">Bounced</span>
+                                {% elif log.status == 'pending' %}
+                                    <span class="badge bg-info">Pending</span>
+                                {% endif %}
+                            </td>
+                            <td>
+                                {% if log.sent_at %}
+                                    {{ log.sent_at.strftime('%d.%m.%Y %H:%M:%S') }}
+                                {% else %}
+                                    <span class="text-muted">Not sent</span>
+                                {% endif %}
+                            </td>
+                            <td>
+                                {% if log.error_message %}
+                                    <span class="text-danger" title="{{ log.error_message }}">
+                                        {{ log.error_message[:50] }}{% if log.error_message|length > 50 %}...{% endif %}
+                                    </span>
+                                {% else %}
+                                    <span class="text-muted">-</span>
+                                {% endif %}
+                            </td>
+                            <td>
+                                {% if log.provider_response %}
+                                    <span class="text-info" title="{{ log.provider_response }}">
+                                        {{ log.provider_response[:30] }}{% if log.provider_response|length > 30 %}...{% endif %}
+                                    </span>
+                                {% else %}
+                                    <span class="text-muted">-</span>
+                                {% endif %}
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+
+            <!-- Pagination -->
+            {% if logs.pages > 1 %}
+            <nav aria-label="Page navigation">
+                <ul class="pagination justify-content-center">
+                    {% if logs.has_prev %}
+                    <li class="page-item">
+                        <a class="page-link" href="{{ url_for('admin.marketing_email_logs', id=email.id, page=logs.prev_num, **request.args) }}">Previous</a>
+                    </li>
+                    {% endif %}
+                    
+                    {% for page_num in logs.iter_pages() %}
+                        {% if page_num %}
+                            {% if page_num != logs.page %}
+                            <li class="page-item">
+                                <a class="page-link" href="{{ url_for('admin.marketing_email_logs', id=email.id, page=page_num, **request.args) }}">{{ page_num }}</a>
+                            </li>
+                            {% else %}
+                            <li class="page-item active">
+                                <span class="page-link">{{ page_num }}</span>
+                            </li>
+                            {% endif %}
+                        {% else %}
+                        <li class="page-item disabled">
+                            <span class="page-link">...</span>
+                        </li>
+                        {% endif %}
+                    {% endfor %}
+                    
+                    {% if logs.has_next %}
+                    <li class="page-item">
+                        <a class="page-link" href="{{ url_for('admin.marketing_email_logs', id=email.id, page=logs.next_num, **request.args) }}">Next</a>
+                    </li>
+                    {% endif %}
+                </ul>
+            </nav>
+            {% endif %}
+
+            {% else %}
+            <div class="text-center py-5">
+                <i class="fas fa-list fa-3x text-gray-300 mb-3"></i>
+                <h5 class="text-gray-500">No send logs available</h5>
+                <p class="text-gray-400">This campaign hasn't been sent yet or there are no logs to display.</p>
+            </div>
+            {% endif %}
+        </div>
+    </div>
+</div>
+{% endblock %}
