@@ -11,6 +11,12 @@ from ..services.achievement_service import AchievementService
 from ..services.leaderboard_service import LeaderboardService
 
 
+@main_bp.route('/offline')
+def offline():
+    """Offline page for PWA"""
+    return render_template('offline.html')
+
+
 @main_bp.route('/')
 def index():
     """Home page"""

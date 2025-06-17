@@ -22,6 +22,19 @@
     <link rel="shortcut icon" type="image/png" href="{{ url_for('static', filename='images/profiles/selskapslogo.png') }}?v=2">
     <meta name="msapplication-TileImage" content="{{ url_for('static', filename='images/profiles/selskapslogo.png') }}?v=2">
     <meta name="theme-color" content="#7c3aed">
+    
+    <!-- PWA Manifest -->
+    <link rel="manifest" href="{{ url_for('static', filename='manifest.json') }}">
+    
+    <!-- Apple Touch Icons -->
+    <link rel="apple-touch-icon" href="{{ url_for('static', filename='images/profiles/selskapslogo.png') }}">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="apple-mobile-web-app-title" content="Sertifikatet">
+    
+    <!-- Microsoft Tiles -->
+    <meta name="msapplication-TileColor" content="#7c3aed">
+    <meta name="msapplication-TileImage" content="{{ url_for('static', filename='images/profiles/selskapslogo.png') }}?v=2">
 </head>
 <body class="bg-gray-900 text-white">
     <!-- Navigation -->
@@ -34,7 +47,15 @@
                     </a>
                 </div>
                 
-                <div class="flex items-center space-x-4">
+                <!-- Mobile menu button -->
+                <div class="md:hidden">
+                    <button id="mobile-menu-btn" class="text-white hover:text-purple-400 transition">
+                        <i class="fas fa-bars text-xl"></i>
+                    </button>
+                </div>
+                
+                <!-- Desktop Navigation -->
+                <div class="hidden md:flex items-center space-x-4">
                     <a href="{{ url_for('main.quiz_categories') }}" class="hover:text-purple-400 transition">Quiz</a>
                     <a href="{{ url_for('video.index') }}" class="hover:text-purple-400 transition">Videoer</a>
                     <a href="{{ url_for('game.index') }}" class="hover:text-purple-400 transition">Spill</a>
@@ -57,6 +78,62 @@
                     {% if current_user.is_authenticated and current_user.username == 'Viktor' %}
                         <a href="{{ url_for('admin.admin_dashboard') }}" class="text-yellow-400 hover:text-yellow-300 transition">
                             <i class="fas fa-cog"></i> Admin
+                        </a>
+                    {% endif %}
+                </div>
+            </div>
+            
+            <!-- Mobile Navigation Menu -->
+            <div id="mobile-menu" class="md:hidden hidden border-t border-gray-700 pt-4 pb-2">
+                <div class="flex flex-col space-y-3">
+                    <a href="{{ url_for('main.quiz_categories') }}" class="block hover:text-purple-400 transition py-2">
+                        <i class="fas fa-question-circle mr-2"></i> Quiz
+                    </a>
+                    <a href="{{ url_for('video.index') }}" class="block hover:text-purple-400 transition py-2">
+                        <i class="fas fa-play mr-2"></i> Videoer
+                    </a>
+                    <a href="{{ url_for('game.index') }}" class="block hover:text-purple-400 transition py-2">
+                        <i class="fas fa-gamepad mr-2"></i> Spill
+                    </a>
+                    <a href="{{ url_for('learning.index') }}" class="block hover:text-purple-400 transition py-2">
+                        <i class="fas fa-graduation-cap mr-2"></i> Læringsveier
+                    </a>
+                    
+                    {% if current_user.is_authenticated %}
+                        <hr class="border-gray-700 my-2">
+                        <a href="{{ url_for('main.dashboard') }}" class="block hover:text-purple-400 transition py-2">
+                            <i class="fas fa-tachometer-alt mr-2"></i> Dashboard
+                        </a>
+                        <a href="{{ url_for('gamification.dashboard') }}" class="block hover:text-purple-400 transition py-2">
+                            <i class="fas fa-trophy mr-2"></i> Gamification
+                        </a>
+                        <a href="{{ url_for('main.achievements') }}" class="block hover:text-purple-400 transition py-2">
+                            <i class="fas fa-medal mr-2"></i> Utmerkelser
+                        </a>
+                        <a href="{{ url_for('main.leaderboard') }}" class="block hover:text-purple-400 transition py-2">
+                            <i class="fas fa-list-ol mr-2"></i> Ledertavle
+                        </a>
+                        <a href="{{ url_for('auth.profile') }}" class="block hover:text-purple-400 transition py-2">
+                            <i class="fas fa-user mr-2"></i> Profil
+                        </a>
+                        <hr class="border-gray-700 my-2">
+                        <a href="{{ url_for('auth.logout') }}" class="block hover:text-purple-400 transition py-2">
+                            <i class="fas fa-sign-out-alt mr-2"></i> Logg ut
+                        </a>
+                    {% else %}
+                        <hr class="border-gray-700 my-2">
+                        <a href="{{ url_for('auth.login') }}" class="block hover:text-purple-400 transition py-2">
+                            <i class="fas fa-sign-in-alt mr-2"></i> Logg inn
+                        </a>
+                        <a href="{{ url_for('auth.register') }}" class="block bg-purple-600 px-4 py-3 rounded-lg hover:bg-purple-700 transition text-center">
+                            <i class="fas fa-user-plus mr-2"></i> Registrer
+                        </a>
+                    {% endif %}
+                    
+                    {% if current_user.is_authenticated and current_user.username == 'Viktor' %}
+                        <hr class="border-gray-700 my-2">
+                        <a href="{{ url_for('admin.admin_dashboard') }}" class="block text-yellow-400 hover:text-yellow-300 transition py-2">
+                            <i class="fas fa-cog mr-2"></i> Admin
                         </a>
                     {% endif %}
                 </div>
@@ -91,6 +168,7 @@
     
     <!-- JavaScript -->
     <script src="{{ url_for('static', filename='js/main.js') }}"></script>
+    <script src="{{ url_for('static', filename='js/pwa.js') }}"></script>
     {% block extra_js %}{% endblock %}
     
     <style>
@@ -139,6 +217,49 @@
             transform: translateY(-5px);
             box-shadow: 0 10px 30px rgba(0, 0, 0, 0.3);
         }
+        
+        /* Mobile Menu Animation */
+        #mobile-menu {
+            max-height: 0;
+            overflow: hidden;
+            transition: max-height 0.3s ease-in-out;
+        }
+        
+        #mobile-menu.show {
+            max-height: 500px;
+        }
     </style>
+    
+    <script>
+        // Mobile menu toggle
+        document.addEventListener('DOMContentLoaded', function() {
+            const mobileMenuBtn = document.getElementById('mobile-menu-btn');
+            const mobileMenu = document.getElementById('mobile-menu');
+            const menuIcon = mobileMenuBtn.querySelector('i');
+            
+            if (mobileMenuBtn && mobileMenu) {
+                mobileMenuBtn.addEventListener('click', function() {
+                    mobileMenu.classList.toggle('hidden');
+                    mobileMenu.classList.toggle('show');
+                    
+                    // Toggle icon
+                    if (mobileMenu.classList.contains('show')) {
+                        menuIcon.className = 'fas fa-times text-xl';
+                    } else {
+                        menuIcon.className = 'fas fa-bars text-xl';
+                    }
+                });
+                
+                // Close mobile menu when clicking outside
+                document.addEventListener('click', function(event) {
+                    if (!mobileMenuBtn.contains(event.target) && !mobileMenu.contains(event.target)) {
+                        mobileMenu.classList.add('hidden');
+                        mobileMenu.classList.remove('show');
+                        menuIcon.className = 'fas fa-bars text-xl';
+                    }
+                });
+            }
+        });
+    </script>
 </body>
 </html>

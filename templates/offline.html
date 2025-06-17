@@ -1,0 +1,281 @@
+{% extends "base.html" %}
+
+{% block title %}Offline - Sertifikatet{% endblock %}
+
+{% block content %}
+<section class="py-12 min-h-screen flex items-center justify-center">
+    <div class="max-w-md mx-auto px-4 text-center">
+        <!-- Offline Icon -->
+        <div class="w-24 h-24 bg-gradient-to-r from-gray-600 to-gray-800 rounded-full flex items-center justify-center mx-auto mb-8 pulse-animation">
+            <i class="fas fa-wifi-slash text-4xl text-gray-300"></i>
+        </div>
+        
+        <!-- Offline Message -->
+        <div class="glass rounded-2xl p-8">
+            <h1 class="text-3xl font-bold mb-4">
+                <span class="bg-gradient-to-r from-purple-400 to-pink-400 bg-clip-text text-transparent">
+                    Du er offline
+                </span>
+            </h1>
+            
+            <p class="text-gray-400 mb-6">
+                Det ser ut til at du ikke har internettforbindelse. Sjekk tilkoblingen din og prøv igjen.
+            </p>
+            
+            <!-- Offline Features -->
+            <div class="mb-8">
+                <h3 class="text-lg font-semibold mb-4">Du kan fortsatt:</h3>
+                <div class="space-y-3 text-left">
+                    <div class="flex items-center">
+                        <i class="fas fa-check text-green-400 mr-3"></i>
+                        <span class="text-sm">Se på tidligere cached innhold</span>
+                    </div>
+                    <div class="flex items-center">
+                        <i class="fas fa-check text-green-400 mr-3"></i>
+                        <span class="text-sm">Fortsette pågående quiz (data lagres lokalt)</span>
+                    </div>
+                    <div class="flex items-center">
+                        <i class="fas fa-check text-green-400 mr-3"></i>
+                        <span class="text-sm">Se spillene som er cached</span>
+                    </div>
+                    <div class="flex items-center">
+                        <i class="fas fa-clock text-yellow-400 mr-3"></i>
+                        <span class="text-sm">Nye quiz vil synkroniseres når du kommer online</span>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Action Buttons -->
+            <div class="space-y-4">
+                <button onclick="checkConnection()" 
+                        class="w-full px-6 py-3 bg-gradient-to-r from-purple-600 to-pink-600 rounded-lg font-semibold hover:from-purple-700 hover:to-pink-700 transition-all">
+                    <i class="fas fa-sync-alt mr-2"></i> Prøv igjen
+                </button>
+                
+                <button onclick="goToCache()" 
+                        class="w-full px-6 py-3 bg-gray-700 rounded-lg font-semibold hover:bg-gray-600 transition-all">
+                    <i class="fas fa-archive mr-2"></i> Se cached innhold
+                </button>
+            </div>
+            
+            <!-- Network Status -->
+            <div class="mt-6 p-4 bg-gray-800/50 rounded-lg">
+                <div class="flex items-center justify-between">
+                    <span class="text-sm text-gray-400">Nettverksstatus:</span>
+                    <span id="networkStatus" class="text-sm font-medium text-red-400">
+                        <i class="fas fa-circle mr-1"></i> Offline
+                    </span>
+                </div>
+                
+                <div class="mt-2 flex items-center justify-between">
+                    <span class="text-sm text-gray-400">Ventende forespørsler:</span>
+                    <span id="pendingRequests" class="text-sm font-medium text-yellow-400">
+                        <i class="fas fa-clock mr-1"></i> <span id="pendingCount">0</span>
+                    </span>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Tips -->
+        <div class="mt-8 glass rounded-xl p-6">
+            <h4 class="font-semibold mb-3 flex items-center">
+                <i class="fas fa-lightbulb text-yellow-400 mr-2"></i>
+                Tips for offline bruk
+            </h4>
+            <ul class="space-y-2 text-sm text-gray-300 text-left">
+                <li>• Last ned quiz kategorier på forhånd</li>
+                <li>• Svar på quiz - de lagres automatisk når du kommer online</li>
+                <li>• Videospilleren kan vise cached videoer</li>
+                <li>• Progresjonen din synkroniseres når internett er tilbake</li>
+            </ul>
+        </div>
+    </div>
+</section>
+
+<style>
+.pulse-animation {
+    animation: pulse 2s ease-in-out infinite;
+}
+
+@keyframes pulse {
+    0%, 100% {
+        opacity: 1;
+        transform: scale(1);
+    }
+    50% {
+        opacity: 0.8;
+        transform: scale(1.05);
+    }
+}
+
+.status-online {
+    color: #10b981 !important;
+}
+
+.status-offline {
+    color: #ef4444 !important;
+}
+</style>
+
+<script>
+// Network status monitoring
+let isOnline = navigator.onLine;
+let pendingRequestsCount = 0;
+
+// Update network status display
+function updateNetworkStatus() {
+    const statusElement = document.getElementById('networkStatus');
+    const pendingElement = document.getElementById('pendingCount');
+    
+    if (isOnline) {
+        statusElement.innerHTML = '<i class="fas fa-circle mr-1"></i> Online';
+        statusElement.className = 'text-sm font-medium status-online';
+    } else {
+        statusElement.innerHTML = '<i class="fas fa-circle mr-1"></i> Offline';
+        statusElement.className = 'text-sm font-medium status-offline';
+    }
+    
+    // Update pending requests count
+    getPendingRequestsCount().then(count => {
+        pendingElement.textContent = count;
+        pendingRequestsCount = count;
+    });
+}
+
+// Check connection and redirect if online
+function checkConnection() {
+    if (navigator.onLine) {
+        // Show loading state
+        const button = event.target;
+        const originalText = button.innerHTML;
+        button.innerHTML = '<i class="fas fa-spinner fa-spin mr-2"></i> Sjekker...';
+        button.disabled = true;
+        
+        // Test actual connectivity with a simple fetch
+        fetch('/', { method: 'HEAD', cache: 'no-cache' })
+            .then(response => {
+                if (response.ok) {
+                    window.location.href = '/';
+                } else {
+                    throw new Error('Connection test failed');
+                }
+            })
+            .catch(error => {
+                console.log('Connection test failed:', error);
+                button.innerHTML = originalText;
+                button.disabled = false;
+                showMessage('Ingen internettforbindelse funnet. Prøv igjen.', 'error');
+            });
+    } else {
+        showMessage('Ingen internettforbindelse funnet.', 'error');
+    }
+}
+
+// Go to cached content
+function goToCache() {
+    // Try to navigate to main page (will show cached version if available)
+    window.location.href = '/';
+}
+
+// Get pending requests count from service worker
+async function getPendingRequestsCount() {
+    try {
+        if ('serviceWorker' in navigator && navigator.serviceWorker.controller) {
+            return new Promise((resolve) => {
+                const messageChannel = new MessageChannel();
+                messageChannel.port1.onmessage = (event) => {
+                    resolve(event.data.pendingCount || 0);
+                };
+                
+                navigator.serviceWorker.controller.postMessage({
+                    type: 'GET_PENDING_COUNT'
+                }, [messageChannel.port2]);
+            });
+        }
+    } catch (error) {
+        console.log('Could not get pending requests count:', error);
+    }
+    return 0;
+}
+
+// Show temporary message
+function showMessage(message, type = 'info') {
+    const messageDiv = document.createElement('div');
+    messageDiv.className = `fixed top-4 right-4 p-4 rounded-lg shadow-lg z-50 ${
+        type === 'error' ? 'bg-red-600' : 'bg-blue-600'
+    } text-white`;
+    messageDiv.innerHTML = `
+        <div class="flex items-center">
+            <i class="fas fa-${type === 'error' ? 'exclamation-triangle' : 'info-circle'} mr-2"></i>
+            ${message}
+        </div>
+    `;
+    
+    document.body.appendChild(messageDiv);
+    
+    setTimeout(() => {
+        messageDiv.remove();
+    }, 3000);
+}
+
+// Listen for online/offline events
+window.addEventListener('online', () => {
+    isOnline = true;
+    updateNetworkStatus();
+    showMessage('Internettforbindelse gjenopprettet!', 'success');
+    
+    // Auto-redirect after a moment
+    setTimeout(() => {
+        window.location.href = '/';
+    }, 1500);
+});
+
+window.addEventListener('offline', () => {
+    isOnline = false;
+    updateNetworkStatus();
+});
+
+// Listen for service worker messages
+if ('serviceWorker' in navigator) {
+    navigator.serviceWorker.addEventListener('message', (event) => {
+        const { type, data } = event.data;
+        
+        switch (type) {
+            case 'SYNC_SUCCESS':
+                pendingRequestsCount = Math.max(0, pendingRequestsCount - 1);
+                document.getElementById('pendingCount').textContent = pendingRequestsCount;
+                break;
+            case 'SYNC_FAILURE':
+                showMessage('Noen forespørsler kunne ikke synkroniseres.', 'error');
+                break;
+        }
+    });
+}
+
+// Initialize on page load
+document.addEventListener('DOMContentLoaded', () => {
+    updateNetworkStatus();
+    
+    // Update status every 10 seconds
+    setInterval(updateNetworkStatus, 10000);
+    
+    // Check if we can actually connect (sometimes navigator.onLine is incorrect)
+    if (navigator.onLine) {
+        fetch('/', { method: 'HEAD', cache: 'no-cache' })
+            .then(response => {
+                if (response.ok) {
+                    // If we can actually connect, redirect to main page
+                    setTimeout(() => {
+                        window.location.href = '/';
+                    }, 1000);
+                }
+            })
+            .catch(() => {
+                // Connection failed, stay on offline page
+                isOnline = false;
+                updateNetworkStatus();
+            });
+    }
+});
+</script>
+{% endblock %}
