@@ -185,6 +185,8 @@
         <div class="footer">
             <p>&copy; {{ current_year }} Sertifikatet.no. Alle rettigheter forbeholdt.</p>
             <p><a href="{{ profile_url }}">Min profil</a> | <a href="mailto:support@sertifikatet.no">Kontakt support</a></p>
+            <p><small>Du mottar prestasjonsvarsler fordi du har aktivert dem. 
+            <a href="{{ notification_settings_url or 'https://sertifikatet.no/auth/notification-settings' }}">Endre varslingsinnstillinger</a></small></p>
         </div>
     </div>
 </body>

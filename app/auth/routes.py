@@ -299,6 +299,52 @@ def change_password():
     return render_template('auth/change_password.html')
 
 
+@auth_bp.route('/notification-settings', methods=['GET', 'POST'])
+@login_required
+def notification_settings():
+    """Manage user notification preferences"""
+    from ..notification_models import UserNotificationPreferences
+    
+    # Get or create user preferences
+    preferences = UserNotificationPreferences.query.filter_by(user_id=current_user.id).first()
+    
+    if request.method == 'POST':
+        # Create preferences if they don't exist
+        if not preferences:
+            preferences = UserNotificationPreferences(user_id=current_user.id)
+            db.session.add(preferences)
+        
+        # Update preferences from form data
+        preferences.daily_reminders = bool(request.form.get('daily_reminders'))
+        preferences.weekly_summary = bool(request.form.get('weekly_summary'))
+        preferences.achievement_notifications = bool(request.form.get('achievement_notifications'))
+        preferences.streak_lost_reminders = bool(request.form.get('streak_lost_reminders'))
+        preferences.study_tips = bool(request.form.get('study_tips'))
+        preferences.new_features = bool(request.form.get('new_features'))
+        preferences.progress_milestones = bool(request.form.get('progress_milestones'))
+        preferences.marketing_emails = bool(request.form.get('marketing_emails'))
+        preferences.partner_offers = bool(request.form.get('partner_offers'))
+        
+        # Update frequency and timing
+        preferences.quiz_reminder_frequency = request.form.get('quiz_reminder_frequency', 'daily')
+        preferences.timezone = request.form.get('timezone', 'Europe/Oslo')
+        
+        # Handle time input
+        reminder_time_str = request.form.get('reminder_time')
+        if reminder_time_str:
+            try:
+                preferences.reminder_time = datetime.strptime(reminder_time_str, '%H:%M').time()
+            except ValueError:
+                flash('Ugyldig tidsformat. Bruker standard tid 18:00.', 'warning')
+                preferences.reminder_time = datetime.strptime('18:00', '%H:%M').time()
+        
+        db.session.commit()
+        flash('Varslingsinnstillinger er oppdatert!', 'success')
+        return redirect(url_for('auth.notification_settings'))
+    
+    return render_template('auth/notification_settings.html', preferences=preferences)
+
+
 @auth_bp.route('/download-data')
 @login_required
 def download_data():

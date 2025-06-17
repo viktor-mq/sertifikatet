@@ -209,7 +209,8 @@
         <div class="footer">
             <p>&copy; {{ current_year }} Sertifikatet.no. Alle rettigheter forbeholdt.</p>
             <p><a href="{{ quiz_url }}">Ta quiz</a> | <a href="mailto:support@sertifikatet.no">Kontakt support</a></p>
-            <p><small>Disse tipsene er generert basert på din læringshistorikk.</small></p>
+            <p><small>Disse tipsene er generert basert på din læringshistorikk. 
+            <a href="{{ notification_settings_url or 'https://sertifikatet.no/auth/notification-settings' }}">Endre varslingsinnstillinger</a></small></p>
         </div>
     </div>
     

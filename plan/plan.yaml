@@ -338,6 +338,23 @@ database:
       - notes
       - created_at
       - updated_at
+    user_notification_preferences:
+      - id
+      - user_id                    # FK → users.id
+      - daily_reminders            # BOOLEAN DEFAULT TRUE
+      - weekly_summary             # BOOLEAN DEFAULT TRUE
+      - achievement_notifications  # BOOLEAN DEFAULT TRUE
+      - streak_lost_reminders      # BOOLEAN DEFAULT TRUE
+      - study_tips                 # BOOLEAN DEFAULT TRUE
+      - new_features               # BOOLEAN DEFAULT TRUE
+      - progress_milestones        # BOOLEAN DEFAULT TRUE
+      - quiz_reminder_frequency    # VARCHAR(20) DEFAULT 'daily' ('never', 'daily', 'weekly')
+      - marketing_emails           # BOOLEAN DEFAULT FALSE
+      - partner_offers             # BOOLEAN DEFAULT FALSE
+      - reminder_time              # TIME DEFAULT '18:00:00'
+      - timezone                   # VARCHAR(50) DEFAULT 'Europe/Oslo'
+      - created_at
+      - updated_at
     payments:
       - id
       - user_id                    # FK → users.id
@@ -400,6 +417,11 @@ file_structure:
       - admin
       - api
       - utils
+      - models.py
+      - gamification_models.py
+      - video_models.py
+      - payment_models.py
+      - notification_models.py
     static:
       css: [main.css, quiz.css, game.css, video.css, admin.css]
       js: [main.js, quiz.js, game scripts, video-player.js, admin.js]
@@ -408,12 +430,25 @@ file_structure:
       audio: []
     templates:
       - auth
+        - login.html
+        - register.html
+        - profile.html
+        - change_password.html
+        - notification_settings.html
       - quiz
       - game   # Game templates (traffic_signs, memory_game, etc.)
       - video
       - progress
       - admin
       - components
+      - emails
+        - verify_email.html
+        - welcome_email.html
+        - daily_reminder.html
+        - weekly_summary.html
+        - badge_earned.html
+        - study_tip.html
+        - (and 7 more email types)
     migrations: []
     tests: [test_quiz.py, test_game.py, test_video.py, test_api.py]
     scripts: [init_db.py, import_questions.py, generate_stats.py]

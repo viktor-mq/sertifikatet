@@ -69,7 +69,7 @@ def create_app():
     # Create tables if they don't exist
     with app.app_context():
         # Import all models to ensure they're registered
-        from . import models, gamification_models, video_models, payment_models
+        from . import models, gamification_models, video_models, payment_models, notification_models
         db.create_all()
     
     return app

@@ -12,6 +12,56 @@ import logging
 logger = logging.getLogger(__name__)
 
 
+def should_send_notification(user, notification_type):
+    """
+    Check if user wants to receive a specific type of notification.
+    
+    Args:
+        user: User model instance
+        notification_type (str): Type of notification to check
+        
+    Returns:
+        bool: True if user wants this notification, False otherwise
+    """
+    from app.notification_models import UserNotificationPreferences
+    
+    # Get user preferences
+    preferences = UserNotificationPreferences.query.filter_by(user_id=user.id).first()
+    
+    # If no preferences found, assume user wants notifications (default behavior)
+    if not preferences:
+        return True
+    
+    # Map notification types to preference fields
+    preference_map = {
+        'daily_reminders': preferences.daily_reminders,
+        'weekly_summary': preferences.weekly_summary,
+        'achievement_notifications': preferences.achievement_notifications,
+        'streak_lost_reminders': preferences.streak_lost_reminders,
+        'study_tips': preferences.study_tips,
+        'new_features': preferences.new_features,
+        'progress_milestones': preferences.progress_milestones,
+        'marketing_emails': preferences.marketing_emails,
+        'partner_offers': preferences.partner_offers
+    }
+    
+    return preference_map.get(notification_type, True)
+
+
+def get_notification_settings_url():
+    """
+    Get the URL for notification settings page.
+    
+    Returns:
+        str: Full URL to notification settings
+    """
+    try:
+        return url_for('auth.notification_settings', _external=True)
+    except:
+        # Fallback if url_for fails
+        return 'https://sertifikatet.no/auth/notification-settings'
+
+
 def get_token_serializer():
     """Get the token serializer for generating secure tokens."""
     return URLSafeTimedSerializer(current_app.config['SECRET_KEY'])
@@ -141,6 +191,10 @@ def send_learning_reminder_email(user):
     Args:
         user: User model instance
     """
+    # Check if user wants daily reminders
+    if not should_send_notification(user, 'daily_reminders'):
+        return False
+    
     # Get user's progress info
     progress = user.progress
     streak_days = progress.current_streak_days if progress else 0
@@ -149,6 +203,7 @@ def send_learning_reminder_email(user):
                                user=user,
                                streak_days=streak_days,
                                login_url=url_for('auth.login', _external=True),
+                               notification_settings_url=get_notification_settings_url(),
                                current_year=datetime.now().year)
     
     send_email(
@@ -156,6 +211,7 @@ def send_learning_reminder_email(user):
         recipients=[user.email],
         html_body=html_body
     )
+    return True
 
 
 def send_badge_notification(user, badge_name):
@@ -166,10 +222,15 @@ def send_badge_notification(user, badge_name):
         user: User model instance
         badge_name (str): Name of the earned badge
     """
+    # Check if user wants achievement notifications
+    if not should_send_notification(user, 'achievement_notifications'):
+        return False
+    
     html_body = render_template('emails/badge_earned.html',
                                user=user,
                                badge_name=badge_name,
                                profile_url=url_for('auth.profile', _external=True),
+                               notification_settings_url=get_notification_settings_url(),
                                current_year=datetime.now().year)
     
     send_email(
@@ -177,6 +238,7 @@ def send_badge_notification(user, badge_name):
         recipients=[user.email],
         html_body=html_body
     )
+    return True
 
 
 def send_admin_alert(subject, message):
@@ -226,13 +288,15 @@ def send_batch_reminders():
         UserProgress.current_streak_days > 0
     ).all()
     
+    sent_count = 0
     for user in eligible_users:
         try:
-            send_learning_reminder_email(user)
+            if send_learning_reminder_email(user):  # Function now returns True/False
+                sent_count += 1
         except Exception as e:
             logger.error(f"Failed to send reminder to {user.email}: {str(e)}")
     
-    logger.info(f"Sent {len(eligible_users)} reminder emails")
+    logger.info(f"Sent {sent_count} reminder emails out of {len(eligible_users)} eligible users")
 
 
 def verify_email_token(token, max_age=3600):
@@ -301,10 +365,15 @@ def send_streak_lost_email(user, lost_streak_days):
         user: User model instance
         lost_streak_days (int): Number of days the streak lasted
     """
+    # Check if user wants streak lost reminders
+    if not should_send_notification(user, 'streak_lost_reminders'):
+        return False
+    
     html_body = render_template('emails/streak_lost.html',
                                user=user,
                                lost_streak_days=lost_streak_days,
                                login_url=url_for('auth.login', _external=True),
+                               notification_settings_url=get_notification_settings_url(),
                                current_year=datetime.now().year)
     
     send_email(
@@ -312,6 +381,7 @@ def send_streak_lost_email(user, lost_streak_days):
         recipients=[user.email],
         html_body=html_body
     )
+    return True
 
 
 def send_weekly_summary_email(user, stats):
@@ -322,10 +392,15 @@ def send_weekly_summary_email(user, stats):
         user: User model instance
         stats (dict): Weekly statistics including XP, quizzes, etc.
     """
+    # Check if user wants weekly summaries
+    if not should_send_notification(user, 'weekly_summary'):
+        return False
+    
     html_body = render_template('emails/weekly_summary.html',
                                user=user,
                                stats=stats,
                                dashboard_url=url_for('main.dashboard', _external=True),
+                               notification_settings_url=get_notification_settings_url(),
                                current_year=datetime.now().year)
     
     send_email(
@@ -333,6 +408,7 @@ def send_weekly_summary_email(user, stats):
         recipients=[user.email],
         html_body=html_body
     )
+    return True
 
 
 def send_study_tip_email(user, tip_data):
@@ -343,10 +419,15 @@ def send_study_tip_email(user, tip_data):
         user: User model instance
         tip_data (dict): Contains area of improvement and tips
     """
+    # Check if user wants study tips
+    if not should_send_notification(user, 'study_tips'):
+        return False
+    
     html_body = render_template('emails/study_tip.html',
                                user=user,
                                tip_data=tip_data,
                                quiz_url=url_for('main.quiz', _external=True),
+                               notification_settings_url=get_notification_settings_url(),
                                current_year=datetime.now().year)
     
     send_email(
@@ -354,6 +435,7 @@ def send_study_tip_email(user, tip_data):
         recipients=[user.email],
         html_body=html_body
     )
+    return True
 
 
 def send_user_report_alert(user, report_data):

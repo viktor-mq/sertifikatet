@@ -178,7 +178,7 @@
             <p>&copy; {{ current_year }} Sertifikatet.no. Alle rettigheter forbeholdt.</p>
             <p><a href="{{ login_url }}">Logg inn</a> | <a href="mailto:support@sertifikatet.no">Kontakt support</a></p>
             <p><small>Du mottar denne e-posten fordi du har aktivert daglige påminnelser. 
-            <a href="#">Administrer preferanser</a></small></p>
+            <a href="{{ notification_settings_url or 'https://sertifikatet.no/auth/notification-settings' }}">Administrer preferanser</a></small></p>
         </div>
     </div>
 </body>

@@ -1,0 +1,239 @@
+<!-- templates/auth/notification_settings.html -->
+{% extends "base.html" %}
+
+{% block title %}Varslingsinnstillinger - Sertifikatet{% endblock %}
+
+{% block content %}
+<section class="py-12">
+    <div class="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8">
+        <!-- Header -->
+        <div class="glass rounded-2xl p-8 mb-8">
+            <div class="flex items-center justify-between mb-6">
+                <div>
+                    <h1 class="text-3xl font-bold mb-2">Varslingsinnstillinger</h1>
+                    <p class="text-gray-400">Tilpass hvilke e-poster du vil motta fra Sertifikatet</p>
+                </div>
+                <a href="{{ url_for('auth.profile') }}" 
+                   class="px-4 py-2 bg-gray-700 hover:bg-gray-600 rounded-lg transition">
+                    <i class="fas fa-arrow-left mr-2"></i>Tilbake til profil
+                </a>
+            </div>
+        </div>
+
+        <form method="POST" action="{{ url_for('auth.notification_settings') }}">
+            <!-- Learning Notifications -->
+            <div class="glass rounded-2xl p-8 mb-6">
+                <h2 class="text-2xl font-bold mb-6 flex items-center">
+                    <i class="fas fa-graduation-cap mr-3 text-purple-400"></i>
+                    Læringsvarslinger
+                </h2>
+                
+                <div class="space-y-6">
+                    <div class="flex items-center justify-between p-4 bg-gray-800/50 rounded-lg">
+                        <div>
+                            <h3 class="font-semibold">Daglige påminnelser</h3>
+                            <p class="text-sm text-gray-400">Få en daglig påminnelse om å øve på teorien</p>
+                        </div>
+                        <label class="relative inline-flex items-center cursor-pointer">
+                            <input type="checkbox" name="daily_reminders" class="sr-only peer" 
+                                   {{ 'checked' if preferences and preferences.daily_reminders else '' }}>
+                            <div class="w-11 h-6 bg-gray-700 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-purple-300 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-purple-600"></div>
+                        </label>
+                    </div>
+
+                    <div class="flex items-center justify-between p-4 bg-gray-800/50 rounded-lg">
+                        <div>
+                            <h3 class="font-semibold">Ukentlig oppsummering</h3>
+                            <p class="text-sm text-gray-400">Få en oversikt over din fremgang hver uke</p>
+                        </div>
+                        <label class="relative inline-flex items-center cursor-pointer">
+                            <input type="checkbox" name="weekly_summary" class="sr-only peer" 
+                                   {{ 'checked' if preferences and preferences.weekly_summary else '' }}>
+                            <div class="w-11 h-6 bg-gray-700 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-purple-300 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-purple-600"></div>
+                        </label>
+                    </div>
+
+                    <div class="flex items-center justify-between p-4 bg-gray-800/50 rounded-lg">
+                        <div>
+                            <h3 class="font-semibold">Studietips</h3>
+                            <p class="text-sm text-gray-400">Motta nyttige tips for å forbedre læringen</p>
+                        </div>
+                        <label class="relative inline-flex items-center cursor-pointer">
+                            <input type="checkbox" name="study_tips" class="sr-only peer" 
+                                   {{ 'checked' if preferences and preferences.study_tips else '' }}>
+                            <div class="w-11 h-6 bg-gray-700 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-purple-300 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-purple-600"></div>
+                        </label>
+                    </div>
+
+                    <div class="p-4 bg-gray-800/50 rounded-lg">
+                        <div class="flex items-center justify-between mb-3">
+                            <div>
+                                <h3 class="font-semibold">Quiz påminnelsesfrekvens</h3>
+                                <p class="text-sm text-gray-400">Hvor ofte vil du få påminnelser om å ta quizer?</p>
+                            </div>
+                        </div>
+                        <select name="quiz_reminder_frequency" class="w-full bg-gray-700 border border-gray-600 rounded-lg px-3 py-2 focus:outline-none focus:border-purple-500">
+                            <option value="never" {{ 'selected' if preferences and preferences.quiz_reminder_frequency == 'never' else '' }}>Aldri</option>
+                            <option value="daily" {{ 'selected' if preferences and preferences.quiz_reminder_frequency == 'daily' else '' }}>Daglig</option>
+                            <option value="weekly" {{ 'selected' if preferences and preferences.quiz_reminder_frequency == 'weekly' else '' }}>Ukentlig</option>
+                        </select>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Progress & Achievement Notifications -->
+            <div class="glass rounded-2xl p-8 mb-6">
+                <h2 class="text-2xl font-bold mb-6 flex items-center">
+                    <i class="fas fa-trophy mr-3 text-yellow-400"></i>
+                    Fremgang og prestasjoner
+                </h2>
+                
+                <div class="space-y-6">
+                    <div class="flex items-center justify-between p-4 bg-gray-800/50 rounded-lg">
+                        <div>
+                            <h3 class="font-semibold">Prestasjonsvarsler</h3>
+                            <p class="text-sm text-gray-400">Få beskjed når du låser opp nye prestasjoner</p>
+                        </div>
+                        <label class="relative inline-flex items-center cursor-pointer">
+                            <input type="checkbox" name="achievement_notifications" class="sr-only peer" 
+                                   {{ 'checked' if preferences and preferences.achievement_notifications else '' }}>
+                            <div class="w-11 h-6 bg-gray-700 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-purple-300 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-purple-600"></div>
+                        </label>
+                    </div>
+
+                    <div class="flex items-center justify-between p-4 bg-gray-800/50 rounded-lg">
+                        <div>
+                            <h3 class="font-semibold">Fremgangsmilestolper</h3>
+                            <p class="text-sm text-gray-400">Få varsler når du når viktige milepæler</p>
+                        </div>
+                        <label class="relative inline-flex items-center cursor-pointer">
+                            <input type="checkbox" name="progress_milestones" class="sr-only peer" 
+                                   {{ 'checked' if preferences and preferences.progress_milestones else '' }}>
+                            <div class="w-11 h-6 bg-gray-700 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-purple-300 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-purple-600"></div>
+                        </label>
+                    </div>
+
+                    <div class="flex items-center justify-between p-4 bg-gray-800/50 rounded-lg">
+                        <div>
+                            <h3 class="font-semibold">Streak brutt-varsler</h3>
+                            <p class="text-sm text-gray-400">Få beskjed hvis du mister læringsstreaken din</p>
+                        </div>
+                        <label class="relative inline-flex items-center cursor-pointer">
+                            <input type="checkbox" name="streak_lost_reminders" class="sr-only peer" 
+                                   {{ 'checked' if preferences and preferences.streak_lost_reminders else '' }}>
+                            <div class="w-11 h-6 bg-gray-700 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-purple-300 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-purple-600"></div>
+                        </label>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Platform Updates -->
+            <div class="glass rounded-2xl p-8 mb-6">
+                <h2 class="text-2xl font-bold mb-6 flex items-center">
+                    <i class="fas fa-bell mr-3 text-blue-400"></i>
+                    Plattformoppdateringer
+                </h2>
+                
+                <div class="space-y-6">
+                    <div class="flex items-center justify-between p-4 bg-gray-800/50 rounded-lg">
+                        <div>
+                            <h3 class="font-semibold">Nye funksjoner</h3>
+                            <p class="text-sm text-gray-400">Få beskjed om nye funksjoner og oppdateringer</p>
+                        </div>
+                        <label class="relative inline-flex items-center cursor-pointer">
+                            <input type="checkbox" name="new_features" class="sr-only peer" 
+                                   {{ 'checked' if preferences and preferences.new_features else '' }}>
+                            <div class="w-11 h-6 bg-gray-700 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-purple-300 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-purple-600"></div>
+                        </label>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Marketing & Offers -->
+            <div class="glass rounded-2xl p-8 mb-6">
+                <h2 class="text-2xl font-bold mb-6 flex items-center">
+                    <i class="fas fa-percentage mr-3 text-green-400"></i>
+                    Markedsføring og tilbud
+                </h2>
+                
+                <div class="space-y-6">
+                    <div class="flex items-center justify-between p-4 bg-gray-800/50 rounded-lg">
+                        <div>
+                            <h3 class="font-semibold">Markedsførings-e-poster</h3>
+                            <p class="text-sm text-gray-400">Motta informasjon om spesialtilbud og kampanjer</p>
+                        </div>
+                        <label class="relative inline-flex items-center cursor-pointer">
+                            <input type="checkbox" name="marketing_emails" class="sr-only peer" 
+                                   {{ 'checked' if preferences and preferences.marketing_emails else '' }}>
+                            <div class="w-11 h-6 bg-gray-700 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-purple-300 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-purple-600"></div>
+                        </label>
+                    </div>
+
+                    <div class="flex items-center justify-between p-4 bg-gray-800/50 rounded-lg">
+                        <div>
+                            <h3 class="font-semibold">Partnertilbud</h3>
+                            <p class="text-sm text-gray-400">Få tilbud fra våre partnere og tjenesteleverandører</p>
+                        </div>
+                        <label class="relative inline-flex items-center cursor-pointer">
+                            <input type="checkbox" name="partner_offers" class="sr-only peer" 
+                                   {{ 'checked' if preferences and preferences.partner_offers else '' }}>
+                            <div class="w-11 h-6 bg-gray-700 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-purple-300 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-purple-600"></div>
+                        </label>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Timing Preferences -->
+            <div class="glass rounded-2xl p-8 mb-6">
+                <h2 class="text-2xl font-bold mb-6 flex items-center">
+                    <i class="fas fa-clock mr-3 text-orange-400"></i>
+                    Tidsinnstillinger
+                </h2>
+                
+                <div class="space-y-6">
+                    <div class="p-4 bg-gray-800/50 rounded-lg">
+                        <h3 class="font-semibold mb-3">Foretrukket påminnelsestid</h3>
+                        <p class="text-sm text-gray-400 mb-3">Velg hvilken tid du vil motta daglige påminnelser</p>
+                        <input type="time" name="reminder_time" 
+                               value="{{ preferences.reminder_time.strftime('%H:%M') if preferences and preferences.reminder_time else '18:00' }}"
+                               class="bg-gray-700 border border-gray-600 rounded-lg px-3 py-2 focus:outline-none focus:border-purple-500">
+                    </div>
+
+                    <div class="p-4 bg-gray-800/50 rounded-lg">
+                        <h3 class="font-semibold mb-3">Tidssone</h3>
+                        <p class="text-sm text-gray-400 mb-3">Din lokale tidssone for varsler</p>
+                        <select name="timezone" class="w-full bg-gray-700 border border-gray-600 rounded-lg px-3 py-2 focus:outline-none focus:border-purple-500">
+                            <option value="Europe/Oslo" {{ 'selected' if preferences and preferences.timezone == 'Europe/Oslo' else '' }}>Oslo (GMT+1)</option>
+                            <option value="Europe/Stockholm" {{ 'selected' if preferences and preferences.timezone == 'Europe/Stockholm' else '' }}>Stockholm (GMT+1)</option>
+                            <option value="Europe/Copenhagen" {{ 'selected' if preferences and preferences.timezone == 'Europe/Copenhagen' else '' }}>København (GMT+1)</option>
+                            <option value="Europe/London" {{ 'selected' if preferences and preferences.timezone == 'Europe/London' else '' }}>London (GMT+0)</option>
+                        </select>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Save Button -->
+            <div class="text-center">
+                <button type="submit" 
+                        class="px-8 py-3 bg-gradient-to-r from-purple-600 to-pink-600 rounded-lg hover:from-purple-700 hover:to-pink-700 transition font-semibold">
+                    <i class="fas fa-save mr-2"></i>Lagre innstillinger
+                </button>
+            </div>
+        </form>
+
+        <!-- Help Text -->
+        <div class="mt-8 glass rounded-xl p-6">
+            <h3 class="text-lg font-semibold mb-3 flex items-center">
+                <i class="fas fa-info-circle mr-2 text-blue-400"></i>
+                Om varslingsinnstillinger
+            </h3>
+            <div class="text-sm text-gray-400 space-y-2">
+                <p>• Du kan endre disse innstillingene når som helst</p>
+                <p>• Endringer trer i kraft umiddelbart</p>
+                <p>• Viktige kontorelaterte e-poster (som passordtilbakestilling) kan ikke skrus av</p>
+                <p>• Du kan alltid melde deg av alle e-poster ved å klikke lenken nederst i en e-post</p>
+            </div>
+        </div>
+    </div>
+</section>
+{% endblock %}
