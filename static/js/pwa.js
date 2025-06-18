@@ -93,6 +93,20 @@ class PWAInstaller {
     }
 
     createInstallBanner() {
+        // Check if we're on the homepage
+        if (!this.isHomePage()) {
+            return;
+        }
+
+        // Check if banner already exists in HTML
+        const existingBanner = document.getElementById('pwa-install-banner');
+        if (existingBanner) {
+            // Use existing banner from HTML
+            this.setupBannerEventListeners();
+            return;
+        }
+
+        // Fallback: Create banner dynamically if not in HTML
         const banner = document.createElement('div');
         banner.id = 'pwa-install-banner';
         banner.className = 'fixed bottom-4 left-4 right-4 md:left-auto md:w-96 bg-gradient-to-r from-purple-600 to-pink-600 text-white p-4 rounded-lg shadow-lg z-50 transform translate-y-full transition-transform duration-300';
@@ -114,18 +128,37 @@ class PWAInstaller {
         `;
         
         document.body.appendChild(banner);
+        this.setupBannerEventListeners();
+    }
+
+    isHomePage() {
+        // Check if current page is homepage
+        return window.location.pathname === '/' || window.location.pathname === '/index' || window.location.pathname.endsWith('/index.html');
+    }
+
+    setupBannerEventListeners() {
+        const installBtn = document.getElementById('pwa-install-btn');
+        const dismissBtn = document.getElementById('pwa-dismiss-btn');
         
-        // Add event listeners
-        document.getElementById('pwa-install-btn').addEventListener('click', () => {
-            this.installPWA();
-        });
+        if (installBtn) {
+            installBtn.addEventListener('click', () => {
+                this.installPWA();
+            });
+        }
         
-        document.getElementById('pwa-dismiss-btn').addEventListener('click', () => {
-            this.dismissInstallBanner();
-        });
+        if (dismissBtn) {
+            dismissBtn.addEventListener('click', () => {
+                this.dismissInstallBanner();
+            });
+        }
     }
 
     showInstallBanner() {
+        // Only show on homepage
+        if (!this.isHomePage()) {
+            return;
+        }
+
         const banner = document.getElementById('pwa-install-banner');
         if (banner && this.isInstallable && !this.isInstalled) {
             // Check if user previously dismissed
@@ -134,8 +167,19 @@ class PWAInstaller {
             
             // Show again after 7 days
             if (!dismissed || (Date.now() - parseInt(lastDismissed) > 7 * 24 * 60 * 60 * 1000)) {
+                // Remove inline style display:none and show banner
+                banner.style.display = 'block';
+                
+                // Add smooth animation
                 setTimeout(() => {
-                    banner.style.transform = 'translateY(0)';
+                    banner.style.opacity = '0';
+                    banner.style.transform = 'translateY(-20px)';
+                    banner.style.transition = 'all 0.5s ease-out';
+                    
+                    setTimeout(() => {
+                        banner.style.opacity = '1';
+                        banner.style.transform = 'translateY(0)';
+                    }, 100);
                 }, 2000); // Show after 2 seconds
             }
         }
@@ -144,7 +188,11 @@ class PWAInstaller {
     hideInstallBanner() {
         const banner = document.getElementById('pwa-install-banner');
         if (banner) {
-            banner.style.transform = 'translateY(100%)';
+            banner.style.opacity = '0';
+            banner.style.transform = 'translateY(-20px)';
+            setTimeout(() => {
+                banner.style.display = 'none';
+            }, 300);
         }
     }
 
@@ -152,6 +200,14 @@ class PWAInstaller {
         this.hideInstallBanner();
         localStorage.setItem('pwa-install-dismissed', 'true');
         localStorage.setItem('pwa-install-dismissed-time', Date.now().toString());
+        
+        // Analytics tracking
+        if (typeof gtag !== 'undefined') {
+            gtag('event', 'pwa_install_dismissed', {
+                'event_category': 'PWA',
+                'event_label': 'Install Banner Dismissed'
+            });
+        }
     }
 
     async installPWA() {
@@ -162,8 +218,24 @@ class PWAInstaller {
                 
                 if (outcome === 'accepted') {
                     console.log('User accepted the install prompt');
+                    
+                    // Analytics tracking
+                    if (typeof gtag !== 'undefined') {
+                        gtag('event', 'pwa_install_accepted', {
+                            'event_category': 'PWA',
+                            'event_label': 'Install Accepted'
+                        });
+                    }
                 } else {
                     console.log('User dismissed the install prompt');
+                    
+                    // Analytics tracking
+                    if (typeof gtag !== 'undefined') {
+                        gtag('event', 'pwa_install_declined', {
+                            'event_category': 'PWA',
+                            'event_label': 'Install Declined'
+                        });
+                    }
                 }
                 
                 this.deferredPrompt = null;

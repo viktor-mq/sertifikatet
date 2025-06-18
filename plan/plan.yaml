@@ -21,22 +21,28 @@ project:
 
 tech_stack:
   backend:
-    framework: Flask (consider FastAPI)
+    framework: Flask
     database: MySQL
     orm: SQLAlchemy
     cache: Redis
     tasks: Celery
+    ml_stack:
+      - scikit-learn # Local machine learning algorithms
+      - pandas       # Data analysis and manipulation
+      - numpy        # Numerical computing
+      - scipy        # Scientific computing
   frontend:
-    ui_library: React or Vue.js
+    ui_library: React components with Tailwind CSS
     css_framework: Tailwind CSS
     charts: Chart.js
     games: Phaser.js
   mobile:
-    framework: React Native or Flutter
+    framework: Progressive Web App (PWA)
   infrastructure:
     containers: Docker
-    storage: AWS S3
+    storage: Local file system + AWS S3
     ci_cd: GitHub Actions
+    ml_privacy: Local processing (no external APIs)
 
 database:
   tables:
@@ -399,6 +405,107 @@ database:
       - current_uses
       - is_active
       - created_at
+    # ML-POWERED PERSONALIZATION TABLES
+    user_skill_profiles:
+      - id
+      - user_id                    # FK → users.id
+      - category                   # e.g., 'traffic_signs', 'road_rules'
+      - subcategory                # More specific areas (optional)
+      - accuracy_score             # FLOAT (0.0-1.0) Historical accuracy
+      - confidence_score           # FLOAT (0.0-1.0) User confidence level
+      - learning_rate              # FLOAT (0.0-1.0) Speed of improvement
+      - difficulty_preference      # FLOAT (0.0-1.0) Preferred difficulty
+      - avg_response_time          # FLOAT Average time per question (seconds)
+      - response_time_variance     # FLOAT Consistency of response times
+      - questions_attempted        # INT Total questions in this category
+      - questions_correct          # INT Correct answers in this category
+      - last_updated               # DATETIME When profile was last updated
+    question_difficulty_profiles:
+      - id
+      - question_id                # FK → questions.id
+      - computed_difficulty        # FLOAT (0.0-1.0) ML-computed difficulty
+      - discrimination_power       # FLOAT (0.0-1.0) How well it separates skill levels
+      - guess_factor              # FLOAT (0.0-1.0) Probability of guessing correctly
+      - total_attempts            # INT Number of times attempted
+      - correct_attempts          # INT Number of correct attempts
+      - avg_response_time         # FLOAT Average time spent on this question
+      - response_time_variance    # FLOAT Variance in response times
+      - skill_threshold           # FLOAT Min skill needed for >50% success
+      - learning_value            # FLOAT How much this question teaches
+      - last_updated              # DATETIME When profile was last updated
+    adaptive_quiz_sessions:
+      - id
+      - user_id                   # FK → users.id
+      - quiz_session_id           # FK → quiz_sessions.id
+      - algorithm_version         # VARCHAR(50) ML algorithm version used
+      - target_difficulty         # FLOAT (0.0-1.0) Target difficulty level
+      - adaptation_strength       # FLOAT How aggressively to adapt
+      - initial_skill_estimate    # FLOAT Estimated skill at session start
+      - final_skill_estimate      # FLOAT Estimated skill at session end
+      - skill_improvement         # FLOAT Measured improvement during session
+      - questions_above_skill     # INT Questions too difficult
+      - questions_below_skill     # INT Questions too easy
+      - questions_optimal         # INT Questions at appropriate level
+      - average_engagement_score  # FLOAT Based on response patterns
+      - frustration_indicators    # INT Count of frustration signs
+      - confidence_trend          # VARCHAR(20) 'improving', 'declining', 'stable'
+      - created_at                # DATETIME Session creation time
+    learning_analytics:
+      - id
+      - user_id                   # FK → users.id
+      - date                      # DATE Analytics for specific date
+      - total_study_time_minutes  # INT Total study time for the day
+      - questions_attempted       # INT Questions attempted on this date
+      - questions_correct         # INT Correct answers on this date
+      - average_difficulty_attempted # FLOAT Average difficulty of questions
+      - avg_response_time         # FLOAT Average response time
+      - response_time_consistency # FLOAT Lower = more consistent
+      - mistakes_per_session      # FLOAT Average mistakes per session
+      - learning_velocity         # FLOAT Rate of skill improvement
+      - knowledge_retention       # FLOAT How well knowledge is retained
+      - concept_mastery_score     # FLOAT Overall concept understanding
+      - preferred_study_duration  # INT Minutes per session preference
+      - optimal_question_difficulty # FLOAT User's optimal difficulty level
+      - learning_style_indicators # TEXT JSON with learning style data
+      - weakest_categories        # TEXT JSON array of weak categories
+      - strength_categories       # TEXT JSON array of strong categories
+      - recommended_study_time    # INT Suggested minutes for next session
+      - recommended_difficulty    # FLOAT Suggested difficulty level
+      - priority_topics           # TEXT JSON array of topics to focus on
+      - created_at                # DATETIME Record creation time
+    ml_models:
+      - id
+      - name                      # VARCHAR(100) Model name (e.g., 'difficulty_predictor')
+      - version                   # VARCHAR(50) Model version
+      - description               # TEXT Model description
+      - accuracy_score            # FLOAT Model accuracy metric
+      - precision_score           # FLOAT Model precision metric
+      - recall_score              # FLOAT Model recall metric
+      - f1_score                  # FLOAT Model F1 metric
+      - hyperparameters           # TEXT JSON with model settings
+      - feature_importance        # TEXT JSON with feature weights
+      - is_active                 # BOOLEAN Whether model is active
+      - total_predictions         # INT Number of predictions made
+      - last_retrained            # DATETIME When model was last retrained
+      - created_at                # DATETIME Model creation time
+      - created_by                # INT FK → users.id (who created the model)
+    enhanced_quiz_responses:
+      - id
+      - quiz_response_id          # FK → quiz_responses.id
+      - user_confidence_level     # FLOAT User's confidence in their answer
+      - difficulty_perception     # FLOAT How hard user thought question was
+      - cognitive_load_score      # FLOAT Estimated mental effort required
+      - time_to_first_answer      # FLOAT Time before first option selected
+      - answer_change_count       # INT How many times user changed answer
+      - hesitation_score          # FLOAT Measure of uncertainty
+      - question_order_in_session # INT Position of question in quiz
+      - user_fatigue_score        # FLOAT Estimated tiredness level
+      - predicted_difficulty      # FLOAT ML prediction before answer
+      - actual_difficulty         # FLOAT Calculated difficulty after answer
+      - knowledge_gain_estimate   # FLOAT How much user learned
+      - skill_level_before        # FLOAT Estimated skill before question
+      - skill_level_after         # FLOAT Estimated skill after question
+      - created_at                # DATETIME Response creation time
 
 file_structure:
   root:
@@ -416,6 +523,7 @@ file_structure:
       - video
       - admin
       - api
+      - ml     # Machine Learning module (Phase 12)
       - utils
       - models.py
       - gamification_models.py
@@ -423,8 +531,8 @@ file_structure:
       - payment_models.py
       - notification_models.py
     static:
-      css: [main.css, quiz.css, game.css, video.css, admin.css]
-      js: [main.js, quiz.js, game scripts, video-player.js, admin.js]
+      css: [main.css, quiz.css, game.css, video.css, admin.css, ml.css]
+      js: [main.js, quiz.js, game scripts, video-player.js, admin.js, ml-insights.js]
       images: [signs, scenarios, achievements, ui, profiles]
       videos: []
       audio: []
@@ -440,6 +548,7 @@ file_structure:
       - video
       - progress
       - admin
+      - ml     # ML templates (insights.html, learning_dashboard.html, etc.)
       - components
       - emails
         - verify_email.html
@@ -450,8 +559,8 @@ file_structure:
         - study_tip.html
         - (and 7 more email types)
     migrations: []
-    tests: [test_quiz.py, test_game.py, test_video.py, test_api.py]
-    scripts: [init_db.py, import_questions.py, generate_stats.py]
+    tests: [test_quiz.py, test_game.py, test_video.py, test_api.py, test_ml.py]
+    scripts: [init_db.py, import_questions.py, generate_stats.py, init_ml.py]
 
 security:
   storage: ".env"
@@ -487,3 +596,66 @@ monetization:
       access: everything in premium + offline mode, personal tutor
       ads: disabled
       price: 249 NOK/month
+
+future_enhancements:
+  phase_13_advanced_ml:
+    description: "Advanced ML features for next-generation personalization"
+    features:
+      - advanced_learning_styles: "Visual, auditory, kinesthetic adaptation"
+      - predictive_analytics: "Forecast user success probability on exam"
+      - collaborative_filtering: "Learn from similar users' learning patterns"
+      - advanced_nlp: "Question content analysis for better categorization"
+      - real_time_adaptation: "Within-session difficulty adjustment"
+      - emotional_intelligence: "Detect frustration and adjust accordingly"
+      - multi_modal_learning: "Combine quiz, video, and game data"
+  
+  phase_14_ai_tutoring:
+    description: "AI-powered personal tutoring system"
+    features:
+      - conversational_ai: "Natural language explanations and help"
+      - personalized_explanations: "Adaptive explanations based on user understanding"
+      - study_planning: "Automated study schedule optimization"
+      - weakness_remediation: "Targeted remedial content generation"
+      - exam_preparation: "AI-powered exam readiness assessment"
+      - progress_prediction: "Predict time to exam readiness"
+  
+  phase_15_social_learning:
+    description: "Community-driven learning with ML insights"
+    features:
+      - peer_matching: "Connect users with similar learning patterns"
+      - group_challenges: "ML-optimized group study sessions"
+      - knowledge_sharing: "AI-curated user-generated content"
+      - instructor_insights: "Teacher dashboard with ML student analytics"
+      - collaborative_filtering: "Learn from collective user behavior"
+      - social_gamification: "ML-powered social achievements"
+  
+  phase_16_advanced_analytics:
+    description: "Deep learning analytics and insights"
+    features:
+      - learning_pattern_analysis: "Deep learning pattern recognition"
+      - concept_mapping: "AI-generated knowledge maps"
+      - retention_optimization: "Spaced repetition with ML timing"
+      - cognitive_load_management: "Optimize mental effort and fatigue"
+      - skill_transfer_analysis: "Identify knowledge transfer between topics"
+      - long_term_retention: "Predict and prevent knowledge decay"
+  
+  integration_opportunities:
+    gamification_ml:
+      - "ML-optimized achievement systems"
+      - "Personalized challenge difficulty"
+      - "Adaptive reward systems"
+    
+    video_learning_ml:
+      - "Adaptive video recommendation"
+      - "Optimal video checkpoint placement"
+      - "Personalized video speed recommendations"
+    
+    mobile_optimization:
+      - "Offline ML for PWA features"
+      - "Edge computing for instant personalization"
+      - "Mobile-specific learning pattern analysis"
+    
+    api_extensions:
+      - "Third-party integration capabilities"
+      - "Embeddable ML widgets"
+      - "External learning system integration"

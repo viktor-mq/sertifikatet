@@ -168,3 +168,42 @@ th {
 .close:hover {
     color: #2d3748;
 }
+
+/* ==========================================
+   PWA INSTALL BAR FIX
+   ========================================== */
+
+/* Add bottom padding to prevent PWA install bar from hiding content */
+body {
+    padding-bottom: 80px !important; /* Space for PWA install bar */
+}
+
+/* Ensure footer doesn't conflict with PWA bar */
+footer {
+    position: relative;
+    z-index: 999; /* Lower than PWA install bar (typically 2147483647) */
+}
+
+/* Alternative: Apply padding to main content containers */
+.container, .main-content {
+    margin-bottom: 20px;
+}
+
+/* Responsive adjustments for mobile */
+@media (max-width: 768px) {
+    body {
+        padding-bottom: 100px !important; /* More space on mobile */
+    }
+}
+
+/* Hide any custom install prompts if browser shows native one */
+.custom-install-prompt {
+    display: none;
+}
+
+/* Style for when PWA is installed (optional) */
+@media (display-mode: standalone) {
+    body {
+        padding-bottom: 20px !important; /* Less padding when installed */
+    }
+}
