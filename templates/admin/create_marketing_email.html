@@ -70,12 +70,18 @@
                         <div id="template_section" style="display: none;">
                             <div class="mb-3">
                                 <label for="template_id" class="form-label">Select Template</label>
-                                <select class="form-control" id="template_id" name="template_id">
-                                    <option value="">Choose a template...</option>
-                                    {% for template in templates %}
-                                    <option value="{{ template.id }}">{{ template.name }}</option>
-                                    {% endfor %}
-                                </select>
+                                <div class="input-group">
+                                    <select class="form-control" id="template_id" name="template_id">
+                                        <option value="">Choose a template...</option>
+                                        {% for template in templates %}
+                                        <option value="{{ template.id }}">{{ template.name }}</option>
+                                        {% endfor %}
+                                    </select>
+                                    <button type="button" class="btn btn-outline-secondary" onclick="clearTemplate()">
+                                        <i class="fas fa-times"></i> Clear
+                                    </button>
+                                </div>
+                                <small class="form-text text-muted">Select a template to auto-fill the title, subject, and content</small>
                             </div>
                         </div>
 
@@ -226,13 +232,100 @@ document.querySelectorAll('input[name="content_method"]').forEach(radio => {
 // Template selection
 document.getElementById('template_id').addEventListener('change', function() {
     if (this.value) {
+        // Show loading indicator
+        const contentTextarea = document.getElementById('html_content');
+        const originalContent = contentTextarea.value;
+        contentTextarea.value = 'Loading template...';
+        contentTextarea.disabled = true;
+        
         fetch(`{{ url_for('admin.get_marketing_template') }}?id=${this.value}`)
             .then(response => response.json())
             .then(data => {
+                // Populate the content
                 document.getElementById('html_content').value = data.html_content;
+                
+                // Extract subject from template name or use a default
+                const templateName = data.name;
+                let suggestedSubject = '';
+                
+                if (templateName.toLowerCase().includes('newsletter')) {
+                    suggestedSubject = 'Sertifikatet Newsletter - ' + new Date().toLocaleDateString('no-NO', {month: 'long', year: 'numeric'});
+                } else if (templateName.toLowerCase().includes('promotion')) {
+                    suggestedSubject = 'Spesialtilbud fra Sertifikatet!';
+                } else if (templateName.toLowerCase().includes('welcome')) {
+                    suggestedSubject = 'Velkommen til Sertifikatet!';
+                } else if (templateName.toLowerCase().includes('announcement')) {
+                    suggestedSubject = 'Viktig melding fra Sertifikatet';
+                } else {
+                    suggestedSubject = templateName + ' - Sertifikatet';
+                }
+                
+                // Only set subject if it's empty
+                const subjectField = document.getElementById('subject');
+                if (!subjectField.value.trim()) {
+                    subjectField.value = suggestedSubject;
+                }
+                
+                // Only set title if it's empty
+                const titleField = document.getElementById('title');
+                if (!titleField.value.trim()) {
+                    titleField.value = templateName + ' - ' + new Date().toLocaleDateString('no-NO');
+                }
+                
+                // Switch to editor view
+                document.getElementById('content_editor').checked = true;
+                document.getElementById('editor_section').style.display = 'block';
+                document.getElementById('upload_section').style.display = 'none';
+                document.getElementById('template_section').style.display = 'block'; // Keep template section visible
+                
+                // Re-enable the textarea
+                contentTextarea.disabled = false;
+                
+                // Show success message
+                const templateInfo = document.createElement('div');
+                templateInfo.className = 'alert alert-success alert-dismissible fade show mt-2';
+                templateInfo.innerHTML = `
+                    <strong>Template loaded:</strong> ${data.name}
+                    <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+                `;
+                document.getElementById('template_section').appendChild(templateInfo);
+                
+                // Auto-remove success message after 3 seconds
+                setTimeout(() => {
+                    if (templateInfo.parentNode) {
+                        templateInfo.remove();
+                    }
+                }, 3000);
+            })
+            .catch(error => {
+                console.error('Error loading template:', error);
+                // Restore original content on error
+                contentTextarea.value = originalContent;
+                contentTextarea.disabled = false;
+                
+                // Show error message
+                const errorDiv = document.createElement('div');
+                errorDiv.className = 'alert alert-danger alert-dismissible fade show mt-2';
+                errorDiv.innerHTML = `
+                    <strong>Error:</strong> Could not load template. Please try again.
+                    <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+                `;
+                document.getElementById('template_section').appendChild(errorDiv);
             });
     }
 });
+
+// Clear template selection
+function clearTemplate() {
+    document.getElementById('template_id').value = '';
+    document.getElementById('html_content').value = '';
+    document.getElementById('title').value = '';
+    document.getElementById('subject').value = '';
+    
+    // Remove any existing alert messages
+    const alerts = document.getElementById('template_section').querySelectorAll('.alert');
+    alerts.forEach(alert => alert.remove());
+}
 
 // File upload handling
 document.getElementById('html_file').addEventListener('change', function() {
