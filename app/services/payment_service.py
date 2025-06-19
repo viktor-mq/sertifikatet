@@ -77,8 +77,12 @@ class SubscriptionService:
     def get_user_plan(user_id: int) -> str:
         """Get user's current plan name using FK relationship"""
         user = User.query.get(user_id)
-        if user and user.current_plan:
-            return user.current_plan.name
+        if user:
+            # Admin users always get Pro plan access
+            if user.is_admin:
+                return 'pro'
+            if user.current_plan:
+                return user.current_plan.name
         return 'free'
     
     @staticmethod
@@ -89,6 +93,12 @@ class SubscriptionService:
     @staticmethod
     def user_has_feature(user_id: int, feature: str) -> bool:
         """Check if user has access to a specific feature"""
+        user = User.query.get(user_id)
+        if user and user.is_admin:
+            # Admin users have access to all features (Pro plan features)
+            pro_features = SubscriptionService.get_plan_features('pro')
+            return pro_features.get(feature, False)
+        
         plan_name = SubscriptionService.get_user_plan(user_id)
         features = SubscriptionService.get_plan_features(plan_name)
         return features.get(feature, False)
@@ -96,6 +106,12 @@ class SubscriptionService:
     @staticmethod
     def can_user_take_quiz(user_id: int, quiz_type: str = 'practice') -> Tuple[bool, str]:
         """Check if user can take a quiz based on their plan and usage"""
+        user = User.query.get(user_id)
+        
+        # Admin users always have unlimited access
+        if user and user.is_admin:
+            return True, ""
+        
         plan_name = SubscriptionService.get_user_plan(user_id)
         
         # Premium/Pro users have unlimited access
@@ -119,6 +135,12 @@ class SubscriptionService:
     @staticmethod
     def can_user_watch_video(user_id: int) -> Tuple[bool, str]:
         """Check if user can watch videos"""
+        user = User.query.get(user_id)
+        
+        # Admin users always have access
+        if user and user.is_admin:
+            return True, ""
+            
         if SubscriptionService.user_has_feature(user_id, 'has_video_access'):
             return True, ""
         return False, "Videoer er kun tilgjengelig for Premium og Pro brukere. Oppgrader for full tilgang."
@@ -126,6 +148,12 @@ class SubscriptionService:
     @staticmethod
     def should_show_ads(user_id: int) -> bool:
         """Check if ads should be shown to user"""
+        user = User.query.get(user_id)
+        
+        # Admin users never see ads
+        if user and user.is_admin:
+            return False
+            
         return SubscriptionService.user_has_feature(user_id, 'has_ads')
     
     @staticmethod
@@ -374,9 +402,9 @@ class PaymentService:
             
             # Update payment status
             payment.status = 'completed'
-            payment.external_payment_id = external_payment_id
+            payment.stripe_payment_intent_id = external_payment_id  # Store the correct field
             payment.payment_method = payment_method
-            payment.completed_at = datetime.utcnow()
+            payment.payment_date = datetime.utcnow()
             
             # Update user's current plan via FK relationship
             plan = payment.plan
@@ -391,6 +419,8 @@ class PaymentService:
                 existing_subscription.plan_id = payment.plan_id
                 existing_subscription.status = 'active'
                 existing_subscription.auto_renew = True
+                existing_subscription.started_at = datetime.utcnow()
+                existing_subscription.expires_at = datetime.utcnow() + timedelta(days=30)  # Exactly 30 days
                 existing_subscription.next_billing_date = datetime.utcnow() + timedelta(days=30)
                 existing_subscription.updated_at = datetime.utcnow()
             else:
@@ -400,6 +430,7 @@ class PaymentService:
                     plan_id=payment.plan_id,
                     status='active',
                     started_at=datetime.utcnow(),
+                    expires_at=datetime.utcnow() + timedelta(days=30),  # Exactly 30 days from payment
                     next_billing_date=datetime.utcnow() + timedelta(days=30),
                     auto_renew=True,
                     is_trial=False,
@@ -407,6 +438,7 @@ class PaymentService:
                     updated_at=datetime.utcnow()
                 )
                 db.session.add(subscription)
+                payment.subscription_id = subscription.id  # Link payment to subscription
             
             db.session.commit()
             return True

@@ -1,0 +1,8 @@
+# Sertifikatet Daily Subscription Check
+# Runs every day at 00:05 (5 minutes after midnight)
+# This checks for expired subscriptions and ensures admin users have Pro access
+
+5 0 * * * cd /Users/viktorigesund/Documents/teoritest && /usr/bin/python3 scripts/jobs/daily_subscription_check.py >> /var/log/sertifikatet/cron.log 2>&1
+
+# Optional: Run a backup check at 12:05 PM as well
+# 5 12 * * * cd /Users/viktorigesund/Documents/teoritest && /usr/bin/python3 scripts/jobs/daily_subscription_check.py >> /var/log/sertifikatet/cron.log 2>&1
