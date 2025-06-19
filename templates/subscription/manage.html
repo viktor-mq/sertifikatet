@@ -50,7 +50,13 @@
                             <span class="text-sm text-gray-400">
                                 {% if subscription_stats.is_trial %}Prøveperiode utløper{% else %}Neste fakturering{% endif %}
                             </span>
-                            <span class="font-medium">{{ subscription_stats.expires_at.strftime('%d.%m.%Y') }}</span>
+                            <span class="font-medium">
+                                {% if subscription_stats.expires_at %}
+                                    {{ subscription_stats.expires_at.strftime('%d.%m.%Y') }}
+                                {% else %}
+                                    Ikke satt
+                                {% endif %}
+                            </span>
                         </div>
                         {% if subscription_stats.days_remaining %}
                         <div class="mt-2">
@@ -131,7 +137,11 @@
                         <div>
                             <p class="font-medium">{{ payment.description }}</p>
                             <p class="text-sm text-gray-400">
-                                {{ payment.created_at.strftime('%d.%m.%Y') }}
+                                {% if payment.created_at %}
+                                    {{ payment.created_at.strftime('%d.%m.%Y') }}
+                                {% else %}
+                                    Dato ikke tilgjengelig
+                                {% endif %}
                                 {% if payment.invoice_number %}
                                 - Faktura: {{ payment.invoice_number }}
                                 {% endif %}

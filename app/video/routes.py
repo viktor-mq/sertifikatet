@@ -7,7 +7,8 @@ from app.video_models import VideoCategory, VideoPlaylist, PlaylistItem
 from app.video.services import VideoService
 from app.video.utils import allowed_video_file, save_video_file, generate_thumbnail
 from app.gamification.services import GamificationService
-from app.utils.decorators import subscription_required
+from app.utils.decorators import admin_required
+from app.utils.subscription_decorators import video_access_required, subscription_required
 import os
 
 video_bp = Blueprint('video', __name__, url_prefix='/video')
@@ -65,6 +66,7 @@ def category(category_id):
 
 @video_bp.route('/watch/<int:video_id>')
 @login_required
+@video_access_required
 def watch(video_id):
     """Watch video page"""
     video_data = VideoService.get_video_details(video_id, current_user)
@@ -106,6 +108,7 @@ def watch(video_id):
 
 @video_bp.route('/update-progress', methods=['POST'])
 @login_required
+@video_access_required
 def update_progress():
     """Update video progress (AJAX)"""
     data = request.get_json()
@@ -341,6 +344,7 @@ def recommended():
 # Admin routes for uploading videos
 @video_bp.route('/admin/upload', methods=['GET', 'POST'])
 @login_required
+@admin_required
 def admin_upload():
     """Admin video upload"""
     from app.utils.decorators import admin_required

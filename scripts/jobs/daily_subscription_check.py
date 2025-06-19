@@ -40,9 +40,12 @@ def check_and_expire_subscriptions():
             # Get current timestamp
             now = datetime.utcnow()
             
-            # Find all active subscriptions that should be expired
+            # Find all subscriptions that should be expired (both active and cancelled)
             expired_subscriptions = UserSubscription.query.filter(
-                UserSubscription.status == 'active',
+                or_(
+                    UserSubscription.status == 'active',
+                    UserSubscription.status == 'cancelled'
+                ),
                 UserSubscription.expires_at <= now,
                 UserSubscription.expires_at.isnot(None)
             ).all()
@@ -68,7 +71,7 @@ def check_and_expire_subscriptions():
                         user.current_plan_id = free_plan.id
                         user.subscription_status = 'expired'
                         
-                        logger.info(f"✅ Expired subscription for user {user.email} (ID: {user.id})")
+                        logger.info(f"✅ Expired subscription for user {user.email} (ID: {user.id}) - was {subscription.status}")
                         expired_count += 1
                     
                 except Exception as e:

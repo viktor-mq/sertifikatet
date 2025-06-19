@@ -62,10 +62,19 @@ class SubscriptionService:
     
     @staticmethod
     def get_user_subscription(user_id: int) -> Optional[UserSubscription]:
-        """Get user's current active subscription"""
+        """Get user's current active subscription (including cancelled ones still in active period)"""
         return UserSubscription.query.filter_by(
-            user_id=user_id,
-            status='active'
+            user_id=user_id
+        ).filter(
+            or_(
+                # Active subscriptions
+                UserSubscription.status == 'active',
+                # Cancelled subscriptions that haven't expired yet
+                and_(
+                    UserSubscription.status == 'cancelled',
+                    UserSubscription.expires_at > datetime.utcnow()
+                )
+            )
         ).filter(
             or_(
                 UserSubscription.expires_at.is_(None),
@@ -174,13 +183,13 @@ class SubscriptionService:
         if subscription:
             subscription_info.update({
                 'status': subscription.status,
-                'started_at': subscription.started_at.isoformat() if subscription.started_at else None,
-                'expires_at': subscription.expires_at.isoformat() if subscription.expires_at else None,
-                'next_billing_date': subscription.next_billing_date.isoformat() if subscription.next_billing_date else None,
+                'started_at': subscription.started_at,  # Keep as datetime object
+                'expires_at': subscription.expires_at,  # Keep as datetime object
+                'next_billing_date': subscription.next_billing_date,  # Keep as datetime object
                 'auto_renew': subscription.auto_renew,
                 'is_trial': subscription.is_trial,
-                'trial_ends_at': subscription.trial_ends_at.isoformat() if subscription.trial_ends_at else None,
-                'cancelled_at': subscription.cancelled_at.isoformat() if subscription.cancelled_at else None,
+                'trial_ends_at': subscription.trial_ends_at,  # Keep as datetime object
+                'cancelled_at': subscription.cancelled_at,  # Keep as datetime object
                 'cancelled_reason': subscription.cancelled_reason,
                 'payment_method_id': subscription.payment_method_id,
                 'stripe_subscription_id': subscription.stripe_subscription_id
@@ -205,26 +214,28 @@ class SubscriptionService:
     
     @staticmethod
     def cancel_subscription(user_id: int, reason: str = 'User requested cancellation') -> bool:
-        """Cancel user's active subscription"""
+        """Cancel user's active subscription - keeps access until end of billing period"""
         try:
             subscription = SubscriptionService.get_user_subscription(user_id)
             if not subscription:
                 return False  # No active subscription to cancel
             
-            subscription.status = 'cancelled'
+            # Mark subscription as cancelled but keep it active until expires_at
+            subscription.status = 'cancelled'  # Status shows it's cancelled
             subscription.cancelled_at = datetime.utcnow()
             subscription.cancelled_reason = reason
-            subscription.auto_renew = False
+            subscription.auto_renew = False  # Won't renew when it expires
             
-            # Update user's current plan to free
+            # DO NOT immediately downgrade user - they keep access until expires_at
+            # The daily job will handle the actual downgrade when expires_at is reached
+            
+            # Update user subscription status for tracking
             user = User.query.get(user_id)
             if user:
-                free_plan = SubscriptionService.get_plan_by_name('free')
-                if free_plan:
-                    user.current_plan_id = free_plan.id
-                    user.subscription_status = 'cancelled'
+                user.subscription_status = 'cancelled'  # For tracking, but plan stays active
             
             db.session.commit()
+            logger.info(f"Subscription cancelled for user {user_id}. Access until {subscription.expires_at}")
             return True
             
         except Exception as e:
@@ -461,13 +472,14 @@ class PaymentService:
             payment_data = {
                 'id': payment.id,
                 'amount': float(payment.amount_nok),
+                'amount_nok': float(payment.amount_nok),  # Add this for template compatibility
                 'currency': 'NOK',
                 'status': payment.status,
                 'description': payment.description,
                 'invoice_number': payment.invoice_number,
                 'payment_method': payment.payment_method,
-                'created_at': payment.created_at.isoformat() if payment.created_at else None,
-                'completed_at': payment.completed_at.isoformat() if payment.completed_at else None,
+                'created_at': payment.created_at,  # Keep as datetime object for template
+                'completed_at': payment.payment_date,  # Keep as datetime object
                 'plan_name': payment.plan.name if payment.plan else None,
                 'plan_display_name': payment.plan.display_name if payment.plan else None
             }

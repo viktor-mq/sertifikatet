@@ -6,10 +6,13 @@ from . import quiz_bp
 from .. import db
 from ..models import Question, QuizSession, QuizResponse, User
 from ..ml.service import ml_service
+from ..utils.subscription_decorators import quiz_limit_check
+from ..services.payment_service import SubscriptionService, UsageLimitService
 
 
 @quiz_bp.route('/practice/<category>')
 @login_required
+@quiz_limit_check('practice')
 def practice(category):
     """Practice mode for a specific category with ML-powered question selection"""
     try:
@@ -92,6 +95,15 @@ def start_session():
     try:
         data = request.get_json()
         quiz_type = data.get('quiz_type', 'practice')
+        
+        # Check subscription limits before starting session
+        can_take, message = SubscriptionService.can_user_take_quiz(current_user.id, quiz_type)
+        if not can_take:
+            return jsonify({
+                'error': 'Subscription limit reached',
+                'message': message,
+                'success': False
+            }), 403
         category = data.get('category')
         
         # Create new quiz session
@@ -122,6 +134,9 @@ def start_session():
         
         quiz_session.total_questions = len(questions)
         db.session.commit()
+        
+        # Record quiz usage for limits tracking
+        UsageLimitService.record_quiz_taken(current_user.id, quiz_type)
         
         # Convert questions to JSON format
         questions_data = []
