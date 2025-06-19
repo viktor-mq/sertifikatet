@@ -10,6 +10,7 @@ from . import subscription_bp
 from .. import db
 from ..payment_models import SubscriptionPlan, Payment, UserSubscription
 from ..services.payment_service import SubscriptionService, UsageLimitService, PaymentService
+from ..services.stripe_service import StripeService
 
 
 @subscription_bp.route('/plans')
@@ -63,27 +64,31 @@ def checkout(plan_name):
         return redirect(url_for('subscription.plans'))
     
     if request.method == 'POST':
+        payment_method = request.form.get('payment_method', 'stripe')
+        
         try:
-            # Create payment intent
-            payment_intent = PaymentService.create_payment_intent(
-                current_user.id,
-                plan_name,
-                request.form.get('discount_code')
-            )
-            
-            # Store payment info in session for completion
-            session['pending_payment'] = {
-                'payment_id': payment_intent['payment_id'],
-                'plan_name': plan_name,
-                'amount': payment_intent['amount']
-            }
-            
-            # For demo purposes, simulate successful payment
-            # In production, this would redirect to Stripe/Vipps
-            return redirect(url_for('subscription.payment_success'))
-            
-        except ValueError as e:
-            flash(str(e), 'error')
+            if payment_method == 'stripe':
+                # Create Stripe Checkout session
+                stripe_service = StripeService()
+                success_url = url_for('subscription.payment_success', _external=True)
+                cancel_url = url_for('subscription.checkout', plan_name=plan_name, _external=True)
+                
+                checkout_data = stripe_service.create_checkout_session(
+                    current_user.id,
+                    plan_name,
+                    success_url,
+                    cancel_url
+                )
+                
+                # Redirect to Stripe Checkout
+                return redirect(checkout_data['checkout_url'])
+                
+            else:
+                # Handle other payment methods (Vipps, etc.)
+                flash('Denne betalingsmetoden er ikke tilgjengelig ennå', 'info')
+                
+        except Exception as e:
+            flash(f'Feil ved opprettelse av betaling: {str(e)}', 'error')
     
     return render_template('subscription/checkout.html', plan=plan)
 
@@ -92,28 +97,29 @@ def checkout(plan_name):
 @login_required
 def payment_success():
     """Handle successful payment"""
-    pending_payment = session.get('pending_payment')
-    if not pending_payment:
-        flash('Ingen ventende betaling funnet', 'error')
-        return redirect(url_for('subscription.plans'))
+    session_id = request.args.get('session_id')
+    payment_id = request.args.get('payment_id')
     
-    try:
-        # Complete the payment (demo - in production this would be webhook)
-        PaymentService.complete_payment(
-            pending_payment['payment_id'],
-            'demo_payment_intent',
-            'demo'
-        )
-        
-        # Clear session
-        session.pop('pending_payment', None)
-        
-        flash(f'Gratulerer! Du har oppgradert til {pending_payment["plan_name"].title()} plan!', 'success')
-        return redirect(url_for('subscription.manage'))
-        
-    except Exception as e:
-        flash('Det oppstod en feil ved behandling av betalingen', 'error')
-        return redirect(url_for('subscription.plans'))
+    if session_id:
+        try:
+            # Confirm Stripe payment
+            stripe_service = StripeService()
+            success = stripe_service.confirm_payment(session_id=session_id)
+            
+            if success:
+                flash('Gratulerer! Betalingen din er bekreftet og abonnementet er aktivert!', 'success')
+                return redirect(url_for('subscription.manage'))
+            else:
+                flash('Det oppstod en feil ved bekreftelse av betalingen', 'error')
+                return redirect(url_for('subscription.plans'))
+                
+        except Exception as e:
+            flash(f'Feil ved behandling av betaling: {str(e)}', 'error')
+            return redirect(url_for('subscription.plans'))
+    
+    # Fallback for other payment methods or missing session_id
+    flash('Ingen betalingsinformasjon funnet', 'error')
+    return redirect(url_for('subscription.plans'))
 
 
 @subscription_bp.route('/manage')
@@ -240,3 +246,22 @@ def features():
     return render_template('subscription/features.html', 
                          plans=plans, 
                          feature_matrix=feature_matrix)
+
+
+@subscription_bp.route('/webhook/stripe', methods=['POST'])
+def stripe_webhook():
+    """Handle Stripe webhook events"""
+    payload = request.get_data(as_text=True)
+    sig_header = request.headers.get('Stripe-Signature')
+    
+    try:
+        stripe_service = StripeService()
+        success = stripe_service.handle_webhook(payload, sig_header)
+        
+        if success:
+            return jsonify({'status': 'success'}), 200
+        else:
+            return jsonify({'error': 'Webhook handling failed'}), 400
+            
+    except Exception as e:
+        return jsonify({'error': str(e)}), 400

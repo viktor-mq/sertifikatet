@@ -28,3 +28,8 @@ class Config:
     # Admin security settings
     ADMIN_EMAIL_NOTIFICATIONS = os.getenv('ADMIN_EMAIL_NOTIFICATIONS', 'True').lower() in ('true', '1', 'yes')
     SUPER_ADMIN_EMAIL = os.getenv('SUPER_ADMIN_EMAIL')  # Primary admin email
+    
+    # Stripe payment configuration
+    STRIPE_PUBLISHABLE_KEY = os.getenv('STRIPE_PUBLISHABLE_KEY')
+    STRIPE_SECRET_KEY = os.getenv('STRIPE_SECRET_KEY')
+    STRIPE_WEBHOOK_SECRET = os.getenv('STRIPE_WEBHOOK_SECRET')

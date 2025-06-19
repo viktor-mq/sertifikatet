@@ -58,6 +58,19 @@ def create_app():
     app.register_blueprint(video_api_bp)
     register_filters(app)  # Register video-specific Jinja2 filters
     
+    # Register custom Jinja2 filters
+    @app.template_filter('from_json')
+    def from_json_filter(value):
+        import json
+        if isinstance(value, str):
+            try:
+                parsed = json.loads(value)
+                return parsed if parsed else []
+            except (json.JSONDecodeError, TypeError) as e:
+                print(f"JSON decode error for value: {value[:100]}... Error: {e}")
+                return []
+        return value or []
+    
     # Register game blueprint
     from .game import game_bp
     app.register_blueprint(game_bp)

@@ -1,319 +1,109 @@
 {% extends "base.html" %}
 
-{% block title %}Velg Plan - Sertifikatet{% endblock %}
+{% block title %}Abonnementsplaner - Sertifikatet{% endblock %}
 
 {% block content %}
-<section class="py-12">
-    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-        <!-- Header -->
-        <div class="text-center mb-12">
-            <h1 class="text-4xl font-bold mb-4">
-                <span class="bg-gradient-to-r from-purple-400 to-pink-400 bg-clip-text text-transparent">
-                    Velg Din Plan
-                </span>
-            </h1>
-            <p class="text-xl text-gray-400">
-                Finn den perfekte planen for din teoritest forberedelse
-            </p>
-        </div>
+<div class="container mx-auto px-4 py-8">
+    <div class="text-center mb-12">
+        <h1 class="text-4xl font-bold text-gray-900 mb-4">Velg din plan</h1>
+        <p class="text-xl text-gray-600">Få full tilgang til alle funksjoner for å mestre teorien</p>
+    </div>
 
-        <!-- Current Plan Status -->
-        {% if current_user.is_authenticated %}
-        <div class="glass rounded-2xl p-6 mb-8">
-            <div class="flex items-center justify-between">
-                <div>
-                    <h3 class="text-lg font-semibold">Din nåværende plan</h3>
-                    <p class="text-gray-400">{{ current_plan.title() }} Plan</p>
-                </div>
-                {% if subscription_stats and subscription_stats.expires_at %}
-                <div class="text-right">
-                    <p class="text-sm text-gray-400">Utløper</p>
-                    <p class="font-medium">{{ subscription_stats.expires_at.strftime('%d.%m.%Y') }}</p>
-                </div>
-                {% endif %}
-            </div>
-            
-            <!-- Usage Statistics for Free Users -->
-            {% if current_plan == 'free' and usage_stats %}
-            <div class="mt-6 grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div class="bg-gray-800/50 rounded-lg p-4">
-                    <div class="flex items-center justify-between mb-2">
-                        <span class="text-sm text-gray-400">Daglige Quiz</span>
-                        <span class="text-sm font-medium">{{ usage_stats.daily_quizzes.taken }}/{{ usage_stats.daily_quizzes.limit }}</span>
-                    </div>
-                    <div class="w-full bg-gray-700 rounded-full h-2">
-                        <div class="bg-purple-600 h-2 rounded-full" style="width: {{ (usage_stats.daily_quizzes.taken / usage_stats.daily_quizzes.limit * 100) }}%"></div>
-                    </div>
-                </div>
-                <div class="bg-gray-800/50 rounded-lg p-4">
-                    <div class="flex items-center justify-between mb-2">
-                        <span class="text-sm text-gray-400">Ukentlige Eksamener</span>
-                        <span class="text-sm font-medium">{{ usage_stats.weekly_exams.taken }}/{{ usage_stats.weekly_exams.limit }}</span>
-                    </div>
-                    <div class="w-full bg-gray-700 rounded-full h-2">
-                        <div class="bg-pink-600 h-2 rounded-full" style="width: {{ (usage_stats.weekly_exams.taken / usage_stats.weekly_exams.limit * 100) }}%"></div>
-                    </div>
-                </div>
+    <!-- Current Plan Status -->
+    {% if current_user.is_authenticated %}
+    <div class="mb-8 p-4 bg-blue-50 rounded-lg">
+        <p class="text-center text-blue-800">
+            <strong>Din nåværende plan:</strong> {{ current_plan.title() }}
+            {% if usage_stats %}
+            <br>
+            <small class="text-blue-600">
+                Quiz i dag: {{ usage_stats.daily_quizzes.taken }}/{{ usage_stats.daily_quizzes.limit if usage_stats.daily_quizzes.limit else '∞' }} | 
+                Eksamener denne uken: {{ usage_stats.weekly_exams.taken }}/{{ usage_stats.weekly_exams.limit if usage_stats.weekly_exams.limit else '∞' }}
+            </small>
+            {% endif %}
+        </p>
+    </div>
+    {% endif %}
+
+    <!-- Plans Grid -->
+    <div class="grid md:grid-cols-3 gap-8 max-w-6xl mx-auto">
+        {% for plan in plans %}
+        <div class="bg-white rounded-lg shadow-lg overflow-hidden {% if plan.name == 'premium' %}ring-2 ring-blue-500 transform scale-105{% endif %}">
+            {% if plan.name == 'premium' %}
+            <div class="bg-blue-500 text-white text-center py-2">
+                <span class="font-semibold">Mest populær</span>
             </div>
             {% endif %}
-        </div>
-        {% endif %}
-
-        <!-- Plans Grid -->
-        <div class="grid grid-cols-1 md:grid-cols-3 gap-8 mb-12">
             
-            <!-- Free Plan -->
-            <div class="glass rounded-2xl p-8 relative {% if current_plan == 'free' %}border-2 border-purple-500{% endif %}">
-                {% if current_plan == 'free' %}
-                <div class="absolute -top-3 left-1/2 transform -translate-x-1/2">
-                    <span class="bg-purple-600 text-white px-4 py-1 rounded-full text-sm font-medium">
-                        Din nåværende plan
-                    </span>
-                </div>
-                {% endif %}
-                
+            <div class="p-6">
                 <div class="text-center mb-6">
-                    <h3 class="text-2xl font-bold mb-2">Gratis</h3>
-                    <div class="text-4xl font-bold mb-2">0 <span class="text-lg text-gray-400">NOK</span></div>
-                    <p class="text-gray-400">Per måned</p>
+                    <h3 class="text-2xl font-bold text-gray-900 mb-2">{{ plan.display_name }}</h3>
+                    <div class="text-4xl font-bold text-blue-600 mb-2">
+                        {% if plan.price_nok == 0 %}
+                        Gratis
+                        {% else %}
+                        {{ plan.price_nok|int }} NOK
+                        {% endif %}
+                    </div>
+                    {% if plan.price_nok > 0 %}
+                    <p class="text-gray-500">per måned</p>
+                    {% endif %}
                 </div>
 
+                <p class="text-gray-600 text-center mb-6">{{ plan.description }}</p>
+
+                <!-- Features -->
+                {% if plan.features_json %}
                 <ul class="space-y-3 mb-8">
+                    {% for feature in plan.features_json|from_json %}
                     <li class="flex items-center">
-                        <i class="fas fa-check text-green-400 mr-3"></i>
-                        <span class="text-sm">10 quiz per dag</span>
+                        <svg class="w-5 h-5 text-green-500 mr-3" fill="currentColor" viewBox="0 0 20 20">
+                            <path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd"></path>
+                        </svg>
+                        <span class="text-gray-700">{{ feature }}</span>
                     </li>
-                    <li class="flex items-center">
-                        <i class="fas fa-check text-green-400 mr-3"></i>
-                        <span class="text-sm">2 prøveeksamener per uke</span>
-                    </li>
-                    <li class="flex items-center">
-                        <i class="fas fa-check text-green-400 mr-3"></i>
-                        <span class="text-sm">Grunnleggende statistikk</span>
-                    </li>
-                    <li class="flex items-center">
-                        <i class="fas fa-times text-red-400 mr-3"></i>
-                        <span class="text-sm text-gray-400">Videoer</span>
-                    </li>
-                    <li class="flex items-center">
-                        <i class="fas fa-times text-red-400 mr-3"></i>
-                        <span class="text-sm text-gray-400">AI-tilpasset læring</span>
-                    </li>
-                    <li class="flex items-center">
-                        <i class="fas fa-exclamation-triangle text-yellow-400 mr-3"></i>
-                        <span class="text-sm text-gray-400">Med annonser</span>
-                    </li>
+                    {% endfor %}
                 </ul>
-
-                {% if current_plan != 'free' %}
-                <button class="w-full py-3 bg-gray-700 text-white rounded-lg font-semibold hover:bg-gray-600 transition" disabled>
-                    Nedgrader til Gratis
-                </button>
-                {% else %}
-                <button class="w-full py-3 bg-purple-600 text-white rounded-lg font-semibold cursor-default">
-                    Din nåværende plan
-                </button>
                 {% endif %}
-            </div>
 
-            <!-- Premium Plan -->
-            <div class="glass rounded-2xl p-8 relative {% if current_plan == 'premium' %}border-2 border-purple-500{% endif %} hover-card">
-                <div class="absolute -top-3 left-1/2 transform -translate-x-1/2">
-                    <span class="bg-gradient-to-r from-purple-600 to-pink-600 text-white px-4 py-1 rounded-full text-sm font-medium">
-                        {% if current_plan == 'premium' %}Din nåværende plan{% else %}Mest populær{% endif %}
-                    </span>
+                <!-- Action Button -->
+                <div class="text-center">
+                    {% if current_user.is_authenticated %}
+                        {% if current_plan == plan.name %}
+                        <button class="w-full bg-gray-100 text-gray-500 font-semibold py-3 px-6 rounded-lg cursor-not-allowed">
+                            Din nåværende plan
+                        </button>
+                        {% else %}
+                        <a href="{{ url_for('subscription.upgrade', plan_name=plan.name) }}" 
+                           class="w-full bg-blue-600 text-white font-semibold py-3 px-6 rounded-lg hover:bg-blue-700 transition duration-200 inline-block text-center">
+                            {% if plan.price_nok == 0 %}
+                            Velg Gratis
+                            {% else %}
+                            Oppgrader nå
+                            {% endif %}
+                        </a>
+                        {% endif %}
+                    {% else %}
+                    <a href="{{ url_for('auth.register') }}" 
+                       class="w-full bg-blue-600 text-white font-semibold py-3 px-6 rounded-lg hover:bg-blue-700 transition duration-200 inline-block text-center">
+                        Kom i gang
+                    </a>
+                    {% endif %}
                 </div>
-                
-                <div class="text-center mb-6">
-                    <h3 class="text-2xl font-bold mb-2">Premium</h3>
-                    <div class="text-4xl font-bold mb-2">149 <span class="text-lg text-gray-400">NOK</span></div>
-                    <p class="text-gray-400">Per måned</p>
-                </div>
-
-                <ul class="space-y-3 mb-8">
-                    <li class="flex items-center">
-                        <i class="fas fa-check text-green-400 mr-3"></i>
-                        <span class="text-sm">Ubegrensede quiz</span>
-                    </li>
-                    <li class="flex items-center">
-                        <i class="fas fa-check text-green-400 mr-3"></i>
-                        <span class="text-sm">Ubegrensede prøveeksamener</span>
-                    </li>
-                    <li class="flex items-center">
-                        <i class="fas fa-check text-green-400 mr-3"></i>
-                        <span class="text-sm">Alle videoer</span>
-                    </li>
-                    <li class="flex items-center">
-                        <i class="fas fa-check text-green-400 mr-3"></i>
-                        <span class="text-sm">Detaljert statistikk</span>
-                    </li>
-                    <li class="flex items-center">
-                        <i class="fas fa-check text-green-400 mr-3"></i>
-                        <span class="text-sm">AI-tilpasset læring</span>
-                    </li>
-                    <li class="flex items-center">
-                        <i class="fas fa-check text-green-400 mr-3"></i>
-                        <span class="text-sm">Ingen annonser</span>
-                    </li>
-                    <li class="flex items-center">
-                        <i class="fas fa-check text-green-400 mr-3"></i>
-                        <span class="text-sm">Prioritert støtte</span>
-                    </li>
-                </ul>
-
-                {% if current_plan == 'premium' %}
-                <button class="w-full py-3 bg-purple-600 text-white rounded-lg font-semibold cursor-default">
-                    Din nåværende plan
-                </button>
-                {% else %}
-                <a href="{{ url_for('subscription.upgrade', plan_name='premium') }}" 
-                   class="block w-full py-3 bg-gradient-to-r from-purple-600 to-pink-600 text-white rounded-lg font-semibold text-center hover:from-purple-700 hover:to-pink-700 transition">
-                    {% if current_user.is_authenticated %}Oppgrader{% else %}Kom i gang{% endif %}
-                </a>
-                {% endif %}
-            </div>
-
-            <!-- Pro Plan -->
-            <div class="glass rounded-2xl p-8 relative {% if current_plan == 'pro' %}border-2 border-purple-500{% endif %} hover-card">
-                {% if current_plan == 'pro' %}
-                <div class="absolute -top-3 left-1/2 transform -translate-x-1/2">
-                    <span class="bg-purple-600 text-white px-4 py-1 rounded-full text-sm font-medium">
-                        Din nåværende plan
-                    </span>
-                </div>
-                {% endif %}
-                
-                <div class="text-center mb-6">
-                    <h3 class="text-2xl font-bold mb-2">Pro</h3>
-                    <div class="text-4xl font-bold mb-2">249 <span class="text-lg text-gray-400">NOK</span></div>
-                    <p class="text-gray-400">Per måned</p>
-                </div>
-
-                <ul class="space-y-3 mb-8">
-                    <li class="flex items-center">
-                        <i class="fas fa-check text-green-400 mr-3"></i>
-                        <span class="text-sm">Alt i Premium</span>
-                    </li>
-                    <li class="flex items-center">
-                        <i class="fas fa-check text-green-400 mr-3"></i>
-                        <span class="text-sm">Offline modus</span>
-                    </li>
-                    <li class="flex items-center">
-                        <i class="fas fa-check text-green-400 mr-3"></i>
-                        <span class="text-sm">Personlig AI-veileder</span>
-                    </li>
-                    <li class="flex items-center">
-                        <i class="fas fa-check text-green-400 mr-3"></i>
-                        <span class="text-sm">Avansert analyse</span>
-                    </li>
-                    <li class="flex items-center">
-                        <i class="fas fa-check text-green-400 mr-3"></i>
-                        <span class="text-sm">Eksklusiv innhold</span>
-                    </li>
-                    <li class="flex items-center">
-                        <i class="fas fa-check text-green-400 mr-3"></i>
-                        <span class="text-sm">24/7 støtte</span>
-                    </li>
-                </ul>
-
-                {% if current_plan == 'pro' %}
-                <button class="w-full py-3 bg-purple-600 text-white rounded-lg font-semibold cursor-default">
-                    Din nåværende plan
-                </button>
-                {% else %}
-                <a href="{{ url_for('subscription.upgrade', plan_name='pro') }}" 
-                   class="block w-full py-3 bg-gradient-to-r from-blue-600 to-purple-600 text-white rounded-lg font-semibold text-center hover:from-blue-700 hover:to-purple-700 transition">
-                    {% if current_user.is_authenticated %}Oppgrader{% else %}Kom i gang{% endif %}
-                </a>
-                {% endif %}
             </div>
         </div>
+        {% endfor %}
+    </div>
 
-        <!-- Feature Comparison -->
-        <div class="glass rounded-2xl p-8 mb-8">
-            <h2 class="text-2xl font-bold mb-6 text-center">Sammenligning av Funksjoner</h2>
-            <div class="overflow-x-auto">
-                <table class="w-full">
-                    <thead>
-                        <tr class="border-b border-gray-700">
-                            <th class="text-left py-3 px-4">Funksjon</th>
-                            <th class="text-center py-3 px-4">Gratis</th>
-                            <th class="text-center py-3 px-4 bg-purple-600/10">Premium</th>
-                            <th class="text-center py-3 px-4">Pro</th>
-                        </tr>
-                    </thead>
-                    <tbody class="text-sm">
-                        <tr class="border-b border-gray-800">
-                            <td class="py-3 px-4">Quiz per dag</td>
-                            <td class="text-center py-3 px-4">10</td>
-                            <td class="text-center py-3 px-4 bg-purple-600/10">Ubegrenset</td>
-                            <td class="text-center py-3 px-4">Ubegrenset</td>
-                        </tr>
-                        <tr class="border-b border-gray-800">
-                            <td class="py-3 px-4">Prøveeksamener per uke</td>
-                            <td class="text-center py-3 px-4">2</td>
-                            <td class="text-center py-3 px-4 bg-purple-600/10">Ubegrenset</td>
-                            <td class="text-center py-3 px-4">Ubegrenset</td>
-                        </tr>
-                        <tr class="border-b border-gray-800">
-                            <td class="py-3 px-4">Videoer</td>
-                            <td class="text-center py-3 px-4"><i class="fas fa-times text-red-400"></i></td>
-                            <td class="text-center py-3 px-4 bg-purple-600/10"><i class="fas fa-check text-green-400"></i></td>
-                            <td class="text-center py-3 px-4"><i class="fas fa-check text-green-400"></i></td>
-                        </tr>
-                        <tr class="border-b border-gray-800">
-                            <td class="py-3 px-4">AI-tilpasset læring</td>
-                            <td class="text-center py-3 px-4"><i class="fas fa-times text-red-400"></i></td>
-                            <td class="text-center py-3 px-4 bg-purple-600/10"><i class="fas fa-check text-green-400"></i></td>
-                            <td class="text-center py-3 px-4"><i class="fas fa-check text-green-400"></i></td>
-                        </tr>
-                        <tr class="border-b border-gray-800">
-                            <td class="py-3 px-4">Offline modus</td>
-                            <td class="text-center py-3 px-4"><i class="fas fa-times text-red-400"></i></td>
-                            <td class="text-center py-3 px-4 bg-purple-600/10"><i class="fas fa-times text-red-400"></i></td>
-                            <td class="text-center py-3 px-4"><i class="fas fa-check text-green-400"></i></td>
-                        </tr>
-                        <tr>
-                            <td class="py-3 px-4">Personlig veileder</td>
-                            <td class="text-center py-3 px-4"><i class="fas fa-times text-red-400"></i></td>
-                            <td class="text-center py-3 px-4 bg-purple-600/10"><i class="fas fa-times text-red-400"></i></td>
-                            <td class="text-center py-3 px-4"><i class="fas fa-check text-green-400"></i></td>
-                        </tr>
-                    </tbody>
-                </table>
-            </div>
-        </div>
-
-        <!-- FAQ -->
-        <div class="glass rounded-2xl p-8">
-            <h2 class="text-2xl font-bold mb-6 text-center">Ofte Stilte Spørsmål</h2>
-            <div class="space-y-6">
-                <div>
-                    <h3 class="font-semibold mb-2">Kan jeg kansellere når som helst?</h3>
-                    <p class="text-gray-400 text-sm">Ja, du kan kansellere abonnementet ditt når som helst. Du beholder tilgang til premium funksjoner til slutten av faktureringsperioden.</p>
-                </div>
-                <div>
-                    <h3 class="font-semibold mb-2">Hva skjer hvis jeg overskrider grensene på gratis planen?</h3>
-                    <p class="text-gray-400 text-sm">Du vil bli oppfordret til å oppgradere til Premium for å fortsette. Grensene tilbakestilles daglig (quiz) og ukentlig (eksamener).</p>
-                </div>
-                <div>
-                    <h3 class="font-semibold mb-2">Er det refusjon hvis jeg ikke er fornøyd?</h3>
-                    <p class="text-gray-400 text-sm">Vi tilbyr 14 dagers pengene-tilbake-garanti for alle betalte planer. Kontakt oss hvis du ikke er fornøyd.</p>
-                </div>
-            </div>
+    <!-- Additional Info -->
+    <div class="mt-12 text-center">
+        <p class="text-gray-600 mb-4">
+            ✅ Ingen bindingstid • ✅ Kanseller når som helst • ✅ Sikker betaling
+        </p>
+        <div class="flex justify-center items-center space-x-4 text-sm text-gray-500">
+            <span>Betaling behandles sikkert av</span>
+            <img src="https://js.stripe.com/v3/fingerprinted/img/stripe-badge-white-simple.svg" alt="Stripe" class="h-6">
         </div>
     </div>
-</section>
-
-{% if not current_user.is_authenticated %}
-<script>
-// Redirect to login for upgrade attempts
-document.querySelectorAll('a[href*="upgrade"]').forEach(link => {
-    link.addEventListener('click', function(e) {
-        e.preventDefault();
-        window.location.href = '{{ url_for("auth.login") }}?next=' + encodeURIComponent(this.href);
-    });
-});
-</script>
-{% endif %}
+</div>
 {% endblock %}

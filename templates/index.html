@@ -187,10 +187,17 @@
                         2 prøveeksamen per uke
                     </li>
                 </ul>
+                {% if current_user.is_authenticated %}
+                <a href="{{ url_for('subscription.plans') }}" 
+                   class="block w-full text-center py-3 border-2 border-purple-600 rounded-lg hover:bg-purple-600 transition-colors">
+                    Se Planer
+                </a>
+                {% else %}
                 <a href="{{ url_for('auth.register') }}" 
                    class="block w-full text-center py-3 border-2 border-purple-600 rounded-lg hover:bg-purple-600 transition-colors">
                     Start Gratis
                 </a>
+                {% endif %}
             </div>
             
             <!-- Premium Plan -->
@@ -224,10 +231,17 @@
                         Videoforklaringer
                     </li>
                 </ul>
+                {% if current_user.is_authenticated %}
+                <a href="{{ url_for('subscription.upgrade', plan_name='premium') }}" 
+                   class="block w-full text-center py-3 bg-gradient-to-r from-purple-600 to-pink-600 rounded-lg hover:from-pink-600 hover:to-purple-600 transition-all">
+                    Oppgrader til Premium
+                </a>
+                {% else %}
                 <a href="{{ url_for('auth.register') }}" 
                    class="block w-full text-center py-3 bg-gradient-to-r from-purple-600 to-pink-600 rounded-lg hover:from-pink-600 hover:to-purple-600 transition-all">
                     Prøv Premium
                 </a>
+                {% endif %}
             </div>
             
             <!-- Pro Plan -->
@@ -254,10 +268,17 @@
                         Offline-modus
                     </li>
                 </ul>
+                {% if current_user.is_authenticated %}
+                <a href="{{ url_for('subscription.upgrade', plan_name='pro') }}" 
+                   class="block w-full text-center py-3 border-2 border-purple-600 rounded-lg hover:bg-purple-600 transition-colors">
+                    Oppgrader til Pro
+                </a>
+                {% else %}
                 <a href="{{ url_for('auth.register') }}" 
                    class="block w-full text-center py-3 border-2 border-purple-600 rounded-lg hover:bg-purple-600 transition-colors">
                     Velg Pro
                 </a>
+                {% endif %}
             </div>
         </div>
     </div>

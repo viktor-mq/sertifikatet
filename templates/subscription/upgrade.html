@@ -3,190 +3,152 @@
 {% block title %}Oppgrader til {{ plan.display_name }} - Sertifikatet{% endblock %}
 
 {% block content %}
-<section class="py-12">
-    <div class="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8">
-        <!-- Header -->
-        <div class="text-center mb-8">
-            <h1 class="text-3xl font-bold mb-4">
-                <span class="bg-gradient-to-r from-purple-400 to-pink-400 bg-clip-text text-transparent">
-                    Oppgrader til {{ plan.display_name }}
-                </span>
-            </h1>
-            <p class="text-xl text-gray-400">
-                Lås opp alle funksjonene for optimal teoritest forberedelse
-            </p>
+<div class="container mx-auto px-4 py-8">
+    <div class="max-w-2xl mx-auto">
+        <!-- Back Button -->
+        <div class="mb-6">
+            <a href="{{ url_for('subscription.plans') }}" class="text-blue-600 hover:text-blue-800 flex items-center">
+                <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"></path>
+                </svg>
+                Tilbake til planer
+            </a>
         </div>
 
-        <div class="grid grid-cols-1 lg:grid-cols-2 gap-8">
-            <!-- Plan Details -->
-            <div class="glass rounded-2xl p-8">
-                <div class="text-center mb-6">
-                    <h2 class="text-2xl font-bold">{{ plan.display_name }}</h2>
-                    <div class="text-4xl font-bold my-4">
-                        {{ plan.price_nok|int }} <span class="text-lg text-gray-400">NOK</span>
-                    </div>
-                    <p class="text-gray-400">per måned</p>
-                </div>
-
-                <!-- Plan Features -->
-                <div class="space-y-4">
-                    {% if plan.name == 'premium' %}
-                    <div class="flex items-center">
-                        <i class="fas fa-check text-green-400 mr-3"></i>
-                        <span>Ubegrensede quiz og eksamener</span>
-                    </div>
-                    <div class="flex items-center">
-                        <i class="fas fa-check text-green-400 mr-3"></i>
-                        <span>Tilgang til alle instruksjonsvideoer</span>
-                    </div>
-                    <div class="flex items-center">
-                        <i class="fas fa-check text-green-400 mr-3"></i>
-                        <span>Detaljert statistikk og fremgangssporing</span>
-                    </div>
-                    <div class="flex items-center">
-                        <i class="fas fa-check text-green-400 mr-3"></i>
-                        <span>AI-tilpasset læring</span>
-                    </div>
-                    <div class="flex items-center">
-                        <i class="fas fa-check text-green-400 mr-3"></i>
-                        <span>Ingen annonser</span>
-                    </div>
-                    <div class="flex items-center">
-                        <i class="fas fa-check text-green-400 mr-3"></i>
-                        <span>Prioritert kundesupport</span>
-                    </div>
-                    {% elif plan.name == 'pro' %}
-                    <div class="flex items-center">
-                        <i class="fas fa-check text-green-400 mr-3"></i>
-                        <span>Alt fra Premium plan</span>
-                    </div>
-                    <div class="flex items-center">
-                        <i class="fas fa-check text-green-400 mr-3"></i>
-                        <span>Offline modus for quiz og videoer</span>
-                    </div>
-                    <div class="flex items-center">
-                        <i class="fas fa-check text-green-400 mr-3"></i>
-                        <span>Personlig AI-veileder</span>
-                    </div>
-                    <div class="flex items-center">
-                        <i class="fas fa-check text-green-400 mr-3"></i>
-                        <span>Avansert analyse og innsikt</span>
-                    </div>
-                    <div class="flex items-center">
-                        <i class="fas fa-check text-green-400 mr-3"></i>
-                        <span>Eksklusiv innhold og funksjoner</span>
-                    </div>
-                    <div class="flex items-center">
-                        <i class="fas fa-check text-green-400 mr-3"></i>
-                        <span>24/7 premium support</span>
-                    </div>
-                    {% endif %}
-                </div>
-
-                <!-- Guarantee -->
-                <div class="mt-8 p-4 bg-green-600/10 border border-green-600/20 rounded-lg">
-                    <div class="flex items-center">
-                        <i class="fas fa-shield-alt text-green-400 mr-3"></i>
-                        <div>
-                            <h4 class="font-semibold text-green-400">14 dagers pengene-tilbake-garanti</h4>
-                            <p class="text-sm text-gray-400">Ikke fornøyd? Få full refusjon innen 14 dager.</p>
-                        </div>
-                    </div>
-                </div>
+        <div class="bg-white rounded-lg shadow-lg p-8">
+            <div class="text-center mb-8">
+                <h1 class="text-3xl font-bold text-gray-900 mb-4">Oppgrader til {{ plan.display_name }}</h1>
+                <div class="text-5xl font-bold text-blue-600 mb-2">{{ plan.price_nok|int }} NOK</div>
+                <p class="text-gray-500 text-lg">per måned</p>
             </div>
 
-            <!-- Checkout Form -->
-            <div class="glass rounded-2xl p-8">
-                <h3 class="text-xl font-bold mb-6">Fullfør Oppgradering</h3>
+            <div class="mb-8">
+                <h2 class="text-xl font-semibold mb-4">Hva får du med {{ plan.display_name }}?</h2>
+                <p class="text-gray-700 mb-6">{{ plan.description }}</p>
                 
-                <form action="{{ url_for('subscription.checkout', plan_name=plan.name) }}" method="POST" id="checkoutForm">
-                    <!-- Payment Method -->
-                    <div class="mb-6">
-                        <label class="block text-sm font-medium mb-3">Betalingsmetode</label>
-                        <div class="space-y-3">
-                            <label class="flex items-center p-4 border border-gray-700 rounded-lg cursor-pointer hover:border-purple-500 transition">
-                                <input type="radio" name="payment_method" value="card" checked class="mr-3">
-                                <i class="fas fa-credit-card mr-3 text-blue-400"></i>
-                                <span>Kort (Visa, Mastercard)</span>
-                            </label>
-                            <label class="flex items-center p-4 border border-gray-700 rounded-lg cursor-pointer hover:border-purple-500 transition">
-                                <input type="radio" name="payment_method" value="vipps" class="mr-3">
-                                <i class="fas fa-mobile-alt mr-3 text-orange-400"></i>
-                                <span>Vipps</span>
-                            </label>
-                        </div>
+                {% if plan.name == 'pro' %}
+                <div class="grid md:grid-cols-2 gap-4">
+                    <div class="flex items-center p-3 bg-green-50 rounded-lg">
+                        <svg class="w-5 h-5 text-green-500 mr-3" fill="currentColor" viewBox="0 0 20 20">
+                            <path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd"></path>
+                        </svg>
+                        <span class="text-gray-800">Alt fra Premium Plan</span>
                     </div>
-
-                    <!-- Order Summary -->
-                    <div class="mb-6 p-4 bg-gray-800/50 rounded-lg">
-                        <h4 class="font-semibold mb-3">Ordresammendrag</h4>
-                        <div class="space-y-2">
-                            <div class="flex justify-between">
-                                <span>{{ plan.display_name }} (1 måned)</span>
-                                <span>{{ plan.price_nok|int }} NOK</span>
-                            </div>
-                            <hr class="border-gray-700">
-                            <div class="flex justify-between font-bold text-lg">
-                                <span>Total</span>
-                                <span>{{ plan.price_nok|int }} NOK</span>
-                            </div>
-                        </div>
+                    <div class="flex items-center p-3 bg-green-50 rounded-lg">
+                        <svg class="w-5 h-5 text-green-500 mr-3" fill="currentColor" viewBox="0 0 20 20">
+                            <path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd"></path>
+                        </svg>
+                        <span class="text-gray-800">Offline modus for læring uten internett</span>
                     </div>
-
-                    <!-- Terms and Conditions -->
-                    <div class="mb-6">
-                        <label class="flex items-start">
-                            <input type="checkbox" name="terms_accepted" required class="mt-1 mr-3">
-                            <span class="text-sm text-gray-400">
-                                Jeg godtar vilkårene og personvernpolitikken. 
-                                Abonnementet fornyes automatisk hver måned.
-                            </span>
-                        </label>
+                    <div class="flex items-center p-3 bg-green-50 rounded-lg">
+                        <svg class="w-5 h-5 text-green-500 mr-3" fill="currentColor" viewBox="0 0 20 20">
+                            <path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd"></path>
+                        </svg>
+                        <span class="text-gray-800">Personlig AI-veileder</span>
                     </div>
+                    <div class="flex items-center p-3 bg-green-50 rounded-lg">
+                        <svg class="w-5 h-5 text-green-500 mr-3" fill="currentColor" viewBox="0 0 20 20">
+                            <path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd"></path>
+                        </svg>
+                        <span class="text-gray-800">Avansert læringsanalyse</span>
+                    </div>
+                    <div class="flex items-center p-3 bg-green-50 rounded-lg">
+                        <svg class="w-5 h-5 text-green-500 mr-3" fill="currentColor" viewBox="0 0 20 20">
+                            <path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd"></path>
+                        </svg>
+                        <span class="text-gray-800">Raskere kundesupport</span>
+                    </div>
+                    <div class="flex items-center p-3 bg-green-50 rounded-lg">
+                        <svg class="w-5 h-5 text-green-500 mr-3" fill="currentColor" viewBox="0 0 20 20">
+                            <path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd"></path>
+                        </svg>
+                        <span class="text-gray-800">Tidlig tilgang til nye funksjoner</span>
+                    </div>
+                </div>
+                {% elif plan.name == 'premium' %}
+                <div class="grid md:grid-cols-2 gap-4">
+                    <div class="flex items-center p-3 bg-green-50 rounded-lg">
+                        <svg class="w-5 h-5 text-green-500 mr-3" fill="currentColor" viewBox="0 0 20 20">
+                            <path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd"></path>
+                        </svg>
+                        <span class="text-gray-800">Ubegrenset quiz og prøveeksamener</span>
+                    </div>
+                    <div class="flex items-center p-3 bg-green-50 rounded-lg">
+                        <svg class="w-5 h-5 text-green-500 mr-3" fill="currentColor" viewBox="0 0 20 20">
+                            <path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd"></path>
+                        </svg>
+                        <span class="text-gray-800">Alle videoer og læringsmateriell</span>
+                    </div>
+                    <div class="flex items-center p-3 bg-green-50 rounded-lg">
+                        <svg class="w-5 h-5 text-green-500 mr-3" fill="currentColor" viewBox="0 0 20 20">
+                            <path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd"></path>
+                        </svg>
+                        <span class="text-gray-800">Detaljert statistikk og fremgang</span>
+                    </div>
+                    <div class="flex items-center p-3 bg-green-50 rounded-lg">
+                        <svg class="w-5 h-5 text-green-500 mr-3" fill="currentColor" viewBox="0 0 20 20">
+                            <path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd"></path>
+                        </svg>
+                        <span class="text-gray-800">AI-tilpasset læring</span>
+                    </div>
+                    <div class="flex items-center p-3 bg-green-50 rounded-lg">
+                        <svg class="w-5 h-5 text-green-500 mr-3" fill="currentColor" viewBox="0 0 20 20">
+                            <path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd"></path>
+                        </svg>
+                        <span class="text-gray-800">Ingen annonser</span>
+                    </div>
+                    <div class="flex items-center p-3 bg-green-50 rounded-lg">
+                        <svg class="w-5 h-5 text-green-500 mr-3" fill="currentColor" viewBox="0 0 20 20">
+                            <path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd"></path>
+                        </svg>
+                        <span class="text-gray-800">Prioritert kundesupport</span>
+                    </div>
+                </div>
+                {% endif %}
+            </div>
 
-                    <!-- Submit Button -->
-                    <button type="submit" 
-                            class="w-full py-4 bg-gradient-to-r from-purple-600 to-pink-600 rounded-lg text-lg font-bold hover:from-purple-700 hover:to-pink-700 transition">
-                        <i class="fas fa-lock mr-2"></i>
-                        Betal Trygt {{ plan.price_nok|int }} NOK
-                    </button>
-                </form>
-
-                <!-- Security Notice -->
-                <div class="mt-6 flex items-center justify-center text-sm text-gray-400">
-                    <i class="fas fa-shield-alt mr-2"></i>
-                    <span>Sikker betaling med 256-bit SSL kryptering</span>
+            <!-- Benefits Comparison -->
+            <div class="mb-8 p-6 bg-blue-50 rounded-lg">
+                <h3 class="text-lg font-semibold mb-4 text-blue-800">Sammenlignet med Gratis plan:</h3>
+                <div class="space-y-3 text-base">
+                    <div class="flex justify-between items-center">
+                        <span class="font-medium text-gray-800">Quiz per dag:</span>
+                        <span class="font-bold text-blue-600 text-lg">10 → Ubegrenset</span>
+                    </div>
+                    <div class="flex justify-between items-center">
+                        <span class="font-medium text-gray-800">Prøveeksamener per uke:</span>
+                        <span class="font-bold text-blue-600 text-lg">2 → Ubegrenset</span>
+                    </div>
+                    <div class="flex justify-between items-center">
+                        <span class="font-medium text-gray-800">Annonser:</span>
+                        <span class="font-bold text-blue-600 text-lg">Ja → Nei</span>
+                    </div>
+                    <div class="flex justify-between items-center">
+                        <span class="font-medium text-gray-800">Videoer og AI-læring:</span>
+                        <span class="font-bold text-blue-600 text-lg">Nei → Ja</span>
+                    </div>
                 </div>
             </div>
-        </div>
 
-        <!-- Benefits Highlight -->
-        <div class="mt-12 glass rounded-2xl p-8">
-            <h2 class="text-xl font-bold mb-6 text-center">Hvorfor oppgradere?</h2>
-            <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
-                <div class="text-center">
-                    <div class="w-16 h-16 bg-purple-600/20 rounded-full flex items-center justify-center mx-auto mb-4">
-                        <i class="fas fa-infinity text-purple-400 text-2xl"></i>
-                    </div>
-                    <h3 class="font-semibold mb-2">Ubegrensede Quiz</h3>
-                    <p class="text-sm text-gray-400">Ta så mange quiz og prøveeksamener du ønsker</p>
-                </div>
-                <div class="text-center">
-                    <div class="w-16 h-16 bg-green-600/20 rounded-full flex items-center justify-center mx-auto mb-4">
-                        <i class="fas fa-video text-green-400 text-2xl"></i>
-                    </div>
-                    <h3 class="font-semibold mb-2">Premium Innhold</h3>
-                    <p class="text-sm text-gray-400">Tilgang til alle instruksjonsvideoer og eksklusivt innhold</p>
-                </div>
-                <div class="text-center">
-                    <div class="w-16 h-16 bg-blue-600/20 rounded-full flex items-center justify-center mx-auto mb-4">
-                        <i class="fas fa-chart-line text-blue-400 text-2xl"></i>
-                    </div>
-                    <h3 class="font-semibold mb-2">Detaljert Analyse</h3>
-                    <p class="text-sm text-gray-400">Få dybdeinnsikt i din fremgang og svake punkter</p>
-                </div>
+            <!-- Action Buttons -->
+            <div class="flex space-x-4">
+                <a href="{{ url_for('subscription.checkout', plan_name=plan.name) }}" 
+                   class="flex-1 bg-blue-600 text-white text-center font-semibold py-4 px-6 rounded-lg hover:bg-blue-700 transition duration-200">
+                    Fortsett til betaling
+                </a>
+                <a href="{{ url_for('subscription.plans') }}" 
+                   class="flex-1 bg-gray-200 text-gray-800 text-center font-semibold py-4 px-6 rounded-lg hover:bg-gray-300 transition duration-200">
+                    Se alle planer
+                </a>
+            </div>
+
+            <!-- Guarantee -->
+            <div class="mt-8 text-center text-sm text-gray-600">
+                <p>✅ 30 dagers pengene-tilbake-garanti</p>
+                <p>✅ Kanseller når som helst, ingen bindingstid</p>
+                <p>✅ Øyeblikkelig tilgang til alle funksjoner</p>
             </div>
         </div>
     </div>
-</section>
+</div>
 {% endblock %}
