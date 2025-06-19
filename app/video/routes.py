@@ -16,6 +16,7 @@ video_bp = Blueprint('video', __name__, url_prefix='/video')
 
 @video_bp.route('/')
 @login_required
+@video_access_required
 def index():
     """Video library main page"""
     # Get categories
@@ -47,6 +48,7 @@ def index():
 
 @video_bp.route('/category/<int:category_id>')
 @login_required
+@video_access_required
 def category(category_id):
     """Videos in a specific category"""
     category = VideoCategory.query.get_or_404(category_id)
@@ -309,6 +311,7 @@ def add_to_playlist(playlist_id, video_id):
 
 @video_bp.route('/search')
 @login_required
+@video_access_required
 def search():
     """Search videos"""
     query = request.args.get('q', '').strip()
@@ -333,6 +336,7 @@ def search():
 
 @video_bp.route('/recommended')
 @login_required
+@video_access_required
 def recommended():
     """Personalized recommendations"""
     recommendations = VideoService.get_video_recommendations(current_user, limit=12)
