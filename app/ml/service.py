@@ -165,6 +165,16 @@ class MLService:
     def get_ml_status(self) -> Dict:
         """Get status information about ML system"""
         try:
+            if not self._initialized:
+                return {
+                    'ml_enabled': False,
+                    'skill_profiles': 0,
+                    'question_profiles': 0,
+                    'algorithm_version': 'Not Active',
+                    'features_available': [],
+                    'error': 'ML system not initialized'
+                }
+            
             # Count ML data points
             skill_profiles_count = UserSkillProfile.query.count()
             difficulty_profiles_count = QuestionDifficultyProfile.query.count()
@@ -184,7 +194,14 @@ class MLService:
             }
         except Exception as e:
             logger.error(f"Error getting ML status: {e}")
-            return {'ml_enabled': False, 'error': str(e)}
+            return {
+                'ml_enabled': False, 
+                'error': str(e),
+                'skill_profiles': 0,
+                'question_profiles': 0,
+                'algorithm_version': 'Error',
+                'features_available': []
+            }
     
     # Helper methods
     def _get_fallback_questions(self, category: str = None, num_questions: int = 10) -> List[Question]:

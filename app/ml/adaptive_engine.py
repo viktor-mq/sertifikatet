@@ -38,8 +38,11 @@ class AdaptiveLearningEngine:
         self.confidence_threshold = 0.7
         
     def initialize_models(self):
-        """Initialize ML models"""
+        """Initialize ML models and register them in the database"""
         try:
+            from .models import MLModel
+            
+            # Initialize ML algorithms
             self.skill_estimator = GradientBoostingRegressor(
                 n_estimators=100, learning_rate=0.1, max_depth=6, random_state=42
             )
@@ -47,10 +50,77 @@ class AdaptiveLearningEngine:
                 n_estimators=50, max_depth=8, random_state=42
             )
             self.is_initialized = True
+            
+            # Register or update ML models in database
+            self._register_ml_models()
+            
             logger.info("Adaptive learning engine initialized successfully")
         except Exception as e:
             logger.error(f"Failed to initialize ML models: {e}")
             self.is_initialized = False
+    
+    def _register_ml_models(self):
+        """Register ML models in the database for tracking"""
+        try:
+            from .models import MLModel
+            
+            # First, clean up any old models to ensure clean state
+            try:
+                MLModel.query.delete()
+                db.session.commit()
+                logger.info("Cleaned up existing ML model records")
+            except Exception as cleanup_error:
+                logger.warning(f"Error cleaning up old models: {cleanup_error}")
+                db.session.rollback()
+            
+            # Register Skill Estimator
+            skill_model = MLModel(
+                name='skill_estimator',
+                version='v1.0',
+                description='Gradient Boosting model for estimating user skill levels',
+                hyperparameters=json.dumps({
+                    'n_estimators': 100,
+                    'learning_rate': 0.1,
+                    'max_depth': 6,
+                    'random_state': 42
+                }),
+                created_by=1,  # System user
+                is_active=True,
+                accuracy_score=None,  # Will be calculated during retraining
+                precision_score=None,
+                recall_score=None,
+                f1_score=None,
+                total_predictions=0
+            )
+            db.session.add(skill_model)
+            
+            # Register Difficulty Predictor
+            diff_model = MLModel(
+                name='difficulty_predictor',
+                version='v1.0',
+                description='Random Forest model for predicting question difficulty',
+                hyperparameters=json.dumps({
+                    'n_estimators': 50,
+                    'max_depth': 8,
+                    'random_state': 42
+                }),
+                created_by=1,  # System user
+                is_active=True,
+                accuracy_score=None,  # Will be calculated during retraining
+                precision_score=None,
+                recall_score=None,
+                f1_score=None,
+                total_predictions=0
+            )
+            db.session.add(diff_model)
+            
+            db.session.commit()
+            logger.info("Successfully registered 2 ML models in database")
+            
+        except Exception as e:
+            logger.error(f"Error registering ML models: {e}")
+            db.session.rollback()
+            raise e
     
     def get_user_skill_profile(self, user_id: int, category: str = None) -> Dict:
         """Get comprehensive skill profile for a user"""
@@ -495,6 +565,311 @@ class AdaptiveLearningEngine:
         except Exception as e:
             logger.error(f"Error updating question difficulty profile: {e}")
             db.session.rollback()
+    
+    def rebuild_all_profiles(self) -> Dict:
+        """Rebuild all user skill profiles from historical data"""
+        try:
+            updated_profiles = 0
+            users = User.query.all()
+            
+            for user in users:
+                # Get user's quiz history
+                quiz_sessions = QuizSession.query.filter_by(user_id=user.id).all()
+                
+                if not quiz_sessions:
+                    continue
+                
+                # Clear existing profiles
+                UserSkillProfile.query.filter_by(user_id=user.id).delete()
+                
+                # Rebuild from historical data
+                category_data = {}
+                
+                for session in quiz_sessions:
+                    responses = QuizResponse.query.filter_by(session_id=session.id).all()
+                    
+                    for response in responses:
+                        question = Question.query.get(response.question_id)
+                        if not question:
+                            continue
+                        
+                        category = question.category
+                        if category not in category_data:
+                            category_data[category] = {
+                                'total': 0, 'correct': 0, 'response_times': []
+                            }
+                        
+                        category_data[category]['total'] += 1
+                        if response.is_correct:
+                            category_data[category]['correct'] += 1
+                        
+                        if response.time_spent_seconds:
+                            category_data[category]['response_times'].append(response.time_spent_seconds)
+                
+                # Create new skill profiles
+                for category, data in category_data.items():
+                    if data['total'] < 3:  # Skip categories with too few attempts
+                        continue
+                    
+                    accuracy = data['correct'] / data['total']
+                    avg_time = np.mean(data['response_times']) if data['response_times'] else 15.0
+                    
+                    profile = UserSkillProfile(
+                        user_id=user.id,
+                        category=category,
+                        accuracy_score=accuracy,
+                        confidence_score=min(0.9, accuracy + 0.1),
+                        learning_rate=0.5,
+                        difficulty_preference=accuracy,
+                        avg_response_time=avg_time,
+                        questions_attempted=data['total'],
+                        questions_correct=data['correct']
+                    )
+                    db.session.add(profile)
+                    updated_profiles += 1
+            
+            db.session.commit()
+            return {
+                'success': True,
+                'updated_profiles': updated_profiles,
+                'message': f'Successfully rebuilt {updated_profiles} skill profiles'
+            }
+            
+        except Exception as e:
+            db.session.rollback()
+            logger.error(f'Error rebuilding profiles: {e}')
+            return {
+                'success': False,
+                'error': str(e),
+                'updated_profiles': 0
+            }
+    
+    def retrain_models(self) -> Dict:
+        """Retrain ML models with latest data and calculate real accuracy"""
+        try:
+            from .models import MLModel
+            
+            # Retrain question difficulty models
+            questions_updated = 0
+            questions = Question.query.filter_by(is_active=True).all()
+            
+            difficulty_predictions = []  # Store predictions for accuracy calculation
+            
+            for question in questions:
+                # Get response data for this question
+                responses = db.session.query(QuizResponse).filter_by(
+                    question_id=question.id
+                ).all()
+                
+                if len(responses) < 5:  # Need minimum data
+                    continue
+                
+                # Calculate statistics
+                total_attempts = len(responses)
+                correct_attempts = sum(1 for r in responses if r.is_correct)
+                success_rate = correct_attempts / total_attempts
+                actual_difficulty = 1.0 - success_rate
+                
+                # Get existing difficulty prediction (if any)
+                existing_profile = QuestionDifficultyProfile.query.filter_by(
+                    question_id=question.id
+                ).first()
+                
+                if existing_profile and existing_profile.computed_difficulty:
+                    predicted_difficulty = existing_profile.computed_difficulty
+                else:
+                    # Use our estimation method for new questions
+                    predicted_difficulty = self._estimate_question_difficulty(question)
+                
+                # Store for accuracy calculation
+                difficulty_predictions.append({
+                    'predicted': predicted_difficulty,
+                    'actual': actual_difficulty,
+                    'question_id': question.id
+                })
+                
+                response_times = [r.time_spent_seconds for r in responses if r.time_spent_seconds]
+                avg_time = np.mean(response_times) if response_times else 15.0
+                time_variance = np.var(response_times) if len(response_times) > 1 else 5.0
+                
+                # Update or create difficulty profile
+                profile = QuestionDifficultyProfile.query.filter_by(
+                    question_id=question.id
+                ).first()
+                
+                if not profile:
+                    profile = QuestionDifficultyProfile(question_id=question.id)
+                    db.session.add(profile)
+                
+                profile.computed_difficulty = actual_difficulty
+                profile.total_attempts = total_attempts
+                profile.correct_attempts = correct_attempts
+                profile.avg_response_time = avg_time
+                profile.response_time_variance = time_variance
+                profile.discrimination_power = min(1.0, time_variance / avg_time)
+                profile.learning_value = 0.5 + (0.3 * profile.discrimination_power)
+                
+                questions_updated += 1
+            
+            # Calculate model accuracies
+            skill_accuracy = self._calculate_skill_estimator_accuracy()
+            difficulty_accuracy = self._calculate_difficulty_predictor_accuracy(difficulty_predictions)
+            
+            # Re-initialize models
+            self.initialize_models()
+            
+            # Update model tracking with real accuracy scores
+            skill_model = MLModel.query.filter_by(name='skill_estimator', is_active=True).first()
+            if skill_model:
+                skill_model.accuracy_score = skill_accuracy['accuracy'] if skill_accuracy else None
+                skill_model.precision_score = skill_accuracy['precision'] if skill_accuracy else None
+                skill_model.recall_score = skill_accuracy['recall'] if skill_accuracy else None
+                skill_model.f1_score = skill_accuracy['f1'] if skill_accuracy else None
+                skill_model.last_retrained = datetime.now()
+                skill_model.total_predictions = (skill_model.total_predictions or 0) + len(difficulty_predictions)
+            
+            diff_model = MLModel.query.filter_by(name='difficulty_predictor', is_active=True).first()
+            if diff_model:
+                diff_model.accuracy_score = difficulty_accuracy['accuracy'] if difficulty_accuracy else None
+                diff_model.precision_score = difficulty_accuracy['precision'] if difficulty_accuracy else None
+                diff_model.recall_score = difficulty_accuracy['recall'] if difficulty_accuracy else None
+                diff_model.f1_score = difficulty_accuracy['f1'] if difficulty_accuracy else None
+                diff_model.last_retrained = datetime.now()
+                diff_model.total_predictions = (diff_model.total_predictions or 0) + len(difficulty_predictions)
+            
+            db.session.commit()
+            
+            return {
+                'success': True,
+                'message': f'Retrained models with {questions_updated} question profiles. Accuracy calculated from real data.',
+                'questions_updated': questions_updated,
+                'skill_accuracy': skill_accuracy['accuracy'] if skill_accuracy else 'No data',
+                'difficulty_accuracy': difficulty_accuracy['accuracy'] if difficulty_accuracy else 'No data'
+            }
+            
+        except Exception as e:
+            db.session.rollback()
+            logger.error(f'Error retraining models: {e}')
+            return {
+                'success': False,
+                'error': str(e),
+                'questions_updated': 0
+            }
+    
+    def _calculate_skill_estimator_accuracy(self) -> Dict:
+        """Calculate accuracy of skill estimation based on prediction vs actual performance"""
+        try:
+            # Get users with enough data for validation
+            users_with_data = db.session.query(User).join(
+                QuizSession, User.id == QuizSession.user_id
+            ).group_by(User.id).having(
+                db.func.count(QuizSession.id) >= 3
+            ).all()
+            
+            if len(users_with_data) < 10:  # Need minimum users for reliable accuracy
+                return None
+            
+            predictions = []
+            actuals = []
+            
+            for user in users_with_data:
+                # Get user's historical skill estimate
+                skill_profile = self.get_user_skill_profile(user.id)
+                predicted_skill = skill_profile['overall_accuracy']
+                
+                # Get actual recent performance
+                recent_sessions = QuizSession.query.filter_by(
+                    user_id=user.id
+                ).order_by(QuizSession.completed_at.desc()).limit(5).all()
+                
+                if recent_sessions:
+                    total_questions = sum(s.total_questions or 0 for s in recent_sessions)
+                    total_correct = sum(s.correct_answers or 0 for s in recent_sessions)
+                    actual_skill = total_correct / total_questions if total_questions > 0 else 0
+                    
+                    predictions.append(predicted_skill)
+                    actuals.append(actual_skill)
+            
+            if len(predictions) < 5:
+                return None
+                
+            # Calculate metrics
+            predictions = np.array(predictions)
+            actuals = np.array(actuals)
+            
+            # Mean Absolute Error converted to accuracy
+            mae = np.mean(np.abs(predictions - actuals))
+            accuracy = max(0, 1 - mae)  # Convert MAE to accuracy (1 = perfect, 0 = worst)
+            
+            # Convert to classification for precision/recall (>0.7 = high skill)
+            pred_high = (predictions > 0.7).astype(int)
+            actual_high = (actuals > 0.7).astype(int)
+            
+            from sklearn.metrics import precision_score, recall_score, f1_score
+            
+            # Handle edge cases
+            if len(np.unique(actual_high)) == 1:
+                precision = recall = f1 = accuracy
+            else:
+                precision = precision_score(actual_high, pred_high, zero_division=0)
+                recall = recall_score(actual_high, pred_high, zero_division=0)
+                f1 = f1_score(actual_high, pred_high, zero_division=0)
+            
+            return {
+                'accuracy': round(accuracy, 3),
+                'precision': round(precision, 3),
+                'recall': round(recall, 3),
+                'f1': round(f1, 3)
+            }
+            
+        except Exception as e:
+            logger.error(f'Error calculating skill estimator accuracy: {e}')
+            return None
+    
+    def _calculate_difficulty_predictor_accuracy(self, predictions_data: List[Dict]) -> Dict:
+        """Calculate accuracy of difficulty prediction based on predicted vs actual difficulty"""
+        try:
+            if len(predictions_data) < 10:  # Need minimum questions for reliable accuracy
+                return None
+            
+            predictions = []
+            actuals = []
+            
+            for item in predictions_data:
+                predictions.append(item['predicted'])
+                actuals.append(item['actual'])
+            
+            predictions = np.array(predictions)
+            actuals = np.array(actuals)
+            
+            # Calculate Mean Absolute Error and convert to accuracy
+            mae = np.mean(np.abs(predictions - actuals))
+            accuracy = max(0, 1 - mae)
+            
+            # Convert to classification (>0.6 = difficult)
+            pred_difficult = (predictions > 0.6).astype(int)
+            actual_difficult = (actuals > 0.6).astype(int)
+            
+            from sklearn.metrics import precision_score, recall_score, f1_score
+            
+            # Handle edge cases
+            if len(np.unique(actual_difficult)) == 1:
+                precision = recall = f1 = accuracy
+            else:
+                precision = precision_score(actual_difficult, pred_difficult, zero_division=0)
+                recall = recall_score(actual_difficult, pred_difficult, zero_division=0)
+                f1 = f1_score(actual_difficult, pred_difficult, zero_division=0)
+            
+            return {
+                'accuracy': round(accuracy, 3),
+                'precision': round(precision, 3),
+                'recall': round(recall, 3),
+                'f1': round(f1, 3)
+            }
+            
+        except Exception as e:
+            logger.error(f'Error calculating difficulty predictor accuracy: {e}')
+            return None
     
     def _finalize_adaptive_session(self, session_id: int, final_accuracy: float, responses: List[Dict]):
         """Update adaptive session with final results"""

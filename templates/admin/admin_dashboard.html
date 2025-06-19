@@ -30,6 +30,7 @@
             <a href="#" class="btn" onclick="showSection('reports')" id="reportsTab">🛡️ Reports & Security</a>
             <a href="#" class="btn" onclick="showSection('manageUsers')" id="manageUsersTab">👥 Manage Users</a>
             <a href="#" class="btn" onclick="showSection('auditLog')" id="auditLogTab">📜 Audit Log</a>
+            <a href="{{ url_for('admin.ml_settings') }}" class="btn">🤖 ML Settings</a>
             <a href="{{ url_for('admin.marketing_emails') }}" class="btn">📧 Marketing</a>
         </div>
 
@@ -80,6 +81,14 @@
             // Show section that is already marked as active, or default to 'questions'
             const defaultSection = document.querySelector('.section.active')?.id?.replace('Section', '') || 'questions';
             showSection(defaultSection);
+            
+            // Handle external links in tabs (ML Settings, Marketing)
+            document.querySelectorAll('.section-tabs a[href]:not([href="#"])').forEach(link => {
+                link.addEventListener('click', function(e) {
+                    // Allow the link to navigate normally for external pages
+                    return true;
+                });
+            });
         });
     </script>
     
