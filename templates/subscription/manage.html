@@ -116,6 +116,12 @@
                     </a>
                     {% endif %}
                     
+                    <!-- Plan Change Options -->
+                    <button onclick="showPlanChangeModal()" 
+                            class="w-full py-3 bg-gradient-to-r from-gray-600 to-gray-700 text-white rounded-lg font-semibold hover:from-gray-700 hover:to-gray-800 transition">
+                        <i class="fas fa-exchange-alt mr-2"></i>Endre Abonnement
+                    </button>
+                    
                     {% if subscription_stats.status == 'active' and subscription_stats.auto_renew %}
                     <button onclick="showCancelModal()" 
                             class="w-full py-3 bg-gray-700 text-white rounded-lg font-semibold hover:bg-gray-600 transition">
@@ -173,6 +179,33 @@
     </div>
 </section>
 
+<!-- Plan Change Modal -->
+<div id="planChangeModal" class="fixed inset-0 bg-black bg-opacity-50 hidden z-50 flex items-center justify-center">
+    <div class="glass rounded-2xl p-8 max-w-4xl mx-4 max-h-[90vh] overflow-y-auto">
+        <div class="flex items-center justify-between mb-6">
+            <h3 class="text-2xl font-bold">Endre Abonnement</h3>
+            <button onclick="hidePlanChangeModal()" class="text-gray-400 hover:text-white">
+                <i class="fas fa-times text-xl"></i>
+            </button>
+        </div>
+        
+        <div class="mb-6">
+            <p class="text-gray-400">Velg en ny plan nedenfor. Du vil kun betale forskjellen hvis du oppgraderer.</p>
+        </div>
+        
+        <div class="grid grid-cols-1 md:grid-cols-3 gap-6" id="planOptions">
+            <!-- Plan options will be loaded here via JavaScript -->
+        </div>
+        
+        <div class="mt-8 flex justify-end space-x-3">
+            <button onclick="hidePlanChangeModal()" 
+                    class="px-6 py-3 bg-gray-700 text-white rounded-lg font-semibold hover:bg-gray-600 transition">
+                Avbryt
+            </button>
+        </div>
+    </div>
+</div>
+
 <!-- Cancel Subscription Modal -->
 <div id="cancelModal" class="fixed inset-0 bg-black bg-opacity-50 hidden z-50 flex items-center justify-center">
     <div class="glass rounded-2xl p-8 max-w-md mx-4">
@@ -217,10 +250,108 @@ function hideCancelModal() {
     document.getElementById('cancelModal').classList.add('hidden');
 }
 
-// Close modal when clicking outside
+function showPlanChangeModal() {
+    document.getElementById('planChangeModal').classList.remove('hidden');
+    loadPlanOptions();
+}
+
+function hidePlanChangeModal() {
+    document.getElementById('planChangeModal').classList.add('hidden');
+}
+
+async function loadPlanOptions() {
+    try {
+        const response = await fetch('{{ url_for("subscription.api_get_plan_options") }}');
+        const data = await response.json();
+        
+        const planOptionsContainer = document.getElementById('planOptions');
+        planOptionsContainer.innerHTML = '';
+        
+        data.plans.forEach(plan => {
+            const planCard = createPlanCard(plan, data.current_plan);
+            planOptionsContainer.appendChild(planCard);
+        });
+    } catch (error) {
+        console.error('Error loading plan options:', error);
+        document.getElementById('planOptions').innerHTML = '<p class="text-red-400 col-span-3 text-center">Kunne ikke laste planer. Prøv igjen senere.</p>';
+    }
+}
+
+function createPlanCard(plan, currentPlan) {
+    const div = document.createElement('div');
+    const isCurrentPlan = plan.name === currentPlan;
+    const canUpgrade = plan.can_upgrade;
+    const upgradeInfo = plan.upgrade_info;
+    
+    div.className = `bg-gray-800/50 rounded-lg p-6 border-2 ${
+        isCurrentPlan ? 'border-purple-500' : 'border-gray-700'
+    } relative`;
+    
+    let priceDisplay = '';
+    let buttonContent = '';
+    
+    if (isCurrentPlan) {
+        priceDisplay = `<p class="text-2xl font-bold text-purple-400">${plan.price} NOK</p><p class="text-sm text-gray-400">Din nåværende plan</p>`;
+        buttonContent = '<span class="px-4 py-2 bg-purple-600 text-white rounded-lg font-semibold">Nåværende Plan</span>';
+    } else if (canUpgrade && upgradeInfo) {
+        if (upgradeInfo.proration_applied) {
+            priceDisplay = `
+                <div class="mb-3">
+                    <p class="text-lg text-gray-400 line-through">${plan.price} NOK</p>
+                    <p class="text-2xl font-bold text-green-400">${upgradeInfo.upgrade_cost.toFixed(2)} NOK</p>
+                    <p class="text-sm text-gray-400">Oppgradering (proporasjon)</p>
+                </div>
+                <div class="text-xs text-green-400 bg-green-400/10 rounded p-2">
+                    <p>💡 Refusjon for ${upgradeInfo.remaining_days} dager</p>
+                    <p>Ny 30-dagers periode starter</p>
+                </div>
+            `;
+        } else {
+            priceDisplay = `<p class="text-2xl font-bold text-green-400">${upgradeInfo.upgrade_cost} NOK</p><p class="text-sm text-gray-400">Oppgradering</p>`;
+        }
+        buttonContent = `<a href="/subscription/upgrade/${plan.name}" class="block w-full px-4 py-2 bg-gradient-to-r from-green-600 to-blue-600 text-center text-white rounded-lg font-semibold hover:from-green-700 hover:to-blue-700 transition">Oppgrader til ${plan.display_name}</a>`;
+    } else if (plan.is_downgrade && plan.name === 'free') {
+        // Special case for Free plan - show cancel option
+        priceDisplay = `<p class="text-2xl font-bold text-gray-400">${plan.price} NOK</p><p class="text-sm text-gray-400">Kanseller abonnement</p>`;
+        buttonContent = '<button onclick="hidePlanChangeModal(); showCancelModal();" class="w-full px-4 py-2 bg-red-600 text-white rounded-lg font-semibold hover:bg-red-700 transition">Kanseller Abonnement</button>';
+    } else if (plan.is_downgrade) {
+        priceDisplay = `<p class="text-2xl font-bold text-gray-400">${plan.price} NOK</p><p class="text-sm text-gray-400">Nedgradering</p>`;
+        buttonContent = '<span class="px-4 py-2 bg-gray-600 text-gray-400 rounded-lg font-semibold cursor-not-allowed">Nedgradering ikke støttet</span>';
+    } else {
+        priceDisplay = `<p class="text-2xl font-bold">${plan.price} NOK</p><p class="text-sm text-gray-400">per måned</p>`;
+        buttonContent = `<a href="/subscription/plans" class="block w-full px-4 py-2 bg-blue-600 text-center text-white rounded-lg font-semibold hover:bg-blue-700 transition">Velg ${plan.display_name}</a>`;
+    }
+    
+    div.innerHTML = `
+        ${isCurrentPlan ? '<div class="absolute -top-3 left-4 bg-purple-600 text-white px-3 py-1 rounded-full text-sm font-semibold">Din Plan</div>' : ''}
+        <div class="text-center mb-4">
+            <h4 class="text-xl font-bold mb-2">${plan.display_name}</h4>
+            ${priceDisplay}
+        </div>
+        <div class="mb-6">
+            <p class="text-gray-400 text-sm mb-4">${plan.description}</p>
+            <ul class="text-sm space-y-2">
+                ${plan.features.map(feature => `<li class="flex items-center"><i class="fas fa-check text-green-400 mr-2"></i>${feature}</li>`).join('')}
+            </ul>
+        </div>
+        <div class="text-center">
+            ${buttonContent}
+        </div>
+    `;
+    
+    return div;
+}
+
+// Close modals when clicking outside
 document.getElementById('cancelModal').addEventListener('click', function(e) {
     if (e.target === this) {
         hideCancelModal();
+    }
+});
+
+document.getElementById('planChangeModal').addEventListener('click', function(e) {
+    if (e.target === this) {
+        hidePlanChangeModal();
     }
 });
 </script>

@@ -10,8 +10,42 @@
         <!-- Plan Details -->
         <div class="bg-blue-50 rounded-lg p-4 mb-6">
             <h2 class="text-xl font-semibold text-blue-800 mb-2">{{ plan.display_name }}</h2>
-            <p class="text-3xl font-bold text-blue-600 mb-2">{{ plan.price_nok|int }} NOK</p>
-            <p class="text-sm text-gray-600 mb-4">per måned</p>
+            
+            {% if is_upgrade and upgrade_info %}
+                <!-- Show upgrade pricing -->
+                <div class="mb-4">
+                    {% if upgrade_info.proration_applied %}
+                        <p class="text-lg text-gray-700 mb-2">Oppgradering med proporasjon</p>
+                        <div class="bg-white rounded p-3 mb-3">
+                            <div class="text-sm space-y-1">
+                                <div class="flex justify-between">
+                                    <span>{{ upgrade_info.target_plan_display }} (full pris):</span>
+                                    <span>{{ upgrade_info.target_price|int }} NOK</span>
+                                </div>
+                                <div class="flex justify-between text-green-600">
+                                    <span>Refusjon ({{ upgrade_info.remaining_days }} dager):</span>
+                                    <span>-{{ upgrade_info.remaining_value|round(2) }} NOK</span>
+                                </div>
+                                <hr class="border-gray-200 my-2">
+                                <div class="flex justify-between font-bold">
+                                    <span>Du betaler i dag:</span>
+                                    <span>{{ upgrade_info.upgrade_cost|round(2) }} NOK</span>
+                                </div>
+                            </div>
+                        </div>
+                        <p class="text-3xl font-bold text-blue-600">{{ upgrade_info.upgrade_cost|round(2) }} NOK</p>
+                        <p class="text-sm text-gray-600">for oppgradering + ny 30-dagers periode</p>
+                    {% else %}
+                        <p class="text-3xl font-bold text-blue-600 mb-2">{{ upgrade_info.upgrade_cost|int }} NOK</p>
+                        <p class="text-sm text-gray-600">første måned, deretter {{ plan.price_nok|int }} NOK/måned</p>
+                    {% endif %}
+                </div>
+            {% else %}
+                <!-- Regular pricing -->
+                <p class="text-3xl font-bold text-blue-600 mb-2">{{ plan.price_nok|int }} NOK</p>
+                <p class="text-sm text-gray-600 mb-4">per måned</p>
+            {% endif %}
+            
             <p class="text-gray-700">{{ plan.description }}</p>
         </div>
 
@@ -155,7 +189,11 @@
 
             <!-- Submit Button -->
             <button type="submit" class="w-full bg-blue-600 text-white font-semibold py-3 px-4 rounded-lg hover:bg-blue-700 transition duration-200">
-                Betal {{ plan.price_nok|int }} NOK og oppgrader
+                {% if is_upgrade and upgrade_info %}
+                    Betal {{ upgrade_info.upgrade_cost|round(2) }} NOK og oppgrader
+                {% else %}
+                    Betal {{ plan.price_nok|int }} NOK og oppgrader
+                {% endif %}
             </button>
         </form>
 
