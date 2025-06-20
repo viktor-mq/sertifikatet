@@ -8,6 +8,188 @@
 {% endblock %}
 
 {% block content %}
+{% if current_user.is_authenticated %}
+<!-- USER DASHBOARD HOMEPAGE -->
+<section class="py-12">
+    <div class="max-w-7xl mx-auto px-6">
+        <!-- Welcome Banner -->
+        <div class="glass rounded-2xl p-8 mb-8 bg-gradient-to-r from-purple-600/10 to-pink-600/10 hover-card">
+            <div class="flex items-center justify-between">
+                <div>
+                    <h1 class="text-3xl font-bold mb-2">
+                        Velkommen tilbake, {{ current_user.full_name or current_user.username }}! 👋
+                    </h1>
+                    <p class="text-gray-400">
+                        {% if current_user.progress and current_user.progress.current_streak_days > 0 %}
+                        Du har en {{ current_user.progress.current_streak_days }} dagers streak! Keep it up! 🔥
+                        {% else %}
+                        La oss fortsette din læringsreise i dag!
+                        {% endif %}
+                    </p>
+                    
+                    <!-- Quick Stats -->
+                    <div class="grid grid-cols-3 gap-6 mt-4">
+                        <div class="text-center">
+                            <div class="text-2xl font-bold text-purple-400">
+                                {{ current_user.progress.total_quizzes_taken if current_user.progress else 0 }}
+                            </div>
+                            <div class="text-sm text-gray-400">Quizzer tatt</div>
+                        </div>
+                        <div class="text-center">
+                            <div class="text-2xl font-bold text-pink-400">
+                                {% if current_user.progress and current_user.progress.total_questions_answered > 0 %}
+                                {{ ((current_user.progress.correct_answers / current_user.progress.total_questions_answered) * 100)|round(1) }}%
+                                {% else %}
+                                0%
+                                {% endif %}
+                            </div>
+                            <div class="text-sm text-gray-400">Nøyaktighet</div>
+                        </div>
+                        <div class="text-center">
+                            <div class="text-2xl font-bold text-blue-400">
+                                {{ current_user.total_xp or 0 }}
+                            </div>
+                            <div class="text-sm text-gray-400">XP poeng</div>
+                        </div>
+                    </div>
+                </div>
+                <div class="hidden md:block text-6xl opacity-20">
+                    🚗
+                </div>
+            </div>
+        </div>
+
+        <!-- Quick Actions -->
+        <div class="grid grid-cols-1 md:grid-cols-4 gap-6 mb-8">
+            <a href="{{ url_for('main.quiz') }}" class="glass rounded-xl p-6 hover-card group">
+                <div class="w-12 h-12 bg-purple-600/20 rounded-lg flex items-center justify-center group-hover:bg-purple-600/30 transition mb-4">
+                    <i class="fas fa-brain text-purple-400 text-xl"></i>
+                </div>
+                <h3 class="text-lg font-semibold mb-2">Fortsett Øving</h3>
+                <p class="text-gray-400 text-sm">Test kunnskapen din</p>
+            </a>
+            
+            <a href="{{ url_for('main.exam') }}" class="glass rounded-xl p-6 hover-card group">
+                <div class="w-12 h-12 bg-green-600/20 rounded-lg flex items-center justify-center group-hover:bg-green-600/30 transition mb-4">
+                    <i class="fas fa-graduation-cap text-green-400 text-xl"></i>
+                </div>
+                <h3 class="text-lg font-semibold mb-2">Prøveeksamen</h3>
+                <p class="text-gray-400 text-sm">45 spørsmål</p>
+            </a>
+            
+            <a href="{{ url_for('main.dashboard') }}" class="glass rounded-xl p-6 hover-card group">
+                <div class="w-12 h-12 bg-blue-600/20 rounded-lg flex items-center justify-center group-hover:bg-blue-600/30 transition mb-4">
+                    <i class="fas fa-chart-line text-blue-400 text-xl"></i>
+                </div>
+                <h3 class="text-lg font-semibold mb-2">Dashboard</h3>
+                <p class="text-gray-400 text-sm">Se detaljert fremgang</p>
+            </a>
+
+            <a href="{{ url_for('main.achievements') }}" class="glass rounded-xl p-6 hover-card group">
+                <div class="w-12 h-12 bg-yellow-600/20 rounded-lg flex items-center justify-center group-hover:bg-yellow-600/30 transition mb-4">
+                    <i class="fas fa-trophy text-yellow-400 text-xl"></i>
+                </div>
+                <h3 class="text-lg font-semibold mb-2">Prestasjoner</h3>
+                <p class="text-gray-400 text-sm">Låse opp belønninger</p>
+            </a>
+        </div>
+
+        <!-- Current Plan Status -->
+        <div class="glass rounded-2xl p-8 mb-8">
+            <div class="flex items-center justify-between mb-6">
+                <h2 class="text-2xl font-bold">Din Plan</h2>
+                <span class="px-3 py-1 bg-{{ 'green' if current_plan == 'pro' else 'purple' if current_plan == 'premium' else 'gray' }}-600 rounded-full text-sm font-semibold">
+                    {{ current_plan.title() }}
+                </span>
+            </div>
+            
+            {% if current_plan == 'free' %}
+            <div class="space-y-4">
+                <div class="flex justify-between">
+                    <span>Daglige spørsmål</span>
+                    <span class="text-purple-400">50/dag</span>
+                </div>
+                <div class="flex justify-between">
+                    <span>Prøveeksamener</span>
+                    <span class="text-purple-400">2/uke</span>
+                </div>
+                <div class="mt-6">
+                    <a href="{{ url_for('subscription.plans') }}" 
+                       class="block w-full text-center py-3 bg-gradient-to-r from-purple-600 to-pink-600 rounded-lg hover:from-pink-600 hover:to-purple-600 transition-all">
+                        Oppgrader til Premium
+                    </a>
+                </div>
+            </div>
+            {% elif current_plan == 'premium' %}
+            <div class="space-y-4">
+                <div class="flex justify-between">
+                    <span><i class="fas fa-check text-green-400 mr-2"></i>Ubegrenset spørsmål</span>
+                </div>
+                <div class="flex justify-between">
+                    <span><i class="fas fa-check text-green-400 mr-2"></i>AI-tilpasset læring</span>
+                </div>
+                <div class="flex justify-between">
+                    <span><i class="fas fa-check text-green-400 mr-2"></i>Detaljert statistikk</span>
+                </div>
+                <div class="mt-6">
+                    <a href="{{ url_for('subscription.manage') }}" 
+                       class="block w-full text-center py-3 border-2 border-purple-600 rounded-lg hover:bg-purple-600 transition-colors">
+                        Administrer Abonnement
+                    </a>
+                </div>
+            </div>
+            {% else %}
+            <div class="space-y-4">
+                <div class="flex justify-between">
+                    <span><i class="fas fa-check text-green-400 mr-2"></i>Alle Premium funksjoner</span>
+                </div>
+                <div class="flex justify-between">
+                    <span><i class="fas fa-check text-green-400 mr-2"></i>Personlig veileder</span>
+                </div>
+                <div class="flex justify-between">
+                    <span><i class="fas fa-check text-green-400 mr-2"></i>Offline-modus</span>
+                </div>
+                <div class="mt-6">
+                    <a href="{{ url_for('subscription.manage') }}" 
+                       class="block w-full text-center py-3 border-2 border-green-600 rounded-lg hover:bg-green-600 transition-colors">
+                        Administrer Abonnement
+                    </a>
+                </div>
+            </div>
+            {% endif %}
+        </div>
+
+        <!-- Progress motivator -->
+        {% if current_user.progress and current_user.progress.total_questions_answered > 0 %}
+        <div class="glass rounded-2xl p-8 bg-gradient-to-r from-orange-600/10 to-red-600/10">
+            <div class="flex items-center justify-between">
+                <div>
+                    <h2 class="text-2xl font-bold mb-2">Fortsett fremgangen! 💪</h2>
+                    <p class="text-gray-400 mb-4">
+                        Du har svart på {{ current_user.progress.total_questions_answered }} spørsmål så langt. 
+                        {% if current_user.progress.total_questions_answered >= 100 %}
+                        Imponerende! Du er godt på vei til å mestre teoriprøven.
+                        {% else %}
+                        Fortsett å øve for å bli enda bedre!
+                        {% endif %}
+                    </p>
+                    <a href="{{ url_for('main.quiz') }}" 
+                       class="inline-block px-6 py-3 bg-gradient-to-r from-orange-600 to-red-600 rounded-lg hover:from-orange-700 hover:to-red-700 transition">
+                        Fortsett øving
+                    </a>
+                </div>
+                <div class="text-center">
+                    <div class="text-5xl font-bold mb-2">{{ current_user.progress.total_questions_answered }}</div>
+                    <div class="text-sm text-gray-400">spørsmål besvart</div>
+                </div>
+            </div>
+        </div>
+        {% endif %}
+    </div>
+</section>
+
+{% else %}
+<!-- MARKETING HOMEPAGE FOR NON-LOGGED IN USERS -->
 <!-- Hero Section -->
 <section class="relative overflow-hidden">
     <!-- Animated Background -->
@@ -168,10 +350,7 @@
         
         <div class="grid grid-cols-1 md:grid-cols-3 gap-8">
             <!-- Free Plan -->
-            <div class="glass rounded-2xl p-8 hover-card relative {% if current_plan == 'free' %}ring-2 ring-purple-500{% endif %}">
-                {% if current_plan == 'free' %}
-                <div class="absolute top-4 right-4 bg-purple-600 text-white px-3 py-1 rounded-full text-sm font-semibold">Din Plan</div>
-                {% endif %}
+            <div class="glass rounded-2xl p-8 hover-card relative">
                 <h3 class="text-2xl font-bold mb-4">Gratis</h3>
                 <div class="text-4xl font-bold mb-6">
                     0 kr<span class="text-lg font-normal">/mnd</span>
@@ -190,44 +369,21 @@
                         2 prøveeksamen per uke
                     </li>
                 </ul>
-                {% if current_plan == 'free' %}
-                    <div class="block w-full text-center py-3 bg-purple-600 rounded-lg">
-                        Nåværende Plan
-                    </div>
-                {% elif current_user.is_authenticated %}
-                    <a href="{{ url_for('subscription.manage') }}" 
-                       class="block w-full text-center py-3 border-2 border-gray-600 rounded-lg hover:bg-gray-600 transition-colors">
-                        Administrer Abonnement
-                    </a>
-                {% else %}
-                    <a href="{{ url_for('auth.register') }}" 
-                       class="block w-full text-center py-3 border-2 border-purple-600 rounded-lg hover:bg-purple-600 transition-colors">
-                        Start Gratis
-                    </a>
-                {% endif %}
+                <a href="{{ url_for('auth.register') }}" 
+                   class="block w-full text-center py-3 border-2 border-purple-600 rounded-lg hover:bg-purple-600 transition-colors">
+                    Start Gratis
+                </a>
             </div>
             
             <!-- Premium Plan -->
-            <div class="glass rounded-2xl p-8 hover-card relative overflow-hidden {% if current_plan == 'premium' %}ring-2 ring-purple-500{% endif %}">
-                {% if current_plan != 'premium' %}
+            <div class="glass rounded-2xl p-8 hover-card relative overflow-hidden">
                 <div class="absolute top-0 right-0 bg-gradient-to-r from-purple-600 to-pink-600 text-xs font-bold px-4 py-2 rounded-bl-lg">
                     MEST POPULÆR
                 </div>
-                {% else %}
-                <div class="absolute top-4 right-4 bg-purple-600 text-white px-3 py-1 rounded-full text-sm font-semibold">Din Plan</div>
-                {% endif %}
                 <h3 class="text-2xl font-bold mb-4">Premium</h3>
-                
-                {% if current_plan == 'premium' %}
-                    <div class="text-4xl font-bold mb-6 text-purple-400">
-                        149 kr<span class="text-lg font-normal">/mnd</span>
-                    </div>
-                {% else %}
-                    <div class="text-4xl font-bold mb-6">
-                        149 kr<span class="text-lg font-normal">/mnd</span>
-                    </div>
-                {% endif %}
-                
+                <div class="text-4xl font-bold mb-6">
+                    149 kr<span class="text-lg font-normal">/mnd</span>
+                </div>
                 <ul class="space-y-3 mb-8">
                     <li class="flex items-center">
                         <i class="fas fa-check text-green-400 mr-3"></i>
@@ -250,65 +406,18 @@
                         Videoforklaringer
                     </li>
                 </ul>
-                
-                {% if current_plan == 'premium' %}
-                    <div class="block w-full text-center py-3 bg-purple-600 rounded-lg">
-                        Nåværende Plan
-                    </div>
-                {% elif current_user.is_authenticated %}
-                    {% if current_plan == 'free' %}
-                        <a href="{{ url_for('subscription.upgrade', plan_name='premium') }}" 
-                           class="block w-full text-center py-3 bg-gradient-to-r from-purple-600 to-pink-600 rounded-lg hover:from-pink-600 hover:to-purple-600 transition-all">
-                            Oppgrader til Premium
-                        </a>
-                    {% else %}
-                        <a href="{{ url_for('subscription.plans') }}" 
-                           class="block w-full text-center py-3 bg-gray-600 rounded-lg hover:bg-gray-500 transition-all">
-                            Se Alle Planer
-                        </a>
-                    {% endif %}
-                {% else %}
-                    <a href="{{ url_for('auth.register') }}" 
-                       class="block w-full text-center py-3 bg-gradient-to-r from-purple-600 to-pink-600 rounded-lg hover:from-pink-600 hover:to-purple-600 transition-all">
-                        Prøv Premium
-                    </a>
-                {% endif %}
+                <a href="{{ url_for('auth.register') }}" 
+                   class="block w-full text-center py-3 bg-gradient-to-r from-purple-600 to-pink-600 rounded-lg hover:from-pink-600 hover:to-purple-600 transition-all">
+                    Prøv Premium
+                </a>
             </div>
             
             <!-- Pro Plan -->
-            <div class="glass rounded-2xl p-8 hover-card relative {% if current_plan == 'pro' %}ring-2 ring-purple-500{% endif %}">
-                {% if current_plan == 'pro' %}
-                <div class="absolute top-4 right-4 bg-purple-600 text-white px-3 py-1 rounded-full text-sm font-semibold">Din Plan</div>
-                {% endif %}
+            <div class="glass rounded-2xl p-8 hover-card relative">
                 <h3 class="text-2xl font-bold mb-4">Pro</h3>
-                
-                {% if current_plan == 'pro' %}
-                    <div class="text-4xl font-bold mb-6 text-purple-400">
-                        249 kr<span class="text-lg font-normal">/mnd</span>
-                    </div>
-                {% elif upgrade_options %}
-                    {% set pro_upgrade = upgrade_options|selectattr('plan.name', 'equalto', 'pro')|first %}
-                    {% if pro_upgrade and pro_upgrade.upgrade_info.proration_applied %}
-                        <div class="mb-3">
-                            <div class="text-2xl text-gray-400 line-through">249 kr</div>
-                            <div class="text-4xl font-bold text-green-400">{{ pro_upgrade.upgrade_info.upgrade_cost|round(2) }} kr</div>
-                            <div class="text-sm text-green-400">Oppgradering (proporasjon)</div>
-                        </div>
-                        <div class="text-xs text-green-400 bg-green-400/10 rounded p-2 mb-6">
-                            💡 Refusjon for {{ pro_upgrade.upgrade_info.remaining_days }} dager<br>
-                            Ny 30-dagers periode starter
-                        </div>
-                    {% else %}
-                        <div class="text-4xl font-bold mb-6">
-                            249 kr<span class="text-lg font-normal">/mnd</span>
-                        </div>
-                    {% endif %}
-                {% else %}
-                    <div class="text-4xl font-bold mb-6">
-                        249 kr<span class="text-lg font-normal">/mnd</span>
-                    </div>
-                {% endif %}
-                
+                <div class="text-4xl font-bold mb-6">
+                    249 kr<span class="text-lg font-normal">/mnd</span>
+                </div>
                 <ul class="space-y-3 mb-8">
                     <li class="flex items-center">
                         <i class="fas fa-check text-green-400 mr-3"></i>
@@ -327,38 +436,10 @@
                         Offline-modus
                     </li>
                 </ul>
-                
-                {% if current_plan == 'pro' %}
-                    <div class="block w-full text-center py-3 bg-purple-600 rounded-lg">
-                        Nåværende Plan
-                    </div>
-                {% elif current_user.is_authenticated %}
-                    {% if current_plan in ['free', 'premium'] %}
-                        <a href="{{ url_for('subscription.upgrade', plan_name='pro') }}" 
-                           class="block w-full text-center py-3 bg-gradient-to-r from-green-600 to-blue-600 rounded-lg hover:from-green-700 hover:to-blue-700 transition-all">
-                            {% if upgrade_options %}
-                                {% set pro_upgrade = upgrade_options|selectattr('plan.name', 'equalto', 'pro')|first %}
-                                {% if pro_upgrade %}
-                                    Oppgrader til Pro ({{ pro_upgrade.upgrade_info.upgrade_cost|round(2) }} kr)
-                                {% else %}
-                                    Oppgrader til Pro
-                                {% endif %}
-                            {% else %}
-                                Oppgrader til Pro
-                            {% endif %}
-                        </a>
-                    {% else %}
-                        <a href="{{ url_for('subscription.plans') }}" 
-                           class="block w-full text-center py-3 border-2 border-purple-600 rounded-lg hover:bg-purple-600 transition-colors">
-                            Se Alle Planer
-                        </a>
-                    {% endif %}
-                {% else %}
-                    <a href="{{ url_for('auth.register') }}" 
-                       class="block w-full text-center py-3 border-2 border-purple-600 rounded-lg hover:bg-purple-600 transition-colors">
-                        Velg Pro
-                    </a>
-                {% endif %}
+                <a href="{{ url_for('auth.register') }}" 
+                   class="block w-full text-center py-3 border-2 border-purple-600 rounded-lg hover:bg-purple-600 transition-colors">
+                    Velg Pro
+                </a>
             </div>
         </div>
     </div>
@@ -384,6 +465,7 @@
         </div>
     </div>
 </section>
+{% endif %}
 {% endblock %}
 
 {% block extra_js %}
