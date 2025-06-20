@@ -19,8 +19,24 @@ def offline():
 
 @main_bp.route('/')
 def index():
-    """Home page"""
-    return render_template('index.html')
+    """Home page with dynamic subscription plans"""
+    # Get subscription data if user is authenticated
+    current_plan = 'free'
+    subscription_stats = None
+    upgrade_options = []
+    
+    if current_user.is_authenticated:
+        from ..services.payment_service import SubscriptionService
+        from ..services.upgrade_service import UpgradeService
+        
+        current_plan = SubscriptionService.get_user_plan(current_user.id)
+        subscription_stats = SubscriptionService.get_subscription_stats(current_user.id)
+        upgrade_options = UpgradeService.get_upgrade_options(current_user.id)
+    
+    return render_template('index.html', 
+                         current_plan=current_plan,
+                         subscription_stats=subscription_stats,
+                         upgrade_options=upgrade_options)
 
 
 # Legacy route support for templates that use url_for('index')
