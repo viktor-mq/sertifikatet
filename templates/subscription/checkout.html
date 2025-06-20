@@ -167,9 +167,16 @@
                     <label class="flex items-center">
                         <input type="radio" name="payment_method" value="stripe" checked class="mr-2">
                         <span class="flex items-center text-gray-700">
-                            Kort (Visa, Mastercard)
-                            <img src="https://js.stripe.com/v3/fingerprinted/img/visa-729c05c240c4bdb47b03ac81d9945bfe.svg" alt="Visa" class="ml-2 h-4">
-                            <img src="https://js.stripe.com/v3/fingerprinted/img/mastercard-4d8844094130711885b5e41b28c9848f.svg" alt="Mastercard" class="ml-1 h-4">
+                            Kort
+                            <div class="flex items-center ml-2 space-x-1">
+                                <img src="https://js.stripe.com/v3/fingerprinted/img/visa-729c05c240c4bdb47b03ac81d9945bfe.svg" alt="Visa" class="h-6 w-auto">
+                                <img src="https://js.stripe.com/v3/fingerprinted/img/mastercard-4d8844094130711885b5e41b28c9848f.svg" alt="Mastercard" class="h-6 w-auto">
+                                <img src="https://cdn.jsdelivr.net/gh/aaronfagan/svg-credit-card-payment-icons/flat/amex.svg" alt="American Express" class="h-6 w-auto">
+                                <!-- Rotating card slot -->
+                                <div class="relative h-6 w-16 overflow-hidden">
+                                    <img id="rotating-card" src="https://js.stripe.com/v3/fingerprinted/img/discover-ac52cd46f89fa40a29a0bfb954e33173.svg" alt="Discover" class="h-6 w-auto absolute inset-0 transition-opacity duration-500">
+                                </div>
+                            </div>
                         </span>
                     </label>
                     <label class="flex items-center opacity-50">
@@ -218,10 +225,64 @@
 </div>
 {% endblock %}
 
-{% block scripts %}
+{% block extra_js %}
 <script>
-// Add any checkout-specific JavaScript here
+// Card rotation animation
 document.addEventListener('DOMContentLoaded', function() {
+    // Wait a bit for the page to fully render
+    setTimeout(() => {
+        const rotatingCard = document.getElementById('rotating-card');
+        
+        if (!rotatingCard) {
+            return;
+        }
+        
+        const cards = [
+            {
+                src: 'https://js.stripe.com/v3/fingerprinted/img/discover-ac52cd46f89fa40a29a0bfb954e33173.svg',
+                alt: 'Discover'
+            },
+            {
+                src: 'https://cdn.jsdelivr.net/gh/aaronfagan/svg-credit-card-payment-icons/flat/diners.svg',
+                alt: 'Diners Club'
+            },
+            {
+                src: 'https://cdn.jsdelivr.net/gh/aaronfagan/svg-credit-card-payment-icons/flat/jcb.svg',
+                alt: 'JCB'
+            },
+            {
+                src: 'https://cdn.jsdelivr.net/gh/aaronfagan/svg-credit-card-payment-icons/flat/unionpay.svg',
+                alt: 'UnionPay'
+            }
+        ];
+        
+        let currentIndex = 0;
+        
+        function rotateCard() {
+            // Fade out with CSS transition
+            rotatingCard.style.transition = 'opacity 0.3s ease';
+            rotatingCard.style.opacity = '0';
+            
+            // Change image after fade out completes
+            setTimeout(() => {
+                currentIndex = (currentIndex + 1) % cards.length;
+                rotatingCard.src = cards[currentIndex].src;
+                rotatingCard.alt = cards[currentIndex].alt;
+                
+                // Fade back in
+                rotatingCard.style.opacity = '1';
+            }, 300);
+        }
+        
+        // Start rotation after 3 seconds, then every 4 seconds
+        setTimeout(() => {
+            rotateCard();
+            setInterval(rotateCard, 4000);
+        }, 3000);
+        
+    }, 500); // Wait 500ms for page to render
+    
+    // Checkout form handling
     const form = document.querySelector('form');
     const submitButton = form.querySelector('button[type="submit"]');
     
