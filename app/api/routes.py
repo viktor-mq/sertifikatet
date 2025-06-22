@@ -1,4 +1,5 @@
 from flask import jsonify, request, session, current_app
+from flask_login import current_user
 import os
 from . import api_bp
 from .. import db
@@ -129,11 +130,11 @@ def get_stats():
 @api_bp.route('/progress/dashboard', methods=['GET'])
 def get_progress_dashboard():
     """Get user progress dashboard data"""
-    if 'user_id' not in session:
+    if not current_user.is_authenticated:
         return jsonify({'error': 'Authentication required'}), 401
     
     progress_service = ProgressService()
-    dashboard_data = progress_service.get_user_dashboard_data(session['user_id'])
+    dashboard_data = progress_service.get_user_dashboard_data(current_user.id)
     
     return jsonify(dashboard_data)
 
@@ -141,11 +142,11 @@ def get_progress_dashboard():
 @api_bp.route('/progress/category/<category>', methods=['GET'])
 def get_category_progress(category):
     """Get detailed progress for a specific category"""
-    if 'user_id' not in session:
+    if not current_user.is_authenticated:
         return jsonify({'error': 'Authentication required'}), 401
     
     progress_service = ProgressService()
-    dashboard_data = progress_service.get_user_dashboard_data(session['user_id'])
+    dashboard_data = progress_service.get_user_dashboard_data(current_user.id)
     
     # Find the specific category
     category_data = None
@@ -164,11 +165,11 @@ def get_category_progress(category):
 @api_bp.route('/achievements', methods=['GET'])
 def get_achievements():
     """Get all achievements for the current user"""
-    if 'user_id' not in session:
+    if not current_user.is_authenticated:
         return jsonify({'error': 'Authentication required'}), 401
     
     achievement_service = AchievementService()
-    achievements = achievement_service.get_user_achievements(session['user_id'])
+    achievements = achievement_service.get_user_achievements(current_user.id)
     
     return jsonify({
         'achievements': achievements,
@@ -180,11 +181,11 @@ def get_achievements():
 @api_bp.route('/achievements/check', methods=['POST'])
 def check_achievements():
     """Check for new achievements and award them"""
-    if 'user_id' not in session:
+    if not current_user.is_authenticated:
         return jsonify({'error': 'Authentication required'}), 401
     
     achievement_service = AchievementService()
-    new_achievements = achievement_service.check_achievements(session['user_id'])
+    new_achievements = achievement_service.check_achievements(current_user.id)
     
     return jsonify({
         'new_achievements': [
@@ -217,9 +218,9 @@ def get_leaderboard():
     
     # Get current user's rank if logged in
     user_rank = None
-    if 'user_id' in session:
+    if current_user.is_authenticated:
         user_rank = leaderboard_service.get_user_rank(
-            session['user_id'],
+            current_user.id,
             leaderboard_type=leaderboard_type,
             category=category
         )
@@ -235,7 +236,7 @@ def get_leaderboard():
 @api_bp.route('/leaderboard/user-rank', methods=['GET'])
 def get_user_rank():
     """Get current user's rank in leaderboards"""
-    if 'user_id' not in session:
+    if not current_user.is_authenticated:
         return jsonify({'error': 'Authentication required'}), 401
     
     leaderboard_type = request.args.get('type', 'weekly')
@@ -243,7 +244,7 @@ def get_user_rank():
     
     leaderboard_service = LeaderboardService()
     user_rank = leaderboard_service.get_user_rank(
-        session['user_id'],
+        current_user.id,
         leaderboard_type=leaderboard_type,
         category=category
     )
@@ -263,10 +264,10 @@ def get_user_rank():
 @api_bp.route('/leaderboard/update', methods=['POST'])
 def update_leaderboards():
     """Update leaderboards for current user"""
-    if 'user_id' not in session:
+    if not current_user.is_authenticated:
         return jsonify({'error': 'Authentication required'}), 401
     
     leaderboard_service = LeaderboardService()
-    leaderboard_service.update_leaderboards(session['user_id'])
+    leaderboard_service.update_leaderboards(current_user.id)
     
     return jsonify({'message': 'Leaderboards updated successfully'})
