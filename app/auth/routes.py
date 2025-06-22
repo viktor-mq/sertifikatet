@@ -72,12 +72,22 @@ def register():
             flash('E-postadressen er allerede registrert', 'error')
             return redirect(url_for('auth.register'))
         
+        # Get default free subscription plan
+        from ..payment_models import SubscriptionPlan
+
+        free_plan = SubscriptionPlan.query.filter_by(name='free').first()
+        if not free_plan:
+            flash('Registreringsfeil: Gratis plan ikke funnet. Kontakt support.', 'error')
+            return redirect(url_for('auth.register'))
+
         # Create new user
         user = User(
             username=username,
             email=email,
             password_hash=generate_password_hash(password),
-            full_name=full_name
+            full_name=full_name,
+            subscription_tier='free',  # Legacy field
+            current_plan_id=free_plan.id  # Correct field
         )
         
         db.session.add(user)

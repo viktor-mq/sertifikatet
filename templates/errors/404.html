@@ -1,0 +1,59 @@
+<!-- templates/errors/404.html -->
+{% extends "base.html" %}
+
+{% block title %}Side ikke funnet - Sertifikatet{% endblock %}
+
+{% block content %}
+<div class="min-h-screen bg-gradient-to-b from-blue-50 to-white flex items-center">
+    <div class="container mx-auto px-4">
+        <div class="text-center">
+            <!-- Error Illustration -->
+            <div class="mb-8">
+                <svg class="w-64 h-64 mx-auto text-blue-300" fill="currentColor" viewBox="0 0 20 20">
+                    <path fill-rule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7 4a1 1 0 11-2 0 1 1 0 012 0zm-1-9a1 1 0 00-1 1v4a1 1 0 102 0V6a1 1 0 00-1-1z" clip-rule="evenodd"></path>
+                </svg>
+            </div>
+            
+            <!-- Error Message -->
+            <h1 class="text-6xl font-bold text-gray-900 mb-4">404</h1>
+            <h2 class="text-3xl font-semibold text-gray-700 mb-6">Side ikke funnet</h2>
+            <p class="text-xl text-gray-600 mb-8 max-w-2xl mx-auto">
+                Beklager! Siden du leter etter finnes ikke. Den kan ha blitt flyttet, slettet, eller du skrev inn feil adresse.
+            </p>
+            
+            <!-- Action Buttons -->
+            <div class="space-y-4 sm:space-y-0 sm:space-x-4 sm:flex sm:justify-center">
+                <a href="{{ url_for('main.index') }}" 
+                   class="inline-flex items-center px-6 py-3 border border-transparent text-base font-medium rounded-md text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 transition-colors">
+                    🏠 Gå til forsiden
+                </a>
+                
+                <button onclick="history.back()" 
+                        class="inline-flex items-center px-6 py-3 border border-gray-300 text-base font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 transition-colors">
+                    ← Gå tilbake
+                </button>
+            </div>
+            
+            <!-- Helpful Links -->
+            <div class="mt-12">
+                <h3 class="text-lg font-medium text-gray-900 mb-4">Kanskje du leter etter:</h3>
+                <div class="grid grid-cols-1 sm:grid-cols-3 gap-4 max-w-2xl mx-auto">
+                    <a href="{{ url_for('main.quiz_categories') }}" class="bg-white rounded-lg shadow p-4 hover:shadow-md transition-shadow">
+                        <div class="text-blue-600 text-lg font-medium">📝 Quiz</div>
+                        <div class="text-gray-600 text-sm">Ta en quiz for å øve</div>
+                    </a>
+                    <a href="{{ url_for('main.dashboard') if current_user.is_authenticated else url_for('auth.login') }}" 
+                       class="bg-white rounded-lg shadow p-4 hover:shadow-md transition-shadow">
+                        <div class="text-blue-600 text-lg font-medium">📊 Dashboard</div>
+                        <div class="text-gray-600 text-sm">Se fremgangen din</div>
+                    </a>
+                    <a href="{{ url_for('main.quiz_categories') }}" class="bg-white rounded-lg shadow p-4 hover:shadow-md transition-shadow">
+                        <div class="text-blue-600 text-lg font-medium">📚 Kategorier</div>
+                        <div class="text-gray-600 text-sm">Velg emne å øve på</div>
+                    </a>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

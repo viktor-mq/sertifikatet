@@ -1,0 +1,51 @@
+<!-- templates/errors/500.html -->
+{% extends "base.html" %}
+
+{% block title %}Serverfeil - Sertifikatet{% endblock %}
+
+{% block content %}
+<div class="min-h-screen bg-gradient-to-b from-red-50 to-white flex items-center">
+    <div class="container mx-auto px-4">
+        <div class="text-center">
+            <!-- Error Illustration -->
+            <div class="mb-8">
+                <svg class="w-64 h-64 mx-auto text-red-300" fill="currentColor" viewBox="0 0 20 20">
+                    <path fill-rule="evenodd" d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z" clip-rule="evenodd"></path>
+                </svg>
+            </div>
+            
+            <!-- Error Message -->
+            <h1 class="text-6xl font-bold text-gray-900 mb-4">500</h1>
+            <h2 class="text-3xl font-semibold text-gray-700 mb-6">Serverfeil</h2>
+            <p class="text-xl text-gray-600 mb-8 max-w-2xl mx-auto">
+                Beklager! Det oppstod en intern serverfeil. Vårt team har blitt varslet og jobber med å løse problemet.
+            </p>
+            
+            <!-- Action Buttons -->
+            <div class="space-y-4 sm:space-y-0 sm:space-x-4 sm:flex sm:justify-center">
+                <button onclick="location.reload()" 
+                        class="inline-flex items-center px-6 py-3 border border-transparent text-base font-medium rounded-md text-white bg-red-600 hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500 transition-colors">
+                    🔄 Prøv igjen
+                </button>
+                
+                <a href="{{ url_for('main.index') }}" 
+                   class="inline-flex items-center px-6 py-3 border border-gray-300 text-base font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500 transition-colors">
+                    🏠 Gå til forsiden
+                </a>
+            </div>
+            
+            <!-- Contact Support -->
+            <div class="mt-12 bg-blue-50 rounded-lg p-6 max-w-2xl mx-auto">
+                <h3 class="text-lg font-medium text-blue-900 mb-2">Trenger du hjelp?</h3>
+                <p class="text-blue-800 mb-4">
+                    Hvis problemet vedvarer, kan du kontakte vår support.
+                </p>
+                <a href="mailto:support@sertifikatet.no" 
+                   class="inline-flex items-center text-blue-600 hover:text-blue-800 font-medium">
+                    📧 Kontakt support
+                </a>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

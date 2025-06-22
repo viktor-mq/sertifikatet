@@ -43,6 +43,10 @@ tech_stack:
     storage: Local file system + AWS S3
     ci_cd: GitHub Actions
     ml_privacy: Local processing (no external APIs)
+    testing: pytest with database isolation
+    caching: Redis with fallback mechanisms
+    monitoring: Centralized error logging
+    deployment: Branch-based strategy (develop/main)
 
 database:
   tables:
@@ -559,8 +563,19 @@ file_structure:
         - study_tip.html
         - (and 7 more email types)
     migrations: []
-    tests: [test_quiz.py, test_game.py, test_video.py, test_api.py, test_ml.py]
+    tests: [test_auth.py, test_basic.py, test_models.py, conftest.py]
     scripts: [init_db.py, import_questions.py, generate_stats.py, init_ml.py]
+    ci_cd:
+      - .github/workflows/ci.yml
+      - .pre-commit-config.yaml
+      - Dockerfile
+      - docker-compose.yml
+    errors:
+      - app/errors.py
+      - templates/errors/404.html
+      - templates/errors/500.html
+    services:
+      - app/services/cache_service.py
 
 security:
   storage: ".env"
@@ -578,6 +593,12 @@ security:
     sql_injection_protection: true
     xss_protection: true
   compliance: GDPR
+  ci_cd_security:
+    vulnerability_scanning: Trivy, bandit, safety
+    code_quality: black, flake8, isort, mypy
+    test_isolation: In-memory SQLite database
+    error_tracking: Centralized logging via AdminReport
+    branch_protection: Automated testing on PR/push
 
 monetization:
   model: Ad-supported Freemium

@@ -30,6 +30,29 @@ def create_app():
     db.init_app(app)
     migrate.init_app(app, db)
     
+    # Set up error handling (NEW)
+    from .errors import register_error_handlers
+    register_error_handlers(app)
+    
+    # Set up rate limiting and security (NEW) - temporarily commented out
+    # from .security.rate_limiter import limiter, rate_limit_handler
+    # from .security.middleware import SecurityMiddleware
+    # from .security.csrf_protection import setup_csrf_protection
+    
+    # limiter.init_app(app)
+    # app.register_error_handler(429, rate_limit_handler)
+    # SecurityMiddleware(app)
+    # setup_csrf_protection(app)
+    
+    # Set up performance monitoring (NEW) - temporarily commented out
+    # from .utils.performance_monitor import PerformanceMonitor
+    # app.before_request(PerformanceMonitor.before_request)
+    # app.after_request(PerformanceMonitor.after_request)
+    
+    # Set up session optimization (NEW) - temporarily commented out
+    # from .utils.session_optimization import SessionOptimizer
+    # SessionOptimizer.configure_session(app)
+    
     # Register blueprints
     from .admin.routes import admin_bp
     app.register_blueprint(admin_bp, url_prefix='/admin')
@@ -83,11 +106,31 @@ def create_app():
     from .ml import ml_bp
     app.register_blueprint(ml_bp, url_prefix='/ml')
     
+    # Register health check blueprint (NEW) - temporarily commented out
+    # from .utils.health_check import health_bp
+    # app.register_blueprint(health_bp)
+    
     # Create tables if they don't exist
     with app.app_context():
         # Import all models to ensure they're registered
         from . import models, gamification_models, video_models, payment_models, notification_models, marketing_models
         from .ml import models as ml_models
         db.create_all()
+        
+        # Create database indexes for performance (NEW) - temporarily commented out
+        # from .utils.database_optimization import DatabaseOptimizer
+        # DatabaseOptimizer.create_indexes()
+        
+        # Initialize cache service (NEW) - temporarily commented out
+        # from .services.cache_service import cache
+        # cache.connect()
+    
+    # Set up background tasks if Celery is available (NEW) - temporarily commented out
+    # try:
+    #     from .utils.async_tasks import make_celery
+    #     celery = make_celery(app)
+    #     app.celery = celery
+    # except ImportError:
+    #     app.logger.info("Celery not available, background tasks disabled")
     
     return app
