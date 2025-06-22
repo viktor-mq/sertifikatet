@@ -17,11 +17,14 @@ def load_user(user_id):
     from .models import User
     return User.query.get(int(user_id))
 
-def create_app():
+def create_app(config_class=None):
     app = Flask(__name__, static_folder='../static', template_folder='../templates')
     
     # Load configuration first
-    app.config.from_object(Config)
+    if config_class is not None:
+        app.config.from_object(config_class)
+    else:
+        app.config.from_object(Config)
     
     # Initialize Flask-Login
     login_manager.init_app(app)

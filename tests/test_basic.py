@@ -47,12 +47,12 @@ class TestErrorHandling:
 class TestQuizPages:
     """Test quiz-related pages"""
     
-    def test_quiz_page(self, client):
+    def test_quiz_page(self, client, init_database):
         """Test quiz page loads"""
         response = client.get('/quiz')
         assert response.status_code == 200
     
-    def test_quiz_categories_page(self, client):
+    def test_quiz_categories_page(self, client, init_database):
         """Test quiz categories page loads"""
         response = client.get('/quiz/categories')
         assert response.status_code == 200
