@@ -23,18 +23,19 @@ class TestAuthentication:
     
     def test_user_login_success(self, client, init_database):
         """Test successful login"""
-        # First register a user
-        client.post('/auth/register', data={
-            'username': 'testlogin',
-            'email': 'testlogin@example.com',
-            'password': 'TestPassword123',
-            'full_name': 'Test Login'
-        })
-        
-        # Verify the user manually for testing
-        user = User.query.filter_by(username='testlogin').first()
-        user.is_verified = True
+        # Create test user directly in database
+        from werkzeug.security import generate_password_hash
         from app import db
+        
+        user = User(
+            username='testlogin',
+            email='testlogin@example.com',
+            password_hash=generate_password_hash('TestPassword123'),
+            full_name='Test Login',
+            is_verified=True,
+            current_plan_id=1  # Required field
+        )
+        db.session.add(user)
         db.session.commit()
         
         # Test login
