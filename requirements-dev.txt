@@ -1,0 +1,28 @@
+# Development and Testing Dependencies
+# Install with: pip install -r requirements-dev.txt
+
+# Include production requirements
+-r requirements.txt
+
+# Testing Dependencies
+pytest>=7.0.0
+pytest-flask>=1.2.0
+pytest-cov>=4.0.0
+pytest-mock>=3.8.0
+factory-boy>=3.2.0
+faker>=18.0.0
+coverage>=6.0.0
+
+# Code Quality Dependencies  
+black>=23.0.0
+flake8>=6.0.0
+flake8-annotations>=3.0.0
+isort>=5.12.0
+mypy>=1.3.0
+bandit>=1.7.5
+safety>=2.3.0
+pre-commit>=3.3.0
+
+# Browser testing (optional - only install if needed)
+# pytest-playwright>=0.4.0
+# selenium>=4.15.0

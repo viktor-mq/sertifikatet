@@ -317,10 +317,30 @@ flask db downgrade
 
 ### Prerequisites
 
-- Python 3.11+
+- Python 3.10+
 - MySQL 8.0+
 - Redis 7+
 - Node.js (for frontend assets)
+
+### System Dependencies
+
+For production deployment, install these system packages:
+
+```bash
+# On Ubuntu/Debian:
+sudo apt-get update
+sudo apt-get install nginx supervisor
+
+# On macOS:
+brew install nginx supervisor
+
+# On CentOS/RHEL:
+sudo yum install nginx supervisor
+```
+
+**Note**: These are system packages (not Python packages) required for production deployment:
+- **nginx**: Web server for reverse proxy and static file serving
+- **supervisor**: Process management for running the application
 
 ### Installation
 

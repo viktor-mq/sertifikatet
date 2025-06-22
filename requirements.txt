@@ -14,9 +14,9 @@ stripe==7.12.0
 
 # Machine Learning Dependencies
 scikit-learn==1.3.0
-pandas==2.0.3
+pandas==1.5.3
 numpy==1.24.3
-scipy==1.11.1
+scipy==1.10.1
 
 # NEW: Enhanced Security & Performance Dependencies
 Flask-Limiter==3.5.0
@@ -26,30 +26,14 @@ celery==5.3.4
 gunicorn==21.2.0
 psutil==5.9.6
 
-# NEW: Testing Dependencies (for requirements-test.txt)
-pytest>=7.0.0
-pytest-flask>=1.2.0
-pytest-cov>=4.0.0
-pytest-mock>=3.8.0
-factory-boy>=3.2.0
-faker>=18.0.0
-coverage>=6.0.0
-pytest-playwright>=0.4.0
-selenium>=4.15.0
-
-# NEW: Code Quality Dependencies  
-black>=23.0.0
-flake8>=6.0.0
-flake8-annotations>=3.0.0
-isort>=5.12.0
-mypy>=1.3.0
-bandit>=1.7.5
-safety>=2.3.0
-pre-commit>=3.3.0
+# Development and testing dependencies moved to requirements-dev.txt
+# Run: pip install -r requirements-dev.txt for development
 
 # NEW: Image Processing
 Pillow>=10.0.0
 
 # NEW: Production Dependencies
-nginx>=1.24.0  # For reverse proxy
-supervisor>=4.2.5  # For process management
+# Note: nginx and supervisor are system packages, not Python packages
+# Install them separately:
+# - nginx: apt-get install nginx (Ubuntu) or brew install nginx (macOS)
+# - supervisor: apt-get install supervisor (Ubuntu) or brew install supervisor (macOS)

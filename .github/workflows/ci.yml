@@ -13,7 +13,7 @@ on:
     branches: [ main, develop ]
 
 env:
-  PYTHON_VERSION: '3.11'
+  PYTHON_VERSION: '3.10'  # Changed from 3.11 for better package compatibility
 
 jobs:
   test:
@@ -44,7 +44,7 @@ jobs:
     - name: Install dependencies
       run: |
         python -m pip install --upgrade pip
-        pip install -r requirements.txt
+        pip install -r requirements-dev.txt
 
     - name: Set environment variables for testing
       run: |
@@ -55,13 +55,11 @@ jobs:
 
     - name: Run security checks
       run: |
-        pip install bandit safety
         bandit -r app/ -f json -o bandit-report.json || echo "Bandit scan completed"
         safety check --json --output safety-report.json || echo "Safety scan completed"
 
     - name: Run code quality checks
       run: |
-        pip install black flake8 isort mypy
         black --check app/ tests/
         isort --check-only app/ tests/
         flake8 app/ tests/ --max-line-length=100
@@ -69,7 +67,6 @@ jobs:
 
     - name: Run tests with coverage
       run: |
-        pip install pytest-cov
         pytest tests/ -v --cov=app --cov-report=xml --cov-report=html --cov-report=term
 
     - name: Upload coverage reports
