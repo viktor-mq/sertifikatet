@@ -97,7 +97,7 @@ jobs:
   security-scan:
     name: Security Scan
     runs-on: ubuntu-latest
-    if: github.event_name == 'push' && false  # Temporarily disabled
+    if: github.event_name == 'push'  # Enabled for all pushes
     permissions:
       security-events: write
       contents: read

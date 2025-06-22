@@ -15,11 +15,19 @@ def validate_question(data, question_id=None):
     }
     
     for field, name in required_fields.items():
-        if not data.get(field, '').strip():
+        field_value = data.get(field, '')
+        # Handle None values by converting to empty string
+        if field_value is None:
+            field_value = ''
+        if not str(field_value).strip():
             errors.append(f"{name} kan ikke være tom.")
     
     # Validate correct answer
-    if data.get('correct_option', '').lower() not in ['a', 'b', 'c', 'd']:
+    correct_option = data.get('correct_option', '')
+    # Handle None values
+    if correct_option is None:
+        correct_option = ''
+    if str(correct_option).lower() not in ['a', 'b', 'c', 'd']:
         errors.append('Riktig svar må være a, b, c eller d.')
     
     return errors

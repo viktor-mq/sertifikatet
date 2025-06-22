@@ -57,8 +57,9 @@ def admin_dashboard():
     validation_errors = []
     message = None
 
-    # Image upload and metadata
+    # Handle POST requests
     if request.method == 'POST':
+        # Image upload and metadata
         new_img = request.files.get('image')
         if new_img and new_img.filename:
             folder = request.form.get('folder')
@@ -87,10 +88,9 @@ def admin_dashboard():
 
             db.session.commit()
             message = f'Bildet "{filename}" ble lastet opp i {folder}.'
-
-    # Handle SQL console or question form
-    if request.method == 'POST':
-        if 'sql_query' in request.form:
+        
+        # Handle SQL console or question form
+        elif 'sql_query' in request.form:
             sql_query = request.form['sql_query']
             try:
                 # Execute raw SQL for admin console
@@ -105,8 +105,9 @@ def admin_dashboard():
             except Exception as e:
                 db.session.rollback()
                 message = f"SQL Error: {str(e)}"
-        else:
-            # Handle question add/edit
+        
+        # Handle question add/edit (only if question fields are present)
+        elif any(field in request.form for field in ['question', 'option_a', 'option_b', 'option_c', 'option_d']):
             question_id = request.form.get('question_id')
             question_data = {
                 'question': request.form.get('question'),
