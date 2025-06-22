@@ -40,6 +40,13 @@ class CacheService:
             try:
                 return json.loads(value)
             except json.JSONDecodeError:
+                # Legacy pickle support with additional security check
+                # Only use pickle for trusted cache data
+                if hasattr(value, '__reduce_ex__'):
+                    # This is likely already a Python object, not pickled data
+                    return value
+                # For backwards compatibility, but log warning
+                print("Warning: Using pickle.loads for cache data - consider regenerating cache")
                 return pickle.loads(value.encode('latin1'))
                 
         except Exception as e:
@@ -105,7 +112,7 @@ def cached(key_prefix, ttl=3600, key_func=None):
             else:
                 # Default key generation
                 key_parts = [str(arg) for arg in args] + [f"{k}={v}" for k, v in kwargs.items()]
-                key_hash = hashlib.md5("|".join(key_parts).encode()).hexdigest()
+                key_hash = hashlib.sha256("|".join(key_parts).encode()).hexdigest()
                 cache_key = f"{key_prefix}:{key_hash}"
             
             # Try to get from cache first

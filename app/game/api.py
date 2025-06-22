@@ -17,6 +17,7 @@ def get_random_traffic_signs():
     if len(signs) < count:
         count = len(signs)
     
+    # nosec B311: random module is acceptable for game mechanics (not cryptographic)
     selected_signs = random.sample(signs, count)
     
     return jsonify({
@@ -111,6 +112,7 @@ def get_driving_scenario():
 def generate_rule_puzzle():
     """Generate a rule-based puzzle."""
     puzzle_types = ['priority', 'speed_limit', 'distance', 'parking']
+    # nosec B311: random module is acceptable for game mechanics (not cryptographic)
     puzzle_type = random.choice(puzzle_types)
     
     puzzle = None
@@ -133,6 +135,7 @@ def generate_rule_puzzle():
                 'rule': 'Ved venstresving må du vike for motgående trafikk.'
             }
         ]
+        # nosec B311: random module is acceptable for game mechanics (not cryptographic)
         puzzle = random.choice(situations)
     
     elif puzzle_type == 'speed_limit':
@@ -143,6 +146,7 @@ def generate_rule_puzzle():
             {'zone': 'Motorvei', 'default': 110, 'unless': 'annet er skiltet'},
             {'zone': 'Boliggate', 'default': 30, 'unless': 'annet er skiltet'}
         ]
+        # nosec B311: random module is acceptable for game mechanics (not cryptographic)
         zone = random.choice(zones)
         puzzle = {
             'description': f'Du kjører i {zone["zone"]} uten fartsgrenseskilt.',

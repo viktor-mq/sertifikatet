@@ -253,6 +253,7 @@ def submit_session(session_id):
             try:
                 updated_insights = ml_service.get_user_learning_insights(current_user.id)
             except Exception:
+                # nosec B110: Graceful fallback for ML service - acceptable pattern
                 pass  # Graceful fallback
         
         return jsonify({
@@ -297,6 +298,7 @@ def view_results(session_id):
                 ml_insights = ml_service.get_user_learning_insights(current_user.id)
                 recommendations = ml_service.get_study_recommendations(current_user.id)
             except Exception:
+                # nosec B110: Graceful fallback for ML service - acceptable pattern
                 pass  # Graceful fallback
         
         return render_template('quiz/results.html',

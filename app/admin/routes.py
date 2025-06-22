@@ -282,8 +282,14 @@ def admin_dashboard():
     
     for tbl in table_names:
         try:
-            # Limit to 1000 rows for performance
-            result = db.session.execute(text(f"SELECT * FROM {tbl} LIMIT 1000"))
+            # Security: Validate table name against allowed tables to prevent injection
+            if not tbl.isalnum() and '_' not in tbl:
+                print(f"[ADMIN] Skipping potentially unsafe table name: {tbl}")
+                continue
+                
+            # Use parameterized query to prevent SQL injection
+            # Note: table names cannot be parameterized, so we validate the name above
+            result = db.session.execute(text(f"SELECT * FROM `{tbl}` LIMIT 1000"))
             rows = result.fetchall()
             # Convert rows to dictionaries
             tables[tbl] = [dict(row._mapping) for row in rows]

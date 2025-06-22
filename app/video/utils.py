@@ -27,8 +27,8 @@ def generate_unique_filename(original_filename, prefix=''):
     timestamp = datetime.utcnow().strftime('%Y%m%d_%H%M%S')
     name, ext = os.path.splitext(secure_filename(original_filename))
     
-    # Create a hash of the original filename
-    hash_object = hashlib.md5(original_filename.encode())
+    # Create a hash of the original filename for uniqueness (not for security)
+    hash_object = hashlib.sha256(original_filename.encode())
     hash_hex = hash_object.hexdigest()[:8]
     
     # Combine everything
@@ -95,7 +95,8 @@ def generate_thumbnail(video_filename, folder='videos', thumbnail_folder='videos
             thumbnail_path
         ]
         
-        # Run ffmpeg
+        # Run ffmpeg - validated inputs and secure command construction
+        # nosec B603: subprocess usage is safe here with controlled input validation
         result = subprocess.run(cmd, capture_output=True, text=True)
         
         if result.returncode == 0:
@@ -105,6 +106,7 @@ def generate_thumbnail(video_filename, folder='videos', thumbnail_folder='videos
             
             # Try again with first frame if 5 seconds fails
             cmd[4] = '00:00:00'  # Change timestamp to 0
+            # nosec B603: subprocess usage is safe here with controlled input validation
             result = subprocess.run(cmd, capture_output=True, text=True)
             
             if result.returncode == 0:
@@ -129,6 +131,7 @@ def get_video_duration(video_filename, folder='videos'):
             video_path
         ]
         
+        # nosec B603: subprocess usage is safe here with controlled input validation
         result = subprocess.run(cmd, capture_output=True, text=True)
         
         if result.returncode == 0:

@@ -98,9 +98,13 @@ def send_email(subject, recipients, html_body, sender=None, use_info_sender=Fals
     mail_use_tls = os.environ.get('MAIL_USE_TLS', 'True').lower() == 'true'
     
     if use_info_sender:
-        mail_username = 'info@sertifikatet.no'
-        mail_password = 'DJPde&LAyiZ%'
-        mail_default_sender = 'Sertifikatet.no Support <info@sertifikatet.no>'
+        mail_username = os.environ.get('ADMIN_MAIL_USERNAME', 'info@sertifikatet.no')
+        mail_password = os.environ.get('ADMIN_MAIL_PASSWORD', '')  # Must be set in environment
+        mail_default_sender = os.environ.get('ADMIN_MAIL_DEFAULT_SENDER', 'Sertifikatet.no Support <info@sertifikatet.no>')
+        
+        if not mail_password:
+            logger.error("ADMIN_MAIL_PASSWORD not configured for info sender")
+            return False
     else:
         mail_username = os.environ.get('MAIL_USERNAME', 'noreply@sertifikatet.no')
         mail_password = os.environ.get('MAIL_PASSWORD')
@@ -241,17 +245,32 @@ def send_badge_notification(user, badge_name):
     return True
 
 
+def get_admin_emails():
+    """Get all admin user emails from the database dynamically"""
+    try:
+        from app.models import User
+        admin_users = User.query.filter_by(is_admin=True, is_active=True, is_verified=True).all()
+        admin_emails = [user.email for user in admin_users if user.email]
+        
+        # Fallback to environment variable if no admin users found
+        if not admin_emails:
+            env_emails = os.environ.get('ADMIN_EMAILS', '').split(',')
+            admin_emails = [email.strip() for email in env_emails if email.strip()]
+        
+        return admin_emails
+    except Exception as e:
+        logger.error(f"Error getting admin emails: {e}")
+        # Fallback to environment variable
+        env_emails = os.environ.get('ADMIN_EMAILS', '').split(',')
+        return [email.strip() for email in env_emails if email.strip()]
+
+
 def send_admin_alert(subject, message):
-    """
-    Send alert email to admin(s).
+    """Send alert email to admin(s) - dynamically gets all admin users from database"""
+    admin_emails = get_admin_emails()
     
-    Args:
-        subject (str): Alert subject
-        message (str): Alert message
-    """
-    admin_emails = os.environ.get('ADMIN_EMAILS', '').split(',')
-    if not admin_emails or not admin_emails[0]:
-        logger.warning("No admin emails configured")
+    if not admin_emails:
+        logger.warning("No admin emails found (neither in database nor environment)")
         return
     
     html_body = render_template('emails/admin_alert.html',
@@ -473,9 +492,9 @@ def send_user_report_alert(user, report_data):
     db.session.add(report)
     db.session.commit()
     
-    admin_emails = os.environ.get('ADMIN_EMAILS', '').split(',')
-    if not admin_emails or not admin_emails[0]:
-        logger.warning("No admin emails configured")
+    admin_emails = get_admin_emails()
+    if not admin_emails:
+        logger.warning("No admin emails found")
         return
     
     html_body = render_template('emails/user_report_alert.html',
@@ -500,9 +519,9 @@ def send_manual_review_alert(review_type, details):
         review_type (str): Type of review needed
         details (dict): Review details
     """
-    admin_emails = os.environ.get('ADMIN_EMAILS', '').split(',')
-    if not admin_emails or not admin_emails[0]:
-        logger.warning("No admin emails configured")
+    admin_emails = get_admin_emails()
+    if not admin_emails:
+        logger.warning("No admin emails found")
         return
     
     html_body = render_template('emails/manual_review_alert.html',
