@@ -1,0 +1,12 @@
+⚠️ **SECURITY RISK REMOVED** ⚠️
+
+The file `email_info.txt` contained plain text passwords and has been removed for security reasons.
+
+All email configuration is now safely stored in `.env` file which should:
+1. Never be committed to git (already in .gitignore)
+2. Have restricted file permissions (600)
+3. Be backed up securely
+
+If you need the email credentials, check your `.env` file:
+- `MAIL_PASSWORD` (for noreply@sertifikatet.no)
+- `ADMIN_MAIL_PASSWORD` (for info@sertifikatet.no)
