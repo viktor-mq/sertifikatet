@@ -22,6 +22,53 @@
       </div>
     </header>
     
+    <!-- Flash Messages -->
+    {% with messages = get_flashed_messages(with_categories=true) %}
+        {% if messages %}
+            <div class="container" style="max-width: 1200px; margin: 0 auto; padding: 20px;">
+                {% for category, message in messages %}
+                    <div class="alert alert-{{ category }}" style="
+                        padding: 15px 20px;
+                        margin-bottom: 15px;
+                        border-radius: 8px;
+                        border-left: 4px solid;
+                        {% if category == 'success' %}
+                            background-color: #d4edda;
+                            color: #155724;
+                            border-left-color: #28a745;
+                        {% elif category == 'error' %}
+                            background-color: #f8d7da;
+                            color: #721c24;
+                            border-left-color: #dc3545;
+                        {% elif category == 'warning' %}
+                            background-color: #fff3cd;
+                            color: #856404;
+                            border-left-color: #ffc107;
+                        {% else %}
+                            background-color: #d1ecf1;
+                            color: #0c5460;
+                            border-left-color: #17a2b8;
+                        {% endif %}
+                        box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+                        ">
+                        <strong>
+                        {% if category == 'success' %}
+                            ✅
+                        {% elif category == 'error' %}
+                            ❌
+                        {% elif category == 'warning' %}
+                            ⚠️
+                        {% else %}
+                            ℹ️
+                        {% endif %}
+                        </strong>
+                        {{ message }}
+                    </div>
+                {% endfor %}
+            </div>
+        {% endif %}
+    {% endwith %}
+    
     <div class="container">
 
         <div class="section-tabs">

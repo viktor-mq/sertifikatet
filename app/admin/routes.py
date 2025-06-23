@@ -1,5 +1,6 @@
 import os
 import csv
+import logging
 from flask import render_template, request, redirect, url_for, session, current_app, send_file, flash, jsonify
 from flask_login import login_required, current_user
 from werkzeug.utils import secure_filename
@@ -16,6 +17,9 @@ from ..marketing_service import MarketingEmailService
 from ..security.admin_security import AdminSecurityService
 import json
 from datetime import datetime, timedelta
+
+# Setup logger for admin operations
+logger = logging.getLogger(__name__)
 
 # Blueprint is already created in __init__.py, using the imported one
 
@@ -117,6 +121,8 @@ def admin_dashboard():
                 'option_d': request.form.get('option_d'),
                 'correct_option': request.form.get('correct_option', '').lower(),
                 'category': request.form.get('category') or 'Ukategorisert',
+                'subcategory': request.form.get('subcategory'),
+                'difficulty_level': int(request.form.get('difficulty_level', 1)),
                 'image_filename': request.form.get('image_filename')
             }
             validation_errors = validate_question(question_data, question_id)
@@ -128,6 +134,8 @@ def admin_dashboard():
                         q.question = question_data['question']
                         q.correct_option = question_data['correct_option']
                         q.category = question_data['category']
+                        q.subcategory = question_data['subcategory']
+                        q.difficulty_level = question_data['difficulty_level']
                         q.image_filename = question_data['image_filename']
                         
                         # Delete existing options
@@ -150,6 +158,8 @@ def admin_dashboard():
                         question=question_data['question'],
                         correct_option=question_data['correct_option'],
                         category=question_data['category'],
+                        subcategory=question_data['subcategory'],
+                        difficulty_level=question_data['difficulty_level'],
                         image_filename=question_data['image_filename']
                     )
                     db.session.add(q)
@@ -189,6 +199,8 @@ def admin_dashboard():
             'id': q.id,
             'question': q.question,
             'category': q.category,
+            'subcategory': q.subcategory,
+            'difficulty_level': q.difficulty_level,
             'image_filename': q.image_filename,
             'option_a': opts.get('a', ''),
             'option_b': opts.get('b', ''),
@@ -444,16 +456,48 @@ def import_questions():
         return redirect(url_for('admin.admin_dashboard'))
     
     overwrite_existing = request.form.get('overwrite_existing') == '1'
+    csv_delimiter = request.form.get('csv_delimiter', ';')  # Default to semicolon for Norway
+    
+    # Handle automatic delimiter detection
+    if csv_delimiter == 'auto':
+        csv_delimiter = None  # Will be detected automatically
     
     try:
         # Read CSV content
         csv_content = file.read().decode('utf-8-sig')
-        csv_reader = csv.DictReader(StringIO(csv_content))
+        
+        # Auto-detect delimiter if requested
+        if csv_delimiter is None:
+            import csv as csv_module
+            sniffer = csv_module.Sniffer()
+            try:
+                # Try to detect delimiter from first few lines
+                sample = csv_content[:1024]
+                csv_delimiter = sniffer.sniff(sample, delimiters=';,\t|').delimiter
+                logger.info(f"Auto-detected CSV delimiter: '{csv_delimiter}'")
+            except:
+                # Fallback to semicolon if detection fails
+                csv_delimiter = ';'
+                logger.info("Could not auto-detect delimiter, using semicolon (;)")
+        
+        # Handle tab character
+        if csv_delimiter == '\\t':
+            csv_delimiter = '\t'
+            
+        csv_reader = csv.DictReader(StringIO(csv_content), delimiter=csv_delimiter)
         
         # Validate CSV headers
-        expected_headers = ['id', 'question', 'option_a', 'option_b', 'option_c', 'option_d', 'correct_option', 'category', 'image_filename']
-        if not all(header in csv_reader.fieldnames for header in expected_headers):
-            flash(f'CSV-filen må inneholde følgende kolonner: {", ".join(expected_headers)}', 'error')
+        expected_headers = ['id', 'question', 'option_a', 'option_b', 'option_c', 'option_d', 'correct_option', 'category', 'subcategory', 'difficulty_level', 'image_filename']
+        actual_headers = csv_reader.fieldnames or []
+        
+        # Debug info
+        logger.info(f"Using delimiter: '{csv_delimiter}'")
+        logger.info(f"Found headers: {actual_headers}")
+        logger.info(f"Expected headers: {expected_headers}")
+        
+        if not all(header in actual_headers for header in expected_headers):
+            missing_headers = [h for h in expected_headers if h not in actual_headers]
+            flash(f'CSV-filen mangler følgende kolonner: {", ".join(missing_headers)}. Funnet kolonner: {", ".join(actual_headers)}. Prøv et annet skilletegn.', 'error')
             return redirect(url_for('admin.admin_dashboard'))
         
         imported_count = 0
@@ -499,6 +543,8 @@ def import_questions():
                 question.question = row['question'].strip()
                 question.correct_option = row['correct_option'].strip().lower()
                 question.category = row.get('category', '').strip() or 'Ukategoriseret'
+                question.subcategory = row.get('subcategory', '').strip() or None
+                question.difficulty_level = int(row.get('difficulty_level', '1').strip() or 1)
                 question.image_filename = row.get('image_filename', '').strip() or None
                 
                 # Add new question to session if it's new
@@ -555,7 +601,8 @@ def import_questions():
                 'imported': imported_count,
                 'updated': updated_count,
                 'errors': error_count,
-                'overwrite_mode': overwrite_existing
+                'overwrite_mode': overwrite_existing,
+                'csv_delimiter': csv_delimiter
             })
         )
         
@@ -579,7 +626,7 @@ def export_questions():
     # Create a text wrapper for CSV writing
     text_stream = StringIO()
     writer = csv.writer(text_stream)
-    writer.writerow(['id', 'question', 'option_a', 'option_b', 'option_c', 'option_d', 'correct_option', 'category', 'image_filename'])
+    writer.writerow(['id', 'question', 'option_a', 'option_b', 'option_c', 'option_d', 'correct_option', 'category', 'subcategory', 'difficulty_level', 'image_filename'])
     
     for q in questions:
         # Get options as dict
@@ -594,6 +641,8 @@ def export_questions():
             opts.get('d', ''),
             q.correct_option,
             q.category or 'Ukategoriseret',
+            q.subcategory or '',
+            q.difficulty_level or 1,
             q.image_filename or ''
         ])
     
