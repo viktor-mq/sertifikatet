@@ -79,7 +79,12 @@ static/uploads/
 
 # Environment variables
 .env
-.env.*.local
+.env.*
+.env.local
+.env.production
+.env.cpanel
+.env.development
+.env.staging
 
 # VSCode settings
 .vscode/
