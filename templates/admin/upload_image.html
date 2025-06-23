@@ -1,10 +1,17 @@
 <div id="uploadModal" class="modal">
-  <div class="modal-content" style="max-width: 700px;">
+  <div class="modal-content" style="max-width: 900px;">
     <span class="close-modal" onclick="closeUploadModal()">&times;</span>
     <h2 style="text-align: center; color: #333; margin-bottom: 30px; display: flex; align-items: center; justify-content: center; gap: 10px;">
-      📷 Last opp nytt bilde
+      📷 Administrer bilder
     </h2>
     
+    <!-- Tab Navigation -->
+    <div style="display: flex; justify-content: center; margin-bottom: 25px; border-bottom: 2px solid #e9ecef;">
+      <button class="tab-btn active" onclick="showTab('upload')" id="uploadTab" style="padding: 12px 24px; border: none; background: none; color: #6c757d; font-weight: bold; border-bottom: 3px solid transparent; cursor: pointer; transition: all 0.3s ease;">📤 Last opp nytt</button>
+      <button class="tab-btn" onclick="showTab('gallery')" id="galleryTab" style="padding: 12px 24px; border: none; background: none; color: #6c757d; font-weight: bold; border-bottom: 3px solid transparent; cursor: pointer; transition: all 0.3s ease;">🖼️ Eksisterende bilder</button>
+    </div>
+    <!-- Upload Tab Content -->
+    <div id="uploadContent" class="tab-content">
     <form method="POST" action="{{ url_for('admin.admin_dashboard') }}" enctype="multipart/form-data" id="uploadForm">
       
       <!-- File Upload Section -->
@@ -131,10 +138,166 @@
         <p style="text-align: center; margin: 10px 0 0 0; color: #6c757d; font-size: 14px;">Laster opp...</p>
       </div>
     </form>
+    </div>
+    
+    <!-- Gallery Tab Content -->
+    <div id="galleryContent" class="tab-content" style="display: none;">
+      <!-- Filter Section -->
+      <div style="margin-bottom: 20px; display: flex; gap: 15px; align-items: center; flex-wrap: wrap;">
+        <select id="folderFilter" onchange="filterGallery()" style="padding: 8px 12px; border: 2px solid #e5e7eb; border-radius: 6px; background: white;">
+          <option value="all">📁 Alle mapper</option>
+          {% for folder in folders %}
+          <option value="{{ folder }}">📂 {{ folder|title }}</option>
+          {% endfor %}
+        </select>
+        
+        <input type="text" id="searchFilter" placeholder="🔍 Søk i bilder..." onkeyup="filterGallery()" style="padding: 8px 12px; border: 2px solid #e5e7eb; border-radius: 6px; flex: 1; min-width: 200px;">
+        
+        <button onclick="refreshGallery()" class="btn btn-secondary" style="padding: 8px 16px;">🔄 Oppdater</button>
+      </div>
+      
+      <!-- Gallery Grid -->
+      <div id="imageGalleryGrid" style="display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 20px; max-height: 500px; overflow-y: auto; padding: 15px; background: #f8f9fa; border-radius: 12px;">
+        {% for img in images %}
+        <div class="gallery-item" data-folder="{{ img.folder }}" data-filename="{{ img.filename }}" data-name="{{ img.name }}" style="background: white; border-radius: 12px; overflow: hidden; box-shadow: 0 4px 8px rgba(0,0,0,0.1); transition: all 0.3s ease;">
+          
+          <!-- Image -->
+          <div style="position: relative; height: 150px; overflow: hidden;">
+            <img src="{{ url_for('static', filename=( 'images/' ~ img.folder ~ '/' ~ img.filename ) if img.folder else 'images/' ~ img.filename) }}" 
+                 alt="{{ img.name }}" 
+                 style="width: 100%; height: 100%; object-fit: contain; transition: transform 0.3s ease; background: #f8f9fa;"
+                 onmouseover="this.style.transform='scale(1.05)'" 
+                 onmouseout="this.style.transform='scale(1)'">
+            
+            <!-- Overlay with actions -->
+            <div class="image-overlay" style="position: absolute; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.7); display: flex; align-items: center; justify-content: center; opacity: 0; transition: opacity 0.3s ease;">
+              <button onclick="deleteImage({{ img.id }}, '{{ 'traffic_sign' if img.folder and 'signs' in img.folder else 'quiz_image' }}', '{{ img.filename }}')" 
+                      class="btn btn-danger" style="margin: 0 5px; padding: 8px 12px; font-size: 12px;">
+                🗑️ Slett
+              </button>
+            </div>
+          </div>
+          
+          <!-- Image Info -->
+          <div style="padding: 12px;">
+            <h4 style="margin: 0 0 5px 0; font-size: 14px; color: #333; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;" title="{{ img.name }}">{{ img.name }}</h4>
+            <p style="margin: 0 0 5px 0; font-size: 12px; color: #6c757d;">📁 {{ img.folder or 'root' }}</p>
+            <p style="margin: 0; font-size: 11px; color: #9ca3af; font-family: monospace;">{{ img.filename }}</p>
+          </div>
+        </div>
+        {% endfor %}
+      </div>
+      
+      {% if not images %}
+      <div style="text-align: center; padding: 60px 20px; color: #6c757d;">
+        <div style="font-size: 48px; margin-bottom: 15px;">🇿️</div>
+        <h3 style="margin: 0 0 10px 0;">Ingen bilder funnet</h3>
+        <p style="margin: 0;">Last opp ditt første bilde ved å bruke "Last opp nytt"-fanen.</p>
+      </div>
+      {% endif %}
+    </div>
   </div>
 </div>
 
 <script>
+// Tab switching functionality
+function showTab(tabName) {
+  // Hide all tab contents
+  document.querySelectorAll('.tab-content').forEach(content => {
+    content.style.display = 'none';
+  });
+  
+  // Remove active class from all tab buttons
+  document.querySelectorAll('.tab-btn').forEach(btn => {
+    btn.classList.remove('active');
+    btn.style.color = '#6c757d';
+    btn.style.borderBottomColor = 'transparent';
+  });
+  
+  // Show selected tab content
+  const selectedContent = document.getElementById(tabName + 'Content');
+  const selectedBtn = document.getElementById(tabName + 'Tab');
+  
+  if (selectedContent) selectedContent.style.display = 'block';
+  if (selectedBtn) {
+    selectedBtn.classList.add('active');
+    selectedBtn.style.color = '#0ea5e9';
+    selectedBtn.style.borderBottomColor = '#0ea5e9';
+  }
+}
+
+// Image deletion functionality
+function deleteImage(imageId, imageType, filename) {
+  if (confirm(`Er du sikker på at du vil slette bildet "${filename}"?\n\nDette kan ikke angres, og bildet vil bli fjernet fra alle spørsmål som bruker det.`)) {
+    const form = document.createElement('form');
+    form.method = 'POST';
+    form.action = '{{ url_for("admin.delete_image") }}';
+    
+    const imageIdInput = document.createElement('input');
+    imageIdInput.type = 'hidden';
+    imageIdInput.name = 'image_id';
+    imageIdInput.value = imageId;
+    
+    const imageTypeInput = document.createElement('input');
+    imageTypeInput.type = 'hidden';
+    imageTypeInput.name = 'image_type';
+    imageTypeInput.value = imageType;
+    
+    form.appendChild(imageIdInput);
+    form.appendChild(imageTypeInput);
+    document.body.appendChild(form);
+    form.submit();
+  }
+}
+
+// Gallery filtering functionality
+function filterGallery() {
+  const folderFilter = document.getElementById('folderFilter').value;
+  const searchFilter = document.getElementById('searchFilter').value.toLowerCase();
+  const galleryItems = document.querySelectorAll('.gallery-item');
+  
+  galleryItems.forEach(item => {
+    const folder = item.dataset.folder || 'root';
+    const filename = item.dataset.filename.toLowerCase();
+    const name = item.dataset.name.toLowerCase();
+    
+    const folderMatch = folderFilter === 'all' || folder === folderFilter;
+    const searchMatch = searchFilter === '' || filename.includes(searchFilter) || name.includes(searchFilter);
+    
+    if (folderMatch && searchMatch) {
+      item.style.display = 'block';
+    } else {
+      item.style.display = 'none';
+    }
+  });
+}
+
+// Refresh gallery (reload page)
+function refreshGallery() {
+  window.location.reload();
+}
+
+// Show hover effects on gallery items
+document.addEventListener('DOMContentLoaded', function() {
+  // Add hover effects to gallery items
+  document.querySelectorAll('.gallery-item').forEach(item => {
+    item.addEventListener('mouseenter', function() {
+      this.style.transform = 'translateY(-5px)';
+      this.style.boxShadow = '0 8px 16px rgba(0,0,0,0.15)';
+      const overlay = this.querySelector('.image-overlay');
+      if (overlay) overlay.style.opacity = '1';
+    });
+    
+    item.addEventListener('mouseleave', function() {
+      this.style.transform = 'translateY(0)';
+      this.style.boxShadow = '0 4px 8px rgba(0,0,0,0.1)';
+      const overlay = this.querySelector('.image-overlay');
+      if (overlay) overlay.style.opacity = '0';
+    });
+  });
+});
+
+// Original upload modal functions
 function showUploadModal() {
   document.getElementById('uploadModal').style.display = 'flex';
 }
@@ -232,9 +395,52 @@ uploadArea.addEventListener('drop', function(e) {
 <style>
 /* Upload Modal Specific Styling */
 #uploadModal .modal-content {
-  max-width: 700px;
-  margin: 3% auto;
+  max-width: 900px;
+  margin: 2% auto;
   animation: slideIn 0.3s ease;
+}
+
+/* Tab styling */
+.tab-btn.active {
+  color: #0ea5e9 !important;
+  border-bottom-color: #0ea5e9 !important;
+}
+
+.tab-btn:hover {
+  color: #0ea5e9 !important;
+}
+
+/* Gallery item styling */
+.gallery-item {
+  transition: all 0.3s ease;
+}
+
+.gallery-item:hover {
+  transform: translateY(-5px);
+  box-shadow: 0 8px 16px rgba(0,0,0,0.15);
+}
+
+.image-overlay {
+  transition: opacity 0.3s ease;
+}
+
+/* Scrollbar styling for gallery */
+#imageGalleryGrid::-webkit-scrollbar {
+  width: 8px;
+}
+
+#imageGalleryGrid::-webkit-scrollbar-track {
+  background: #f1f1f1;
+  border-radius: 4px;
+}
+
+#imageGalleryGrid::-webkit-scrollbar-thumb {
+  background: #c1c1c1;
+  border-radius: 4px;
+}
+
+#imageGalleryGrid::-webkit-scrollbar-thumb:hover {
+  background: #a8a8a8;
 }
 
 @keyframes slideIn {

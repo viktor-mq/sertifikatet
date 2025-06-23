@@ -179,7 +179,7 @@ def admin_dashboard():
                 
                 db.session.commit()
                 return redirect(url_for('admin.admin_dashboard'))
-
+    
     # Fetch questions with options using ORM
     query = Question.query
     
@@ -243,31 +243,47 @@ def admin_dashboard():
     images_dir = os.path.join(current_app.static_folder, 'images')
     try:
         for ts in TrafficSign.query.all():
-            # Dynamically find the subfolder under static/images containing this filename
-            folder = ''
-            if ts.filename:
+            # Filter out macOS hidden files and ensure file exists
+            if ts.filename and not ts.filename.startswith('._'):
+                # Dynamically find the subfolder under static/images containing this filename
+                folder = ''
+                file_found = False
                 for root, dirs, files in os.walk(images_dir):
-                    if ts.filename in files:
-                        folder = os.path.relpath(root, images_dir).replace(os.sep, '/')
-                        break
-                images.append({
-                    'id': ts.id,
-                    'filename': ts.filename,
-                    'name': ts.description or getattr(ts, 'name', '') or ts.filename,
-                    'folder': folder
-                })
+                    # Filter out hidden files from the file list
+                    clean_files = [f for f in files if not f.startswith('._')]
+                    if ts.filename in clean_files:
+                        # Verify the file actually exists
+                        file_path = os.path.join(root, ts.filename)
+                        if os.path.exists(file_path):
+                            folder = os.path.relpath(root, images_dir).replace(os.sep, '/')
+                            file_found = True
+                            break
+                
+                # Only add to images list if file actually exists
+                if file_found:
+                    images.append({
+                        'id': ts.id,
+                        'filename': ts.filename,
+                        'name': ts.description or getattr(ts, 'name', '') or ts.filename,
+                        'folder': folder
+                    })
     except Exception as e:
         print(f"[ADMIN] Error processing traffic signs: {e}")
 
     # Quiz images
     for qi in QuizImage.query.all():
-        display = qi.title or qi.description or qi.filename
-        images.append({
-            'id': qi.id, 
-            'filename': qi.filename, 
-            'name': display, 
-            'folder': qi.folder
-        })
+        # Filter out macOS hidden files and verify file exists
+        if qi.filename and not qi.filename.startswith('._'):
+            # Verify the file actually exists
+            file_path = os.path.join(images_dir, qi.folder or '', qi.filename)
+            if os.path.exists(file_path):
+                display = qi.title or qi.description or qi.filename
+                images.append({
+                    'id': qi.id, 
+                    'filename': qi.filename, 
+                    'name': display, 
+                    'folder': qi.folder
+                })
 
     # Remove duplicates: keep unique (folder, filename)
     seen = set()
@@ -284,9 +300,11 @@ def admin_dashboard():
     folders = []
     if os.path.isdir(images_dir):
         for name in os.listdir(images_dir):
-            path = os.path.join(images_dir, name)
-            if os.path.isdir(path):
-                folders.append(name)
+            # Filter out hidden directories and macOS metadata
+            if not name.startswith('.') and not name.startswith('._'):
+                path = os.path.join(images_dir, name)
+                if os.path.isdir(path):
+                    folders.append(name)
 
     # Tables for SQL console - get all tables dynamically
     tables = {}
@@ -410,18 +428,6 @@ def admin_dashboard():
         user_filter=''
     )
 
-@admin_bp.route('/delete_question/<int:question_id>', methods=['POST'])
-@admin_required
-def delete_question(question_id):
-    
-    # Delete question and its options (cascade will handle options)
-    question = Question.query.get(question_id)
-    if question:
-        db.session.delete(question)
-        db.session.commit()
-    
-    return redirect(url_for('admin.admin_dashboard'))
-
 @admin_bp.route('/bulk_delete', methods=['POST'])
 @admin_required
 def bulk_delete():
@@ -435,6 +441,86 @@ def bulk_delete():
             db.session.delete(question)
     
     db.session.commit()
+    return redirect(url_for('admin.admin_dashboard'))
+
+@admin_bp.route('/delete_question/<int:question_id>', methods=['POST'])
+@admin_required
+def delete_question(question_id):
+    
+    # Delete question and its options (cascade will handle options)
+    question = Question.query.get(question_id)
+    if question:
+        db.session.delete(question)
+        db.session.commit()
+    
+    return redirect(url_for('admin.admin_dashboard'))
+
+@admin_bp.route('/delete_image', methods=['POST'])
+@admin_required
+def delete_image():
+    """Delete an image file and its database record"""
+    
+    image_id = request.form.get('image_id')
+    image_type = request.form.get('image_type')  # 'traffic_sign' or 'quiz_image'
+    
+    if not image_id or not image_type:
+        flash('Invalid image deletion request', 'error')
+        return redirect(url_for('admin.admin_dashboard'))
+    
+    try:
+        if image_type == 'traffic_sign':
+            image_record = TrafficSign.query.get(image_id)
+            if image_record:
+                # Delete physical file
+                if image_record.filename:
+                    # Find the file in the images directory
+                    images_dir = os.path.join(current_app.static_folder, 'images')
+                    for root, dirs, files in os.walk(images_dir):
+                        if image_record.filename in files:
+                            file_path = os.path.join(root, image_record.filename)
+                            if os.path.exists(file_path):
+                                os.remove(file_path)
+                                break
+                
+                # Delete database record
+                db.session.delete(image_record)
+                flash(f'Traffic sign "{image_record.filename}" deleted successfully', 'success')
+        
+        elif image_type == 'quiz_image':
+            image_record = QuizImage.query.get(image_id)
+            if image_record:
+                # Delete physical file
+                if image_record.filename:
+                    images_dir = os.path.join(current_app.static_folder, 'images')
+                    file_path = os.path.join(images_dir, image_record.folder or '', image_record.filename)
+                    if os.path.exists(file_path):
+                        os.remove(file_path)
+                
+                # Delete database record
+                db.session.delete(image_record)
+                flash(f'Quiz image "{image_record.filename}" deleted successfully', 'success')
+        
+        else:
+            flash('Unknown image type', 'error')
+            return redirect(url_for('admin.admin_dashboard'))
+        
+        db.session.commit()
+        
+        # Log the deletion action
+        AdminSecurityService.log_admin_action(
+            admin_user=current_user,
+            action='image_delete',
+            additional_info=json.dumps({
+                'image_type': image_type,
+                'image_id': image_id,
+                'filename': image_record.filename if image_record else 'unknown'
+            })
+        )
+        
+    except Exception as e:
+        db.session.rollback()
+        flash(f'Error deleting image: {str(e)}', 'error')
+    
     return redirect(url_for('admin.admin_dashboard'))
 
 @admin_bp.route('/import_questions', methods=['POST'])
