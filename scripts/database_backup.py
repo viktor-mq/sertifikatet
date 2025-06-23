@@ -20,7 +20,6 @@ from email.mime.multipart import MIMEMultipart
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 from app import create_app
-import mysql.connector
 from dotenv import load_dotenv
 
 # Load environment variables
