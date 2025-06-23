@@ -317,10 +317,26 @@ flask db downgrade
 
 ### Prerequisites
 
-- Python 3.10+
+- **Python 3.10** (Required - matches CI/CD and production)
 - MySQL 8.0+
 - Redis 7+
 - Node.js (for frontend assets)
+
+### Python Version Management
+
+This project requires **Python 3.10** for compatibility with all dependencies and production environment.
+
+**Using pyenv (recommended)**:
+```bash
+# Install Python 3.10 if not already installed
+pyenv install 3.10.15
+
+# Set Python 3.10 for this project
+pyenv local 3.10.15
+
+# Verify version
+python --version  # Should show Python 3.10.x
+```
 
 ### System Dependencies
 
