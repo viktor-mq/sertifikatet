@@ -540,7 +540,7 @@ document.addEventListener('DOMContentLoaded', function() {
         📥 Eksporter Spørsmål
       </h3>
       <p style="margin-bottom: 15px; color: #555;">Last ned alle spørsmål som en CSV-fil for backup eller redigering i Excel.</p>
-      <a href="{{ url_for('admin.export_questions') }}" class="btn btn-success" style="width: 100%;">
+      <a href="{{ url_for('admin.export_questions') }}" class="btn btn-success" style="width: auto; display: inline-block; padding: 12px 24px;">
         📥 Last ned CSV-fil
       </a>
     </div>
@@ -579,7 +579,7 @@ document.addEventListener('DOMContentLoaded', function() {
           </label>
         </div>
         
-        <button type="submit" class="btn btn-warning" style="width: 100%;" onclick="return confirmImport()">
+        <button type="submit" class="btn btn-warning" style="width: auto; display: inline-block; padding: 12px 24px;" onclick="return confirmImport()">
           📤 Last opp og importer
         </button>
       </form>
