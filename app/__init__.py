@@ -113,6 +113,10 @@ def create_app(config_class=None):
     # from .utils.health_check import health_bp
     # app.register_blueprint(health_bp)
     
+    # Apply developer authentication (for development protection)
+    from .middleware import apply_dev_auth_to_app
+    apply_dev_auth_to_app(app)
+    
     # Create tables if they don't exist
     with app.app_context():
         # Import all models to ensure they're registered
