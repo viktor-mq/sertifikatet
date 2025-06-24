@@ -117,3 +117,25 @@ reports/
 # Misc
 *.bak
 *~
+
+# GitHub Actions runner files (keep locally, don't commit)
+actions-runner/
+_work/
+.runner
+.credentials
+.credentials_rsaparams
+*.runner
+runner/
+
+# GitHub Actions runner binaries and config
+Runner.*/
+*.deps.json
+*.runtimeconfig.json
+run.cmd
+run.sh
+config.cmd
+config.sh
+svc.sh
+
+# Windows service files
+*.exe.config
