@@ -139,3 +139,17 @@ svc.sh
 
 # Windows service files
 *.exe.config
+scripts/*.bat
+restart_production.bat
+start_production.bat
+stop_production.bat
+WINDOWS_DEPLOYMENT_GUIDE.md
+start_with_tunnel.sh
+
+# Database backup files (never commit)
+*.sql
+*.sql.gz
+backups/
+sertifikatet_backup_*.sql*
+Backups/
+../Backups/
