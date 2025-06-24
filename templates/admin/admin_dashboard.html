@@ -27,11 +27,12 @@
         {% if messages %}
             <div class="container" style="max-width: 1200px; margin: 0 auto; padding: 20px;">
                 {% for category, message in messages %}
-                    <div class="alert alert-{{ category }}" style="
+                    <div class="alert alert-{{ category }} dismissible-alert" style="
                         padding: 15px 20px;
                         margin-bottom: 15px;
                         border-radius: 8px;
                         border-left: 4px solid;
+                        position: relative;
                         {% if category == 'success' %}
                             background-color: #d4edda;
                             color: #155724;
@@ -63,6 +64,27 @@
                         {% endif %}
                         </strong>
                         {{ message }}
+                        <button class="alert-close-btn" 
+                                onclick="dismissAlert(this)" 
+                                aria-label="Dismiss notification"
+                                title="Dismiss notification (Press Esc)"
+                                style="
+                            position: absolute;
+                            top: 10px;
+                            right: 15px;
+                            background: none;
+                            border: none;
+                            font-size: 18px;
+                            font-weight: bold;
+                            color: inherit;
+                            cursor: pointer;
+                            padding: 0;
+                            line-height: 1;
+                            opacity: 0.7;
+                            transition: opacity 0.3s ease;
+                        " onmouseover="this.style.opacity='1'" onmouseout="this.style.opacity='0.7'">
+                            ×
+                        </button>
                     </div>
                 {% endfor %}
             </div>
@@ -98,6 +120,29 @@
     </div>
 
     <script>
+        // Alert dismissal function
+        function dismissAlert(button) {
+            const alert = button.closest('.dismissible-alert');
+            if (alert) {
+                // Add fade out class for smooth animation
+                alert.classList.add('fade-out');
+                
+                // Remove the element after animation completes
+                setTimeout(() => {
+                    alert.remove();
+                    
+                    // Check if there are any alerts left, hide container if none
+                    const remainingAlerts = document.querySelectorAll('.dismissible-alert');
+                    if (remainingAlerts.length === 0) {
+                        const alertContainer = document.querySelector('.container div[style*="max-width: 1200px"]');
+                        if (alertContainer && alertContainer.children.length === 0) {
+                            alertContainer.style.display = 'none';
+                        }
+                    }
+                }, 300);
+            }
+        }
+
         // Section management
         function showSection(sectionName) {
             // Hide all sections
@@ -135,6 +180,20 @@
                     // Allow the link to navigate normally for external pages
                     return true;
                 });
+            });
+            
+            // Add keyboard support for dismissing alerts with Escape key
+            document.addEventListener('keydown', function(e) {
+                if (e.key === 'Escape') {
+                    const alerts = document.querySelectorAll('.dismissible-alert');
+                    if (alerts.length > 0) {
+                        // Dismiss the most recent alert (last one)
+                        const closeBtn = alerts[alerts.length - 1].querySelector('.alert-close-btn');
+                        if (closeBtn) {
+                            dismissAlert(closeBtn);
+                        }
+                    }
+                }
             });
         });
     </script>

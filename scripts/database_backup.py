@@ -26,7 +26,7 @@ from dotenv import load_dotenv
 load_dotenv()
 
 # Configuration
-BACKUP_DIR = Path("backups/database")
+BACKUP_DIR = Path("../Backups/sertifikatet")
 MAX_BACKUPS = 30  # Keep 30 days of backups
 COMPRESS_BACKUPS = True
 VERIFY_BACKUPS = True
