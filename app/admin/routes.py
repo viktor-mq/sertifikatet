@@ -1061,6 +1061,18 @@ def test_route():
     """Simple test route to verify admin routes are working"""
     return "ML Settings route is working!"
 
+@admin_bp.route('/test-notifications')
+@admin_required
+def test_notifications():
+    """Test route to generate sample notifications for testing dismissal functionality"""
+    flash('Admin privileges successfully granted to gabini', 'success')
+    flash('Warning: Account created within last 24 hours', 'warning')
+    flash('Warning: User has never taken a quiz', 'warning')
+    flash('Warning: Email notification failed', 'warning')
+    flash('Test info notification', 'info')
+    flash('Test error notification', 'error')
+    return redirect(url_for('admin.admin_dashboard'))
+
 @admin_bp.route('/ml-settings')
 @admin_required
 def ml_settings():

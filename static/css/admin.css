@@ -816,3 +816,47 @@ th {
     background-color: var(--primary);
     color: white;
 }
+
+/* Alert dismissal styles */
+.dismissible-alert {
+    position: relative;
+    transition: all 0.3s ease;
+}
+
+.alert-close-btn {
+    position: absolute;
+    top: 10px;
+    right: 15px;
+    background: none;
+    border: none;
+    font-size: 18px;
+    font-weight: bold;
+    color: inherit;
+    cursor: pointer;
+    padding: 0;
+    line-height: 1;
+    opacity: 0.7;
+    transition: opacity 0.3s ease, transform 0.2s ease;
+    border-radius: 50%;
+    width: 24px;
+    height: 24px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.alert-close-btn:hover {
+    opacity: 1;
+    transform: scale(1.1);
+    background-color: rgba(0, 0, 0, 0.1);
+}
+
+.alert-close-btn:active {
+    transform: scale(0.95);
+}
+
+/* Alert animation for fade out */
+.dismissible-alert.fade-out {
+    opacity: 0;
+    transform: translateY(-10px);
+}
