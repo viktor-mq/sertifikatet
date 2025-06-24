@@ -15,7 +15,7 @@ echo "Backup script: $BACKUP_SCRIPT"
 chmod +x "$BACKUP_SCRIPT"
 
 # Create backup directory
-mkdir -p "$PROJECT_DIR/backups/database"
+mkdir -p "../Backups/sertifikatet"
 
 # Install required Python packages if needed
 echo "📦 Checking Python dependencies..."
@@ -34,7 +34,7 @@ crontab -l 2>/dev/null | grep -v "sertifikatet_backup" > "$TEMP_CRON"
 # Add new backup jobs
 echo "# Sertifikatet Database Backups" >> "$TEMP_CRON"
 echo "# Daily backup at 2:30 AM" >> "$TEMP_CRON"
-echo "30 2 * * * cd $PROJECT_DIR && $PROJECT_DIR/venv/bin/python $BACKUP_SCRIPT >> $PROJECT_DIR/backups/database/cron.log 2>&1" >> "$TEMP_CRON"
+echo "30 2 * * * cd $PROJECT_DIR && $PROJECT_DIR/venv/bin/python $BACKUP_SCRIPT >> ../Backups/sertifikatet/cron.log 2>&1" >> "$TEMP_CRON"
 echo "" >> "$TEMP_CRON"
 
 # Install new cron jobs
@@ -59,7 +59,7 @@ fi
 
 # Show current backups
 echo "📁 Current backups:"
-ls -la "$PROJECT_DIR/backups/database/"
+ls -la "../Backups/sertifikatet/"
 
 echo ""
 echo "🎉 Backup system setup complete!"
@@ -67,7 +67,7 @@ echo ""
 echo "📋 Manual commands:"
 echo "   Run backup:     cd $PROJECT_DIR && python scripts/database_backup.py"
 echo "   Restore backup: cd $PROJECT_DIR && python scripts/database_restore.py"
-echo "   View backups:   ls -la $PROJECT_DIR/backups/database/"
+echo "   View backups:   ls -la ../Backups/sertifikatet/"
 echo ""
 echo "📧 Email alerts configured for: $(grep SUPER_ADMIN_EMAIL $PROJECT_DIR/.env | cut -d'=' -f2)"
 echo "📅 Next automatic backup: Tomorrow at 2:30 AM"
