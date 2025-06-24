@@ -21,7 +21,7 @@ from dotenv import load_dotenv
 load_dotenv()
 
 # Configuration
-BACKUP_DIR = Path("backups/database")
+BACKUP_DIR = Path("../Backups/sertifikatet")
 
 # Setup logging
 logging.basicConfig(
