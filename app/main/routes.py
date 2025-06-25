@@ -2,6 +2,9 @@ from flask import render_template, request, redirect, url_for, session, jsonify,
 from flask_login import login_required, current_user
 import random
 import os
+import subprocess
+import hashlib
+import hmac
 from datetime import datetime
 from . import main_bp
 from .. import db
@@ -501,3 +504,90 @@ def achievements():
 def leaderboard():
     """Leaderboard page"""
     return render_template('progress/leaderboard.html')
+
+
+@main_bp.route('/deploy-webhook', methods=['POST'])
+def deploy_webhook():
+    """Secure webhook endpoint for automatic deployment"""
+    try:
+        # Get the webhook secret from environment variables
+        webhook_secret = os.getenv('WEBHOOK_SECRET', 'your-secret-key-change-this')
+        
+        # Get the signature from GitHub
+        signature = request.headers.get('X-Hub-Signature-256', '')
+        
+        # Verify the webhook signature for security
+        if signature:
+            payload = request.get_data()
+            expected_signature = 'sha256=' + hmac.new(
+                webhook_secret.encode(),
+                payload,
+                hashlib.sha256
+            ).hexdigest()
+            
+            if not hmac.compare_digest(signature, expected_signature):
+                current_app.logger.warning('Invalid webhook signature')
+                return jsonify({'error': 'Invalid signature'}), 401
+        
+        # Check if this is a push to main branch
+        payload_data = request.get_json()
+        if payload_data and payload_data.get('ref') != 'refs/heads/main':
+            return jsonify({'message': 'Not a main branch push, ignoring'}), 200
+        
+        # Log the deployment attempt
+        current_app.logger.info('Deployment webhook triggered')
+        
+        # Execute git pull in the project directory
+        try:
+            # Change to project directory and pull latest changes
+            project_dir = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+            
+            # Run git pull
+            result = subprocess.run(
+                ['git', 'pull', 'origin', 'main'],
+                cwd=project_dir,
+                capture_output=True,
+                text=True,
+                timeout=30
+            )
+            
+            if result.returncode == 0:
+                current_app.logger.info(f'Git pull successful: {result.stdout}')
+                
+                # Optional: Update dependencies if requirements.txt changed
+                if 'requirements.txt' in result.stdout:
+                    pip_result = subprocess.run(
+                        ['pip', 'install', '-r', 'requirements.txt'],
+                        cwd=project_dir,
+                        capture_output=True,
+                        text=True,
+                        timeout=60
+                    )
+                    if pip_result.returncode == 0:
+                        current_app.logger.info('Dependencies updated successfully')
+                    else:
+                        current_app.logger.warning(f'Dependency update failed: {pip_result.stderr}')
+                
+                return jsonify({
+                    'success': True,
+                    'message': 'Deployment successful',
+                    'output': result.stdout
+                }), 200
+            else:
+                current_app.logger.error(f'Git pull failed: {result.stderr}')
+                return jsonify({
+                    'success': False,
+                    'message': 'Git pull failed',
+                    'error': result.stderr
+                }), 500
+                
+        except subprocess.TimeoutExpired:
+            current_app.logger.error('Git pull timed out')
+            return jsonify({'error': 'Git pull timed out'}), 500
+        except Exception as e:
+            current_app.logger.error(f'Git pull error: {str(e)}')
+            return jsonify({'error': f'Git pull error: {str(e)}'}), 500
+            
+    except Exception as e:
+        current_app.logger.error(f'Webhook error: {str(e)}')
+        return jsonify({'error': 'Webhook processing failed'}), 500
