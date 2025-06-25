@@ -1,0 +1,60 @@
+/* 
+ * Common layout styles for consistent footer positioning
+ * Applied across both main application and admin panel
+ */
+
+/* Universal sticky footer implementation */
+html {
+    height: 100%;
+}
+
+body {
+    min-height: 100vh !important;
+    display: flex !important;
+    flex-direction: column !important;
+    margin: 0;
+    padding: 0;
+}
+
+/* Main content should take all available space */
+main {
+    flex: 1 !important;
+}
+
+/* Footer should stick to bottom */
+footer {
+    margin-top: auto !important;
+    flex-shrink: 0 !important;
+}
+
+/* Header should not grow */
+header {
+    flex-shrink: 0 !important;
+}
+
+/* Navigation should not interfere with layout */
+nav {
+    flex-shrink: 0 !important;
+}
+
+/* Prevent any container overrides */
+.container,
+.main-content,
+.dashboard-content {
+    /* Remove any conflicting min-height or height properties */
+    min-height: auto !important;
+}
+
+/* Mobile responsiveness */
+@media (max-width: 768px) {
+    body {
+        min-height: 100vh !important;
+    }
+}
+
+/* PWA compatibility */
+@media (display-mode: standalone) {
+    body {
+        min-height: 100vh !important;
+    }
+}

@@ -18,6 +18,9 @@ body {
     font-family: Arial, sans-serif;
     background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
     margin: 0;
+    min-height: 100vh !important;
+    display: flex !important;
+    flex-direction: column !important;
 }
 h1 {
     color: #333;
@@ -785,8 +788,18 @@ th {
     text-align: center;
     border-top: 1px solid rgba(0,0,0,0.1);
     box-shadow: 0 -2px 4px rgba(0,0,0,0.1);
-    margin-top: auto;
-    flex-shrink: 0;
+    margin-top: auto !important;
+    flex-shrink: 0 !important;
+}
+
+/* Ensure main content takes remaining space */
+main {
+    flex: 1 !important;
+}
+
+/* Header should not grow */
+header.admin-header {
+    flex-shrink: 0 !important;
 }
 .admin-footer-text {
     margin: 0;
