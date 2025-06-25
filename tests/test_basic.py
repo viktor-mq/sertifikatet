@@ -48,11 +48,11 @@ class TestQuizPages:
     """Test quiz-related pages"""
     
     def test_quiz_page(self, client, init_database):
-        """Test quiz page loads"""
+        """Test quiz page redirects to login when not authenticated"""
         response = client.get('/quiz')
-        assert response.status_code == 200
+        assert response.status_code == 302
     
     def test_quiz_categories_page(self, client, init_database):
-        """Test quiz categories page loads"""
+        """Test quiz categories page redirects to login when not authenticated"""
         response = client.get('/quiz/categories')
-        assert response.status_code == 200
+        assert response.status_code == 302
