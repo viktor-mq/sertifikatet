@@ -101,13 +101,14 @@ jobs:
       shell: cmd
       run: |
         echo Waiting for service to start...
-        timeout /t 15 /nobreak > nul
-        
-        echo Testing if application is responding...
-        curl -f http://localhost:8000/ || (
-          echo Application health check failed
-          exit /b 1
-        )
+        set RETRIES=12
+        set COUNT=0
+        :check
+        curl -f http://localhost:8000/ && exit /b 0
+        set /a COUNT+=1
+        if %COUNT% GEQ %RETRIES% exit /b 1
+        timeout /t 5 /nobreak > nul
+        goto check
 
   notify:
     name: Deployment Notification
