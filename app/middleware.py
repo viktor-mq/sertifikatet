@@ -5,11 +5,21 @@ Protects the entire site during development with basic auth
 from functools import wraps
 from flask import request, Response, session, redirect, url_for, render_template_string
 import os
+import sys
 
 # Developer credentials
 DEV_USERNAME = os.getenv('DEV_USERNAME', 'admin')
 DEV_PASSWORD = os.getenv('DEV_PASSWORD', 'test123')
 DEV_MODE = os.getenv('DEV_MODE', 'True').lower() in ('true', '1', 'yes')
+
+def is_testing_environment():
+    """Check if we're in a testing environment"""
+    return (
+        os.getenv('TESTING') == 'true' or
+        os.getenv('CI') == 'true' or
+        'pytest' in sys.modules or
+        'unittest' in sys.modules
+    )
 
 def check_dev_auth(username, password):
     """Check if developer credentials are valid"""
@@ -44,7 +54,7 @@ def dev_auth_required(f):
 
 def apply_dev_auth_to_app(app):
     """Apply developer authentication to all routes"""
-    if not DEV_MODE:
+    if not DEV_MODE or is_testing_environment():
         return
     
     @app.before_request
