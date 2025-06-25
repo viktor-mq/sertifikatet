@@ -293,27 +293,39 @@ class VideoService:
         completed_video_ids = db.session.query(VideoProgress.video_id).filter_by(
             user_id=user.id,
             completed=True
-        ).subquery()
+        ).scalar_subquery()
         
         # Get videos in same categories as watched videos
-        watched_categories = db.session.query(Video.category).filter(
-            Video.id.in_(completed_video_ids)
+        watched_categories = db.session.query(Video.category_id).filter(
+            Video.id.in_(db.session.query(VideoProgress.video_id).filter_by(
+                user_id=user.id,
+                completed=True
+            ).scalar_subquery())
         ).distinct().all()
         watched_categories = [cat[0] for cat in watched_categories if cat[0]]
         
         # Recommend unwatched videos from same categories
         recommendations = Video.query.filter(
-            ~Video.id.in_(completed_video_ids),
-            Video.category.in_(watched_categories) if watched_categories else True
+            ~Video.id.in_(db.session.query(VideoProgress.video_id).filter_by(
+                user_id=user.id,
+                completed=True
+            ).scalar_subquery()),
+            Video.category_id.in_(watched_categories) if watched_categories else True,
+            Video.is_active == True
         ).order_by(func.random()).limit(limit).all()
         
         # If not enough recommendations, add popular videos
         if len(recommendations) < limit:
+            recommendation_ids = [v.id for v in recommendations]
             popular_videos = Video.query.filter(
-                ~Video.id.in_(completed_video_ids),
-                ~Video.id.in_([v.id for v in recommendations])
-            ).join(VideoRating).group_by(Video.id).order_by(
-                func.avg(VideoRating.rating).desc()
+                ~Video.id.in_(db.session.query(VideoProgress.video_id).filter_by(
+                    user_id=user.id,
+                    completed=True
+                ).scalar_subquery()),
+                ~Video.id.in_(recommendation_ids) if recommendation_ids else True,
+                Video.is_active == True
+            ).join(VideoRating, isouter=True).group_by(Video.id).order_by(
+                func.coalesce(func.avg(VideoRating.rating), 0).desc()
             ).limit(limit - len(recommendations)).all()
             
             recommendations.extend(popular_videos)

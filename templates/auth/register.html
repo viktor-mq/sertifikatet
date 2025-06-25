@@ -59,16 +59,48 @@
                         <label for="password" class="block text-sm font-medium mb-2">
                             Passord
                         </label>
-                        <input id="password" name="password" type="password" required
-                               class="w-full px-4 py-3 bg-gray-800 border border-gray-700 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent transition-all"
-                               placeholder="Minst 8 tegn">
+                        <div class="relative">
+                            <input id="password" name="password" type="password" required
+                                   minlength="8"
+                                   class="w-full px-4 py-3 bg-gray-800 border border-gray-700 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent transition-all"
+                                   placeholder="Minimum 8 tegn"
+                                   onkeyup="checkPasswordStrength(this.value)">
+                            <button type="button" 
+                                    onclick="togglePassword('password')"
+                                    class="absolute right-3 top-3.5 text-gray-400 hover:text-white">
+                                <i class="fas fa-eye" id="password_icon"></i>
+                            </button>
+                        </div>
+                        
+                        <!-- Password Strength Indicator -->
                         <div class="mt-2">
-                            <div class="flex items-center space-x-2">
-                                <div class="flex-1 bg-gray-700 rounded-full h-2">
-                                    <div id="password-strength" class="h-2 rounded-full transition-all duration-300"></div>
-                                </div>
-                                <span id="strength-text" class="text-xs text-gray-500">Passordstyrke</span>
+                            <div class="flex items-center justify-between mb-1">
+                                <span class="text-xs text-gray-400">Passordstyrke</span>
+                                <span id="strength_text" class="text-xs text-gray-400">-</span>
                             </div>
+                            <div class="h-2 bg-gray-700 rounded-full overflow-hidden">
+                                <div id="strength_bar" class="h-full transition-all duration-300" style="width: 0%"></div>
+                            </div>
+                        </div>
+                        
+                        <!-- Password Requirements -->
+                        <div class="mt-3 space-y-1">
+                            <p class="text-xs text-gray-400" id="req_length">
+                                <i class="fas fa-circle mr-1 text-[0.5rem]"></i>
+                                Minst 8 tegn
+                            </p>
+                            <p class="text-xs text-gray-400" id="req_uppercase">
+                                <i class="fas fa-circle mr-1 text-[0.5rem]"></i>
+                                Minst én stor bokstav
+                            </p>
+                            <p class="text-xs text-gray-400" id="req_lowercase">
+                                <i class="fas fa-circle mr-1 text-[0.5rem]"></i>
+                                Minst én liten bokstav
+                            </p>
+                            <p class="text-xs text-gray-400" id="req_number">
+                                <i class="fas fa-circle mr-1 text-[0.5rem]"></i>
+                                Minst ett tall
+                            </p>
                         </div>
                     </div>
 
@@ -77,9 +109,19 @@
                         <label for="confirm_password" class="block text-sm font-medium mb-2">
                             Bekreft passord
                         </label>
-                        <input id="confirm_password" name="confirm_password" type="password" required
-                               class="w-full px-4 py-3 bg-gray-800 border border-gray-700 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent transition-all"
-                               placeholder="Skriv passordet på nytt">
+                        <div class="relative">
+                            <input id="confirm_password" name="confirm_password" type="password" required
+                                   minlength="8"
+                                   class="w-full px-4 py-3 bg-gray-800 border border-gray-700 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent transition-all"
+                                   placeholder="Skriv passordet på nytt"
+                                   onkeyup="checkPasswordMatch()">
+                            <button type="button" 
+                                    onclick="togglePassword('confirm_password')"
+                                    class="absolute right-3 top-3.5 text-gray-400 hover:text-white">
+                                <i class="fas fa-eye" id="confirm_password_icon"></i>
+                            </button>
+                        </div>
+                        <p id="match_message" class="mt-1 text-xs hidden"></p>
                     </div>
 
                     <!-- Terms and Conditions -->
@@ -95,8 +137,8 @@
 
                 <!-- Submit Button -->
                 <div class="mt-6">
-                    <button type="submit"
-                            class="w-full flex justify-center py-3 px-4 border border-transparent rounded-lg shadow-sm text-white bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-700 hover:to-pink-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-purple-500 transition-all hover-card">
+                    <button type="submit" id="submit_button"
+                            class="w-full flex justify-center py-3 px-4 border border-transparent rounded-lg shadow-sm text-white bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-700 hover:to-pink-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-purple-500 transition-all hover-card disabled:opacity-50 disabled:cursor-not-allowed">
                         Opprett konto
                     </button>
                 </div>
@@ -133,37 +175,140 @@
 </section>
 
 <script>
-// Password strength indicator
-document.getElementById('password').addEventListener('input', function(e) {
-    const password = e.target.value;
-    const strengthBar = document.getElementById('password-strength');
-    const strengthText = document.getElementById('strength-text');
+// Toggle password visibility
+function togglePassword(fieldId) {
+    const field = document.getElementById(fieldId);
+    const icon = document.getElementById(fieldId + '_icon');
     
-    let strength = 0;
-    if (password.length >= 8) strength++;
-    if (password.match(/[a-z]/) && password.match(/[A-Z]/)) strength++;
-    if (password.match(/[0-9]/)) strength++;
-    if (password.match(/[^a-zA-Z0-9]/)) strength++;
-    
-    const colors = ['bg-red-500', 'bg-orange-500', 'bg-yellow-500', 'bg-green-500'];
-    const texts = ['Svakt', 'Middels', 'Bra', 'Sterkt'];
-    
-    strengthBar.className = `h-2 rounded-full transition-all duration-300 ${colors[strength] || 'bg-gray-700'}`;
-    strengthBar.style.width = `${(strength + 1) * 25}%`;
-    strengthText.textContent = texts[strength] || 'Passordstyrke';
-    strengthText.className = `text-xs ${colors[strength] ? colors[strength].replace('bg-', 'text-') : 'text-gray-500'}`;
-});
-
-// Confirm password validation
-document.getElementById('confirm_password').addEventListener('input', function(e) {
-    const password = document.getElementById('password').value;
-    const confirmPassword = e.target.value;
-    
-    if (confirmPassword && password !== confirmPassword) {
-        e.target.setCustomValidity('Passordene matcher ikke');
+    if (field.type === 'password') {
+        field.type = 'text';
+        icon.classList.remove('fa-eye');
+        icon.classList.add('fa-eye-slash');
     } else {
-        e.target.setCustomValidity('');
+        field.type = 'password';
+        icon.classList.remove('fa-eye-slash');
+        icon.classList.add('fa-eye');
     }
-});
+}
+
+// Check password strength
+function checkPasswordStrength(password) {
+    let strength = 0;
+    const strengthBar = document.getElementById('strength_bar');
+    const strengthText = document.getElementById('strength_text');
+    
+    // Check length
+    const lengthReq = document.getElementById('req_length');
+    if (password.length >= 8) {
+        strength += 25;
+        lengthReq.classList.remove('text-gray-400');
+        lengthReq.classList.add('text-green-400');
+        lengthReq.querySelector('i').classList.remove('fa-circle');
+        lengthReq.querySelector('i').classList.add('fa-check-circle');
+    } else {
+        lengthReq.classList.remove('text-green-400');
+        lengthReq.classList.add('text-gray-400');
+        lengthReq.querySelector('i').classList.remove('fa-check-circle');
+        lengthReq.querySelector('i').classList.add('fa-circle');
+    }
+    
+    // Check uppercase
+    const uppercaseReq = document.getElementById('req_uppercase');
+    if (/[A-Z]/.test(password)) {
+        strength += 25;
+        uppercaseReq.classList.remove('text-gray-400');
+        uppercaseReq.classList.add('text-green-400');
+        uppercaseReq.querySelector('i').classList.remove('fa-circle');
+        uppercaseReq.querySelector('i').classList.add('fa-check-circle');
+    } else {
+        uppercaseReq.classList.remove('text-green-400');
+        uppercaseReq.classList.add('text-gray-400');
+        uppercaseReq.querySelector('i').classList.remove('fa-check-circle');
+        uppercaseReq.querySelector('i').classList.add('fa-circle');
+    }
+    
+    // Check lowercase
+    const lowercaseReq = document.getElementById('req_lowercase');
+    if (/[a-z]/.test(password)) {
+        strength += 25;
+        lowercaseReq.classList.remove('text-gray-400');
+        lowercaseReq.classList.add('text-green-400');
+        lowercaseReq.querySelector('i').classList.remove('fa-circle');
+        lowercaseReq.querySelector('i').classList.add('fa-check-circle');
+    } else {
+        lowercaseReq.classList.remove('text-green-400');
+        lowercaseReq.classList.add('text-gray-400');
+        lowercaseReq.querySelector('i').classList.remove('fa-check-circle');
+        lowercaseReq.querySelector('i').classList.add('fa-circle');
+    }
+    
+    // Check number
+    const numberReq = document.getElementById('req_number');
+    if (/\d/.test(password)) {
+        strength += 25;
+        numberReq.classList.remove('text-gray-400');
+        numberReq.classList.add('text-green-400');
+        numberReq.querySelector('i').classList.remove('fa-circle');
+        numberReq.querySelector('i').classList.add('fa-check-circle');
+    } else {
+        numberReq.classList.remove('text-green-400');
+        numberReq.classList.add('text-gray-400');
+        numberReq.querySelector('i').classList.remove('fa-check-circle');
+        numberReq.querySelector('i').classList.add('fa-circle');
+    }
+    
+    // Update strength bar
+    strengthBar.style.width = strength + '%';
+    
+    if (strength === 0) {
+        strengthBar.className = 'h-full transition-all duration-300';
+        strengthText.textContent = '-';
+        strengthText.className = 'text-xs text-gray-400';
+    } else if (strength <= 25) {
+        strengthBar.className = 'h-full bg-red-500 transition-all duration-300';
+        strengthText.textContent = 'Svakt';
+        strengthText.className = 'text-xs text-red-500';
+    } else if (strength <= 50) {
+        strengthBar.className = 'h-full bg-orange-500 transition-all duration-300';
+        strengthText.textContent = 'Middels';
+        strengthText.className = 'text-xs text-orange-500';
+    } else if (strength <= 75) {
+        strengthBar.className = 'h-full bg-yellow-500 transition-all duration-300';
+        strengthText.textContent = 'Bra';
+        strengthText.className = 'text-xs text-yellow-500';
+    } else {
+        strengthBar.className = 'h-full bg-green-500 transition-all duration-300';
+        strengthText.textContent = 'Sterkt';
+        strengthText.className = 'text-xs text-green-500';
+    }
+    
+    checkPasswordMatch();
+}
+
+// Check if passwords match
+function checkPasswordMatch() {
+    const password = document.getElementById('password').value;
+    const confirmPassword = document.getElementById('confirm_password').value;
+    const matchMessage = document.getElementById('match_message');
+    const submitButton = document.querySelector('button[type="submit"]');
+    
+    if (confirmPassword === '') {
+        matchMessage.classList.add('hidden');
+        submitButton.disabled = false;
+        return;
+    }
+    
+    matchMessage.classList.remove('hidden');
+    
+    if (password === confirmPassword) {
+        matchMessage.textContent = 'Passordene stemmer overens';
+        matchMessage.className = 'mt-1 text-xs text-green-400';
+        submitButton.disabled = false;
+    } else {
+        matchMessage.textContent = 'Passordene stemmer ikke overens';
+        matchMessage.className = 'mt-1 text-xs text-red-400';
+        submitButton.disabled = true;
+    }
+}
 </script>
 {% endblock %}

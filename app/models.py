@@ -21,7 +21,7 @@ class User(UserMixin, db.Model):
     total_xp = db.Column(db.Integer, default=0)
     is_verified = db.Column(db.Boolean, default=False)
     subscription_tier = db.Column(db.String(20), default='free')  # 'free', 'premium', 'pro' - DEPRECATED
-    current_plan_id = db.Column(db.Integer, db.ForeignKey('subscription_plans.id'), nullable=False)
+    current_plan_id = db.Column(db.Integer, db.ForeignKey('subscription_plans.id'), nullable=True)
     subscription_status = db.Column(db.Enum('active', 'cancelled', 'expired', 'trial'), default='active')
     is_admin = db.Column(db.Boolean, default=False)
     

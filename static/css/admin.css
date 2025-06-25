@@ -16,10 +16,8 @@
 
 body {
     font-family: Arial, sans-serif;
-    padding: 40px;
     background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
     margin: 0;
-    padding-top: 70px;
 }
 h1 {
     color: #333;
@@ -288,7 +286,7 @@ h1 {
     box-shadow: 0 0 10px rgba(0,0,0,0.1);
     max-width: 1400px;
     width: 95%;
-    margin: auto;
+    margin: 40px auto;
 }
 
 /* Table container */
@@ -787,11 +785,8 @@ th {
     text-align: center;
     border-top: 1px solid rgba(0,0,0,0.1);
     box-shadow: 0 -2px 4px rgba(0,0,0,0.1);
-    position: fixed;
-    bottom: 0;
-    left: 0;
-    width: 100%;
-    z-index: 100;
+    margin-top: auto;
+    flex-shrink: 0;
 }
 .admin-footer-text {
     margin: 0;

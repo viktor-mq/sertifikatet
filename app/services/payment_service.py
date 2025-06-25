@@ -90,8 +90,15 @@ class SubscriptionService:
             # Admin users always get Pro plan access
             if user.is_admin:
                 return 'pro'
-            if user.current_plan:
+            
+            # Check if user has a current_plan set
+            if user.current_plan_id and user.current_plan:
                 return user.current_plan.name
+            
+            # Fallback to legacy subscription_tier if current_plan_id is NULL
+            if user.subscription_tier and user.subscription_tier in ['free', 'premium', 'pro']:
+                return user.subscription_tier
+                
         return 'free'
     
     @staticmethod

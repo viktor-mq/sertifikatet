@@ -313,9 +313,8 @@ def api_features():
 # Guest routes (no login required)
 @subscription_bp.route('/pricing')
 def pricing():
-    """Public pricing page"""
-    plans = SubscriptionPlan.query.filter_by(is_active=True).order_by(SubscriptionPlan.price_nok).all()
-    return render_template('subscription/pricing.html', plans=plans)
+    """Redirect to homepage pricing section"""
+    return redirect(url_for('main.index') + '#pricing')
 
 
 @subscription_bp.route('/features')

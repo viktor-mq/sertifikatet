@@ -12,6 +12,8 @@ project:
     multimedia:
       - instructional videos
       - simulated driving scenarios
+      - video playlists (official and user-created)
+      - playlist management for premium users
     progress_tracking:
       - personalized analytics
     gamification:
@@ -550,6 +552,15 @@ file_structure:
       - quiz
       - game   # Game templates (traffic_signs, memory_game, etc.)
       - video
+        - index.html
+        - watch.html
+        - playlists.html
+        - playlist.html
+        - create_playlist.html
+        - category.html
+        - bookmarks.html
+        - recommended.html
+        - admin_upload.html
       - progress
       - admin
       - ml     # ML templates (insights.html, learning_dashboard.html, etc.)
@@ -607,16 +618,23 @@ monetization:
     to remove ads and unlock additional features.
   subscription_tiers:
     free:
-      access: limited daily quizzes, 2 mock exam/week (45 question multiple choice, max 7 mistakes to pass), basic stats
+      access: limited daily quizzes, 2 mock exam/week (45 question multiple choice, max 7 mistakes to pass), basic stats, view playlists
       ads: enabled
     premium:
-      access: unlimited quizzes, videos, detailed stats, AI-adaptive learning
+      access: unlimited quizzes, videos, detailed stats, AI-adaptive learning, create playlists
       ads: disabled
       price: 149 NOK/month
     pro:
-      access: everything in premium + offline mode, personal tutor
+      access: everything in premium + offline mode, personal tutor, create playlists
       ads: disabled
       price: 249 NOK/month
+  access_control:
+    plan_hierarchy: "Free (Plan ID 1) < Premium (Plan ID 2) < Pro (Plan ID 3)"
+    playlist_features:
+      view_playlists: "All logged-in users"
+      create_playlists: "Premium and Pro users (plan_id >= 2)"
+      manage_playlist_content: "Admin users only"
+    subscription_decorator: "Enhanced with plan hierarchy support"
 
 future_enhancements:
   phase_13_advanced_ml:

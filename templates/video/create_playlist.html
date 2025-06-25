@@ -1,0 +1,174 @@
+{% extends "base.html" %}
+
+{% block title %}Opprett spilleliste - {{ config.SITE_NAME }}{% endblock %}
+
+{% block content %}
+<div class="min-h-screen bg-gray-900">
+    <!-- Header -->
+    <div class="bg-gradient-to-r from-purple-600 to-blue-600 py-12">
+        <div class="max-w-7xl mx-auto px-4">
+            <h1 class="text-3xl md:text-4xl font-bold text-white mb-2 flex items-center">
+                <i class="fas fa-plus-circle mr-3"></i>Opprett spilleliste
+            </h1>
+            <p class="text-gray-200">
+                Lag din egen spilleliste for å organisere videoer
+            </p>
+        </div>
+    </div>
+
+    <div class="max-w-4xl mx-auto px-4 py-12">
+        <div class="bg-gray-800 rounded-lg shadow-xl overflow-hidden">
+            <div class="p-8">
+                <form method="POST" id="create-playlist-form">
+                    <!-- Playlist Name -->
+                    <div class="mb-6">
+                        <label for="name" class="block text-white text-sm font-semibold mb-2">
+                            Spillelistenavn *
+                        </label>
+                        <input type="text" 
+                               id="name" 
+                               name="name" 
+                               class="w-full px-4 py-3 bg-gray-700 border border-gray-600 rounded-lg text-white placeholder-gray-400 focus:outline-none focus:border-purple-500 focus:ring-2 focus:ring-purple-500 focus:ring-opacity-50 transition" 
+                               placeholder="F.eks. Mine favorittvideor"
+                               required
+                               maxlength="100">
+                        <p class="text-gray-400 text-xs mt-1">Maks 100 tegn</p>
+                    </div>
+
+                    <!-- Description -->
+                    <div class="mb-8">
+                        <label for="description" class="block text-white text-sm font-semibold mb-2">
+                            Beskrivelse
+                        </label>
+                        <textarea id="description" 
+                                  name="description" 
+                                  rows="4"
+                                  class="w-full px-4 py-3 bg-gray-700 border border-gray-600 rounded-lg text-white placeholder-gray-400 focus:outline-none focus:border-purple-500 focus:ring-2 focus:ring-purple-500 focus:ring-opacity-50 transition resize-none" 
+                                  placeholder="Beskriv hva denne spillelisten inneholder..."
+                                  maxlength="500"></textarea>
+                        <p class="text-gray-400 text-xs mt-1">Maks 500 tegn (valgfritt)</p>
+                    </div>
+
+                    <!-- Form Actions -->
+                    <div class="flex flex-col sm:flex-row gap-4 justify-between">
+                        <a href="{{ url_for('video.playlists') }}" 
+                           class="px-6 py-3 bg-gray-600 text-white rounded-lg hover:bg-gray-500 transition text-center font-semibold">
+                            <i class="fas fa-times mr-2"></i>Avbryt
+                        </a>
+                        <button type="submit" 
+                                class="px-8 py-3 bg-purple-600 text-white rounded-lg hover:bg-purple-700 transition font-semibold disabled:opacity-50 disabled:cursor-not-allowed"
+                                id="submit-btn">
+                            <i class="fas fa-plus-circle mr-2"></i>Opprett spilleliste
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+
+        <!-- Info Card -->
+        <div class="mt-8 bg-blue-900 bg-opacity-30 border border-blue-700 rounded-lg p-6">
+            <h3 class="text-lg font-semibold text-white mb-3 flex items-center">
+                <i class="fas fa-info-circle mr-2 text-blue-400"></i>Om spillelister
+            </h3>
+            <div class="text-gray-300 space-y-2">
+                <p class="flex items-start">
+                    <i class="fas fa-check-circle text-green-400 mr-2 mt-1 flex-shrink-0"></i>
+                    Organiser videoer i tematiske samlinger
+                </p>
+                <p class="flex items-start">
+                    <i class="fas fa-check-circle text-green-400 mr-2 mt-1 flex-shrink-0"></i>
+                    Legg til videoer etter at spillelisten er opprettet
+                </p>
+                <p class="flex items-start">
+                    <i class="fas fa-check-circle text-green-400 mr-2 mt-1 flex-shrink-0"></i>
+                    Kun du kan se og redigere dine private spillelister
+                </p>
+                <p class="flex items-start">
+                    <i class="fas fa-check-circle text-green-400 mr-2 mt-1 flex-shrink-0"></i>
+                    Få bedre oversikt over ditt læringsmateriale
+                </p>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const form = document.getElementById('create-playlist-form');
+    const submitBtn = document.getElementById('submit-btn');
+    const nameInput = document.getElementById('name');
+    const descriptionInput = document.getElementById('description');
+
+    // Character counting for name
+    nameInput.addEventListener('input', function() {
+        const remaining = 100 - this.value.length;
+        const helpText = this.parentNode.querySelector('.text-xs');
+        helpText.textContent = `${remaining} tegn igjen`;
+        
+        if (remaining < 10) {
+            helpText.classList.add('text-yellow-400');
+        } else {
+            helpText.classList.remove('text-yellow-400');
+        }
+    });
+
+    // Character counting for description
+    descriptionInput.addEventListener('input', function() {
+        const remaining = 500 - this.value.length;
+        const helpText = this.parentNode.querySelector('.text-xs');
+        helpText.textContent = `${remaining} tegn igjen (valgfritt)`;
+        
+        if (remaining < 50) {
+            helpText.classList.add('text-yellow-400');
+        } else {
+            helpText.classList.remove('text-yellow-400');
+        }
+    });
+
+    // Form submission
+    form.addEventListener('submit', function(e) {
+        const name = nameInput.value.trim();
+        
+        if (!name) {
+            e.preventDefault();
+            alert('Spillelistenavn er påkrevd');
+            nameInput.focus();
+            return;
+        }
+
+        if (name.length > 100) {
+            e.preventDefault();
+            alert('Spillelistenavn kan ikke være lengre enn 100 tegn');
+            nameInput.focus();
+            return;
+        }
+
+        // Disable submit button to prevent double submission
+        submitBtn.disabled = true;
+        submitBtn.innerHTML = '<i class="fas fa-spinner fa-spin mr-2"></i>Oppretter...';
+    });
+
+    // Auto-focus on name input
+    nameInput.focus();
+});
+</script>
+
+<style>
+/* Custom focus styles for better accessibility */
+input:focus, textarea:focus {
+    box-shadow: 0 0 0 3px rgba(147, 51, 234, 0.1);
+}
+
+/* Smooth transitions */
+input, textarea, button {
+    transition: all 0.2s ease-in-out;
+}
+
+/* Responsive form improvements */
+@media (max-width: 640px) {
+    .min-h-screen {
+        min-height: calc(100vh - 80px);
+    }
+}
+</style>
+{% endblock %}

@@ -1,0 +1,228 @@
+{% extends "base.html" %}
+
+{% block title %}Anbefalte videoer - {{ config.SITE_NAME }}{% endblock %}
+
+{% block content %}
+<div class="min-h-screen bg-gray-900">
+    <!-- Header Section -->
+    <div class="bg-gradient-to-r from-purple-600 to-blue-600 py-16">
+        <div class="max-w-7xl mx-auto px-4">
+            <div class="text-center">
+                <h1 class="text-4xl md:text-5xl font-bold text-white mb-4">
+                    <i class="fas fa-magic mr-3"></i>Anbefalte videoer
+                </h1>
+                <p class="text-xl text-gray-200 max-w-3xl mx-auto">
+                    Personlige anbefalinger basert på din læringsprogresjon og interesser.
+                </p>
+            </div>
+        </div>
+    </div>
+
+    <div class="max-w-7xl mx-auto px-4 py-12">
+        <!-- Navigation Links -->
+        <div class="mb-8 flex justify-center space-x-4">
+            <a href="{{ url_for('video.index') }}" 
+               class="bg-gray-800 text-white px-4 py-2 rounded-lg hover:bg-gray-700 transition flex items-center">
+                <i class="fas fa-video mr-2"></i>Videobibliotek
+            </a>
+            <a href="{{ url_for('video.bookmarks') }}" 
+               class="bg-gray-800 text-white px-4 py-2 rounded-lg hover:bg-gray-700 transition flex items-center">
+                <i class="fas fa-bookmark mr-2"></i>Mine bokmerkede
+            </a>
+            <a href="{{ url_for('video.playlists') }}" 
+               class="bg-gray-800 text-white px-4 py-2 rounded-lg hover:bg-gray-700 transition flex items-center">
+                <i class="fas fa-list-alt mr-2"></i>Spillelister
+            </a>
+        </div>
+
+        {% if videos %}
+        <!-- Recommended Videos Grid -->
+        <section>
+            <div class="mb-8 text-center">
+                <div class="bg-gray-800 rounded-lg p-6 max-w-2xl mx-auto">
+                    <i class="fas fa-lightbulb text-4xl text-yellow-400 mb-4"></i>
+                    <h2 class="text-xl font-bold text-white mb-2">Tilpasset for deg</h2>
+                    <p class="text-gray-300">
+                        Disse videoene er valgt basert på din læringsprogresjon, 
+                        tidligere videoer du har sett, og emner du trenger å øve mer på.
+                    </p>
+                </div>
+            </div>
+
+            <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                {% for video in videos %}
+                <div class="bg-gray-800 rounded-lg overflow-hidden shadow-lg hover:shadow-2xl transition-all hover:-translate-y-1">
+                    <a href="{{ url_for('video.watch', video_id=video.id) }}">
+                        <div class="relative aspect-video bg-gray-700">
+                            {% if video.thumbnail_filename %}
+                                <img src="{{ url_for('static', filename='videos/thumbnails/' + video.thumbnail_filename) }}" 
+                                     class="w-full h-full object-cover" alt="{{ video.title }}">
+                            {% else %}
+                                <div class="w-full h-full flex items-center justify-center">
+                                    <i class="fas fa-video text-4xl text-gray-600"></i>
+                                </div>
+                            {% endif %}
+                            <div class="absolute bottom-2 right-2 bg-black bg-opacity-75 text-white px-2 py-1 rounded text-sm">
+                                {{ video.duration_seconds|format_duration if video.duration_seconds else 'N/A' }}
+                            </div>
+                            <div class="absolute top-2 left-2 text-purple-400 bg-black bg-opacity-75 rounded-full p-2">
+                                <i class="fas fa-magic text-lg"></i>
+                            </div>
+                            {% if video.progress and video.progress[0].completed %}
+                                <div class="absolute top-2 right-2 text-green-500 bg-white rounded-full p-1">
+                                    <i class="fas fa-check-circle text-xl"></i>
+                                </div>
+                            {% elif video.progress %}
+                                <div class="absolute bottom-0 left-0 w-full h-1 bg-gray-600">
+                                    <div class="h-full bg-purple-500" style="width: {{ (video.progress[0].last_position_seconds / video.duration_seconds * 100) if video.duration_seconds else 0 }}%"></div>
+                                </div>
+                            {% endif %}
+                        </div>
+                    </a>
+                    <div class="p-4">
+                        <h3 class="text-white font-semibold mb-2 hover:text-purple-400">
+                            <a href="{{ url_for('video.watch', video_id=video.id) }}">
+                                {{ video.title }}
+                            </a>
+                        </h3>
+                        <p class="text-gray-400 text-sm mb-3 line-clamp-2">{{ video.description|truncate(100) }}</p>
+                        <div class="flex justify-between items-center mb-3">
+                            <span class="bg-purple-600 text-white px-3 py-1 rounded-full text-xs">
+                                {{ video.category.name if video.category else 'Ukategorisert' }}
+                            </span>
+                            <div class="flex items-center text-yellow-400 text-sm">
+                                <i class="fas fa-star mr-1"></i>
+                                <span>{{ video.avg_rating|default(0, true)|round(1) }}</span>
+                            </div>
+                        </div>
+                        <div class="flex justify-between items-center">
+                            <span class="text-gray-500 text-sm flex items-center">
+                                <i class="fas fa-eye mr-1"></i>
+                                {{ video.view_count|default(0) }} visninger
+                            </span>
+                            <button onclick="toggleBookmark({{ video.id }})" 
+                                    class="text-gray-400 hover:text-yellow-400 transition"
+                                    title="Bokmerke video">
+                                <i class="fas fa-bookmark text-lg"></i>
+                            </button>
+                        </div>
+                    </div>
+                </div>
+                {% endfor %}
+            </div>
+        </section>
+        {% else %}
+        <!-- Empty State -->
+        <div class="text-center py-16">
+            <div class="bg-gray-800 rounded-lg p-12 max-w-2xl mx-auto">
+                <i class="fas fa-magic text-6xl text-gray-600 mb-6"></i>
+                <h2 class="text-2xl font-bold text-white mb-4">Ingen anbefalinger tilgjengelig</h2>
+                <p class="text-gray-400 mb-8">
+                    Vi trenger litt mer informasjon om dine læringsprefenanser for å gi deg 
+                    personlige anbefalinger. Start med å se noen videoer og ta noen quiz.
+                </p>
+                <div class="space-y-4">
+                    <a href="{{ url_for('video.index') }}" 
+                       class="inline-block bg-purple-600 text-white px-6 py-3 rounded-lg hover:bg-purple-700 transition">
+                        <i class="fas fa-video mr-2"></i>Utforsk videobibliotek
+                    </a>
+                    <br>
+                    <a href="{{ url_for('main.quiz_categories') }}" 
+                       class="inline-block bg-gray-700 text-white px-6 py-3 rounded-lg hover:bg-gray-600 transition">
+                        <i class="fas fa-question-circle mr-2"></i>Ta en quiz
+                    </a>
+                </div>
+            </div>
+        </div>
+        {% endif %}
+
+        <!-- How Recommendations Work -->
+        <section class="mt-16 bg-gray-800 rounded-lg p-8">
+            <div class="text-center">
+                <h2 class="text-2xl font-bold text-white mb-4">
+                    <i class="fas fa-cogs mr-3 text-purple-400"></i>Slik fungerer anbefalinger
+                </h2>
+                <p class="text-gray-300 mb-8 max-w-3xl mx-auto">
+                    Vårt anbefalingssystem analyserer din læringsprogresjon og foreslår videoer 
+                    som passer ditt kunnskapsnivå og læringsmål.
+                </p>
+                <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+                    <div class="text-center">
+                        <div class="bg-gray-700 p-4 rounded-lg mb-4">
+                            <i class="fas fa-chart-line text-3xl text-blue-400"></i>
+                        </div>
+                        <h3 class="text-white font-semibold mb-2">Analyserer progresjon</h3>
+                        <p class="text-gray-400 text-sm">Ser på quiz-resultater og videoer du har sett</p>
+                    </div>
+                    <div class="text-center">
+                        <div class="bg-gray-700 p-4 rounded-lg mb-4">
+                            <i class="fas fa-target text-3xl text-green-400"></i>
+                        </div>
+                        <h3 class="text-white font-semibold mb-2">Identifiserer behov</h3>
+                        <p class="text-gray-400 text-sm">Finner emner du trenger å øve mer på</p>
+                    </div>
+                    <div class="text-center">
+                        <div class="bg-gray-700 p-4 rounded-lg mb-4">
+                            <i class="fas fa-magic text-3xl text-purple-400"></i>
+                        </div>
+                        <h3 class="text-white font-semibold mb-2">Foreslår innhold</h3>
+                        <p class="text-gray-400 text-sm">Anbefaler relevante videoer for deg</p>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- Refresh Recommendations -->
+        <section class="mt-8 text-center">
+            <button onclick="location.reload()" 
+                    class="bg-purple-600 text-white px-6 py-3 rounded-lg hover:bg-purple-700 transition">
+                <i class="fas fa-sync-alt mr-2"></i>Oppdater anbefalinger
+            </button>
+        </section>
+    </div>
+</div>
+
+<style>
+.aspect-video {
+    aspect-ratio: 16 / 9;
+}
+
+.line-clamp-2 {
+    overflow: hidden;
+    display: -webkit-box;
+    -webkit-line-clamp: 2;
+    -webkit-box-orient: vertical;
+}
+</style>
+
+<script>
+function toggleBookmark(videoId) {
+    fetch(`/video/bookmark/${videoId}`, {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json'
+        }
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            // Update bookmark icon color based on status
+            const button = event.target.closest('button');
+            if (data.bookmarked) {
+                button.classList.remove('text-gray-400');
+                button.classList.add('text-yellow-400');
+                button.title = 'Fjern fra bokmerkede';
+            } else {
+                button.classList.remove('text-yellow-400');
+                button.classList.add('text-gray-400');
+                button.title = 'Bokmerke video';
+            }
+        }
+    })
+    .catch(error => {
+        console.error('Error:', error);
+        alert('Kunne ikke oppdatere bokmerke. Prøv igjen.');
+    });
+}
+</script>
+{% endblock %}

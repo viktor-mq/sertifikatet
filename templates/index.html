@@ -1,6 +1,6 @@
 {% extends "base.html" %}
 
-{% block title %}Sertifikatet - Norsk Førerkort{% endblock %}
+{% block title %}{{ 'Dashboard - Sertifikatet' if current_user.is_authenticated else 'Sertifikatet - Norsk Førerkort' }}{% endblock %}
 <link rel="icon" type="image/png" href="{{ url_for('static', filename='images/profiles/selskapslogo.png') }}">
 
 {% block extra_css %}
@@ -12,52 +12,93 @@
 <!-- USER DASHBOARD HOMEPAGE -->
 <section class="py-12">
     <div class="max-w-7xl mx-auto px-6">
-        <!-- Welcome Banner -->
-        <div class="glass rounded-2xl p-8 mb-8 bg-gradient-to-r from-purple-600/10 to-pink-600/10 hover-card">
-            <div class="flex items-center justify-between">
-                <div>
-                    <h1 class="text-3xl font-bold mb-2">
-                        Velkommen tilbake, {{ current_user.full_name or current_user.username }}! 👋
+        <!-- Hero Section with Stats -->
+        <div class="relative overflow-hidden mb-8">
+            <!-- Animated Background -->
+            <div class="absolute inset-0 animated-gradient opacity-20"></div>
+            
+            <!-- Floating Elements -->
+            <div class="absolute top-10 left-10 text-4xl opacity-20 float-animation">🚗</div>
+            <div class="absolute top-20 right-20 text-4xl opacity-20 float-animation" style="animation-delay: 2s;">🚙</div>
+            
+            <div class="relative glass rounded-2xl p-8 bg-gradient-to-r from-purple-600/10 to-pink-600/10">
+                <div class="text-center mb-8">
+                    <h1 class="text-4xl md:text-5xl font-bold mb-4">
+                        <span class="bg-gradient-to-r from-purple-400 via-pink-400 to-blue-400 bg-clip-text text-transparent">
+                            {% if current_user.progress and current_user.progress.current_streak_days > 0 %}
+                            La oss fortsette din læringsreise i dag!
+                            {% else %}
+                            La oss fortsette din læringsreise i dag!
+                            {% endif %}
+                        </span>
                     </h1>
-                    <p class="text-gray-400">
+                    <p class="text-xl text-gray-300 mb-8">
+                        Velkommen tilbake, {{ current_user.full_name or current_user.username }}! 
                         {% if current_user.progress and current_user.progress.current_streak_days > 0 %}
-                        Du har en {{ current_user.progress.current_streak_days }} dagers streak! Keep it up! 🔥
-                        {% else %}
-                        La oss fortsette din læringsreise i dag!
+                        Du har en {{ current_user.progress.current_streak_days }} dagers streak! 🔥
                         {% endif %}
                     </p>
-                    
-                    <!-- Quick Stats -->
-                    <div class="grid grid-cols-3 gap-6 mt-4">
-                        <div class="text-center">
-                            <div class="text-2xl font-bold text-purple-400">
-                                {{ current_user.progress.total_quizzes_taken if current_user.progress else 0 }}
-                            </div>
-                            <div class="text-sm text-gray-400">Quizzer tatt</div>
-                        </div>
-                        <div class="text-center">
-                            <div class="text-2xl font-bold text-pink-400">
-                                {% if current_user.progress and current_user.progress.total_questions_answered > 0 %}
-                                {{ ((current_user.progress.correct_answers / current_user.progress.total_questions_answered) * 100)|round(1) }}%
-                                {% else %}
-                                0%
-                                {% endif %}
-                            </div>
-                            <div class="text-sm text-gray-400">Nøyaktighet</div>
-                        </div>
-                        <div class="text-center">
-                            <div class="text-2xl font-bold text-blue-400">
-                                {{ current_user.total_xp or 0 }}
-                            </div>
-                            <div class="text-sm text-gray-400">XP poeng</div>
-                        </div>
-                    </div>
                 </div>
-                <div class="hidden md:block text-6xl opacity-20">
-                    🚗
+                
+                <!-- Quick Stats -->
+                <div class="grid grid-cols-1 md:grid-cols-3 gap-8 text-center">
+                    <div class="glass rounded-2xl p-6">
+                        <div class="text-4xl font-bold bg-gradient-to-r from-purple-400 to-pink-400 bg-clip-text text-transparent mb-2">
+                            {{ current_user.progress.total_quizzes_taken if current_user.progress else 0 }}
+                        </div>
+                        <p class="text-gray-300">Quizzer tatt</p>
+                    </div>
+                    <div class="glass rounded-2xl p-6">
+                        <div class="text-4xl font-bold bg-gradient-to-r from-blue-400 to-purple-400 bg-clip-text text-transparent mb-2">
+                            {% if current_user.progress and current_user.progress.total_questions_answered > 0 %}
+                            {{ ((current_user.progress.correct_answers / current_user.progress.total_questions_answered) * 100)|round(1) }}%
+                            {% else %}
+                            0%
+                            {% endif %}
+                        </div>
+                        <p class="text-gray-300">Nøyaktighet</p>
+                    </div>
+                    <div class="glass rounded-2xl p-6">
+                        <div class="text-4xl font-bold bg-gradient-to-r from-green-400 to-blue-400 bg-clip-text text-transparent mb-2">
+                            {{ current_user.total_xp or 0 }}
+                        </div>
+                        <p class="text-gray-300">XP poeng</p>
+                    </div>
                 </div>
             </div>
         </div>
+
+        <!-- Continue Learning Section -->
+        {% if current_user.progress and current_user.progress.total_questions_answered > 0 %}
+        <div class="glass rounded-2xl p-8 mb-8 bg-gradient-to-r from-green-600/10 to-blue-600/10 hover-card">
+            <div class="flex items-center justify-between">
+                <div>
+                    <h2 class="text-2xl font-bold mb-2 flex items-center">
+                        <i class="fas fa-play-circle text-green-400 mr-3"></i>
+                        Fortsett Læringen
+                    </h2>
+                    <p class="text-gray-400 mb-4">
+                        Du har gjort fremgang! Fortsett der du slapp for å holde momentum.
+                    </p>
+                    <div class="flex flex-col sm:flex-row gap-4">
+                        <a href="{{ url_for('main.quiz') }}" 
+                           class="inline-flex items-center px-6 py-3 bg-gradient-to-r from-green-600 to-blue-600 rounded-lg hover:from-green-700 hover:to-blue-700 transition font-semibold">
+                            <i class="fas fa-brain mr-2"></i>Fortsett Quiz
+                        </a>
+                        <a href="{{ url_for('main.exam') }}" 
+                           class="inline-flex items-center px-6 py-3 border-2 border-green-600 rounded-lg hover:bg-green-600 transition font-semibold">
+                            <i class="fas fa-graduation-cap mr-2"></i>Prøveeksamen
+                        </a>
+                    </div>
+                </div>
+                <div class="text-center hidden md:block">
+                    <div class="text-5xl font-bold mb-2">{{ current_user.progress.total_questions_answered }}</div>
+                    <div class="text-sm text-gray-400">spørsmål besvart</div>
+                    <div class="text-2xl mt-2">📚</div>
+                </div>
+            </div>
+        </div>
+        {% endif %}
 
         <!-- Quick Actions -->
         <div class="grid grid-cols-1 md:grid-cols-4 gap-6 mb-8">
@@ -65,7 +106,7 @@
                 <div class="w-12 h-12 bg-purple-600/20 rounded-lg flex items-center justify-center group-hover:bg-purple-600/30 transition mb-4">
                     <i class="fas fa-brain text-purple-400 text-xl"></i>
                 </div>
-                <h3 class="text-lg font-semibold mb-2">Fortsett Øving</h3>
+                <h3 class="text-lg font-semibold mb-2">Øvingsmodus</h3>
                 <p class="text-gray-400 text-sm">Test kunnskapen din</p>
             </a>
             
@@ -74,15 +115,15 @@
                     <i class="fas fa-graduation-cap text-green-400 text-xl"></i>
                 </div>
                 <h3 class="text-lg font-semibold mb-2">Prøveeksamen</h3>
-                <p class="text-gray-400 text-sm">45 spørsmål</p>
+                <p class="text-gray-400 text-sm">45 spørsmål, 90 min</p>
             </a>
             
-            <a href="{{ url_for('main.dashboard') }}" class="glass rounded-xl p-6 hover-card group">
+            <a href="{{ url_for('video.index') }}" class="glass rounded-xl p-6 hover-card group">
                 <div class="w-12 h-12 bg-blue-600/20 rounded-lg flex items-center justify-center group-hover:bg-blue-600/30 transition mb-4">
-                    <i class="fas fa-chart-line text-blue-400 text-xl"></i>
+                    <i class="fas fa-play text-blue-400 text-xl"></i>
                 </div>
-                <h3 class="text-lg font-semibold mb-2">Dashboard</h3>
-                <p class="text-gray-400 text-sm">Se detaljert fremgang</p>
+                <h3 class="text-lg font-semibold mb-2">Videoer</h3>
+                <p class="text-gray-400 text-sm">Lær gjennom video</p>
             </a>
 
             <a href="{{ url_for('main.achievements') }}" class="glass rounded-xl p-6 hover-card group">
@@ -94,97 +135,71 @@
             </a>
         </div>
 
-        <!-- Current Plan Status -->
-        <div class="glass rounded-2xl p-8 mb-8">
-            <div class="flex items-center justify-between mb-6">
-                <h2 class="text-2xl font-bold">Din Plan</h2>
-                <span class="px-3 py-1 bg-{{ 'green' if current_plan == 'pro' else 'purple' if current_plan == 'premium' else 'gray' }}-600 rounded-full text-sm font-semibold">
-                    {{ current_plan.title() }}
-                </span>
+        <!-- Progress Overview -->
+        {% if current_user.progress %}
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-8 mb-8">
+            <!-- Progress Chart -->
+            <div class="glass rounded-2xl p-8">
+                <h2 class="text-2xl font-bold mb-6">Din Fremgang</h2>
+                {% if dashboard_data and dashboard_data.activity_timeline %}
+                    <canvas id="progressChart" style="max-height: 300px;"></canvas>
+                {% else %}
+                    <div class="text-center py-12 text-gray-400">
+                        <i class="fas fa-chart-line text-4xl mb-4"></i>
+                        <p class="text-lg mb-2">Ingen aktivitet ennå</p>
+                        <p class="text-sm">Ta din første quiz for å se fremgangsdata</p>
+                    </div>
+                {% endif %}
             </div>
             
-            {% if current_plan == 'free' %}
-            <div class="space-y-4">
-                <div class="flex justify-between">
-                    <span>Daglige spørsmål</span>
-                    <span class="text-purple-400">50/dag</span>
-                </div>
-                <div class="flex justify-between">
-                    <span>Prøveeksamener</span>
-                    <span class="text-purple-400">2/uke</span>
-                </div>
-                <div class="mt-6">
-                    <a href="{{ url_for('subscription.plans') }}" 
-                       class="block w-full text-center py-3 bg-gradient-to-r from-purple-600 to-pink-600 rounded-lg hover:from-pink-600 hover:to-purple-600 transition-all">
-                        Oppgrader til Premium
-                    </a>
-                </div>
-            </div>
-            {% elif current_plan == 'premium' %}
-            <div class="space-y-4">
-                <div class="flex justify-between">
-                    <span><i class="fas fa-check text-green-400 mr-2"></i>Ubegrenset spørsmål</span>
-                </div>
-                <div class="flex justify-between">
-                    <span><i class="fas fa-check text-green-400 mr-2"></i>AI-tilpasset læring</span>
-                </div>
-                <div class="flex justify-between">
-                    <span><i class="fas fa-check text-green-400 mr-2"></i>Detaljert statistikk</span>
-                </div>
-                <div class="mt-6">
-                    <a href="{{ url_for('subscription.manage') }}" 
-                       class="block w-full text-center py-3 border-2 border-purple-600 rounded-lg hover:bg-purple-600 transition-colors">
-                        Administrer Abonnement
-                    </a>
-                </div>
-            </div>
-            {% else %}
-            <div class="space-y-4">
-                <div class="flex justify-between">
-                    <span><i class="fas fa-check text-green-400 mr-2"></i>Alle Premium funksjoner</span>
-                </div>
-                <div class="flex justify-between">
-                    <span><i class="fas fa-check text-green-400 mr-2"></i>Personlig veileder</span>
-                </div>
-                <div class="flex justify-between">
-                    <span><i class="fas fa-check text-green-400 mr-2"></i>Offline-modus</span>
-                </div>
-                <div class="mt-6">
-                    <a href="{{ url_for('subscription.manage') }}" 
-                       class="block w-full text-center py-3 border-2 border-green-600 rounded-lg hover:bg-green-600 transition-colors">
-                        Administrer Abonnement
-                    </a>
-                </div>
-            </div>
-            {% endif %}
-        </div>
-
-        <!-- Progress motivator -->
-        {% if current_user.progress and current_user.progress.total_questions_answered > 0 %}
-        <div class="glass rounded-2xl p-8 bg-gradient-to-r from-orange-600/10 to-red-600/10">
-            <div class="flex items-center justify-between">
-                <div>
-                    <h2 class="text-2xl font-bold mb-2">Fortsett fremgangen! 💪</h2>
-                    <p class="text-gray-400 mb-4">
-                        Du har svart på {{ current_user.progress.total_questions_answered }} spørsmål så langt. 
-                        {% if current_user.progress.total_questions_answered >= 100 %}
-                        Imponerende! Du er godt på vei til å mestre teoriprøven.
-                        {% else %}
-                        Fortsett å øve for å bli enda bedre!
-                        {% endif %}
-                    </p>
-                    <a href="{{ url_for('main.quiz') }}" 
-                       class="inline-block px-6 py-3 bg-gradient-to-r from-orange-600 to-red-600 rounded-lg hover:from-orange-700 hover:to-red-700 transition">
-                        Fortsett øving
-                    </a>
-                </div>
-                <div class="text-center">
-                    <div class="text-5xl font-bold mb-2">{{ current_user.progress.total_questions_answered }}</div>
-                    <div class="text-sm text-gray-400">spørsmål besvart</div>
+            <!-- Category Performance -->
+            <div class="glass rounded-2xl p-8">
+                <h2 class="text-2xl font-bold mb-6">Kategoriresultater</h2>
+                <div class="space-y-4">
+                    {% if dashboard_data and dashboard_data.category_performance %}
+                        {% for category in dashboard_data.category_performance[:5] %}
+                        <div>
+                            <div class="flex justify-between mb-1">
+                                <span class="text-sm font-medium">{{ category.category }}</span>
+                                <span class="text-sm text-purple-400">{{ category.avg_score }}%</span>
+                            </div>
+                            <div class="bg-gray-700 rounded-full h-2">
+                                <div class="bg-gradient-to-r from-purple-600 to-pink-600 h-2 rounded-full" 
+                                     style="width: {{ category.avg_score }}%"></div>
+                            </div>
+                            <div class="flex justify-between mt-1">
+                                <span class="text-xs text-gray-400">{{ category.sessions }} quiz{{ 'zer' if category.sessions != 1 else '' }}</span>
+                                <span class="text-xs text-gray-400">{{ category.mastery_level }}</span>
+                            </div>
+                        </div>
+                        {% endfor %}
+                    {% else %}
+                        <div class="text-center py-8 text-gray-400">
+                            <i class="fas fa-chart-bar text-3xl mb-2"></i>
+                            <p>Ta en quiz for å se kategoriresultater</p>
+                        </div>
+                    {% endif %}
                 </div>
             </div>
         </div>
         {% endif %}
+
+        <!-- Daily Challenge -->
+        <div class="glass rounded-2xl p-8 bg-gradient-to-r from-orange-600/10 to-red-600/10">
+            <div class="flex items-center justify-between">
+                <div>
+                    <h2 class="text-2xl font-bold mb-2">Dagens Utfordring 🎯</h2>
+                    <p class="text-gray-400 mb-4">Fullfør dagens utfordring for å opprettholde din streak!</p>
+                    <a href="{{ url_for('main.quiz') }}" class="inline-block px-6 py-3 bg-gradient-to-r from-orange-600 to-red-600 rounded-lg hover:from-orange-700 hover:to-red-700 transition">
+                        Start Utfordringen
+                    </a>
+                </div>
+                <div class="text-center hidden md:block">
+                    <div class="text-5xl font-bold mb-2">15</div>
+                    <div class="text-sm text-gray-400">spørsmål</div>
+                </div>
+            </div>
+        </div>
     </div>
 </section>
 
@@ -340,7 +355,7 @@
 </section>
 
 <!-- Pricing Section -->
-<section class="py-20">
+<section id="pricing" class="py-20">
     <div class="max-w-7xl mx-auto px-6">
         <h2 class="text-4xl font-bold text-center mb-12">
             <span class="bg-gradient-to-r from-purple-400 to-pink-400 bg-clip-text text-transparent">
@@ -470,4 +485,71 @@
 
 {% block extra_js %}
 <script src="{{ url_for('static', filename='js/homepage-pwa.js') }}"></script>
+{% if current_user.is_authenticated %}
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<script>
+// Progress Chart for authenticated users
+{% if dashboard_data and dashboard_data.activity_timeline %}
+const ctx = document.getElementById('progressChart');
+if (ctx) {
+    const ctxChart = ctx.getContext('2d');
+    
+    // Prepare data from server
+    const activityData = {{ dashboard_data.activity_timeline | tojson }};
+    const labels = activityData.slice(-7).map(item => {
+        const date = new Date(item.date);
+        return date.toLocaleDateString('nb-NO', { weekday: 'short' });
+    });
+    const scores = activityData.slice(-7).map(item => item.avg_score);
+    
+    const progressChart = new Chart(ctxChart, {
+        type: 'line',
+        data: {
+            labels: labels,
+            datasets: [{
+                label: 'Gjennomsnittlig score',
+                data: scores,
+                borderColor: 'rgb(147, 51, 234)',
+                backgroundColor: 'rgba(147, 51, 234, 0.1)',
+                tension: 0.3,
+                fill: true
+            }]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: {
+                legend: {
+                    display: false
+                }
+            },
+            scales: {
+                y: {
+                    beginAtZero: true,
+                    max: 100,
+                    ticks: {
+                        color: '#9CA3AF',
+                        callback: function(value) {
+                            return value + '%';
+                        }
+                    },
+                    grid: {
+                        color: 'rgba(156, 163, 175, 0.1)'
+                    }
+                },
+                x: {
+                    ticks: {
+                        color: '#9CA3AF'
+                    },
+                    grid: {
+                        display: false
+                    }
+                }
+            }
+        }
+    });
+}
+{% endif %}
+</script>
+{% endif %}
 {% endblock %}

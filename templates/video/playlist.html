@@ -1,0 +1,328 @@
+{% extends "base.html" %}
+
+{% block title %}{{ playlist.name }} - Spilleliste - {{ config.SITE_NAME }}{% endblock %}
+
+{% block content %}
+<div class="min-h-screen bg-gray-900">
+    <!-- Header -->
+    <div class="bg-gradient-to-r from-purple-600 to-blue-600 py-12">
+        <div class="max-w-7xl mx-auto px-4">
+            <div class="flex flex-col md:flex-row gap-6 items-start">
+                <!-- Playlist Thumbnail -->
+                <div class="flex-shrink-0">
+                    {% if playlist.thumbnail_url %}
+                    <img src="{{ playlist.thumbnail_url }}" 
+                         class="w-48 h-32 object-cover rounded-lg shadow-lg" 
+                         alt="{{ playlist.name }}">
+                    {% else %}
+                    <div class="w-48 h-32 bg-gray-700 rounded-lg shadow-lg flex items-center justify-center">
+                        <i class="fas fa-list text-4xl text-gray-500"></i>
+                    </div>
+                    {% endif %}
+                </div>
+                
+                <!-- Playlist Info -->
+                <div class="flex-1">
+                    <div class="flex items-center gap-3 mb-2">
+                        <span class="bg-purple-800 text-purple-200 px-3 py-1 rounded-full text-sm font-medium">
+                            {% if playlist.is_official %}
+                                <i class="fas fa-star mr-1"></i>Offisiell spilleliste
+                            {% else %}
+                                <i class="fas fa-user mr-1"></i>Privat spilleliste
+                            {% endif %}
+                        </span>
+                    </div>
+                    
+                    <h1 class="text-3xl md:text-4xl font-bold text-white mb-3">
+                        {{ playlist.name }}
+                    </h1>
+                    
+                    {% if playlist.description %}
+                    <p class="text-gray-200 text-lg mb-4 leading-relaxed">
+                        {{ playlist.description }}
+                    </p>
+                    {% endif %}
+                    
+                    <div class="flex flex-wrap items-center gap-4 text-sm text-gray-300">
+                        {% if not playlist.is_official and playlist.creator %}
+                        <span class="flex items-center">
+                            <i class="fas fa-user mr-2"></i>
+                            Opprettet av {{ playlist.creator.full_name or playlist.creator.username }}
+                        </span>
+                        {% endif %}
+                        
+                        <span class="flex items-center">
+                            <i class="fas fa-video mr-2"></i>
+                            {{ playlist.items|length }} video{{ 's' if playlist.items|length != 1 else '' }}
+                        </span>
+                        
+                        {% if playlist.items %}
+                        <span class="flex items-center">
+                            <i class="fas fa-clock mr-2"></i>
+                            {% set total_duration = playlist.items|sum(attribute='video.duration_seconds', start=0) %}
+                            {% if total_duration %}
+                                {{ (total_duration // 60)|int }} min total
+                            {% else %}
+                                Varighet ikke tilgjengelig
+                            {% endif %}
+                        </span>
+                        {% endif %}
+                        
+                        <span class="flex items-center">
+                            <i class="fas fa-calendar mr-2"></i>
+                            Opprettet {{ playlist.created_at.strftime('%d.%m.%Y') }}
+                        </span>
+                    </div>
+                </div>
+                
+                <!-- Action Buttons -->
+                <div class="flex flex-col gap-3">
+                    {% if playlist.items %}
+                    <a href="{{ url_for('video.watch', video_id=playlist.items[0].video.id) }}" 
+                       class="bg-white text-purple-600 px-6 py-3 rounded-lg font-semibold hover:bg-gray-100 transition inline-flex items-center justify-center">
+                        <i class="fas fa-play mr-2"></i>Start avspilling
+                    </a>
+                    {% endif %}
+                    
+                    {% if not playlist.is_official and playlist.created_by == current_user.id and current_user.is_admin %}
+                    <button class="bg-gray-700 text-white px-6 py-3 rounded-lg font-semibold hover:bg-gray-600 transition inline-flex items-center justify-center"
+                            onclick="toggleAddVideo()">
+                        <i class="fas fa-plus mr-2"></i>Legg til video
+                    </button>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="max-w-7xl mx-auto px-4 py-12">
+        <!-- Add Video Section (hidden by default) -->
+        {% if not playlist.is_official and playlist.created_by == current_user.id and current_user.is_admin %}
+        <div id="add-video-section" class="bg-gray-800 rounded-lg p-6 mb-8 hidden">
+            <h3 class="text-white text-lg font-semibold mb-4">
+                <i class="fas fa-plus-circle mr-2"></i>Legg til video i spilleliste
+            </h3>
+            <div class="flex gap-4">
+                <input type="text" 
+                       id="video-search" 
+                       placeholder="Søk etter videoer..."
+                       class="flex-1 px-4 py-2 bg-gray-700 border border-gray-600 rounded text-white placeholder-gray-400 focus:outline-none focus:border-purple-500">
+                <button onclick="searchVideos()" 
+                        class="bg-purple-600 text-white px-6 py-2 rounded hover:bg-purple-700 transition">
+                    <i class="fas fa-search mr-2"></i>Søk
+                </button>
+                <button onclick="toggleAddVideo()" 
+                        class="bg-gray-600 text-white px-4 py-2 rounded hover:bg-gray-500 transition">
+                    <i class="fas fa-times"></i>
+                </button>
+            </div>
+            <div id="video-search-results" class="mt-4"></div>
+        </div>
+        {% endif %}
+
+        <!-- Playlist Videos -->
+        {% if playlist.items %}
+        <div class="space-y-4">
+            <h2 class="text-2xl font-bold text-white mb-6 flex items-center">
+                <i class="fas fa-play-circle mr-3 text-purple-400"></i>
+                Videoer i spillelisten
+            </h2>
+            
+            {% for item in playlist.items %}
+            <div class="bg-gray-800 rounded-lg overflow-hidden hover:bg-gray-750 transition group">
+                <div class="flex gap-4 p-4">
+                    <!-- Video Index -->
+                    <div class="flex-shrink-0 w-8 text-center">
+                        <span class="text-gray-400 font-mono text-sm">{{ loop.index }}</span>
+                    </div>
+                    
+                    <!-- Video Thumbnail -->
+                    <div class="flex-shrink-0">
+                        <a href="{{ url_for('video.watch', video_id=item.video.id) }}" class="block relative">
+                            {% if item.video.thumbnail_filename %}
+                            <img src="{{ url_for('static', filename='images/videos/' + item.video.thumbnail_filename) }}" 
+                                 class="w-32 h-20 object-cover rounded" 
+                                 alt="{{ item.video.title }}">
+                            {% else %}
+                            <div class="w-32 h-20 bg-gray-700 rounded flex items-center justify-center">
+                                <i class="fas fa-video text-2xl text-gray-600"></i>
+                            </div>
+                            {% endif %}
+                            <div class="absolute inset-0 bg-black bg-opacity-0 group-hover:bg-opacity-30 transition flex items-center justify-center">
+                                <i class="fas fa-play text-white text-xl opacity-0 group-hover:opacity-100 transition"></i>
+                            </div>
+                        </a>
+                    </div>
+                    
+                    <!-- Video Info -->
+                    <div class="flex-1 min-w-0">
+                        <a href="{{ url_for('video.watch', video_id=item.video.id) }}" 
+                           class="block group">
+                            <h3 class="text-white font-semibold text-lg mb-2 group-hover:text-purple-400 transition truncate">
+                                {{ item.video.title }}
+                            </h3>
+                            {% if item.video.description %}
+                            <p class="text-gray-400 text-sm mb-3 line-clamp-2">
+                                {{ item.video.description }}
+                            </p>
+                            {% endif %}
+                            <div class="flex flex-wrap items-center gap-4 text-xs text-gray-500">
+                                {% if item.video.duration_seconds %}
+                                <span class="flex items-center">
+                                    <i class="fas fa-clock mr-1"></i>
+                                    {{ (item.video.duration_seconds // 60)|int }}:{{ '%02d'|format(item.video.duration_seconds % 60) }}
+                                </span>
+                                {% endif %}
+                                
+                                {% if item.video.category %}
+                                <span class="flex items-center">
+                                    <i class="fas fa-tag mr-1"></i>
+                                    {{ item.video.category }}
+                                </span>
+                                {% endif %}
+                                
+                                <span class="flex items-center">
+                                    <i class="fas fa-calendar mr-1"></i>
+                                    Lagt til {{ item.added_at.strftime('%d.%m.%Y') }}
+                                </span>
+                            </div>
+                        </a>
+                    </div>
+                    
+                    <!-- Actions -->
+                    <div class="flex-shrink-0 flex flex-col gap-2">
+                        {% if not playlist.is_official and playlist.created_by == current_user.id and current_user.is_admin %}
+                        <button onclick="removeFromPlaylist({{ item.id }})" 
+                                class="text-red-400 hover:text-red-300 p-2 hover:bg-gray-700 rounded transition"
+                                title="Fjern fra spilleliste">
+                            <i class="fas fa-trash text-sm"></i>
+                        </button>
+                        {% endif %}
+                        
+                        <button onclick="toggleBookmark({{ item.video.id }})" 
+                                class="text-gray-400 hover:text-yellow-400 p-2 hover:bg-gray-700 rounded transition"
+                                title="Bokmerk video">
+                            <i class="fas fa-bookmark text-sm"></i>
+                        </button>
+                    </div>
+                </div>
+            </div>
+            {% endfor %}
+        </div>
+        {% else %}
+        <!-- Empty Playlist -->
+        <div class="text-center py-16">
+            <div class="max-w-md mx-auto">
+                <i class="fas fa-video-slash text-6xl text-gray-600 mb-4"></i>
+                <h3 class="text-2xl font-bold text-white mb-2">Ingen videoer i spillelisten</h3>
+                <p class="text-gray-400 mb-6">
+                    {% if not playlist.is_official and playlist.created_by == current_user.id and current_user.is_admin %}
+                        Denne spillelisten er tom. Legg til videoer for å komme i gang!
+                    {% else %}
+                        Denne spillelisten inneholder ikke noen videoer ennå.
+                    {% endif %}
+                </p>
+                
+                {% if not playlist.is_official and playlist.created_by == current_user.id and current_user.is_admin %}
+                <button onclick="toggleAddVideo()" 
+                        class="bg-purple-600 text-white px-6 py-3 rounded-lg hover:bg-purple-700 transition inline-flex items-center">
+                    <i class="fas fa-plus-circle mr-2"></i>Legg til første video
+                </button>
+                {% endif %}
+            </div>
+        </div>
+        {% endif %}
+
+        <!-- Navigation -->
+        <div class="mt-12 pt-8 border-t border-gray-700">
+            <div class="flex justify-between items-center">
+                <a href="{{ url_for('video.playlists') }}" 
+                   class="text-gray-400 hover:text-white transition inline-flex items-center">
+                    <i class="fas fa-arrow-left mr-2"></i>Tilbake til spillelister
+                </a>
+                
+                {% if playlist.items and playlist.items|length > 1 %}
+                <div class="text-gray-400 text-sm">
+                    Total spilletid: 
+                    {% set total_duration = playlist.items|sum(attribute='video.duration_seconds', start=0) %}
+                    {% if total_duration %}
+                        {{ (total_duration // 3600)|int }}:{{ '%02d'|format((total_duration % 3600) // 60) }}:{{ '%02d'|format(total_duration % 60) }}
+                    {% else %}
+                        Ikke beregnet
+                    {% endif %}
+                </div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+</div>
+
+<style>
+.line-clamp-2 {
+    overflow: hidden;
+    display: -webkit-box;
+    -webkit-line-clamp: 2;
+    -webkit-box-orient: vertical;
+}
+
+.bg-gray-750 {
+    background-color: rgb(55, 65, 81);
+}
+</style>
+
+<script>
+// Toggle add video section
+function toggleAddVideo() {
+    const section = document.getElementById('add-video-section');
+    section.classList.toggle('hidden');
+    
+    if (!section.classList.contains('hidden')) {
+        document.getElementById('video-search').focus();
+    }
+}
+
+// Search for videos to add
+function searchVideos() {
+    const query = document.getElementById('video-search').value.trim();
+    const resultsDiv = document.getElementById('video-search-results');
+    
+    if (!query) {
+        resultsDiv.innerHTML = '<p class="text-gray-400 text-center py-4">Skriv inn et søkeord</p>';
+        return;
+    }
+    
+    resultsDiv.innerHTML = '<p class="text-gray-400 text-center py-4"><i class="fas fa-spinner fa-spin mr-2"></i>Søker...</p>';
+    
+    // TODO: Implement actual video search
+    setTimeout(() => {
+        resultsDiv.innerHTML = '<p class="text-gray-400 text-center py-4">Søkefunksjon ikke implementert ennå</p>';
+    }, 1000);
+}
+
+// Remove video from playlist
+function removeFromPlaylist(itemId) {
+    if (!confirm('Er du sikker på at du vil fjerne denne videoen fra spillelisten?')) {
+        return;
+    }
+    
+    // TODO: Implement remove functionality
+    alert('Fjerning ikke implementert ennå');
+}
+
+// Toggle video bookmark
+function toggleBookmark(videoId) {
+    // TODO: Implement bookmark functionality
+    alert('Bokmerking ikke implementert ennå');
+}
+
+// Keyboard shortcuts
+document.addEventListener('keydown', function(e) {
+    if (e.key === 'Escape') {
+        const addSection = document.getElementById('add-video-section');
+        if (!addSection.classList.contains('hidden')) {
+            toggleAddVideo();
+        }
+    }
+});
+</script>
+{% endblock %}

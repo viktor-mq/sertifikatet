@@ -12,7 +12,7 @@ from app.services.payment_service import SubscriptionService
 def subscription_required(required_feature):
     """
     Decorator to check if user has access to a specific feature
-    Usage: @subscription_required('has_video_access')
+    Usage: @subscription_required('premium') or @subscription_required('has_video_access')
     """
     def decorator(f):
         @wraps(f)
@@ -21,8 +21,21 @@ def subscription_required(required_feature):
                 flash('Du må logge inn for å få tilgang til denne funksjonen', 'warning')
                 return redirect(url_for('auth.login'))
             
-            # Check if user has the required feature
-            has_access = SubscriptionService.user_has_feature(current_user.id, required_feature)
+            # Admin users always have access
+            if current_user.is_admin:
+                has_access = True
+            # Check if the required_feature is a plan name (simple approach)
+            elif required_feature in ['free', 'premium', 'pro']:
+                # Plan ID mapping: 1=free, 2=premium, 3=pro
+                plan_id_mapping = {'free': 1, 'premium': 2, 'pro': 3}
+                required_plan_id = plan_id_mapping.get(required_feature, 1)
+                
+                # User needs to have plan ID >= required plan ID
+                user_plan_id = current_user.current_plan_id or 1
+                has_access = user_plan_id >= required_plan_id
+            else:
+                # Original feature-based checking
+                has_access = SubscriptionService.user_has_feature(current_user.id, required_feature)
             
             if not has_access:
                 # Get user's current plan for better error message

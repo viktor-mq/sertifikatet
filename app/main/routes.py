@@ -19,24 +19,36 @@ def offline():
 
 @main_bp.route('/')
 def index():
-    """Home page with dynamic subscription plans"""
+    """Home page with dynamic subscription plans and dashboard for logged-in users"""
     # Get subscription data if user is authenticated
     current_plan = 'free'
     subscription_stats = None
     upgrade_options = []
+    dashboard_data = None
     
     if current_user.is_authenticated:
         from ..services.payment_service import SubscriptionService
         from ..services.upgrade_service import UpgradeService
+        from ..services.progress_service import ProgressService
         
         current_plan = SubscriptionService.get_user_plan(current_user.id)
         subscription_stats = SubscriptionService.get_subscription_stats(current_user.id)
         upgrade_options = UpgradeService.get_upgrade_options(current_user.id)
+        
+        # Get dashboard data for logged-in users
+        try:
+            progress_service = ProgressService()
+            dashboard_data = progress_service.get_user_dashboard_data(current_user.id)
+        except Exception as e:
+            # Fallback to None if dashboard data fails
+            print(f"Dashboard data error: {e}")
+            dashboard_data = None
     
     return render_template('index.html', 
                          current_plan=current_plan,
                          subscription_stats=subscription_stats,
-                         upgrade_options=upgrade_options)
+                         upgrade_options=upgrade_options,
+                         dashboard_data=dashboard_data)
 
 
 # Legacy route support for templates that use url_for('index')
@@ -88,20 +100,21 @@ def dashboard():
 
 
 @main_bp.route('/practice')
+@login_required
 def practice():
     """Practice mode page"""
-    # Practice mode doesn't require login
     return redirect(url_for('main.quiz', type='practice'))
 
 
 @main_bp.route('/exam')
+@login_required
 def exam():
     """Mock exam page"""
-    # Exam mode is available for all users
     return redirect(url_for('main.quiz', type='exam'))
 
 
 @main_bp.route('/quiz', methods=['GET', 'POST'])
+@login_required
 def quiz():
     """Main quiz page"""
     # Get quiz parameters
@@ -110,14 +123,13 @@ def quiz():
     limit = request.args.get('limit', type=int)
     learning_path_id = request.args.get('learning_path_id', type=int)
     
-    # Check subscription limits for authenticated users
-    if current_user.is_authenticated:
-        from ..services.payment_service import SubscriptionService, UsageLimitService
-        
-        can_take, message = SubscriptionService.can_user_take_quiz(current_user.id, quiz_type)
-        if not can_take:
-            flash(message, 'warning')
-            return redirect(url_for('subscription.plans'))
+    # Check subscription limits
+    from ..services.payment_service import SubscriptionService, UsageLimitService
+    
+    can_take, message = SubscriptionService.can_user_take_quiz(current_user.id, quiz_type)
+    if not can_take:
+        flash(message, 'warning')
+        return redirect(url_for('subscription.plans'))
     
     # If from learning path, set quiz_type
     if learning_path_id:
@@ -176,6 +188,7 @@ def quiz():
 
 
 @main_bp.route('/submit_quiz', methods=['POST'])
+@login_required
 def submit_quiz():
     """Handle quiz submission"""
     quiz_type = request.form.get('quiz_type', 'practice')
@@ -215,82 +228,70 @@ def submit_quiz():
     # Calculate score
     score = (correct_count / total_questions * 100) if total_questions > 0 else 0
     
-    # If user is logged in, save to database
-    if current_user.is_authenticated:
-        user_id = current_user.id
-        
-        # Create quiz session
-        quiz_session = QuizSession(
-            user_id=user_id,
-            quiz_type=quiz_type,
-            started_at=datetime.fromtimestamp(start_time / 1000) if start_time else datetime.utcnow(),
-            time_spent_seconds=time_spent_seconds,
-            total_questions=total_questions,
-            correct_answers=correct_count,
-            score=score,
-            completed_at=datetime.utcnow()
+    # Create quiz session
+    user_id = current_user.id
+    
+    quiz_session = QuizSession(
+        user_id=user_id,
+        quiz_type=quiz_type,
+        started_at=datetime.fromtimestamp(start_time / 1000) if start_time else datetime.utcnow(),
+        time_spent_seconds=time_spent_seconds,
+        total_questions=total_questions,
+        correct_answers=correct_count,
+        score=score,
+        completed_at=datetime.utcnow()
+    )
+    db.session.add(quiz_session)
+    db.session.flush()
+    
+    # Save individual responses
+    for result in results:
+        response = QuizResponse(
+            session_id=quiz_session.id,
+            question_id=result['question'].id,
+            user_answer=result['user_answer'],
+            is_correct=result['is_correct']
         )
-        db.session.add(quiz_session)
-        db.session.flush()
-        
-        # Save individual responses
-        for result in results:
-            response = QuizResponse(
-                session_id=quiz_session.id,
-                question_id=result['question'].id,
-                user_answer=result['user_answer'],
-                is_correct=result['is_correct']
-            )
-            db.session.add(response)
-        
-        db.session.commit()
-        
-        # Update user progress using the service
-        progress_service = ProgressService()
-        progress_service.update_user_progress(user_id, quiz_session)
-        
-        # Check for new achievements
-        achievement_service = AchievementService()
-        new_achievements = achievement_service.check_achievements(user_id)
-        
-        # If this was a learning path quiz and passed (>= 80%), update learning path progress
-        if quiz_type == 'learning_path' and score >= 80:
-            from ..services.learning_service import LearningService
-            learning_path_id = request.form.get('learning_path_id', type=int)
-            if learning_path_id:
-                LearningService.update_path_progress(user_id, learning_path_id)
-        
-        # Update leaderboards
-        leaderboard_service = LeaderboardService()
-        leaderboard_service.update_leaderboards(user_id)
-        
-        # Record quiz usage for subscription limits
-        from ..services.payment_service import UsageLimitService
-        UsageLimitService.record_quiz_taken(user_id, quiz_type)
-        
-        # Store new achievements in session to show in results
-        if new_achievements:
-            session['new_achievements'] = [
-                {
-                    'name': ach.name,
-                    'description': ach.description,
-                    'points': ach.points,
-                    'icon': ach.icon_filename
-                } for ach in new_achievements
-            ]
-        
-        # Redirect to results page
-        return redirect(url_for('main.quiz_results', session_id=quiz_session.id))
-    else:
-        # For non-logged in users, store results in session
-        session['temp_quiz_results'] = {
-            'score': score,
-            'correct_answers': correct_count,
-            'total_questions': total_questions,
-            'time_spent_seconds': time_spent_seconds,
-            'results': results
-        }
-        return redirect(url_for('main.quiz_results_guest'))
+        db.session.add(response)
+    
+    db.session.commit()
+    
+    # Update user progress using the service
+    progress_service = ProgressService()
+    progress_service.update_user_progress(user_id, quiz_session)
+    
+    # Check for new achievements
+    achievement_service = AchievementService()
+    new_achievements = achievement_service.check_achievements(user_id)
+    
+    # If this was a learning path quiz and passed (>= 80%), update learning path progress
+    if quiz_type == 'learning_path' and score >= 80:
+        from ..services.learning_service import LearningService
+        learning_path_id = request.form.get('learning_path_id', type=int)
+        if learning_path_id:
+            LearningService.update_path_progress(user_id, learning_path_id)
+    
+    # Update leaderboards
+    leaderboard_service = LeaderboardService()
+    leaderboard_service.update_leaderboards(user_id)
+    
+    # Record quiz usage for subscription limits
+    from ..services.payment_service import UsageLimitService
+    UsageLimitService.record_quiz_taken(user_id, quiz_type)
+    
+    # Store new achievements in session to show in results
+    if new_achievements:
+        session['new_achievements'] = [
+            {
+                'name': ach.name,
+                'description': ach.description,
+                'points': ach.points,
+                'icon': ach.icon_filename
+            } for ach in new_achievements
+        ]
+    
+    # Redirect to results page
+    return redirect(url_for('main.quiz_results', session_id=quiz_session.id))
 
 
 @main_bp.route('/quiz/results/<int:session_id>')
@@ -327,48 +328,52 @@ def quiz_results(session_id):
                          results=results)
 
 
-@main_bp.route('/quiz/results/guest')
-def quiz_results_guest():
-    """Display quiz results for guest users"""
-    temp_results = session.get('temp_quiz_results')
+
+@main_bp.route('/quiz/preview')
+def quiz_preview():
+    """Quiz preview page for non-logged-in users"""
+    # Get some sample question categories and counts for display
+    try:
+        category_counts = db.session.query(
+            Question.category,
+            db.func.count(Question.id).label('count')
+        ).filter(
+            Question.is_active == True,
+            Question.category.isnot(None)
+        ).group_by(Question.category).limit(6).all()
+        
+        # Get total question count
+        total_questions = db.session.query(db.func.count(Question.id)).filter(
+            Question.is_active == True
+        ).scalar()
+        
+        # Sample categories for preview
+        sample_categories = []
+        for cat_name, count in category_counts:
+            sample_categories.append({
+                'name': cat_name,
+                'count': count
+            })
+            
+    except Exception as e:
+        # Fallback data if database query fails
+        total_questions = 2000
+        sample_categories = [
+            {'name': 'Fareskilt', 'count': 150},
+            {'name': 'Påbudsskilt', 'count': 120},
+            {'name': 'Forbudsskilt', 'count': 100},
+            {'name': 'Vikeplikt', 'count': 180},
+            {'name': 'Trafikkregler', 'count': 200},
+            {'name': 'Opplysningsskilt', 'count': 80}
+        ]
     
-    if not temp_results:
-        flash('Ingen quiz resultater funnet', 'error')
-        return redirect(url_for('main.quiz'))
-    
-    # Create a mock session object for template compatibility
-    quiz_session = type('obj', (object,), {
-        'score': temp_results['score'],
-        'correct_answers': temp_results['correct_answers'],
-        'total_questions': temp_results['total_questions'],
-        'time_spent_seconds': temp_results['time_spent_seconds']
-    })
-    
-    # Format results
-    results = []
-    for result in temp_results['results']:
-        question = result['question']
-        results.append({
-            'question': question,
-            'user_answer': result['user_answer'],
-            'is_correct': result['is_correct'],
-            'correct_answer': result['correct_answer'],
-            'options': {opt.option_letter: opt.option_text for opt in question.options}
-        })
-    
-    # Clear temp results
-    session.pop('temp_quiz_results', None)
-    
-    # Add a flash message encouraging registration
-    flash('Logg inn for å lagre resultatene dine og spore fremgangen din!', 'info')
-    
-    return render_template('quiz_results.html', 
-                         session=quiz_session, 
-                         results=results,
-                         is_guest=True)
+    return render_template('quiz_preview.html', 
+                         sample_categories=sample_categories,
+                         total_questions=total_questions)
 
 
 @main_bp.route('/quiz/categories')
+@login_required
 def quiz_categories():
     """Quiz category selection page"""
     # Get all categories with question counts
@@ -419,6 +424,7 @@ def quiz_categories():
 
 
 @main_bp.route('/api/questions')
+@login_required
 def api_questions():
     """API endpoint to get questions"""
     category = request.args.get('category')
@@ -491,6 +497,7 @@ def achievements():
 
 
 @main_bp.route('/leaderboard')
+@login_required
 def leaderboard():
     """Leaderboard page"""
     return render_template('progress/leaderboard.html')

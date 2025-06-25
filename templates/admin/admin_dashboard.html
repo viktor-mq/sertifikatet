@@ -5,7 +5,15 @@
     <title>Adminpanel - Sertifikatet</title>
     <link rel="stylesheet" href="{{ url_for('static', filename='css/admin.css') }}">
 </head>
-<body>
+<body style="
+    font-family: Arial, sans-serif;
+    margin: 0;
+    padding: 0;
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+">
     <header class="admin-header" style="padding: 10px 20px; box-shadow: 0 2px 4px rgba(0,0,0,0.1); display: flex; align-items: center; justify-content: space-between;">
       <div style="display: flex; align-items: center;">
         <a href="{{ url_for('main.index') }}">
@@ -22,8 +30,10 @@
       </div>
     </header>
     
-    <!-- Flash Messages -->
-    {% with messages = get_flashed_messages(with_categories=true) %}
+    <!-- Main Content Wrapper -->
+    <div style="flex: 1; display: flex; flex-direction: column;">
+        <!-- Flash Messages -->
+        {% with messages = get_flashed_messages(with_categories=true) %}
         {% if messages %}
             <div class="container" style="max-width: 1200px; margin: 0 auto; padding: 20px;">
                 {% for category, message in messages %}
@@ -118,6 +128,7 @@
         <!-- Audit Log Section -->
         {% include 'admin/audit_log_section.html' %}
     </div>
+    </div> <!-- End Main Content Wrapper -->
 
     <script>
         // Alert dismissal function

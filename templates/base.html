@@ -56,20 +56,23 @@
                 
                 <!-- Desktop Navigation -->
                 <div class="hidden md:flex items-center space-x-4">
-                    <a href="{{ url_for('main.quiz_categories') }}" class="hover:text-purple-400 transition">Quiz</a>
+                    {% if current_user.is_authenticated %}
+                        <a href="{{ url_for('main.quiz_categories') }}" class="hover:text-purple-400 transition">Quiz</a>
+                    {% else %}
+                        <a href="{{ url_for('main.quiz_preview') }}" class="hover:text-purple-400 transition">Quiz</a>
+                    {% endif %}
                     <a href="{{ url_for('video.index') }}" class="hover:text-purple-400 transition">Videoer</a>
                     <a href="{{ url_for('game.index') }}" class="hover:text-purple-400 transition">Spill</a>
                     <a href="{{ url_for('learning.index') }}" class="hover:text-purple-400 transition">Læringsveier</a>
                     
                     {% if current_user.is_authenticated %}
-                        <a href="{{ url_for('main.dashboard') }}" class="hover:text-purple-400 transition">Dashboard</a>
                         <a href="{{ url_for('gamification.dashboard') }}" class="hover:text-purple-400 transition">Gamification</a>
                         <a href="{{ url_for('main.achievements') }}" class="hover:text-purple-400 transition">Utmerkelser</a>
                         <a href="{{ url_for('main.leaderboard') }}" class="hover:text-purple-400 transition">Ledertavle</a>
                         <a href="{{ url_for('auth.profile') }}" class="hover:text-purple-400 transition">Profil</a>
                         <a href="{{ url_for('auth.logout') }}" class="hover:text-purple-400 transition">Logg ut</a>
                     {% else %}
-                        <a href="{{ url_for('subscription.pricing') }}" class="hover:text-purple-400 transition">Priser</a>
+                        <a href="{{ url_for('main.index') }}#pricing" class="hover:text-purple-400 transition">Priser</a>
                         <a href="{{ url_for('auth.login') }}" class="hover:text-purple-400 transition">Logg inn</a>
                         <a href="{{ url_for('auth.register') }}" class="bg-purple-600 px-4 py-2 rounded-lg hover:bg-purple-700 transition">
                             Registrer
@@ -87,9 +90,15 @@
             <!-- Mobile Navigation Menu -->
             <div id="mobile-menu" class="md:hidden hidden border-t border-gray-700 pt-4 pb-2">
                 <div class="flex flex-col space-y-3">
-                    <a href="{{ url_for('main.quiz_categories') }}" class="block hover:text-purple-400 transition py-2">
-                        <i class="fas fa-question-circle mr-2"></i> Quiz
-                    </a>
+                    {% if current_user.is_authenticated %}
+                        <a href="{{ url_for('main.quiz_categories') }}" class="block hover:text-purple-400 transition py-2">
+                            <i class="fas fa-question-circle mr-2"></i> Quiz
+                        </a>
+                    {% else %}
+                        <a href="{{ url_for('main.quiz_preview') }}" class="block hover:text-purple-400 transition py-2">
+                            <i class="fas fa-question-circle mr-2"></i> Quiz
+                        </a>
+                    {% endif %}
                     <a href="{{ url_for('video.index') }}" class="block hover:text-purple-400 transition py-2">
                         <i class="fas fa-play mr-2"></i> Videoer
                     </a>
@@ -102,9 +111,6 @@
                     
                     {% if current_user.is_authenticated %}
                         <hr class="border-gray-700 my-2">
-                        <a href="{{ url_for('main.dashboard') }}" class="block hover:text-purple-400 transition py-2">
-                            <i class="fas fa-tachometer-alt mr-2"></i> Dashboard
-                        </a>
                         <a href="{{ url_for('gamification.dashboard') }}" class="block hover:text-purple-400 transition py-2">
                             <i class="fas fa-trophy mr-2"></i> Gamification
                         </a>
@@ -123,7 +129,7 @@
                         </a>
                     {% else %}
                         <hr class="border-gray-700 my-2">
-                        <a href="{{ url_for('subscription.pricing') }}" class="block hover:text-purple-400 transition py-2">
+                        <a href="{{ url_for('main.index') }}#pricing" class="block hover:text-purple-400 transition py-2">
                             <i class="fas fa-tags mr-2"></i> Priser
                         </a>
                         <a href="{{ url_for('auth.login') }}" class="block hover:text-purple-400 transition py-2">
@@ -164,7 +170,7 @@
     </main>
     
     <!-- Footer -->
-    <footer class="bg-gray-800 mt-20 py-8 relative z-10">
+    <footer class="bg-gray-800 py-8">
         <div class="max-w-7xl mx-auto px-4 text-center text-gray-400">
             <p>&copy; 2025 Sertifikatet. All rights reserved.</p>
         </div>
@@ -231,6 +237,28 @@
         
         #mobile-menu.show {
             max-height: 500px;
+        }
+        
+        /* Sticky Footer Fix - Override any conflicting styles */
+        html {
+            height: 100%;
+        }
+        
+        body {
+            min-height: 100vh !important;
+            display: flex !important;
+            flex-direction: column !important;
+            margin: 0;
+            padding: 0;
+        }
+        
+        main {
+            flex: 1 !important;
+        }
+        
+        footer {
+            margin-top: auto !important;
+            flex-shrink: 0 !important;
         }
     </style>
     

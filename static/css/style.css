@@ -174,9 +174,7 @@ th {
    ========================================== */
 
 /* Add bottom padding to prevent PWA install bar from hiding content */
-body {
-    padding-bottom: 80px !important; /* Space for PWA install bar */
-}
+/* Note: Removed body padding-bottom as it conflicts with sticky footer */
 
 /* Ensure footer doesn't conflict with PWA bar */
 footer {
@@ -191,8 +189,9 @@ footer {
 
 /* Responsive adjustments for mobile */
 @media (max-width: 768px) {
-    body {
-        padding-bottom: 100px !important; /* More space on mobile */
+    /* Only apply padding when PWA install banner is likely to appear */
+    body.pwa-installable {
+        padding-bottom: 100px !important;
     }
 }
 
@@ -204,6 +203,6 @@ footer {
 /* Style for when PWA is installed (optional) */
 @media (display-mode: standalone) {
     body {
-        padding-bottom: 20px !important; /* Less padding when installed */
+        padding-bottom: 0 !important; /* No padding when installed */
     }
 }
