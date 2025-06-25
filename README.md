@@ -5,6 +5,7 @@ A modern, comprehensive web application for Norwegian driving theory test prepar
 ## 🚀 Project Overview
 
 Sertifikatet is an all-in-one driving theory platform that helps users pass their Norwegian driver's theory test through:
+
 - Interactive quizzes with detailed explanations
 - Video learning with checkpoints
 - Gamification with achievements and leaderboards
@@ -12,9 +13,37 @@ Sertifikatet is an all-in-one driving theory platform that helps users pass thei
 - Progressive Web App (PWA) support
 - Comprehensive subscription system
 
+## 🏗️ Infrastructure & Deployment
+
+### Production Setup
+
+- **Domain**: [sertifikatet.no](https://sertifikatet.no)
+- **Hosting**: Windows Desktop (32GB RAM, D: drive storage)
+- **Tunnel**: Cloudflare Tunnel (automatic SSL, DDoS protection)
+- **Process Management**: NVVM (Flask auto-restart)
+- **Database**: MySQL on Windows desktop
+- **CI/CD**: GitHub Actions with self-hosted runner
+
+### Development Workflow
+
+1. **MacBook**: Code development, connects to Windows MySQL
+2. **GitHub**: Push to main branch triggers auto-deployment
+3. **Windows**: Automatic pull, restart, and deploy via GitHub Actions
+4. **Live**: Changes appear on sertifikatet.no automatically
+
+### Automatic Services
+
+- ✅ Cloudflare tunnel starts on Windows boot
+- ✅ Flask app managed by NVVM (auto-restart)
+- ✅ GitHub Actions runner service
+- ✅ MySQL database service
+
+The entire stack auto-starts and auto-deploys for seamless development! 🚀
+
 ## 🏗️ Tech Stack
 
 ### Backend
+
 - **Framework**: Flask with SQLAlchemy ORM
 - **Database**: MySQL (Production) / SQLite (Testing)
 - **Caching**: Redis with fallback mechanisms
@@ -22,13 +51,15 @@ Sertifikatet is an all-in-one driving theory platform that helps users pass thei
 - **ML Stack**: scikit-learn, pandas, numpy (local processing)
 
 ### Frontend
+
 - **UI**: React components with Tailwind CSS
 - **Charts**: Chart.js for analytics
 - **Games**: Phaser.js for interactive content
 
 ### Infrastructure
+
 - **Containers**: Docker & Docker Compose
-- **CI/CD**: GitHub Actions
+- **CI/CD**: GitHub Actions with self-hosted runner
 - **Testing**: pytest with database isolation
 - **Code Quality**: black, flake8, isort, mypy
 - **Security**: bandit, safety, Trivy scanning
@@ -40,6 +71,7 @@ Sertifikatet is an all-in-one driving theory platform that helps users pass thei
 Our testing framework includes **multiple layers of protection** to prevent accidental production database access:
 
 #### Layer 1: Environment Variables
+
 ```python
 os.environ['DATABASE_URL'] = 'sqlite:///:memory:'
 os.environ['TESTING'] = '1'
@@ -47,6 +79,7 @@ os.environ['FLASK_ENV'] = 'testing'
 ```
 
 #### Layer 2: Runtime Safety Checks
+
 ```python
 # Prevents any accidental production DB access
 if 'sertifikatet' in os.environ.get('DATABASE_URL', ''):
@@ -57,6 +90,7 @@ if 'mysql' in app.config.get('SQLALCHEMY_DATABASE_URI', '').lower():
 ```
 
 #### Layer 3: In-Memory Database
+
 All tests use `sqlite:///:memory:` - a temporary database that exists only in RAM and is automatically destroyed after tests.
 
 ### Test Structure
@@ -89,34 +123,60 @@ pytest tests/test_auth.py::TestAuthentication::test_user_login_success -v
 
 ### GitHub Actions Workflow
 
-Our CI/CD pipeline (`/.github/workflows/ci.yml`) includes:
+Our CI/CD pipeline includes both **testing** and **automatic deployment**:
 
 #### 1. **Automated Testing**
+
 - Runs on every push to `main` and `develop` branches
 - Runs on all pull requests
 - Uses isolated in-memory database
 - Includes Redis service for caching tests
 
 #### 2. **Code Quality Checks**
+
 - **Black**: Code formatting
 - **isort**: Import sorting
 - **flake8**: Linting and style
 - **mypy**: Type checking
 
 #### 3. **Security Scanning**
+
 - **bandit**: Python security analysis
 - **safety**: Dependency vulnerability scanning
 - **Trivy**: Container and filesystem vulnerability scanning
 
 #### 4. **Coverage Reporting**
+
 - Test coverage analysis
 - Integration with Codecov
 - HTML coverage reports
 
-#### 5. **Branch-Based Deployment**
+#### 5. **Automatic Deployment (Self-Hosted Runner)**
+
+- **Self-hosted runner**: Windows desktop with automatic deployment
 - **Feature branches**: Tests only (no deployment)
-- **Develop branch**: Tests + staging deployment
-- **Main branch**: Tests + production deployment
+- **Main branch**: Tests + automatic deployment to production
+- **Zero-downtime**: NVVM manages Flask restarts seamlessly
+
+### Self-Hosted CI/CD Architecture
+
+```
+MacBook (Development)
+    ↓ git push to main
+GitHub Repository
+    ↓ triggers webhook
+Windows Desktop (Self-Hosted Runner)
+    ↓ pulls changes & restarts
+Sertifikatet.no Live Website
+```
+
+The self-hosted runner on Windows desktop:
+
+- Pulls latest code automatically
+- Installs/updates dependencies
+- Runs database migrations
+- Restarts Flask application via NVVM
+- Makes changes live on sertifikatet.no
 
 ### Pre-commit Hooks
 
@@ -156,6 +216,7 @@ docker build -t sertifikatet .
 Sertifikatet includes a comprehensive automated backup system that protects your data with daily backups, compression, verification, and email alerts.
 
 #### 🕐 **Backup Schedule**
+
 - **Frequency**: Every day at 2:30 AM
 - **Format**: Compressed MySQL dumps (.sql.gz)
 - **Retention**: 30 days (automatic cleanup)
@@ -166,6 +227,7 @@ Sertifikatet includes a comprehensive automated backup system that protects your
 #### 🔧 **Setup Instructions**
 
 1. **Install the backup system**:
+
    ```bash
    cd /Users/viktorigesund/Documents/teoritest
    chmod +x scripts/setup_backup_system.sh
@@ -173,10 +235,13 @@ Sertifikatet includes a comprehensive automated backup system that protects your
    ```
 
 2. **Verify cron job installation**:
+
    ```bash
    crontab -l | grep sertifikatet
    ```
+
    Should show:
+
    ```
    30 2 * * * cd /path/to/teoritest && venv/bin/python scripts/database_backup.py
    ```
@@ -200,11 +265,13 @@ Sertifikatet includes a comprehensive automated backup system that protects your
 #### 🚨 **Requirements & Limitations**
 
 **Your Mac must be:**
+
 - ✅ **Powered on or sleeping** (not shut down) at 2:30 AM
 - ✅ **Connected to network** (WiFi/Ethernet)
 - ✅ **MySQL service running** on localhost:3306
 
 **What happens if:**
+
 - 🔴 **Mac is off**: Backup skipped, no notification
 - 🟢 **Mac is sleeping**: Backup runs normally
 - 🟡 **No network**: Backup fails, email alert sent
@@ -213,6 +280,7 @@ Sertifikatet includes a comprehensive automated backup system that protects your
 #### 📧 **Email Alerts**
 
 Automatic notifications sent to `SUPER_ADMIN_EMAIL` for:
+
 - Backup failures
 - Database connection issues
 - Verification failures
@@ -221,17 +289,20 @@ Automatic notifications sent to `SUPER_ADMIN_EMAIL` for:
 #### 🖥️ **Manual Backup Operations**
 
 **Create immediate backup**:
+
 ```bash
 cd /Users/viktorigesund/Documents/teoritest
 python scripts/database_backup.py
 ```
 
 **View recent backups**:
+
 ```bash
 ls -la backups/database/*.sql.gz
 ```
 
 **Check backup logs**:
+
 ```bash
 tail -f backups/database/backup.log
 ```
@@ -241,11 +312,13 @@ tail -f backups/database/backup.log
 #### 🔄 **Restore from Backup**
 
 1. **Find the backup to restore**:
+
    ```bash
    ls -la backups/database/sertifikatet_backup_*.sql.gz
    ```
 
 2. **Restore using one-liner** (recommended):
+
    ```bash
    gunzip -c backups/database/sertifikatet_backup_YYYYMMDD_HHMMSS.sql.gz | mysql -u root -p sertifikatet
    ```
@@ -261,18 +334,21 @@ tail -f backups/database/backup.log
 If tests accidentally affect production database:
 
 1. **Immediate action**:
+
    ```bash
    # Stop all processes accessing the database
    sudo brew services stop mysql
    ```
 
 2. **Restore from latest backup**:
+
    ```bash
    sudo brew services start mysql
    gunzip -c backups/database/$(ls -t backups/database/*.sql.gz | head -1) | mysql -u root -p sertifikatet
    ```
 
 3. **Verify data integrity**:
+
    ```bash
    mysql -u root -p sertifikatet -e "SELECT COUNT(*) FROM users; SELECT COUNT(*) FROM questions;"
    ```
@@ -284,17 +360,20 @@ If tests accidentally affect production database:
 For server deployment, implement these additional backup layers:
 
 **Server-Side Backups**:
+
 ```bash
 # Production server cron job
 0 2 * * * /usr/bin/mysqldump --single-transaction sertifikatet | gzip > /backups/daily/backup_$(date +\%Y\%m\%d).sql.gz
 ```
 
 **Cloud Backup Options**:
+
 - **AWS RDS**: Automated backups with point-in-time recovery
 - **Google Cloud SQL**: Daily backups with 7-day retention
 - **DigitalOcean Managed Databases**: Automatic daily backups
 
 **Off-site Storage**:
+
 ```bash
 # Upload to cloud storage
 aws s3 cp backup.sql.gz s3://your-backup-bucket/$(date +%Y/%m/%d)/
@@ -327,6 +406,7 @@ flask db downgrade
 This project requires **Python 3.10** for compatibility with all dependencies and production environment.
 
 **Using pyenv (recommended)**:
+
 ```bash
 # Install Python 3.10 if not already installed
 pyenv install 3.10.15
@@ -355,35 +435,41 @@ sudo yum install nginx supervisor
 ```
 
 **Note**: These are system packages (not Python packages) required for production deployment:
+
 - **nginx**: Web server for reverse proxy and static file serving
 - **supervisor**: Process management for running the application
 
 ### Installation
 
 1. **Clone repository**:
+
    ```bash
    git clone [repository-url]
    cd teoritest
    ```
 
 2. **Create virtual environment**:
+
    ```bash
    python -m venv venv
    source venv/bin/activate  # On Windows: venv\Scripts\activate
    ```
 
 3. **Install dependencies**:
+
    ```bash
    pip install -r requirements.txt
    ```
 
 4. **Configure environment**:
+
    ```bash
    cp .env.example .env
    # Edit .env with your configuration
    ```
 
 5. **Initialize database**:
+
    ```bash
    flask db upgrade
    python scripts/init_db.py
@@ -409,6 +495,7 @@ main (production)
 ### Workflow
 
 1. **Feature Development**:
+
    ```bash
    git checkout develop
    git pull origin develop
@@ -418,13 +505,14 @@ main (production)
    ```
 
 2. **Create Pull Request**: `feature/my-new-feature` → `develop`
+
    - Automatic CI/CD testing
    - Code review required
    - Deploys to staging after merge
 
 3. **Production Release**: `develop` → `main`
    - Comprehensive testing
-   - Deploys to production after merge
+   - Automatic deployment to sertifikatet.no via self-hosted runner
 
 ## 📊 Project Status
 
@@ -437,8 +525,9 @@ main (production)
 - **Video Learning**: Interactive with checkpoints
 - **Payment System**: Stripe integration with Norwegian methods
 - **ML Personalization**: Adaptive learning algorithms
-- **CI/CD Infrastructure**: Complete pipeline
+- **CI/CD Infrastructure**: Complete pipeline with self-hosted runner
 - **Testing Framework**: Comprehensive with safety measures
+- **Production Infrastructure**: Automatic deployment to sertifikatet.no
 
 ### Current Features
 
@@ -449,6 +538,7 @@ main (production)
 - 📱 **PWA**: Offline support and mobile optimization
 - 🔒 **Security**: Comprehensive error handling and monitoring
 - 📈 **Analytics**: Detailed progress tracking and insights
+- 🚀 **Auto-deployment**: Seamless CI/CD with self-hosted runner
 
 ## 🛡️ Security & Monitoring
 
@@ -513,21 +603,26 @@ SUPER_ADMIN_EMAIL=admin@example.com
 - [ ] Monitoring configured
 - [ ] CI/CD pipeline tested
 - [ ] Error tracking enabled
+- [ ] Self-hosted runner operational
+- [ ] Cloudflare tunnel configured
 
 ### Staging Environment
 
 Automatically deployed from `develop` branch:
+
 - Full feature testing
 - Integration testing
 - Performance validation
 
 ### Production Environment
 
-Deployed from `main` branch after:
+Deployed from `main` branch with automatic CI/CD:
+
 - All tests passing
 - Security scans clean
 - Code review approved
-- Staging validation complete
+- Automatic deployment to sertifikatet.no
+- NVVM ensures zero-downtime restarts
 
 ## 📚 Additional Resources
 
@@ -558,4 +653,4 @@ Deployed from `main` branch after:
 
 ---
 
-**Note**: This platform includes comprehensive safety measures to protect production data during development and testing. The multi-layered database protection system ensures that tests cannot accidentally affect production data.
+**Note**: This platform includes comprehensive safety measures to protect production data during development and testing. The multi-layered database protection system ensures that tests cannot accidentally affect production data. The project features a professional CI/CD pipeline with automatic deployment to the live domain at sertifikatet.no.

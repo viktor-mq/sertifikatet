@@ -47,6 +47,6 @@ if __name__ == '__main__':
     # The tunnel will proxy requests from the domain to localhost:8000
     app.run(
         host=os.getenv('HOST', '127.0.0.1'),  # Use localhost for security with tunnel
-        port=int(os.getenv('PORT', 5000)),  # Updated to match deployment scripts
+        port=int(os.getenv('PORT', 8000)),  # Updated to match deployment scripts
         debug=app.config['DEBUG']
     )
