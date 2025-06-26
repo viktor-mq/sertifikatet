@@ -116,13 +116,35 @@ def update_progress():
     data = request.get_json()
     video_id = data.get('video_id')
     position = data.get('position', 0)
+    total_duration = data.get('total_duration', 0)
     
     progress = VideoService.update_progress(current_user, video_id, position)
     
-    return jsonify({
+    # Check if video was just completed
+    was_completed = False
+    if progress and progress.completed:
+        was_completed = True
+    
+    response_data = {
         'success': True,
         'completed': progress.completed if progress else False
-    })
+    }
+    
+    # Add analytics data if video was completed
+    if was_completed:
+        video = Video.query.get(video_id)
+        response_data['analytics_data'] = {
+            'user_id': current_user.id,
+            'video_id': video_id,
+            'video_title': video.title if video else '',
+            'category': video.category if video else '',
+            'completion_percentage': 100,
+            'watch_time_seconds': total_duration,
+            'total_duration_seconds': total_duration,
+            'checkpoints_passed': progress.checkpoints_passed if progress else 0
+        }
+    
+    return jsonify(response_data)
 
 
 @video_bp.route('/checkpoint/<int:checkpoint_id>/answer', methods=['POST'])

@@ -16,6 +16,24 @@
     <!-- Tailwind CSS (if used) -->
     <script src="https://cdn.tailwindcss.com"></script>
     
+    <!-- User Analytics Meta Tags -->
+    {% if current_user.is_authenticated %}
+        <meta name="user-subscription-tier" content="{{ current_user.get_subscription_tier() }}">
+        <meta name="user-level" content="{{ current_user.get_level() }}">
+        <meta name="user-verified" content="{{ current_user.is_verified|lower }}">
+        <meta name="user-registration-date" content="{{ current_user.created_at.isoformat() if current_user.created_at else '' }}">
+        <script>
+            // Set global user data for analytics
+            window.currentUser = {
+                id: '{{ current_user.id }}',
+                subscriptionTier: '{{ current_user.get_subscription_tier() }}',
+                level: {{ current_user.get_level() }},
+                isVerified: {{ current_user.is_verified|lower }},
+                registrationDate: '{{ current_user.created_at.isoformat() if current_user.created_at else "" }}'
+            };
+        </script>
+    {% endif %}
+    
     {% block extra_css %}{% endblock %}
     
     <!-- Favicon -->
@@ -211,6 +229,8 @@
     <script src="{{ url_for('static', filename='js/main.js') }}"></script>
     <script src="{{ url_for('static', filename='js/pwa.js') }}"></script>
     <script src="{{ url_for('static', filename='js/cookie-consent.js') }}"></script>
+    <script src="{{ url_for('static', filename='js/analytics-service.js') }}"></script>
+    <script src="{{ url_for('static', filename='js/analytics-integration.js') }}"></script>
     {% block extra_js %}{% endblock %}
     
     <style>

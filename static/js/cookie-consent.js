@@ -270,10 +270,13 @@ class CookieConsentManager {
     }
     
     loadGoogleAnalytics() {
-        // Only load if not already loaded
+        // Only load if not already loaded and user has consented
         if (window.gtag || document.querySelector(`script[src*="googletagmanager.com/gtag/js?id=${this.GOOGLE_ANALYTICS_ID}"]`)) {
+            console.log('Google Analytics already loaded');
             return;
         }
+        
+        console.log('Loading Google Analytics with user consent');
         
         // Load Google Analytics script
         const script = document.createElement('script');
@@ -281,20 +284,42 @@ class CookieConsentManager {
         script.src = `https://www.googletagmanager.com/gtag/js?id=${this.GOOGLE_ANALYTICS_ID}`;
         document.head.appendChild(script);
         
-        // Initialize gtag
+        // Initialize gtag with enhanced privacy settings
         script.onload = () => {
             window.dataLayer = window.dataLayer || [];
             function gtag(){dataLayer.push(arguments);}
             window.gtag = gtag;
             
             gtag('js', new Date());
+            
+            // Enhanced privacy configuration for GDPR compliance
             gtag('config', this.GOOGLE_ANALYTICS_ID, {
-                cookie_flags: 'SameSite=None;Secure',
-                anonymize_ip: true, // Privacy-friendly
-                allow_google_signals: false, // Disable advertising features by default
+                // Privacy settings
+                anonymize_ip: true,                    // Anonymize IP addresses
+                allow_google_signals: false,          // Disable advertising features
+                allow_ad_personalization_signals: false, // No ad personalization
+                
+                // Cookie settings
+                cookie_flags: 'SameSite=None;Secure',  // Secure cookie handling
+                cookie_expires: 60 * 60 * 24 * 365,   // 1 year expiration
+                
+                // Data collection settings
+                send_page_view: true,                  // Enable page view tracking
+                linker: {                              // Cross-domain tracking disabled
+                    accept_incoming: false
+                },
+                
+                // Custom parameters
+                custom_map: {
+                    'custom_parameter_1': 'user_subscription_tier',
+                    'custom_parameter_2': 'user_level'
+                }
             });
             
-            console.log('Google Analytics loaded with consent');
+            // Set user properties for segmentation
+            this.setUserProperties();
+            
+            console.log('Google Analytics loaded successfully with GDPR compliance');
         };
     }
     
@@ -302,6 +327,64 @@ class CookieConsentManager {
         // Placeholder for marketing scripts (Facebook Pixel, etc.)
         // Only load if user is on free plan and has consented
         console.log('Marketing scripts would be loaded here');
+    }
+    
+    setUserProperties() {
+        // Set user properties for analytics segmentation
+        if (window.gtag) {
+            try {
+                // Get user info from the page if available
+                const userInfo = this.getUserInfo();
+                
+                gtag('config', this.GOOGLE_ANALYTICS_ID, {
+                    user_properties: {
+                        subscription_tier: userInfo.subscriptionTier || 'free',
+                        user_level: userInfo.userLevel || 1,
+                        is_verified: userInfo.isVerified || false,
+                        registration_date: userInfo.registrationDate || null
+                    }
+                });
+                
+                console.log('User properties set for analytics', userInfo);
+            } catch (error) {
+                console.warn('Could not set user properties:', error);
+            }
+        }
+    }
+    
+    getUserInfo() {
+        // Extract user information from page meta tags or global variables
+        const userInfo = {};
+        
+        // Try to get from meta tags first
+        const subscriptionMeta = document.querySelector('meta[name="user-subscription-tier"]');
+        if (subscriptionMeta) {
+            userInfo.subscriptionTier = subscriptionMeta.content;
+        }
+        
+        const levelMeta = document.querySelector('meta[name="user-level"]');
+        if (levelMeta) {
+            userInfo.userLevel = parseInt(levelMeta.content) || 1;
+        }
+        
+        const verifiedMeta = document.querySelector('meta[name="user-verified"]');
+        if (verifiedMeta) {
+            userInfo.isVerified = verifiedMeta.content === 'true';
+        }
+        
+        const regDateMeta = document.querySelector('meta[name="user-registration-date"]');
+        if (regDateMeta) {
+            userInfo.registrationDate = regDateMeta.content;
+        }
+        
+        // Fallback to global window variables if available
+        if (window.currentUser) {
+            userInfo.subscriptionTier = window.currentUser.subscriptionTier || userInfo.subscriptionTier;
+            userInfo.userLevel = window.currentUser.level || userInfo.userLevel;
+            userInfo.isVerified = window.currentUser.isVerified !== undefined ? window.currentUser.isVerified : userInfo.isVerified;
+        }
+        
+        return userInfo;
     }
     
     // Update view-only displays on notification settings page

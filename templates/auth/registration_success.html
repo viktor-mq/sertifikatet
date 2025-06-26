@@ -1,0 +1,84 @@
+<!-- templates/auth/registration_success.html -->
+{% extends "base.html" %}
+
+{% block title %}Registrering vellykket - Sertifikatet{% endblock %}
+
+{% block content %}
+<section class="py-12">
+    <div class="max-w-2xl mx-auto px-4 sm:px-6 lg:px-8">
+        <div class="glass rounded-2xl p-8 text-center">
+            <!-- Success Icon -->
+            <div class="mb-6">
+                <div class="w-16 h-16 bg-green-500 rounded-full flex items-center justify-center mx-auto">
+                    <i class="fas fa-check text-white text-2xl"></i>
+                </div>
+            </div>
+            
+            <!-- Success Message -->
+            <h1 class="text-3xl font-bold mb-4">Velkommen til Sertifikatet!</h1>
+            <p class="text-gray-300 mb-6">
+                Din konto er opprettet. Vi har sendt en bekreftelse til din e-postadresse.
+                Vennligst sjekk innboksen din for å aktivere kontoen.
+            </p>
+            
+            <!-- Next Steps -->
+            <div class="bg-gray-800/50 rounded-lg p-6 mb-6">
+                <h2 class="text-xl font-semibold mb-4">Neste steg:</h2>
+                <ol class="text-left space-y-2 text-gray-300">
+                    <li class="flex items-center">
+                        <span class="w-6 h-6 bg-purple-600 rounded-full flex items-center justify-center text-sm font-bold mr-3">1</span>
+                        Sjekk e-posten din for bekreftelseslenke
+                    </li>
+                    <li class="flex items-center">
+                        <span class="w-6 h-6 bg-purple-600 rounded-full flex items-center justify-center text-sm font-bold mr-3">2</span>
+                        Klikk på lenken for å bekrefte kontoen din
+                    </li>
+                    <li class="flex items-center">
+                        <span class="w-6 h-6 bg-purple-600 rounded-full flex items-center justify-center text-sm font-bold mr-3">3</span>
+                        Logg inn og start å lære!
+                    </li>
+                </ol>
+            </div>
+            
+            <!-- Actions -->
+            <div class="flex flex-col sm:flex-row gap-4 justify-center">
+                <a href="{{ url_for('auth.login') }}" 
+                   class="px-6 py-3 bg-purple-600 hover:bg-purple-700 rounded-lg transition font-semibold">
+                    <i class="fas fa-sign-in-alt mr-2"></i>Logg inn
+                </a>
+                <a href="{{ url_for('main.index') }}" 
+                   class="px-6 py-3 bg-gray-700 hover:bg-gray-600 rounded-lg transition font-semibold">
+                    <i class="fas fa-home mr-2"></i>Tilbake til forsiden
+                </a>
+            </div>
+            
+            <!-- Help -->
+            <div class="mt-6 text-sm text-gray-400">
+                <p>Ikke mottatt e-post? 
+                   <a href="{{ url_for('auth.resend_verification') }}" class="text-purple-400 hover:text-purple-300 underline">
+                       Send på nytt
+                   </a>
+                </p>
+            </div>
+        </div>
+    </div>
+</section>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    // Track user registration event
+    if (window.analyticsService && {{ user_data|tojson }}) {
+        const userData = {{ user_data|tojson }};
+        
+        window.analyticsService.trackUserRegistration({
+            userId: userData.user_id,
+            method: 'email',
+            timestamp: new Date().toISOString(),
+            marketingConsent: userData.marketing_consent || false
+        });
+        
+        console.log('📊 Tracked user registration:', userData.username);
+    }
+});
+</script>
+{% endblock %}

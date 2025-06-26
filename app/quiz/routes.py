@@ -162,7 +162,15 @@ def start_session():
             'session_id': quiz_session.id,
             'questions': questions_data,
             'ml_enabled': ml_service.is_ml_enabled(),
-            'success': True
+            'success': True,
+            'analytics_data': {
+                'user_id': current_user.id,
+                'quiz_type': quiz_type,
+                'category': category,
+                'difficulty_level': questions[0].difficulty_level if questions else 1,
+                'session_id': quiz_session.id,
+                'num_questions': len(questions)
+            }
         })
     
     except Exception as e:
@@ -268,7 +276,19 @@ def submit_session(session_id):
                 'score': quiz_session.score
             },
             'ml_insights': updated_insights,
-            'ml_enabled': ml_service.is_ml_enabled()
+            'ml_enabled': ml_service.is_ml_enabled(),
+            'analytics_data': {
+                'user_id': current_user.id,
+                'session_id': session_id,
+                'quiz_type': quiz_session.quiz_type,
+                'category': quiz_session.category,
+                'score': quiz_session.score,
+                'total_questions': len(responses),
+                'correct_answers': correct_count,
+                'time_spent_seconds': total_time,
+                'passed': accuracy >= 70,  # Assuming 70% is passing
+                'difficulty_level': 1  # Could be calculated from questions
+            }
         })
     
     except Exception as e:
