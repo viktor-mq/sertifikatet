@@ -51,9 +51,23 @@ def register():
         password = request.form.get('password')
         full_name = request.form.get('full_name')
         
+        # Get additional form data
+        terms_accepted = request.form.get('terms')
+        privacy_accepted = request.form.get('privacy')
+        marketing_consent = request.form.get('marketing')
+        
         # Validate inputs
         if not all([username, email, password]):
             flash('Alle felt må fylles ut', 'error')
+            return redirect(url_for('auth.register'))
+        
+        # Validate required legal agreements (GDPR compliance)
+        if not terms_accepted:
+            flash('Du må godta vilkårene for bruk for å opprette en konto', 'error')
+            return redirect(url_for('auth.register'))
+            
+        if not privacy_accepted:
+            flash('Du må bekrefte at du har lest personvernerklæringen', 'error')
             return redirect(url_for('auth.register'))
         
         # Validate password requirements
@@ -96,6 +110,15 @@ def register():
         # Create user progress record
         user_progress = UserProgress(user_id=user.id)
         db.session.add(user_progress)
+        
+        # Create notification preferences with marketing consent
+        from ..notification_models import UserNotificationPreferences
+        notification_prefs = UserNotificationPreferences(
+            user_id=user.id,
+            marketing_emails=bool(marketing_consent),  # Explicit consent for marketing
+            partner_offers=bool(marketing_consent)     # Same consent applies to partner offers
+        )
+        db.session.add(notification_prefs)
         
         db.session.commit()
         

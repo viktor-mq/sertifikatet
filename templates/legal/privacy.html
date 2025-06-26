@@ -1,0 +1,398 @@
+<!-- templates/legal/privacy.html -->
+{% extends "base.html" %}
+
+{% block title %}Personvernerklæring - Sertifikatet{% endblock %}
+
+{% block content %}
+<div class="container mx-auto px-4 py-8 max-w-4xl">
+    <div class="glass rounded-2xl p-8">
+        <h1 class="text-3xl font-bold mb-6 bg-gradient-to-r from-purple-400 to-pink-400 bg-clip-text text-transparent">
+            Personvernerklæring
+        </h1>
+        
+        <div class="text-gray-300 space-y-6">
+            <p class="text-sm text-gray-400">
+                Sist oppdatert: {{ "2025-06-26" }}
+            </p>
+            
+            <section>
+                <h2 class="text-xl font-semibold mb-3 text-white">1. Behandlingsansvarlig</h2>
+                <div class="bg-gray-800/50 rounded-lg p-4">
+                    <p><strong>Sertifikatet</strong></p>
+                    <!--<p>Organisasjonsnummer: [Org.nr her]</p>
+                    <p>Adresse: [Din adresse her]</p>
+                    <p>E-post: support@sertifikatet.no</p>-->
+                </div>
+                <p class="mt-3">
+                    Vi er behandlingsansvarlig for personopplysningene dine i henhold til 
+                    personopplysningsloven og EUs personvernforordning (GDPR).
+                </p>
+            </section>
+
+            <section>
+                <h2 class="text-xl font-semibold mb-3 text-white">2. Hvilke personopplysninger samler vi inn?</h2>
+                <div class="space-y-4">
+                    <div>
+                        <h3 class="font-semibold text-white">Kontoopplysninger:</h3>
+                        <ul class="list-disc list-inside space-y-1 ml-4">
+                            <li>Fullt navn</li>
+                            <li>E-postadresse</li>
+                            <li>Brukernavn</li>
+                            <li>Kryptert passord</li>
+                            <li>Fødselsdato (valgfritt)</li>
+                            <li>Profilbilde (valgfritt)</li>
+                        </ul>
+                    </div>
+                    
+                    <div>
+                        <h3 class="font-semibold text-white">Aktivitetsdata:</h3>
+                        <ul class="list-disc list-inside space-y-1 ml-4">
+                            <li>Quiz-resultater og svar</li>
+                            <li>Fremgang og statistikk</li>
+                            <li>Videoer sett og fremdrift</li>
+                            <li>Utmerkelser oppnådd</li>
+                            <li>Studiestreak og aktivitetsdatoer</li>
+                            <li>Spillscore og spillehistorikk</li>
+                        </ul>
+                    </div>
+                    
+                    <div>
+                        <h3 class="font-semibold text-white">Teknisk informasjon:</h3>
+                        <ul class="list-disc list-inside space-y-1 ml-4">
+                            <li>IP-adresse</li>
+                            <li>Enhetstype og nettleser</li>
+                            <li>Innloggingshistorikk</li>
+                            <li>Systemlogger for feilsøking</li>
+                        </ul>
+                    </div>
+                    
+                    <div>
+                        <h3 class="font-semibold text-white">Betalingsinformasjon:</h3>
+                        <ul class="list-disc list-inside space-y-1 ml-4">
+                            <li>Faktureringsnavn og adresse</li>
+                            <li>Abonnementshistorikk</li>
+                            <li>Transaksjons-ID (betalingsdata håndteres av Stripe)</li>
+                        </ul>
+                    </div>
+                </div>
+            </section>
+
+            <section>
+                <h2 class="text-xl font-semibold mb-3 text-white">3. Hvorfor samler vi inn personopplysninger?</h2>
+                <div class="space-y-3">
+                    <div class="bg-gray-800/50 rounded-lg p-4">
+                        <h3 class="font-semibold text-white mb-2">Rettslig grunnlag: Avtale (GDPR art. 6(1)(b))</h3>
+                        <ul class="list-disc list-inside space-y-1 ml-4">
+                            <li>Levere og forbedre tjenesten</li>
+                            <li>Administrere brukerkontoer</li>
+                            <li>Behandle betalinger og abonnement</li>
+                            <li>Tilby kundesupport</li>
+                        </ul>
+                    </div>
+                    
+                    <div class="bg-gray-800/50 rounded-lg p-4">
+                        <h3 class="font-semibold text-white mb-2">Rettslig grunnlag: Berettiget interesse (GDPR art. 6(1)(f))</h3>
+                        <ul class="list-disc list-inside space-y-1 ml-4">
+                            <li>Analysere brukeroppførsel for å forbedre tjenesten</li>
+                            <li>Forhindre misbruk og svindel</li>
+                            <li>Sikkerhet og vedlikehold av systemet</li>
+                            <li>Utvikling av nye funksjoner</li>
+                        </ul>
+                    </div>
+                    
+                    <div class="bg-gray-800/50 rounded-lg p-4">
+                        <h3 class="font-semibold text-white mb-2">Rettslig grunnlag: Samtykke (GDPR art. 6(1)(a))</h3>
+                        <ul class="list-disc list-inside space-y-1 ml-4">
+                            <li>Sende markedsføringse-post (kan trekkes tilbake)</li>
+                            <li>Personalisert annonsering (kun for gratis brukere)</li>
+                            <li>Ikke-essensielle cookies og sporing</li>
+                        </ul>
+                    </div>
+                </div>
+            </section>
+
+            <section>
+                <h2 class="text-xl font-semibold mb-3 text-white">4. Deling av personopplysninger</h2>
+                <div class="space-y-3">
+                    <p>Vi deler ikke dine personopplysninger med tredjeparter, unntatt:</p>
+                    
+                    <div class="bg-gray-800/50 rounded-lg p-4">
+                        <h3 class="font-semibold text-white mb-2">Tjenesteleverandører:</h3>
+                        <ul class="list-disc list-inside space-y-1 ml-4">
+                            <li><strong>Stripe:</strong> Betalingsbehandling (PCI DSS-sertifisert)</li>
+                            <li><strong>AWS/Hosting:</strong> Datalagring og skyinfrastruktur</li>
+                            <li><strong>E-posttjeneste:</strong> Sending av systemvarslinger</li>
+                        </ul>
+                        <p class="mt-2 text-sm">Alle leverandører er kontraktsforpliktet til å beskytte dine data.</p>
+                    </div>
+                    
+                    <div class="bg-gray-800/50 rounded-lg p-4">
+                        <h3 class="font-semibold text-white mb-2">Lovpålagte tilfeller:</h3>
+                        <ul class="list-disc list-inside space-y-1 ml-4">
+                            <li>Når loven krever det</li>
+                            <li>For å beskytte våre rettigheter eller andres sikkerhet</li>
+                            <li>Ved mistanke om ulovlig aktivitet</li>
+                        </ul>
+                    </div>
+                </div>
+            </section>
+
+            <section>
+                <h2 class="text-xl font-semibold mb-3 text-white">5. Dataoverføring til tredjeland</h2>
+                <p>
+                    Noen av våre tjenesteleverandører (som AWS og Stripe) kan lagre data utenfor EU/EØS. 
+                    Vi sikrer at slike overføringer skjer i henhold til GDPR gjennom:
+                </p>
+                <ul class="list-disc list-inside space-y-1 ml-4 mt-2">
+                    <li>EU-kommisjonens beslutninger om tilstrekkelig beskyttelsesnivå</li>
+                    <li>Standardavtaler for dataoverføring (SCCs)</li>
+                    <li>Sertifiseringer som Privacy Shield-etterfølgere</li>
+                </ul>
+            </section>
+
+            <section>
+                <h2 class="text-xl font-semibold mb-3 text-white">6. Hvor lenge lagrer vi data?</h2>
+                <div class="space-y-3">
+                    <div class="bg-gray-800/50 rounded-lg p-4">
+                        <h3 class="font-semibold text-white mb-2">Aktive kontoer:</h3>
+                        <p>Data lagres så lenge kontoen er aktiv og i rimelig tid etter inaktivitet.</p>
+                    </div>
+                    
+                    <div class="bg-gray-800/50 rounded-lg p-4">
+                        <h3 class="font-semibold text-white mb-2">Slettede kontoer:</h3>
+                        <ul class="list-disc list-inside space-y-1 ml-4">
+                            <li>Personopplysninger slettes innen 90 dager</li>
+                            <li>Anonymiserte statistikker kan beholdes for forskning</li>
+                            <li>Regnskapsdata beholdes i 5 år (bokføringsloven)</li>
+                        </ul>
+                    </div>
+                    
+                    <div class="bg-gray-800/50 rounded-lg p-4">
+                        <h3 class="font-semibold text-white mb-2">Systemlogger:</h3>
+                        <p>Slettes automatisk etter 12 måneder.</p>
+                    </div>
+                </div>
+            </section>
+
+            <section>
+                <h2 class="text-xl font-semibold mb-3 text-white">7. Dine rettigheter</h2>
+                <div class="space-y-3">
+                    <p>Du har følgende rettigheter under GDPR:</p>
+                    
+                    <div class="grid md:grid-cols-2 gap-4">
+                        <div class="bg-gray-800/50 rounded-lg p-4">
+                            <h3 class="font-semibold text-white mb-2">Rett til innsyn (art. 15)</h3>
+                            <p class="text-sm">Få kopi av dine personopplysninger</p>
+                        </div>
+                        
+                        <div class="bg-gray-800/50 rounded-lg p-4">
+                            <h3 class="font-semibold text-white mb-2">Rett til retting (art. 16)</h3>
+                            <p class="text-sm">Rette opp feil informasjon</p>
+                        </div>
+                        
+                        <div class="bg-gray-800/50 rounded-lg p-4">
+                            <h3 class="font-semibold text-white mb-2">Rett til sletting (art. 17)</h3>
+                            <p class="text-sm">Be om å få slettet dine data</p>
+                        </div>
+                        
+                        <div class="bg-gray-800/50 rounded-lg p-4">
+                            <h3 class="font-semibold text-white mb-2">Rett til begrensning (art. 18)</h3>
+                            <p class="text-sm">Begrense behandlingen</p>
+                        </div>
+                        
+                        <div class="bg-gray-800/50 rounded-lg p-4">
+                            <h3 class="font-semibold text-white mb-2">Rett til dataportabilitet (art. 20)</h3>
+                            <p class="text-sm">Få dine data i maskinlesbart format</p>
+                        </div>
+                        
+                        <div class="bg-gray-800/50 rounded-lg p-4">
+                            <h3 class="font-semibold text-white mb-2">Rett til innsigelse (art. 21)</h3>
+                            <p class="text-sm">Protestere mot behandlingen</p>
+                        </div>
+                    </div>
+                    
+                    <div class="bg-purple-900/30 border border-purple-700 rounded-lg p-4 mt-4">
+                        <h3 class="font-semibold text-white mb-2">Slik utøver du rettighetene dine:</h3>
+                        <ul class="list-disc list-inside space-y-1 ml-4">
+                            <li>Kontoinformasjon: Rediger i <a href="{{ url_for('auth.profile') }}" class="text-purple-400 hover:text-purple-300 underline">profilen din</a></li>
+                            <li>Last ned data: Bruk "Eksporter data" i kontoinnstillingene</li>
+                            <li>Slett konto: Kontakt support@sertifikatet.no</li>
+                            <li>Trekk tilbake samtykke: Endre i varslingsinnstillinger</li>
+                        </ul>
+                    </div>
+                </div>
+            </section>
+
+            <section>
+                <h2 class="text-xl font-semibold mb-3 text-white">8. Cookies og sporing</h2>
+                <div class="space-y-4">
+                    <p>
+                        Vi bruker cookies og lignende sporingsteknologier på vår nettside i henhold til 
+                        Ekom-loven (ePrivacy-direktivet) og de oppdaterte norske cookie-reglene fra 2025.
+                    </p>
+                    
+                    <div class="bg-red-900/30 border border-red-700 rounded-lg p-4">
+                        <h3 class="font-semibold text-white mb-2">Viktig om cookies:</h3>
+                        <p class="text-sm">
+                            Ingen ikke-essensielle cookies settes før du har gitt aktivt, informert og 
+                            entydig samtykke. Du kan når som helst endre dine valg.
+                        </p>
+                    </div>
+                    
+                    <div class="grid md:grid-cols-1 gap-4">
+                        <div class="bg-gray-800/50 rounded-lg p-4">
+                            <h3 class="font-semibold text-white mb-2">🔒 Nødvendige cookies (ingen samtykke kreves)</h3>
+                            <div class="text-sm space-y-2">
+                                <p><strong>Formål:</strong> Sikkerhet, pålogging, grunnleggende funksjonalitet</p>
+                                <p><strong>Eksempler:</strong> Sesjonskookies, sikkerhetstokens, språkvalg</p>
+                                <p><strong>Varighet:</strong> Sesjon til 1 år</p>
+                                <p><strong>Rettslig grunnlag:</strong> Berettiget interesse (GDPR art. 6(1)(f))</p>
+                                <p class="text-gray-400">Disse kan ikke deaktiveres da de er kritiske for at nettsiden skal fungere.</p>
+                            </div>
+                        </div>
+                        
+                        <div class="bg-gray-800/50 rounded-lg p-4">
+                            <h3 class="font-semibold text-white mb-2">📊 Analysecookies (krever samtykke)</h3>
+                            <div class="text-sm space-y-2">
+                                <p><strong>Formål:</strong> Forstå brukermønstre, forbedre tjenesten</p>
+                                <p><strong>Eksempler:</strong> Google Analytics, heatmap-verktøy, brukerstatistikk</p>
+                                <p><strong>Varighet:</strong> 30 dager til 2 år</p>
+                                <p><strong>Rettslig grunnlag:</strong> Samtykke (GDPR art. 6(1)(a))</p>
+                                <p><strong>Tredjeparter:</strong> Google, anonymiserte data deles med analyseleverandører</p>
+                                <p class="text-gray-400">Hjelper oss lage en bedre opplevelse ved å forstå hvordan du bruker tjenesten.</p>
+                            </div>
+                        </div>
+                        
+                        <div class="bg-gray-800/50 rounded-lg p-4">
+                            <h3 class="font-semibold text-white mb-2">🎯 Markedsføringscookies (krever samtykke)</h3>
+                            <div class="text-sm space-y-2">
+                                <p><strong>Formål:</strong> Personalisert reklame, målrettet markedsføring</p>
+                                <p><strong>Eksempler:</strong> Facebook Pixel, Google Ads, retargeting-cookies</p>
+                                <p><strong>Varighet:</strong> 30 dager til 2 år</p>
+                                <p><strong>Rettslig grunnlag:</strong> Samtykke (GDPR art. 6(1)(a))</p>
+                                <p><strong>Tredjeparter:</strong> Facebook, Google, andre annonsenettverk</p>
+                                <p class="text-gray-400">Kun aktivert for gratis brukere som samtykker til personalisert annonsering.</p>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="bg-blue-900/30 border border-blue-700 rounded-lg p-4">
+                        <h3 class="font-semibold text-white mb-2">Dine cookie-rettigheter (Ekom-loven § 2-7b):</h3>
+                        <ul class="list-disc list-inside space-y-1 ml-4 text-sm">
+                            <li><strong>Granulært samtykke:</strong> Du kan velge hvilke kategorier du vil tillate</li>
+                            <li><strong>Trekke tilbake:</strong> Du kan når som helst endre dine valg</li>
+                            <li><strong>Ingen konsekvenser:</strong> Å avslå cookies påvirker ikke tilgang til tjenesten</li>
+                            <li><strong>Informert valg:</strong> Du får full informasjon før du velger</li>
+                            <li><strong>Ikke forhåndsvalgt:</strong> Ingen valgkryss er forhåndsavkrysset</li>
+                        </ul>
+                    </div>
+                    
+                    <div class="bg-gray-800/50 rounded-lg p-4">
+                        <h3 class="font-semibold text-white mb-2">Samtykkelogger og dokumentasjon:</h3>
+                        <p class="text-sm">
+                            Vi logger når du gir eller trekker tilbake samtykke, inkludert tidspunkt, 
+                            spesifikke valg, og teknisk informasjon. Dette er nødvendig for å kunne 
+                            dokumentere samtykke ved tilsyn fra Datatilsynet eller andre myndigheter.
+                        </p>
+                    </div>
+                    
+                    <div class="bg-gray-800/50 rounded-lg p-4">
+                        <h3 class="font-semibold text-white mb-2">Slik administrerer du cookies:</h3>
+                        <ul class="list-disc list-inside space-y-1 ml-4 text-sm">
+                            <li><strong>Cookie-banner:</strong> Velg dine preferanser når du besøker siden første gang</li>
+                            <li><strong>Instillinger:</strong> Klikk "Administrer cookies" i bunnteksten når som helst</li>
+                            <li><strong>Nettleser:</strong> Bruk nettleserens innstillinger for å blokkere eller slette cookies</li>
+                            <li><strong>Konto:</strong> Endre preferanser i dine kontoinnstillinger</li>
+                        </ul>
+                    </div>
+                    
+                    <div class="bg-yellow-900/30 border border-yellow-700 rounded-lg p-4">
+                        <h3 class="font-semibold text-white mb-2">Teknisk implementering (2025-krav):</h3>
+                        <p class="text-sm">
+                            Vår nettside er programmert til å <strong>ikke sette noen ikke-essensielle 
+                            cookies før du har gitt eksplisitt samtykke</strong>. Cookie-banneret vises 
+                            umiddelbart, og all sporing er blokkert til du har tatt et aktivt valg. 
+                            Dette er i full samsvar med de skjerpede norske cookie-reglene fra 2025.
+                        </p>
+                    </div>
+                </div>
+            </section>
+
+            <section>
+                <h2 class="text-xl font-semibold mb-3 text-white">9. Sikkerhet</h2>
+                <p>Vi implementerer tekniske og organisatoriske tiltak for å beskytte dine data:</p>
+                <ul class="list-disc list-inside space-y-1 ml-4 mt-2">
+                    <li>Kryptering av sensitive data (TLS/SSL, bcrypt for passord)</li>
+                    <li>Regelmessige sikkerhetsvurderinger og penetrasjonstester</li>
+                    <li>Tilgangskontroll og toaktutentering for systemer</li>
+                    <li>Automatisk logging og overvåking av sikkerhetsbrudd</li>
+                    <li>Regelmessige sikkerhetskopier og gjenopprettingsplaner</li>
+                </ul>
+            </section>
+
+            <section>
+                <h2 class="text-xl font-semibold mb-3 text-white">10. Mindreårige</h2>
+                <div class="bg-yellow-900/30 border border-yellow-700 rounded-lg p-4">
+                    <p>
+                        Minimumsalder for å bruke tjenesten er 13 år i henhold til norsk personvernlovgivning. 
+                        Brukere under 18 år bør få foreldres samtykke før registrering. Vi samler ikke 
+                        bevisst inn personopplysninger fra barn under 13 år.
+                    </p>
+                </div>
+            </section>
+
+            <section>
+                <h2 class="text-xl font-semibold mb-3 text-white">11. Automatisert beslutningstaking</h2>
+                <p>
+                    Vi bruker maskinlæring for å tilpasse quiz-vanskelighetsgrad og anbefale innhold. 
+                    Dette påvirker ikke dine rettigheter eller juridiske status. Du kan når som helst 
+                    be om manuell gjennomgang av automatiserte beslutninger ved å kontakte support.
+                </p>
+            </section>
+
+            <section>
+                <h2 class="text-xl font-semibold mb-3 text-white">12. Endringer i personvernerklæringen</h2>
+                <p>
+                    Vi kan oppdatere denne personvernerklæringen fra tid til annen. Vesentlige endringer 
+                    vil bli kommunisert via e-post eller varsel på plattformen minst 30 dager før de trer i kraft. 
+                    Siste oppdateringsdato vises øverst på siden.
+                </p>
+            </section>
+
+            <section>
+                <h2 class="text-xl font-semibold mb-3 text-white">13. Kontakt og klager</h2>
+                <div class="space-y-4">
+                    <div class="bg-gray-800/50 rounded-lg p-4">
+                        <h3 class="font-semibold text-white mb-2">Kontakt oss:</h3>
+                        <p><strong>E-post:</strong> support@sertifikatet.no</p>
+                        <!--<p><strong>Adresse:</strong> [Din adresse her]</p>-->
+                    </div>
+                    
+                    <div class="bg-gray-800/50 rounded-lg p-4">
+                        <h3 class="font-semibold text-white mb-2">Klage til tilsynsmyndighet:</h3>
+                        <p>Du har rett til å klage til Datatilsynet hvis du mener vi behandler dine personopplysninger ulovlig:</p>
+                        <p class="mt-2">
+                            <strong>Datatilsynet</strong><br>
+                            Postboks 458 Sentrum, 0105 Oslo<br>
+                            Telefon: 22 39 69 00<br>
+                            E-post: postkasse@datatilsynet.no<br>
+                            Nettside: <a href="https://www.datatilsynet.no" class="text-purple-400 hover:text-purple-300 underline" target="_blank">datatilsynet.no</a>
+                        </p>
+                    </div>
+                </div>
+            </section>
+
+            <div class="border-t border-gray-700 pt-6 mt-8">
+                <div class="bg-blue-900/30 border border-blue-700 rounded-lg p-4">
+                    <h3 class="font-semibold text-white mb-2">Sammendrag av dine rettigheter:</h3>
+                    <p class="text-sm text-gray-300">
+                        Du har kontroll over dine personopplysninger. Du kan når som helst se, rette, 
+                        laste ned eller slette dine data. Kontakt oss hvis du har spørsmål eller ønsker 
+                        å utøve rettighetene dine.
+                    </p>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

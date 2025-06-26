@@ -20,6 +20,11 @@ project:
       - achievements
       - daily streaks
       - leaderboards
+    gdpr_compliance:
+      - cookie consent management
+      - privacy-first design
+      - user data control
+      - legal audit trails
 
 tech_stack:
   backend:
@@ -365,6 +370,9 @@ database:
       - partner_offers             # BOOLEAN DEFAULT FALSE
       - reminder_time              # TIME DEFAULT '18:00:00'
       - timezone                   # VARCHAR(50) DEFAULT 'Europe/Oslo'
+      - cookie_preferences         # JSON - stores cookie consent choices
+      - cookie_consent_date        # DATETIME - when consent was given
+      - cookie_consent_version     # VARCHAR(10) - version of cookie policy
       - created_at
       - updated_at
     payments:
@@ -410,6 +418,15 @@ database:
       - max_uses
       - current_uses
       - is_active
+      - created_at
+    cookie_consents:
+      - id
+      - session_id                 # VARCHAR(255) UNIQUE - for anonymous users
+      - preferences                # JSON - cookie consent choices
+      - consent_date               # DATETIME - when consent was given
+      - ip_address                 # VARCHAR(45) - for logging/audit
+      - user_agent                 # TEXT - browser info for audit
+      - version                    # VARCHAR(10) - cookie policy version
       - created_at
     # ML-POWERED PERSONALIZATION TABLES
     user_skill_profiles:
@@ -538,7 +555,7 @@ file_structure:
       - notification_models.py
     static:
       css: [main.css, quiz.css, game.css, video.css, admin.css, ml.css]
-      js: [main.js, quiz.js, game scripts, video-player.js, admin.js, ml-insights.js]
+      js: [main.js, quiz.js, game scripts, video-player.js, admin.js, ml-insights.js, cookie-consent.js]
       images: [signs, scenarios, achievements, ui, profiles]
       videos: []
       audio: []
@@ -604,6 +621,13 @@ security:
     sql_injection_protection: true
     xss_protection: true
   compliance: GDPR
+  cookie_management:
+    consent_tracking: Version-based with audit trail
+    categories: [necessary, analytics, marketing]
+    storage: Authenticated (UserNotificationPreferences) + Anonymous (CookieConsent)
+    policy_versioning: Environment configurable
+    real_time_sync: Cookie popup ↔ notification settings
+    privacy_defaults: Opt-out except necessary cookies
   ci_cd_security:
     vulnerability_scanning: Trivy, bandit, safety
     code_quality: black, flake8, isort, mypy

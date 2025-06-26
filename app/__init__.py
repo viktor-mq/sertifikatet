@@ -109,6 +109,10 @@ def create_app(config_class=None):
     from .ml import ml_bp
     app.register_blueprint(ml_bp, url_prefix='/ml')
     
+    # Register legal blueprint
+    from .legal import legal_bp
+    app.register_blueprint(legal_bp)
+    
     # Register health check blueprint (NEW) - temporarily commented out
     # from .utils.health_check import health_bp
     # app.register_blueprint(health_bp)

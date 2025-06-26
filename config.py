@@ -33,3 +33,6 @@ class Config:
     STRIPE_PUBLISHABLE_KEY = os.getenv('STRIPE_PUBLISHABLE_KEY')
     STRIPE_SECRET_KEY = os.getenv('STRIPE_SECRET_KEY')
     STRIPE_WEBHOOK_SECRET = os.getenv('STRIPE_WEBHOOK_SECRET')
+    
+    # Cookie policy version (GDPR compliance)
+    COOKIE_POLICY_VERSION = os.getenv('COOKIE_POLICY_VERSION', '1.0')

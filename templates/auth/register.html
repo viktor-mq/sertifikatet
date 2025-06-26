@@ -124,14 +124,38 @@
                         <p id="match_message" class="mt-1 text-xs hidden"></p>
                     </div>
 
-                    <!-- Terms and Conditions -->
-                    <div class="flex items-start">
-                        <input id="terms" name="terms" type="checkbox" required
-                               class="mt-1 h-4 w-4 text-purple-600 focus:ring-purple-500 border-gray-700 rounded bg-gray-800">
-                        <label for="terms" class="ml-2 block text-sm text-gray-300">
-                            Jeg godtar <a href="#" class="text-purple-400 hover:text-purple-300">vilkårene</a> og 
-                            <a href="#" class="text-purple-400 hover:text-purple-300">personvernerklæringen</a>
-                        </label>
+                    <!-- Terms and Privacy Policy Agreement -->
+                    <div class="space-y-3">
+                        <!-- Terms of Service -->
+                        <div class="flex items-start">
+                            <input id="terms" name="terms" type="checkbox" required
+                                   class="mt-1 h-4 w-4 text-purple-600 focus:ring-purple-500 border-gray-700 rounded bg-gray-800">
+                            <label for="terms" class="ml-2 block text-sm text-gray-300">
+                                Jeg godtar <a href="{{ url_for('legal.terms') }}" target="_blank" class="text-purple-400 hover:text-purple-300 underline">vilkårene for bruk</a> *
+                            </label>
+                        </div>
+                        
+                        <!-- Privacy Policy -->
+                        <div class="flex items-start">
+                            <input id="privacy" name="privacy" type="checkbox" required
+                                   class="mt-1 h-4 w-4 text-purple-600 focus:ring-purple-500 border-gray-700 rounded bg-gray-800">
+                            <label for="privacy" class="ml-2 block text-sm text-gray-300">
+                                Jeg har lest og forstått <a href="{{ url_for('legal.privacy') }}" target="_blank" class="text-purple-400 hover:text-purple-300 underline">personvernerklæringen</a> *
+                            </label>
+                        </div>
+                        
+                        <!-- Marketing Consent (Optional) -->
+                        <div class="flex items-start">
+                            <input id="marketing" name="marketing" type="checkbox"
+                                   class="mt-1 h-4 w-4 text-purple-600 focus:ring-purple-500 border-gray-700 rounded bg-gray-800">
+                            <label for="marketing" class="ml-2 block text-sm text-gray-300">
+                                Jeg ønsker å motta nyhetsbrev og markedsføringsinformasjon (valgfritt)
+                            </label>
+                        </div>
+                        
+                        <p class="text-xs text-gray-500 mt-2">
+                            * Påkrevd for å opprette konto. Du kan trekke tilbake samtykket når som helst.
+                        </p>
                     </div>
                 </div>
 
@@ -290,11 +314,10 @@ function checkPasswordMatch() {
     const password = document.getElementById('password').value;
     const confirmPassword = document.getElementById('confirm_password').value;
     const matchMessage = document.getElementById('match_message');
-    const submitButton = document.querySelector('button[type="submit"]');
     
     if (confirmPassword === '') {
         matchMessage.classList.add('hidden');
-        submitButton.disabled = false;
+        validateForm();
         return;
     }
     
@@ -303,12 +326,39 @@ function checkPasswordMatch() {
     if (password === confirmPassword) {
         matchMessage.textContent = 'Passordene stemmer overens';
         matchMessage.className = 'mt-1 text-xs text-green-400';
-        submitButton.disabled = false;
     } else {
         matchMessage.textContent = 'Passordene stemmer ikke overens';
         matchMessage.className = 'mt-1 text-xs text-red-400';
-        submitButton.disabled = true;
     }
+    
+    validateForm();
 }
+
+// Validate form and enable/disable submit button
+function validateForm() {
+    const password = document.getElementById('password').value;
+    const confirmPassword = document.getElementById('confirm_password').value;
+    const termsChecked = document.getElementById('terms').checked;
+    const privacyChecked = document.getElementById('privacy').checked;
+    const submitButton = document.querySelector('button[type="submit"]');
+    
+    // Check if passwords match and required fields are filled
+    const passwordsMatch = password === confirmPassword && password.length >= 8;
+    const agreementsAccepted = termsChecked && privacyChecked;
+    
+    submitButton.disabled = !(passwordsMatch && agreementsAccepted);
+}
+
+// Add event listeners for real-time validation
+document.addEventListener('DOMContentLoaded', function() {
+    const termsCheckbox = document.getElementById('terms');
+    const privacyCheckbox = document.getElementById('privacy');
+    
+    termsCheckbox.addEventListener('change', validateForm);
+    privacyCheckbox.addEventListener('change', validateForm);
+    
+    // Initial validation
+    validateForm();
+})
 </script>
 {% endblock %}

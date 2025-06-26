@@ -12,7 +12,9 @@ class TestAuthentication:
             'username': 'newuser',
             'email': 'newuser@example.com',
             'password': 'TestPassword123',
-            'full_name': 'New User'
+            'full_name': 'New User',
+            'terms': 'on',  # Required checkbox
+            'privacy': 'on'  # Required checkbox
         }, follow_redirects=True)
         
         assert response.status_code == 200
@@ -57,3 +59,18 @@ class TestAuthentication:
         
         assert response.status_code == 200
         assert b'Ugyldig brukernavn eller passord' in response.data
+    
+    def test_registration_without_terms_fails(self, client, init_database):
+        """Test that registration fails without accepting terms"""
+        response = client.post('/auth/register', data={
+            'username': 'newuser2',
+            'email': 'newuser2@example.com',
+            'password': 'TestPassword123',
+            'full_name': 'New User 2'
+            # Missing terms and privacy checkboxes
+        }, follow_redirects=True)
+        
+        assert response.status_code == 200
+        assert b'godta vilk\u00e5rene' in response.data or b'personvernerkl\u00e6ringen' in response.data
+        user = User.query.filter_by(username='newuser2').first()
+        assert user is None  # User should not be created

@@ -1,0 +1,200 @@
+<!-- templates/legal/terms.html -->
+{% extends "base.html" %}
+
+{% block title %}Vilkår for bruk - Sertifikatet{% endblock %}
+
+{% block content %}
+<div class="container mx-auto px-4 py-8 max-w-4xl">
+    <div class="glass rounded-2xl p-8">
+        <h1 class="text-3xl font-bold mb-6 bg-gradient-to-r from-purple-400 to-pink-400 bg-clip-text text-transparent">
+            Vilkår for bruk
+        </h1>
+        
+        <div class="text-gray-300 space-y-6">
+            <p class="text-sm text-gray-400">
+                Sist oppdatert: {{ "2025-06-26" }}
+            </p>
+            
+            <section>
+                <h2 class="text-xl font-semibold mb-3 text-white">1. Aksept av vilkår</h2>
+                <p>
+                    Ved å registrere deg og bruke Sertifikatet ("Tjenesten"), godtar du å være bundet av disse vilkårene for bruk. 
+                    Hvis du ikke godtar disse vilkårene, kan du ikke bruke tjenesten.
+                </p>
+            </section>
+
+            <section>
+                <h2 class="text-xl font-semibold mb-3 text-white">2. Beskrivelse av tjenesten</h2>
+                <p>
+                    Sertifikatet er en nettbasert plattform som tilbyr quiz, videoer, spill og læringsverktøy 
+                    for å hjelpe brukere med å forberede seg til teoriprøven for førerkort i Norge.
+                </p>
+            </section>
+
+            <section>
+                <h2 class="text-xl font-semibold mb-3 text-white">3. Brukerkontoer</h2>
+                <div class="space-y-3">
+                    <p>For å bruke visse funksjoner må du opprette en konto. Du forplikter deg til å:</p>
+                    <ul class="list-disc list-inside space-y-1 ml-4">
+                        <li>Oppgi nøyaktig, fullstendig og oppdatert informasjon</li>
+                        <li>Holde passordet ditt sikkert og ikke dele det med andre</li>
+                        <li>Varsle oss umiddelbart ved mistanke om uautorisert bruk</li>
+                        <li>Være ansvarlig for all aktivitet under din konto</li>
+                    </ul>
+                </div>
+            </section>
+
+            <section>
+                <h2 class="text-xl font-semibold mb-3 text-white">4. Tillatt bruk</h2>
+                <div class="space-y-3">
+                    <p>Du kan bruke tjenesten for lovlige formål i samsvar med disse vilkårene. Du forplikter deg til IKKE å:</p>
+                    <ul class="list-disc list-inside space-y-1 ml-4">
+                        <li>Bruke tjenesten til ulovlige eller uautoriserte formål</li>
+                        <li>Dele eller selge din kontos påloggingsinformasjon</li>
+                        <li>Forsøke å få uautorisert tilgang til systemet</li>
+                        <li>Forstyrre eller avbryte tjenestens funksjoner</li>
+                        <li>Laste opp skadelig programvare eller virus</li>
+                        <li>Kopiere, distribuere eller modifisere innholdet uten tillatelse</li>
+                    </ul>
+                </div>
+            </section>
+
+            <section>
+                <h2 class="text-xl font-semibold mb-3 text-white">5. Abonnement og betaling</h2>
+                <div class="space-y-3">
+                    <p><strong>Gratis konto:</strong> Inkluderer begrenset tilgang til daglige quiz og grunnleggende funksjoner.</p>
+                    <p><strong>Premium abonnement:</strong> Gir ubegrenset tilgang til alle funksjoner mot månedlig betaling.</p>
+                    <p><strong>Betalingsbetingelser:</strong></p>
+                    <ul class="list-disc list-inside space-y-1 ml-4">
+                        <li>Abonnement fornyes automatisk hver måned</li>
+                        <li>Du kan kansellere når som helst i kontoinnstillingene</li>
+                        <li>Refusjon gis kun i henhold til forbrukerrett</li>
+                        <li>Priser kan endres med 30 dagers varsel</li>
+                    </ul>
+                </div>
+            </section>
+
+            <section>
+                <h2 class="text-xl font-semibold mb-3 text-white">6. Immaterialrettigheter</h2>
+                <p>
+                    Alt innhold på Sertifikatet, inkludert tekst, bilder, videoer, quiz og programvare, 
+                    eies av oss eller våre lisensgivere og er beskyttet av opphavsrett og andre immaterialrettigheter. 
+                    Du får en begrenset, ikke-eksklusiv rett til å bruke tjenesten for personlige, 
+                    ikke-kommersielle formål.
+                </p>
+            </section>
+
+            <section>
+                <h2 class="text-xl font-semibold mb-3 text-white">7. Cookies og sporingsteknologi</h2>
+                <div class="space-y-3">
+                    <p>
+                        Vår bruk av cookies og sporingsteknologi er regulert av Ekom-loven og 
+                        de oppdaterte norske cookie-reglene fra 2025. Ved å bruke tjenesten, 
+                        godtar du vår bruk av nødvendige cookies.
+                    </p>
+                    
+                    <div class="bg-gray-800/50 rounded-lg p-4">
+                        <h3 class="font-semibold text-white mb-2">Ditt samtykke til cookies:</h3>
+                        <ul class="list-disc list-inside space-y-1 ml-4">
+                            <li>Nødvendige cookies settes automatisk for å sikre funksjonalitet</li>
+                            <li>Analyse- og markedsføringscookies krever ditt aktive samtykke</li>
+                            <li>Du kan når som helst endre eller trekke tilbake samtykket</li>
+                            <li>Å avslå ikke-essensielle cookies påvirker ikke din tilgang til tjenesten</li>
+                            <li>Vi logger samtykke i henhold til dokumentasjonskrav</li>
+                        </ul>
+                    </div>
+                    
+                    <p>
+                        Detaljert informasjon om hvilke cookies vi bruker og hvorfor, 
+                        finner du i vår 
+                        <a href="{{ url_for('legal.privacy') }}" class="text-purple-400 hover:text-purple-300 underline">
+                            personvernerklæring
+                        </a>.
+                    </p>
+                </div>
+            </section>
+
+            <section>
+                <h2 class="text-xl font-semibold mb-3 text-white">8. Personvern</h2>
+                <p>
+                    Din bruk av tjenesten er også underlagt vår 
+                    <a href="{{ url_for('legal.privacy') }}" class="text-purple-400 hover:text-purple-300 underline">
+                        personvernerklæring
+                    </a>, som beskriver hvordan vi samler inn, bruker og beskytter dine personopplysninger.
+                </p>
+            </section>
+
+            <section>
+                <h2 class="text-xl font-semibold mb-3 text-white">9. Ansvarsfraskrivelse</h2>
+                <div class="space-y-3">
+                    <p>Tjenesten leveres "som den er" uten garantier av noen art. Vi garanterer ikke at:</p>
+                    <ul class="list-disc list-inside space-y-1 ml-4">
+                        <li>Tjenesten vil være feilfri eller uavbrutt</li>
+                        <li>Innholdet er fullstendig nøyaktig eller oppdatert</li>
+                        <li>Bruk av tjenesten vil resultere i bestått teoriprøve</li>
+                        <li>Alle feil vil bli rettet</li>
+                    </ul>
+                    <p class="font-semibold">
+                        Sertifikatet er et hjelpeverktøy og erstatter ikke offisiell teoriundervisning 
+                        eller studiemateriell fra Statens vegvesen.
+                    </p>
+                </div>
+            </section>
+
+            <section>
+                <h2 class="text-xl font-semibold mb-3 text-white">10. Ansvarsbegrensning</h2>
+                <p>
+                    I den grad loven tillater det, skal vi ikke være ansvarlige for indirekte, 
+                    tilfeldige eller følgeskader som oppstår fra bruken av tjenesten. 
+                    Vårt totale ansvar skal ikke overstige beløpet du har betalt for tjenesten 
+                    de siste 12 månedene.
+                </p>
+            </section>
+
+            <section>
+                <h2 class="text-xl font-semibold mb-3 text-white">11. Oppsigelse</h2>
+                <p>
+                    Vi kan suspendere eller avslutte din konto uten varsel hvis du bryter disse vilkårene. 
+                    Du kan avslutte din konto når som helst ved å kontakte oss eller slette kontoen 
+                    i innstillingene.
+                </p>
+            </section>
+
+            <section>
+                <h2 class="text-xl font-semibold mb-3 text-white">12. Endringer i vilkårene</h2>
+                <p>
+                    Vi kan oppdatere disse vilkårene fra tid til annen. Vesentlige endringer vil bli 
+                    kommunisert via e-post eller varsel på plattformen. Fortsatt bruk etter endringer 
+                    utgjør aksept av de nye vilkårene.
+                </p>
+            </section>
+
+            <section>
+                <h2 class="text-xl font-semibold mb-3 text-white">13. Gjeldende lov</h2>
+                <p>
+                    Disse vilkårene reguleres av norsk rett. Eventuelle tvister skal løses ved 
+                    norske domstoler. Som forbruker har du rett til å bruke EU-kommisjonens 
+                    ODR-plattform for online tvisteløsning.
+                </p>
+            </section>
+
+            <section>
+                <h2 class="text-xl font-semibold mb-3 text-white">14. Kontaktinformasjon</h2>
+                <p>
+                    For spørsmål om disse vilkårene, kontakt oss på:
+                </p>
+                <div class="bg-gray-800/50 rounded-lg p-4 mt-3">
+                    <p><strong>E-post:</strong> support@sertifikatet.no</p>
+                </div>
+            </section>
+
+            <div class="border-t border-gray-700 pt-6 mt-8">
+                <p class="text-sm text-gray-400">
+                    Ved å bruke Sertifikatet bekrefter du at du har lest, forstått og godtar å være bundet 
+                    av disse vilkårene for bruk.
+                </p>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
