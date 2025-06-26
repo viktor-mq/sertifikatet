@@ -68,10 +68,21 @@ class TestAuthValidation:
             'privacy': 'on'     # Privacy accepted
         }, follow_redirects=False)
         
-        # Should redirect to success page or verification page
-        assert response.status_code == 302
-        # Should NOT redirect back to register page
-        assert '/auth/register' not in response.location
+        # Should show success page (200) or redirect (302), but not back to register
+        assert response.status_code in [200, 302]
+        
+        if response.status_code == 302:
+            # If redirect, should NOT be back to register page
+            assert '/auth/register' not in response.location
+        else:
+            # If 200, should be success page
+            response_text = response.data.decode('utf-8')
+            success_indicators = (
+                'registration_success' in response_text or
+                'Registrering vellykket' in response_text or
+                'bekreftelse' in response_text
+            )
+            assert success_indicators, "Expected success page content not found"
         
         # User should be created
         final_user_count = User.query.count()

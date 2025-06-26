@@ -10,7 +10,7 @@ class ProgressService:
     
     def get_user_dashboard_data(self, user_id: int) -> Dict:
         """Get comprehensive dashboard data for a user"""
-        user = User.query.get(user_id)
+        user = db.session.get(User, user_id)
         if not user:
             return {}
         
