@@ -35,6 +35,44 @@ class User(UserMixin, db.Model):
     learning_paths = db.relationship('UserLearningPath', backref='user', cascade='all, delete-orphan')
     leaderboard_entries = db.relationship('LeaderboardEntry', backref='user', cascade='all, delete-orphan')
     feedback = db.relationship('UserFeedback', backref='user', cascade='all, delete-orphan')
+    
+    def get_subscription_tier(self):
+        """Get user's current subscription tier name"""
+        if self.current_plan:
+            return self.current_plan.name
+        return 'free'
+    
+    def get_level(self):
+        """Calculate user level based on total XP"""
+        # Level calculation: Level = sqrt(XP / 100)
+        # Level 1: 0-199 XP, Level 2: 200-499 XP, Level 3: 500-899 XP, etc.
+        if self.total_xp < 100:
+            return 1
+        return int((self.total_xp / 100) ** 0.5) + 1
+    
+    def get_current_plan_name(self):
+        """Get current subscription plan display name"""
+        if self.current_plan:
+            return self.current_plan.display_name
+        return 'Gratis Plan'
+    
+    def is_premium_user(self):
+        """Check if user has premium or pro subscription"""
+        if self.current_plan:
+            return self.current_plan.name in ['premium', 'pro']
+        return False
+    
+    def get_analytics_data(self):
+        """Get user data for analytics tracking"""
+        return {
+            'user_id': str(self.id),
+            'subscription_tier': self.get_subscription_tier(),
+            'user_level': self.get_level(),
+            'is_verified': self.is_verified,
+            'total_xp': self.total_xp,
+            'registration_date': self.created_at.isoformat() if self.created_at else None,
+            'is_premium': self.is_premium_user()
+        }
 
 
 class UserProgress(db.Model):

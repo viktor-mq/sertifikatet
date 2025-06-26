@@ -51,9 +51,23 @@ def register():
         password = request.form.get('password')
         full_name = request.form.get('full_name')
         
+        # Get additional form data
+        terms_accepted = request.form.get('terms')
+        privacy_accepted = request.form.get('privacy')
+        marketing_consent = request.form.get('marketing')
+        
         # Validate inputs
         if not all([username, email, password]):
             flash('Alle felt må fylles ut', 'error')
+            return redirect(url_for('auth.register'))
+        
+        # Validate required legal agreements (GDPR compliance)
+        if not terms_accepted:
+            flash('Du må godta vilkårene for bruk for å opprette en konto', 'error')
+            return redirect(url_for('auth.register'))
+            
+        if not privacy_accepted:
+            flash('Du må bekrefte at du har lest personvernerklæringen', 'error')
             return redirect(url_for('auth.register'))
         
         # Validate password requirements
@@ -97,6 +111,15 @@ def register():
         user_progress = UserProgress(user_id=user.id)
         db.session.add(user_progress)
         
+        # Create notification preferences with marketing consent
+        from ..notification_models import UserNotificationPreferences
+        notification_prefs = UserNotificationPreferences(
+            user_id=user.id,
+            marketing_emails=bool(marketing_consent),  # Explicit consent for marketing
+            partner_offers=bool(marketing_consent)     # Same consent applies to partner offers
+        )
+        db.session.add(notification_prefs)
+        
         db.session.commit()
         
         # Send verification email
@@ -104,7 +127,14 @@ def register():
         
         flash('Registrering vellykket! Vi har sendt en bekreftelse til din e-postadresse. '
               'Vennligst sjekk innboksen din for å aktivere kontoen.', 'success')
-        return redirect(url_for('auth.login'))
+        
+        # Track user registration event for analytics
+        return render_template('auth/registration_success.html', 
+                             user_data={
+                                 'user_id': user.id,
+                                 'username': user.username,
+                                 'marketing_consent': bool(marketing_consent)
+                             })
     
     return render_template('auth/register.html')
 
@@ -182,7 +212,13 @@ def verify_email(token):
     send_welcome_email(user)
     
     flash('E-postadressen din er nå bekreftet! Du kan logge inn.', 'success')
-    return redirect(url_for('main.index'))
+    
+    # Track email verification completion for analytics
+    return render_template('auth/verification_success.html', 
+                         user_data={
+                             'user_id': user.id,
+                             'username': user.username
+                         })
 
 
 @auth_bp.route('/forgot-password', methods=['GET', 'POST'])

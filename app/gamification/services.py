@@ -138,6 +138,23 @@ class GamificationService:
         return achievements_earned
     
     @classmethod
+    def get_achievement_analytics_data(cls, achievements_earned, user):
+        """Get analytics data for earned achievements"""
+        analytics_data = []
+        
+        for achievement in achievements_earned:
+            analytics_data.append({
+                'user_id': user.id,
+                'achievement_id': achievement.id,
+                'achievement_name': achievement.name,
+                'category': achievement.category,
+                'points_earned': achievement.points,
+                'user_level': user.get_level()
+            })
+        
+        return analytics_data
+    
+    @classmethod
     def _check_achievement_criteria(cls, user, achievement, context=None):
         """Check if user meets criteria for specific achievement"""
         progress = user.progress

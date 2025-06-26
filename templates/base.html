@@ -8,12 +8,31 @@
     <!-- CSS -->
     <link rel="stylesheet" href="{{ url_for('static', filename='css/layout-common.css') }}">
     <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/cookie-consent.css') }}">
     
     <!-- Font Awesome -->
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
     
     <!-- Tailwind CSS (if used) -->
     <script src="https://cdn.tailwindcss.com"></script>
+    
+    <!-- User Analytics Meta Tags -->
+    {% if current_user.is_authenticated %}
+        <meta name="user-subscription-tier" content="{{ current_user.get_subscription_tier() }}">
+        <meta name="user-level" content="{{ current_user.get_level() }}">
+        <meta name="user-verified" content="{{ current_user.is_verified|lower }}">
+        <meta name="user-registration-date" content="{{ current_user.created_at.isoformat() if current_user.created_at else '' }}">
+        <script>
+            // Set global user data for analytics
+            window.currentUser = {
+                id: '{{ current_user.id }}',
+                subscriptionTier: '{{ current_user.get_subscription_tier() }}',
+                level: {{ current_user.get_level() }},
+                isVerified: {{ current_user.is_verified|lower }},
+                registrationDate: '{{ current_user.created_at.isoformat() if current_user.created_at else "" }}'
+            };
+        </script>
+    {% endif %}
     
     {% block extra_css %}{% endblock %}
     
@@ -172,14 +191,46 @@
     
     <!-- Footer -->
     <footer class="bg-gray-800 py-8">
-        <div class="max-w-7xl mx-auto px-4 text-center text-gray-400">
-            <p>&copy; 2025 Sertifikatet. All rights reserved.</p>
+        <div class="max-w-7xl mx-auto px-4">
+            <div class="flex flex-col md:flex-row justify-between items-center space-y-4 md:space-y-0">
+                <!-- Copyright -->
+                <div class="text-gray-400">
+                    <p>&copy; 2025 Sertifikatet. All rights reserved.</p>
+                </div>
+                
+                <!-- Legal Links -->
+                <div class="flex items-center space-x-6">
+                    <a href="{{ url_for('legal.privacy') }}" class="text-gray-400 hover:text-purple-400 transition text-sm">
+                        Personvern
+                    </a>
+                    <a href="{{ url_for('legal.terms') }}" class="text-gray-400 hover:text-purple-400 transition text-sm">
+                        Vilkår
+                    </a>
+                    <button onclick="manageCookies()" class="text-gray-400 hover:text-purple-400 transition text-sm cursor-pointer">
+                        Administrer cookies
+                    </button>
+                    <a href="mailto:support@sertifikatet.no" class="text-gray-400 hover:text-purple-400 transition text-sm">
+                        Kontakt
+                    </a>
+                </div>
+            </div>
+            
+            <!-- GDPR Notice -->
+            <div class="mt-4 pt-4 border-t border-gray-700 text-center">
+                <p class="text-xs text-gray-500">
+                    Vi bruker cookies for å forbedre din opplevelse. Les mer i vår 
+                    <a href="{{ url_for('legal.privacy') }}" class="text-purple-400 hover:text-purple-300 underline">personvernerklæring</a>.
+                </p>
+            </div>
         </div>
     </footer>
     
     <!-- JavaScript -->
     <script src="{{ url_for('static', filename='js/main.js') }}"></script>
     <script src="{{ url_for('static', filename='js/pwa.js') }}"></script>
+    <script src="{{ url_for('static', filename='js/cookie-consent.js') }}"></script>
+    <script src="{{ url_for('static', filename='js/analytics-service.js') }}"></script>
+    <script src="{{ url_for('static', filename='js/analytics-integration.js') }}"></script>
     {% block extra_js %}{% endblock %}
     
     <style>

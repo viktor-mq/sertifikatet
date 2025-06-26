@@ -1,0 +1,86 @@
+<!-- templates/auth/verification_success.html -->
+{% extends "base.html" %}
+
+{% block title %}E-post bekreftet - Sertifikatet{% endblock %}
+
+{% block content %}
+<section class="py-12">
+    <div class="max-w-2xl mx-auto px-4 sm:px-6 lg:px-8">
+        <div class="glass rounded-2xl p-8 text-center">
+            <!-- Success Icon -->
+            <div class="mb-6">
+                <div class="w-16 h-16 bg-green-500 rounded-full flex items-center justify-center mx-auto">
+                    <i class="fas fa-envelope-check text-white text-2xl"></i>
+                </div>
+            </div>
+            
+            <!-- Success Message -->
+            <h1 class="text-3xl font-bold mb-4">E-post bekreftet!</h1>
+            <p class="text-gray-300 mb-6">
+                Gratulerer! Din e-postadresse er nå bekreftet og kontoen din er fullstendig aktivert.
+                Du kan nå logge inn og begynne å bruke alle funksjonene på Sertifikatet.
+            </p>
+            
+            <!-- Welcome Benefits -->
+            <div class="bg-gradient-to-r from-purple-900/50 to-pink-900/50 rounded-lg p-6 mb-6">
+                <h2 class="text-xl font-semibold mb-4">Hva kan du gjøre nå?</h2>
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-4 text-left">
+                    <div class="flex items-start space-x-3">
+                        <i class="fas fa-question-circle text-purple-400 mt-1"></i>
+                        <div>
+                            <h3 class="font-semibold">Ta quiz</h3>
+                            <p class="text-sm text-gray-300">Øv på teorispørsmål</p>
+                        </div>
+                    </div>
+                    <div class="flex items-start space-x-3">
+                        <i class="fas fa-play text-purple-400 mt-1"></i>
+                        <div>
+                            <h3 class="font-semibold">Se videoer</h3>
+                            <p class="text-sm text-gray-300">Lær fra videoinnhold</p>
+                        </div>
+                    </div>
+                    <div class="flex items-start space-x-3">
+                        <i class="fas fa-trophy text-purple-400 mt-1"></i>
+                        <div>
+                            <h3 class="font-semibold">Tjen utmerkelser</h3>
+                            <p class="text-sm text-gray-300">Lås opp prestasjoner</p>
+                        </div>
+                    </div>
+                    <div class="flex items-start space-x-3">
+                        <i class="fas fa-chart-line text-purple-400 mt-1"></i>
+                        <div>
+                            <h3 class="font-semibold">Følg fremgang</h3>
+                            <p class="text-sm text-gray-300">Se statistikk og utvikling</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Actions -->
+            <div class="flex flex-col sm:flex-row gap-4 justify-center">
+                <a href="{{ url_for('auth.login') }}" 
+                   class="px-8 py-3 bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-700 hover:to-pink-700 rounded-lg transition font-semibold">
+                    <i class="fas fa-sign-in-alt mr-2"></i>Logg inn nå
+                </a>
+                <a href="{{ url_for('main.index') }}" 
+                   class="px-6 py-3 bg-gray-700 hover:bg-gray-600 rounded-lg transition font-semibold">
+                    <i class="fas fa-home mr-2"></i>Tilbake til forsiden
+                </a>
+            </div>
+        </div>
+    </div>
+</section>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    // Track email verification completion event
+    if (window.analyticsService && {{ user_data|tojson }}) {
+        const userData = {{ user_data|tojson }};
+        
+        window.analyticsService.trackEmailVerification(userData.user_id);
+        
+        console.log('📊 Tracked email verification:', userData.username);
+    }
+});
+</script>
+{% endblock %}

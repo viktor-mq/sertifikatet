@@ -20,7 +20,7 @@ class TestUserModel:
         try:
             from app.payment_models import SubscriptionPlan
             # Check if a plan with ID 1 already exists
-            existing_plan = SubscriptionPlan.query.get(1)
+            existing_plan = clean_db.session.get(SubscriptionPlan, 1)
             if not existing_plan:
                 plan = SubscriptionPlan(
                     id=1,
