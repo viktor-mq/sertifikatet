@@ -17,8 +17,8 @@ def is_testing_environment():
     return (
         os.getenv('TESTING') == 'true' or
         os.getenv('CI') == 'true' or
-        'pytest' in sys.modules or
-        'unittest' in sys.modules
+        (len(sys.argv) > 0 and 'pytest' in sys.argv[0]) or
+        any('test' in arg.lower() for arg in sys.argv)
     )
 
 def check_dev_auth(username, password):
