@@ -1,0 +1,342 @@
+"""add advertising revenue system
+
+Revision ID: add_advertising_system
+Revises: ml_adaptive_learning
+Create Date: 2025-06-27 14:30:00.000000
+
+"""
+from alembic import op
+import sqlalchemy as sa
+from sqlalchemy.dialects import mysql
+
+
+# revision identifiers, used by Alembic.
+revision = 'add_advertising_system'
+down_revision = 'ml_adaptive_learning'
+branch_labels = None
+depends_on = None
+
+
+def upgrade():
+    """
+    Add advertising revenue system tables and columns.
+    Safe upgrade that only adds new tables and columns without modifying existing data.
+    """
+    
+    # ===== AD INTERACTIONS TABLE =====
+    # Track all ad interactions (impressions, clicks, dismissals, ad blocker detection)
+    op.create_table('ad_interactions',
+        sa.Column('id', sa.Integer(), nullable=False),
+        sa.Column('user_id', sa.Integer(), nullable=True),  # NULL for anonymous users
+        sa.Column('session_id', sa.String(100), nullable=False),
+        sa.Column('ad_type', sa.String(50), nullable=False),  # 'banner', 'interstitial', 'video', 'native'
+        sa.Column('ad_placement', sa.String(50), nullable=False),  # 'quiz_sidebar', 'video_preroll', etc.
+        sa.Column('action', sa.String(50), nullable=False),  # 'impression', 'click', 'dismiss', 'block_detected'
+        sa.Column('page_section', sa.String(50), nullable=False),  # 'quiz', 'video', 'general'
+        sa.Column('ad_provider', sa.String(50), nullable=False, default='google_adsense'),
+        sa.Column('revenue_cpm', sa.Numeric(10, 4), nullable=True),  # Revenue per thousand impressions
+        sa.Column('user_tier', sa.String(20), nullable=False, default='free'),
+        sa.Column('timestamp', sa.DateTime(), nullable=False, default=sa.func.current_timestamp()),
+        sa.Column('ip_address', sa.String(45), nullable=True),  # For fraud detection
+        sa.Column('user_agent', sa.Text(), nullable=True),
+        sa.Column('referrer_url', sa.Text(), nullable=True),
+        sa.Column('created_at', sa.DateTime(), nullable=False, default=sa.func.current_timestamp()),
+        sa.ForeignKeyConstraint(['user_id'], ['users.id'], ondelete='SET NULL'),
+        sa.PrimaryKeyConstraint('id')
+    )
+    
+    # ===== UPGRADE PROMPTS TABLE =====
+    # Track upgrade prompts and their effectiveness
+    op.create_table('upgrade_prompts',
+        sa.Column('id', sa.Integer(), nullable=False),
+        sa.Column('user_id', sa.Integer(), nullable=False),
+        sa.Column('session_id', sa.String(100), nullable=False),
+        sa.Column('trigger_reason', sa.String(100), nullable=False),  # 'high_ad_exposure', 'high_engagement', etc.
+        sa.Column('prompt_type', sa.String(50), nullable=False),  # 'smart_popup', 'banner', 'interstitial'
+        sa.Column('action', sa.String(50), nullable=False),  # 'shown', 'clicked', 'dismissed', 'converted'
+        sa.Column('ad_count_session', sa.Integer(), nullable=False, default=0),
+        sa.Column('engagement_score', sa.Float(), nullable=True),  # 0.0-1.0
+        sa.Column('time_on_site_minutes', sa.Integer(), nullable=True),
+        sa.Column('activities_completed', sa.Integer(), nullable=False, default=0),
+        sa.Column('personalization_data', sa.JSON(), nullable=True),
+        sa.Column('conversion_value', sa.Numeric(10, 2), nullable=True),  # 149.00 for premium
+        sa.Column('timestamp', sa.DateTime(), nullable=False, default=sa.func.current_timestamp()),
+        sa.Column('created_at', sa.DateTime(), nullable=False, default=sa.func.current_timestamp()),
+        sa.ForeignKeyConstraint(['user_id'], ['users.id'], ondelete='CASCADE'),
+        sa.PrimaryKeyConstraint('id')
+    )
+    
+    # ===== AD REVENUE ANALYTICS TABLE =====
+    # Daily aggregated ad revenue and performance analytics
+    op.create_table('ad_revenue_analytics',
+        sa.Column('id', sa.Integer(), nullable=False),
+        sa.Column('date', sa.Date(), nullable=False),
+        sa.Column('total_impressions', sa.Integer(), nullable=False, default=0),
+        sa.Column('total_clicks', sa.Integer(), nullable=False, default=0),
+        sa.Column('total_revenue_nok', sa.Numeric(10, 2), nullable=False, default=0),
+        sa.Column('avg_cpm', sa.Numeric(10, 4), nullable=True),
+        sa.Column('avg_ctr', sa.Numeric(5, 4), nullable=True),  # Click-through rate
+        sa.Column('unique_users_served', sa.Integer(), nullable=False, default=0),
+        sa.Column('upgrade_prompts_shown', sa.Integer(), nullable=False, default=0),
+        sa.Column('upgrade_conversions', sa.Integer(), nullable=False, default=0),
+        sa.Column('upgrade_revenue_nok', sa.Numeric(10, 2), nullable=False, default=0),
+        sa.Column('combined_revenue_nok', sa.Numeric(10, 2), nullable=False, default=0),
+        sa.Column('ad_block_detections', sa.Integer(), nullable=False, default=0),
+        sa.Column('free_user_count', sa.Integer(), nullable=False, default=0),
+        sa.Column('premium_conversion_rate', sa.Numeric(5, 4), nullable=True),
+        sa.Column('revenue_per_free_user', sa.Numeric(10, 4), nullable=True),
+        sa.Column('created_at', sa.DateTime(), nullable=False, default=sa.func.current_timestamp()),
+        sa.PrimaryKeyConstraint('id'),
+        sa.UniqueConstraint('date', name='_ad_revenue_analytics_date_uc')
+    )
+    
+    # ===== AD PLACEMENT PERFORMANCE TABLE =====
+    # Track performance of specific ad placements
+    op.create_table('ad_placement_performance',
+        sa.Column('id', sa.Integer(), nullable=False),
+        sa.Column('placement_id', sa.String(50), nullable=False),  # 'quiz_sidebar', 'video_preroll', etc.
+        sa.Column('date', sa.Date(), nullable=False),
+        sa.Column('impressions', sa.Integer(), nullable=False, default=0),
+        sa.Column('clicks', sa.Integer(), nullable=False, default=0),
+        sa.Column('revenue_nok', sa.Numeric(10, 2), nullable=False, default=0),
+        sa.Column('ctr', sa.Numeric(5, 4), nullable=True),  # Click-through rate
+        sa.Column('cpm', sa.Numeric(10, 4), nullable=True),  # Cost per mille
+        sa.Column('conversion_attribution', sa.Integer(), nullable=False, default=0),  # Upgrades attributed
+        sa.Column('user_satisfaction_score', sa.Numeric(3, 2), nullable=True),  # 1-5 rating
+        sa.Column('created_at', sa.DateTime(), nullable=False, default=sa.func.current_timestamp()),
+        sa.PrimaryKeyConstraint('id')
+    )
+    
+    # ===== CREATE PERFORMANCE INDEXES =====
+    # Indexes for ad_interactions table (most frequently queried)
+    op.create_index('idx_ad_interactions_user_date', 'ad_interactions', ['user_id', 'timestamp'])
+    op.create_index('idx_ad_interactions_session', 'ad_interactions', ['session_id', 'timestamp'])
+    op.create_index('idx_ad_interactions_placement_date', 'ad_interactions', ['ad_placement', 'timestamp'])
+    op.create_index('idx_ad_interactions_action_date', 'ad_interactions', ['action', 'timestamp'])
+    op.create_index('idx_ad_interactions_user_tier_date', 'ad_interactions', ['user_tier', 'timestamp'])
+    
+    # Indexes for upgrade_prompts table
+    op.create_index('idx_upgrade_prompts_user_date', 'upgrade_prompts', ['user_id', 'timestamp'])
+    op.create_index('idx_upgrade_prompts_trigger', 'upgrade_prompts', ['trigger_reason', 'action'])
+    op.create_index('idx_upgrade_prompts_conversion', 'upgrade_prompts', ['action', 'conversion_value'])
+    op.create_index('idx_upgrade_prompts_session', 'upgrade_prompts', ['session_id', 'timestamp'])
+    
+    # Indexes for ad_revenue_analytics table
+    op.create_index('idx_ad_revenue_analytics_date', 'ad_revenue_analytics', ['date'])
+    
+    # Indexes for ad_placement_performance table
+    op.create_index('idx_placement_performance_date', 'ad_placement_performance', ['placement_id', 'date'])
+    op.create_index('idx_placement_performance_revenue', 'ad_placement_performance', ['date', 'revenue_nok'])
+    
+    # ===== ADD NEW COLUMNS TO EXISTING TABLES =====
+    # Add ad-related columns to subscription_plans table (if they don't exist)
+    try:
+        # Check if has_ads column exists before adding
+        connection = op.get_bind()
+        result = connection.execute(
+            sa.text("SHOW COLUMNS FROM subscription_plans LIKE 'has_ads'")
+        ).fetchone()
+        
+        if not result:
+            op.add_column('subscription_plans', sa.Column('has_ads', sa.Boolean(), nullable=False, default=True))
+            print("Added has_ads column to subscription_plans table")
+        else:
+            print("has_ads column already exists in subscription_plans table")
+            
+    except Exception as e:
+        print(f"Note: Could not add has_ads column (may already exist): {e}")
+    
+    # ===== UPDATE EXISTING DATA SAFELY =====
+    # Update subscription plans with ad settings (safe operation)
+    try:
+        connection = op.get_bind()
+        
+        # Update free plan to have ads
+        connection.execute(
+            sa.text("""
+                UPDATE subscription_plans 
+                SET has_ads = TRUE 
+                WHERE name = 'free' OR id = 1
+            """)
+        )
+        
+        # Update premium/pro plans to not have ads
+        connection.execute(
+            sa.text("""
+                UPDATE subscription_plans 
+                SET has_ads = FALSE 
+                WHERE name IN ('premium', 'pro') OR id IN (2, 3)
+            """)
+        )
+        
+        print("Updated subscription plans with ad settings")
+        
+    except Exception as e:
+        print(f"Note: Could not update subscription plan ad settings: {e}")
+    
+    # ===== CREATE VIEWS FOR ANALYTICS (Optional) =====
+    # Create a view for easy revenue reporting
+    try:
+        op.execute("""
+            CREATE VIEW ad_revenue_summary AS
+            SELECT 
+                DATE(ara.date) as report_date,
+                ara.total_impressions,
+                ara.total_clicks,
+                ROUND(ara.avg_ctr * 100, 2) as ctr_percentage,
+                ara.total_revenue_nok as ad_revenue,
+                ara.upgrade_revenue_nok as subscription_revenue,
+                ara.combined_revenue_nok as total_revenue,
+                ara.unique_users_served,
+                ara.upgrade_prompts_shown,
+                ara.upgrade_conversions,
+                ROUND(ara.premium_conversion_rate * 100, 2) as conversion_rate_percentage,
+                ROUND(ara.revenue_per_free_user, 2) as revenue_per_user
+            FROM ad_revenue_analytics ara
+            ORDER BY ara.date DESC
+        """)
+        print("Created ad_revenue_summary view")
+    except Exception as e:
+        print(f"Note: Could not create view (may already exist): {e}")
+
+
+def downgrade():
+    """
+    Remove advertising system tables and columns.
+    Safe downgrade that preserves existing user data.
+    """
+    
+    # Drop views first
+    try:
+        op.execute("DROP VIEW IF EXISTS ad_revenue_summary")
+    except Exception as e:
+        print(f"Note: Could not drop view: {e}")
+    
+    # Drop indexes for ad_placement_performance
+    try:
+        op.drop_index('idx_placement_performance_revenue', table_name='ad_placement_performance')
+        op.drop_index('idx_placement_performance_date', table_name='ad_placement_performance')
+    except Exception as e:
+        print(f"Note: Some indexes may not exist: {e}")
+    
+    # Drop indexes for ad_revenue_analytics
+    try:
+        op.drop_index('idx_ad_revenue_analytics_date', table_name='ad_revenue_analytics')
+    except Exception as e:
+        print(f"Note: Some indexes may not exist: {e}")
+    
+    # Drop indexes for upgrade_prompts
+    try:
+        op.drop_index('idx_upgrade_prompts_session', table_name='upgrade_prompts')
+        op.drop_index('idx_upgrade_prompts_conversion', table_name='upgrade_prompts')
+        op.drop_index('idx_upgrade_prompts_trigger', table_name='upgrade_prompts')
+        op.drop_index('idx_upgrade_prompts_user_date', table_name='upgrade_prompts')
+    except Exception as e:
+        print(f"Note: Some indexes may not exist: {e}")
+    
+    # Drop indexes for ad_interactions
+    try:
+        op.drop_index('idx_ad_interactions_user_tier_date', table_name='ad_interactions')
+        op.drop_index('idx_ad_interactions_action_date', table_name='ad_interactions')
+        op.drop_index('idx_ad_interactions_placement_date', table_name='ad_interactions')
+        op.drop_index('idx_ad_interactions_session', table_name='ad_interactions')
+        op.drop_index('idx_ad_interactions_user_date', table_name='ad_interactions')
+    except Exception as e:
+        print(f"Note: Some indexes may not exist: {e}")
+    
+    # Drop tables in reverse order (to respect foreign key constraints)
+    op.drop_table('ad_placement_performance')
+    op.drop_table('ad_revenue_analytics')
+    op.drop_table('upgrade_prompts')
+    op.drop_table('ad_interactions')
+    
+    # Remove added columns from existing tables
+    try:
+        op.drop_column('subscription_plans', 'has_ads')
+    except Exception as e:
+        print(f"Note: Could not drop has_ads column (may not exist): {e}")
+
+
+def verify_migration():
+    """
+    Verification function to check if migration was successful.
+    This function can be called after migration to verify the state.
+    """
+    connection = op.get_bind()
+    
+    # Check if all tables were created
+    tables_to_check = [
+        'ad_interactions',
+        'upgrade_prompts', 
+        'ad_revenue_analytics',
+        'ad_placement_performance'
+    ]
+    
+    for table in tables_to_check:
+        try:
+            result = connection.execute(
+                sa.text(f"SHOW TABLES LIKE '{table}'")
+            ).fetchone()
+            if result:
+                print(f"✓ Table {table} exists")
+            else:
+                print(f"✗ Table {table} missing")
+        except Exception as e:
+            print(f"Error checking table {table}: {e}")
+    
+    # Check if indexes were created
+    indexes_to_check = [
+        ('ad_interactions', 'idx_ad_interactions_user_date'),
+        ('upgrade_prompts', 'idx_upgrade_prompts_user_date'),
+        ('ad_revenue_analytics', 'idx_ad_revenue_analytics_date')
+    ]
+    
+    for table, index in indexes_to_check:
+        try:
+            result = connection.execute(
+                sa.text(f"SHOW INDEX FROM {table} WHERE Key_name = '{index}'")
+            ).fetchone()
+            if result:
+                print(f"✓ Index {index} exists on {table}")
+            else:
+                print(f"✗ Index {index} missing on {table}")
+        except Exception as e:
+            print(f"Error checking index {index}: {e}")
+    
+    print("Migration verification complete!")
+
+
+# Additional helper functions for data seeding (optional)
+def seed_initial_data():
+    """
+    Seed initial data for advertising system (can be called separately).
+    """
+    connection = op.get_bind()
+    
+    # Insert sample ad revenue analytics entry for today (prevents division by zero errors)
+    try:
+        connection.execute(
+            sa.text("""
+                INSERT IGNORE INTO ad_revenue_analytics 
+                (date, total_impressions, total_clicks, total_revenue_nok, unique_users_served)
+                VALUES (CURDATE(), 0, 0, 0.00, 0)
+            """)
+        )
+        print("Seeded initial ad revenue analytics entry")
+    except Exception as e:
+        print(f"Note: Could not seed initial data: {e}")
+
+
+if __name__ == "__main__":
+    print("Advertising Revenue System Migration")
+    print("=====================================")
+    print("This migration will add:")
+    print("- ad_interactions table (ad tracking)")
+    print("- upgrade_prompts table (conversion tracking)")  
+    print("- ad_revenue_analytics table (daily summaries)")
+    print("- ad_placement_performance table (placement optimization)")
+    print("- Performance indexes for efficient queries")
+    print("- has_ads column to subscription_plans table")
+    print("")
+    print("This migration is SAFE and will not affect existing data.")
+    print("Run with: flask db upgrade")

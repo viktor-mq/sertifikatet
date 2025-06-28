@@ -14,6 +14,16 @@ from ..services.achievement_service import AchievementService
 from ..services.leaderboard_service import LeaderboardService
 
 
+@main_bp.route('/ads.txt')
+def ads_txt():
+    """Serve ads.txt file for Google AdSense verification"""
+    from flask import Response
+    
+    ads_txt_content = """google.com, pub-4051642544961446, DIRECT, f08c47fec0942fa0"""
+    
+    return Response(ads_txt_content, mimetype='text/plain')
+
+
 @main_bp.route('/offline')
 def offline():
     """Offline page for PWA"""
