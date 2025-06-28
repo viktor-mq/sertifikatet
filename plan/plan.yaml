@@ -529,6 +529,68 @@ database:
       - skill_level_before        # FLOAT Estimated skill before question
       - skill_level_after         # FLOAT Estimated skill after question
       - created_at                # DATETIME Response creation time
+    # AD REVENUE & TRACKING TABLES
+    ad_interactions:
+      - id
+      - user_id                   # FK → users.id (NULL for anonymous)
+      - session_id                # VARCHAR(100) - session tracking
+      - ad_type                   # VARCHAR(50) - 'banner', 'interstitial', 'video', 'native'
+      - ad_placement              # VARCHAR(50) - 'quiz_sidebar', 'video_preroll', 'homepage_banner'
+      - action                    # VARCHAR(50) - 'impression', 'click', 'dismiss', 'block_detected'
+      - page_section              # VARCHAR(50) - 'quiz', 'video', 'general'
+      - ad_provider               # VARCHAR(50) - 'google_adsense', 'adnorge', 'direct'
+      - revenue_cpm               # DECIMAL(10,4) - Revenue per thousand impressions
+      - user_tier                 # VARCHAR(20) - 'free', 'premium', 'pro'
+      - timestamp                 # DATETIME - When interaction occurred
+      - ip_address                # VARCHAR(45) - For fraud detection
+      - user_agent                # TEXT - Browser info
+      - referrer_url              # TEXT - Where user came from
+      - created_at                # DATETIME - Record creation
+    upgrade_prompts:
+      - id
+      - user_id                   # FK → users.id
+      - session_id                # VARCHAR(100) - session tracking
+      - trigger_reason            # VARCHAR(100) - 'high_ad_exposure', 'high_engagement', 'adblock_detected'
+      - prompt_type               # VARCHAR(50) - 'smart_popup', 'banner', 'interstitial'
+      - action                    # VARCHAR(50) - 'shown', 'clicked', 'dismissed', 'converted'
+      - ad_count_session          # INT - Number of ads seen in session when prompted
+      - engagement_score          # FLOAT - User engagement level (0.0-1.0)
+      - time_on_site_minutes      # INT - Minutes spent on site before prompt
+      - activities_completed      # INT - Quizzes/videos completed before prompt
+      - personalization_data      # JSON - Additional targeting data
+      - conversion_value          # DECIMAL(10,2) - Revenue if converted (149.00 for premium)
+      - timestamp                 # DATETIME - When prompt was shown/interacted with
+      - created_at                # DATETIME - Record creation
+    ad_revenue_analytics:
+      - id
+      - date                      # DATE - Analytics date
+      - total_impressions         # INT - Total ad impressions
+      - total_clicks              # INT - Total ad clicks
+      - total_revenue_nok         # DECIMAL(10,2) - Total ad revenue in NOK
+      - avg_cpm                   # DECIMAL(10,4) - Average CPM for the day
+      - avg_ctr                   # DECIMAL(5,4) - Average click-through rate
+      - unique_users_served       # INT - Unique users who saw ads
+      - upgrade_prompts_shown     # INT - Total upgrade prompts shown
+      - upgrade_conversions       # INT - Users who upgraded after prompt
+      - upgrade_revenue_nok       # DECIMAL(10,2) - Revenue from upgrades
+      - total_revenue_nok         # DECIMAL(10,2) - Combined ad + upgrade revenue
+      - ad_block_detections       # INT - Number of ad blocker detections
+      - free_user_count           # INT - Active free users on this date
+      - premium_conversion_rate   # DECIMAL(5,4) - Daily conversion rate
+      - revenue_per_free_user     # DECIMAL(10,4) - Average revenue per free user
+      - created_at                # DATETIME - Record creation
+    ad_placement_performance:
+      - id
+      - placement_id              # VARCHAR(50) - 'quiz_sidebar', 'video_preroll', etc.
+      - date                      # DATE - Performance date
+      - impressions               # INT - Impressions for this placement
+      - clicks                    # INT - Clicks for this placement
+      - revenue_nok               # DECIMAL(10,2) - Revenue for this placement
+      - ctr                       # DECIMAL(5,4) - Click-through rate
+      - cpm                       # DECIMAL(10,4) - Cost per mille
+      - conversion_attribution    # INT - Upgrades attributed to this placement
+      - user_satisfaction_score   # DECIMAL(3,2) - User feedback score (1-5)
+      - created_at                # DATETIME - Record creation
 
 file_structure:
   root:
@@ -547,18 +609,21 @@ file_structure:
       - admin
       - api
       - ml     # Machine Learning module (Phase 12)
+      - advertising  # Ad management and revenue tracking module
       - utils
       - models.py
       - gamification_models.py
       - video_models.py
       - payment_models.py
       - notification_models.py
+      - ad_models.py  # Ad tracking and revenue models
     static:
-      css: [main.css, quiz.css, game.css, video.css, admin.css, ml.css]
-      js: [main.js, quiz.js, game scripts, video-player.js, admin.js, ml-insights.js, cookie-consent.js]
+      css: [main.css, quiz.css, game.css, video.css, admin.css, ml.css, ad-integration.css]
+      js: [main.js, quiz.js, game scripts, video-player.js, admin.js, ml-insights.js, cookie-consent.js, gtm-integration.js, ad-manager.js, ad-revenue-funnel.js]
       images: [signs, scenarios, achievements, ui, profiles]
       videos: []
       audio: []
+      ads: [ads.txt] # AdSense verification file
     templates:
       - auth
         - login.html
@@ -581,6 +646,7 @@ file_structure:
       - progress
       - admin
       - ml     # ML templates (insights.html, learning_dashboard.html, etc.)
+      - advertising  # Ad management templates (ad_dashboard.html, revenue_analytics.html)
       - components
       - emails
         - verify_email.html
@@ -640,18 +706,47 @@ monetization:
   description: >
     The platform is free by default and monetized via ads. Users can optionally upgrade
     to remove ads and unlock additional features.
+  advertising_strategy:
+    primary_provider: Google AdSense
+    secondary_providers: [Adnorge, Amedia]
+    implementation: Google Tag Manager + Enhanced Cookie Consent
+    targeting: Norwegian driving education market
+    revenue_model:
+      ad_revenue: 15-25 NOK CPM (educational content premium)
+      conversion_funnel: Ad exposure → Smart upgrade prompts → Premium subscriptions
+      target_metrics:
+        ctr: 1.5-2.5%
+        conversion_rate: 1.5-3%
+        revenue_per_user: 1.5-2.5 NOK/month
+    ad_placements:
+      quiz_pages: [between_questions, after_completion, sidebar]
+      video_pages: [pre_roll, sidebar, between_playlist_items]
+      general_pages: [header_banner, content_rectangle, footer]
+    smart_upgrade_system:
+      triggers: [high_ad_exposure, high_engagement, repeated_usage, adblock_detection]
+      frequency: every_3rd_ad
+      personalization: behavioral_targeting
+    gdpr_compliance:
+      consent_required: true
+      categories: [necessary, analytics, marketing]
+      opt_out_available: true
+      premium_bypass: no_ads_no_tracking
   subscription_tiers:
     free:
       access: limited daily quizzes, 2 mock exam/week (45 question multiple choice, max 7 mistakes to pass), basic stats, view playlists
       ads: enabled
+      ad_frequency: moderate
+      upgrade_prompts: smart_behavioral
     premium:
       access: unlimited quizzes, videos, detailed stats, AI-adaptive learning, create playlists
       ads: disabled
       price: 149 NOK/month
+      marketing_cookies: optional
     pro:
       access: everything in premium + offline mode, personal tutor, create playlists
       ads: disabled
       price: 249 NOK/month
+      marketing_cookies: optional
   access_control:
     plan_hierarchy: "Free (Plan ID 1) < Premium (Plan ID 2) < Pro (Plan ID 3)"
     playlist_features:
@@ -659,6 +754,19 @@ monetization:
       create_playlists: "Premium and Pro users (plan_id >= 2)"
       manage_playlist_content: "Admin users only"
     subscription_decorator: "Enhanced with plan hierarchy support"
+  revenue_projections:
+    conservative_monthly:
+      free_users: 1000
+      ad_revenue: 750-1250 NOK
+      premium_conversions: 15
+      premium_revenue: 2235 NOK
+      total: 2985-3485 NOK
+    optimistic_6months:
+      free_users: 5000
+      ad_revenue: 3750-6250 NOK
+      premium_conversions: 100
+      premium_revenue: 14900 NOK
+      total: 18650-21150 NOK
 
 future_enhancements:
   phase_13_advanced_ml:

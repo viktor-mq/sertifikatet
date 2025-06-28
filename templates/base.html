@@ -231,6 +231,47 @@
     <script src="{{ url_for('static', filename='js/cookie-consent.js') }}"></script>
     <script src="{{ url_for('static', filename='js/analytics-service.js') }}"></script>
     <script src="{{ url_for('static', filename='js/analytics-integration.js') }}"></script>
+    
+    <!-- AdSense Integration Script -->
+    <script>
+        // AdSense integration that respects subscription status and provides non-personalized ads for all free users
+        document.addEventListener('DOMContentLoaded', function() {
+            // Listen for cookie preferences to be applied
+            window.addEventListener('cookiePreferencesApplied', function(event) {
+                const preferences = event.detail;
+                const userTier = window.currentUser.subscriptionTier;
+                
+                // Load AdSense for all free users (personalized or non-personalized based on marketing consent)
+                if (userTier === 'free' && window.adsenseEnabled) {
+                    const adsenseScript = document.getElementById('adsense-script');
+                    if (adsenseScript && adsenseScript.style.display === 'none') {
+                        // Activate the AdSense script
+                        adsenseScript.style.display = 'block';
+                        
+                        // Initialize AdSense with GDPR settings
+                        window.adsbygoogle = window.adsbygoogle || [];
+                        
+                        // Track ad loading for analytics
+                        if (window.gtag) {
+                            gtag('event', 'ads_activated', {
+                                'user_tier': userTier,
+                                'personalized': preferences.marketing,
+                                'ad_type': preferences.marketing ? 'personalized' : 'non_personalized'
+                            });
+                        }
+                        
+                        if (preferences.marketing) {
+                            console.log('✅ AdSense activated: Personalized ads enabled');
+                        } else {
+                            console.log('✅ AdSense activated: Non-personalized ads only (privacy mode)');
+                        }
+                    }
+                } else if (!window.adsenseEnabled) {
+                    console.log('🚫 AdSense disabled: Premium/Pro subscription - no ads');
+                }
+            });
+        });
+    </script>
     {% block extra_js %}{% endblock %}
     
     <style>

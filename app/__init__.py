@@ -109,6 +109,10 @@ def create_app(config_class=None):
     from .ml import ml_bp
     app.register_blueprint(ml_bp, url_prefix='/ml')
     
+    # Register advertising blueprint
+    from .advertising import advertising
+    app.register_blueprint(advertising, url_prefix='/api/advertising')
+    
     # Register legal blueprint
     from .legal import legal_bp
     app.register_blueprint(legal_bp)
@@ -124,7 +128,7 @@ def create_app(config_class=None):
     # Create tables if they don't exist
     with app.app_context():
         # Import all models to ensure they're registered
-        from . import models, gamification_models, video_models, payment_models, notification_models, marketing_models
+        from . import models, gamification_models, video_models, payment_models, notification_models, marketing_models, ad_models
         from .ml import models as ml_models
         db.create_all()
         
