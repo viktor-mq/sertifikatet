@@ -42,7 +42,7 @@
                         <div class="text-blue-600 text-lg font-medium">📝 Quiz</div>
                         <div class="text-gray-600 text-sm">Ta en quiz for å øve</div>
                     </a>
-                    <a href="{{ url_for('main.dashboard') if current_user.is_authenticated else url_for('auth.login') }}" 
+                    <a href="{{ url_for('main.index') if current_user.is_authenticated else url_for('auth.login') }}" 
                        class="bg-white rounded-lg shadow p-4 hover:shadow-md transition-shadow">
                         <div class="text-blue-600 text-lg font-medium">📊 Dashboard</div>
                         <div class="text-gray-600 text-sm">Se fremgangen din</div>

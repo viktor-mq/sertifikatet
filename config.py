@@ -16,6 +16,9 @@ class Config:
     # Site settings
     SITE_NAME = 'Sertifikatet'
     
+    # Environment configuration
+    ENVIRONMENT = os.getenv('ENVIRONMENT', 'development' if DEBUG else 'production')
+    
     # Email configuration for admin notifications and security alerts
     ADMIN_MAIL_SERVER = os.getenv('ADMIN_MAIL_SERVER', os.getenv('MAIL_SERVER', 'smtp.gmail.com'))
     ADMIN_MAIL_PORT = int(os.getenv('ADMIN_MAIL_PORT', os.getenv('MAIL_PORT', '587')))
@@ -33,6 +36,15 @@ class Config:
     STRIPE_PUBLISHABLE_KEY = os.getenv('STRIPE_PUBLISHABLE_KEY')
     STRIPE_SECRET_KEY = os.getenv('STRIPE_SECRET_KEY')
     STRIPE_WEBHOOK_SECRET = os.getenv('STRIPE_WEBHOOK_SECRET')
+    
+    # Google Analytics configuration
+    GOOGLE_ANALYTICS_ID = os.getenv('GOOGLE_ANALYTICS_ID')
+    GOOGLE_TAG_MANAGER_ID = os.getenv('GOOGLE_TAG_MANAGER_ID')
+    
+    # SEO & Search Engine Verification (Optional - for meta tag verification)
+    # Note: Google Search Console verified via Cloudflare DNS (more robust)
+    GOOGLE_SEARCH_CONSOLE_VERIFICATION = os.getenv('GOOGLE_SEARCH_CONSOLE_VERIFICATION')
+    BING_WEBMASTER_VERIFICATION = os.getenv('BING_WEBMASTER_VERIFICATION')
     
     # Cookie policy version (GDPR compliance)
     COOKIE_POLICY_VERSION = os.getenv('COOKIE_POLICY_VERSION', '1.0')

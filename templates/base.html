@@ -3,9 +3,94 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>{% block title %}Sertifikatet{% endblock %}</title>
     
-    <!-- CSS -->
+    <!-- SEO Meta Tags -->
+    <title>{% block title %}{{ seo.title if seo else 'Sertifikatet - Norsk Førerkort Teori' }}{% endblock %}</title>
+    <meta name="description" content="{{ seo.description if seo else 'Lær førerkort teori med interaktive quizer, videoer og spill. Personalisert læring med AI. Gratis praksis og eksamen forberedelse for norsk førerkort.' }}">
+    <meta name="keywords" content="{{ seo.keywords if seo else 'førerkort, teori, quiz, eksamen, norge, trafikkregler, trafikkskilt, kørekort, driving, license, theory, norway' }}">
+    <meta name="author" content="Sertifikatet">
+    
+    <!-- Development Environment Protection -->
+    {% if config.DEBUG or config.ENVIRONMENT == 'development' %}
+        <meta name="robots" content="noindex, nofollow, noarchive, nosnippet">
+        <!-- Development banner for internal use -->
+        <meta name="environment" content="development">
+    {% else %}
+        <meta name="robots" content="{{ seo.robots if seo else 'index, follow' }}">
+    {% endif %}
+    
+    <meta name="language" content="Norwegian">
+    <meta name="geo.region" content="NO">
+    <meta name="geo.country" content="Norway">
+    
+    <!-- Search Engine Verification -->
+    {% if config.GOOGLE_SEARCH_CONSOLE_VERIFICATION %}
+    <meta name="google-site-verification" content="{{ config.GOOGLE_SEARCH_CONSOLE_VERIFICATION }}">
+    {% endif %}
+    {% if config.BING_WEBMASTER_VERIFICATION %}
+    <meta name="msvalidate.01" content="{{ config.BING_WEBMASTER_VERIFICATION }}">
+    {% endif %}
+    
+    <!-- Canonical URL -->
+    <link rel="canonical" href="{{ seo.canonical_url if seo else request.url }}">
+    
+    <!-- Open Graph Meta Tags -->
+    <meta property="og:title" content="{{ seo.og_title if seo else seo.title if seo else 'Sertifikatet - Norsk Førerkort Teori' }}">
+    <meta property="og:description" content="{{ seo.og_description if seo else seo.description if seo else 'Lær førerkort teori med interaktive quizer, videoer og spill.' }}">
+    <meta property="og:image" content="{{ seo.og_image if seo else url_for('static', filename='images/profiles/selskapslogo.png', _external=True) }}">
+    <meta property="og:url" content="{{ seo.og_url if seo else request.url }}">
+    <meta property="og:type" content="{{ seo.og_type if seo else 'website' }}">
+    <meta property="og:site_name" content="Sertifikatet">
+    <meta property="og:locale" content="nb_NO">
+    
+    <!-- Twitter Card Meta Tags -->
+    <meta name="twitter:card" content="{{ seo.twitter_card if seo else 'summary_large_image' }}">
+    <meta name="twitter:site" content="@sertifikatet">
+    <meta name="twitter:title" content="{{ seo.twitter_title if seo else seo.title if seo else 'Sertifikatet - Norsk Førerkort Teori' }}">
+    <meta name="twitter:description" content="{{ seo.twitter_description if seo else seo.description if seo else 'Lær førerkort teori med interaktive quizer, videoer og spill.' }}">
+    <meta name="twitter:image" content="{{ seo.twitter_image if seo else url_for('static', filename='images/profiles/selskapslogo.png', _external=True) }}">
+    
+    <!-- Article Meta Tags (if applicable) -->
+    {% if seo and seo.article_author %}
+    <meta property="article:author" content="{{ seo.article_author }}">
+    {% endif %}
+    {% if seo and seo.article_published_time %}
+    <meta property="article:published_time" content="{{ seo.article_published_time }}">
+    {% endif %}
+    {% if seo and seo.article_modified_time %}
+    <meta property="article:modified_time" content="{{ seo.article_modified_time }}">
+    {% endif %}
+    {% if seo and seo.article_section %}
+    <meta property="article:section" content="{{ seo.article_section }}">
+    {% endif %}
+    
+    <!-- Structured Data -->
+    {% if structured_data %}
+    <script type="application/ld+json">
+    {{ structured_data|safe }}
+    </script>
+    {% endif %}
+    
+    <!-- Breadcrumb Structured Data -->
+    {% if breadcrumb_data %}
+    <script type="application/ld+json">
+    {{ breadcrumb_data|safe }}
+    </script>
+    {% endif %}
+    
+    <!-- CSS and Resource Preloading -->
+    <!-- Preload critical resources for better performance -->
+    <link rel="preload" href="{{ url_for('static', filename='css/layout-common.css') }}" as="style">
+    <link rel="preload" href="{{ url_for('static', filename='css/style.css') }}" as="style">
+    <link rel="preload" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" as="style">
+    
+    <!-- DNS prefetch for external resources -->
+    <link rel="dns-prefetch" href="//cdnjs.cloudflare.com">
+    <link rel="dns-prefetch" href="//cdn.tailwindcss.com">
+    <link rel="dns-prefetch" href="//www.googletagmanager.com">
+    <link rel="dns-prefetch" href="//www.google-analytics.com">
+    
+    <!-- CSS Loading -->
     <link rel="stylesheet" href="{{ url_for('static', filename='css/layout-common.css') }}">
     <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
     <link rel="stylesheet" href="{{ url_for('static', filename='css/cookie-consent.css') }}">
@@ -15,6 +100,87 @@
     
     <!-- Tailwind CSS (if used) -->
     <script src="https://cdn.tailwindcss.com"></script>
+    
+    <!-- Google Tag Manager - GDPR Compliant Loading -->
+    {% if config.GOOGLE_TAG_MANAGER_ID %}
+    <script>
+        // Set GTM container ID globally
+        window.gtmContainerId = '{{ config.GOOGLE_TAG_MANAGER_ID }}';
+        window.googleAnalyticsId = '{{ config.GOOGLE_ANALYTICS_ID }}';
+        
+        // Function to load Google Tag Manager
+        function loadGoogleTagManager() {
+            if (window.gtmLoaded) return; // Already loaded
+            
+            // Initialize dataLayer before GTM loads
+            window.dataLayer = window.dataLayer || [];
+            window.dataLayer.push({
+                'gtm.start': new Date().getTime(),
+                'event': 'gtm.js'
+            });
+            
+            // Load GTM script
+            const gtmScript = document.createElement('script');
+            gtmScript.async = true;
+            gtmScript.src = 'https://www.googletagmanager.com/gtm.js?id=' + window.gtmContainerId;
+            document.head.appendChild(gtmScript);
+            
+            // Set gtag function for compatibility with analytics service
+            function gtag(){window.dataLayer.push(arguments);}
+            window.gtag = gtag;
+            
+            // Mark as loaded
+            window.gtmLoaded = true;
+            
+            console.log('✅ Google Tag Manager loaded with container:', window.gtmContainerId);
+            
+            // Trigger GTM load event for analytics service
+            window.dispatchEvent(new CustomEvent('gtmLoaded'));
+        }
+        
+        // Load GTM when cookie consent allows
+        window.addEventListener('cookiePreferencesApplied', function(event) {
+            if (event.detail.analytics) {
+                loadGoogleTagManager();
+            }
+        });
+        
+        // Check if analytics is already consented to
+        document.addEventListener('DOMContentLoaded', function() {
+            if (window.cookieConsent && window.cookieConsent.currentPreferences && window.cookieConsent.currentPreferences.analytics) {
+                loadGoogleTagManager();
+            }
+        });
+    </script>
+    {% endif %}
+    
+    <!-- Google AdSense - GDPR Compliant Loading -->
+    {% if current_user.is_authenticated %}
+        {% if current_user.get_subscription_tier() == 'free' %}
+            <script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-4051642544961446"
+                    id="adsense-script" 
+                    crossorigin="anonymous"
+                    style="display: none;"></script>
+            <script>
+                window.adsenseEnabled = true;
+                window.adsensePublisherId = 'ca-pub-4051642544961446';
+            </script>
+        {% else %}
+            <script>
+                window.adsenseEnabled = false;
+            </script>
+        {% endif %}
+    {% else %}
+        <!-- Anonymous users (potentially free) - show ads -->
+        <script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-4051642544961446"
+                id="adsense-script" 
+                crossorigin="anonymous"
+                style="display: none;"></script>
+        <script>
+            window.adsenseEnabled = true;
+            window.adsensePublisherId = 'ca-pub-4051642544961446';
+        </script>
+    {% endif %}
     
     <!-- User Analytics Meta Tags -->
     {% if current_user.is_authenticated %}
@@ -36,27 +202,48 @@
     
     {% block extra_css %}{% endblock %}
     
-    <!-- Favicon -->
+    <!-- Favicon and App Icons -->
     <link rel="icon" type="image/png" sizes="32x32" href="{{ url_for('static', filename='images/profiles/selskapslogo.png') }}?v=2">
     <link rel="icon" type="image/png" sizes="16x16" href="{{ url_for('static', filename='images/profiles/selskapslogo.png') }}?v=2">
+    <link rel="icon" type="image/png" sizes="96x96" href="{{ url_for('static', filename='images/profiles/selskapslogo.png') }}?v=2">
+    <link rel="icon" type="image/png" sizes="192x192" href="{{ url_for('static', filename='images/profiles/selskapslogo.png') }}?v=2">
     <link rel="shortcut icon" type="image/png" href="{{ url_for('static', filename='images/profiles/selskapslogo.png') }}?v=2">
-    <meta name="msapplication-TileImage" content="{{ url_for('static', filename='images/profiles/selskapslogo.png') }}?v=2">
-    <meta name="theme-color" content="#7c3aed">
-    
-    <!-- PWA Manifest -->
-    <link rel="manifest" href="{{ url_for('static', filename='manifest.json') }}">
     
     <!-- Apple Touch Icons -->
-    <link rel="apple-touch-icon" href="{{ url_for('static', filename='images/profiles/selskapslogo.png') }}">
-    <meta name="apple-mobile-web-app-capable" content="yes">
-    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-    <meta name="apple-mobile-web-app-title" content="Sertifikatet">
+    <link rel="apple-touch-icon" sizes="57x57" href="{{ url_for('static', filename='images/profiles/selskapslogo.png') }}?v=2">
+    <link rel="apple-touch-icon" sizes="60x60" href="{{ url_for('static', filename='images/profiles/selskapslogo.png') }}?v=2">
+    <link rel="apple-touch-icon" sizes="72x72" href="{{ url_for('static', filename='images/profiles/selskapslogo.png') }}?v=2">
+    <link rel="apple-touch-icon" sizes="76x76" href="{{ url_for('static', filename='images/profiles/selskapslogo.png') }}?v=2">
+    <link rel="apple-touch-icon" sizes="114x114" href="{{ url_for('static', filename='images/profiles/selskapslogo.png') }}?v=2">
+    <link rel="apple-touch-icon" sizes="120x120" href="{{ url_for('static', filename='images/profiles/selskapslogo.png') }}?v=2">
+    <link rel="apple-touch-icon" sizes="144x144" href="{{ url_for('static', filename='images/profiles/selskapslogo.png') }}?v=2">
+    <link rel="apple-touch-icon" sizes="152x152" href="{{ url_for('static', filename='images/profiles/selskapslogo.png') }}?v=2">
+    <link rel="apple-touch-icon" sizes="180x180" href="{{ url_for('static', filename='images/profiles/selskapslogo.png') }}?v=2">
     
     <!-- Microsoft Tiles -->
     <meta name="msapplication-TileColor" content="#7c3aed">
     <meta name="msapplication-TileImage" content="{{ url_for('static', filename='images/profiles/selskapslogo.png') }}?v=2">
+    <meta name="msapplication-square70x70logo" content="{{ url_for('static', filename='images/profiles/selskapslogo.png') }}?v=2">
+    <meta name="msapplication-square150x150logo" content="{{ url_for('static', filename='images/profiles/selskapslogo.png') }}?v=2">
+    <meta name="msapplication-wide310x150logo" content="{{ url_for('static', filename='images/profiles/selskapslogo.png') }}?v=2">
+    <meta name="msapplication-square310x310logo" content="{{ url_for('static', filename='images/profiles/selskapslogo.png') }}?v=2">
+    
+    <!-- Theme and App Configuration -->
+    <meta name="theme-color" content="#7c3aed">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="apple-mobile-web-app-title" content="Sertifikatet">
+    
+    <!-- PWA Manifest -->
+    <link rel="manifest" href="{{ url_for('static', filename='manifest.json') }}">
 </head>
 <body class="bg-gray-900 text-white">
+    <!-- Google Tag Manager (noscript) -->
+    {% if config.GOOGLE_TAG_MANAGER_ID %}
+    <noscript><iframe src="https://www.googletagmanager.com/ns.html?id={{ config.GOOGLE_TAG_MANAGER_ID }}"
+    height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
+    {% endif %}
+    <!-- End Google Tag Manager (noscript) -->
     <!-- Navigation -->
     <nav class="bg-gray-800 shadow-lg">
         <div class="max-w-7xl mx-auto px-4">
@@ -171,6 +358,12 @@
         </div>
     </nav>
     
+    <!-- Breadcrumb Navigation -->
+    {% from 'components/seo_components.html' import render_breadcrumbs %}
+    {% if breadcrumbs %}
+        {{ render_breadcrumbs(breadcrumbs) }}
+    {% endif %}
+    
     <!-- Flash Messages -->
     {% with messages = get_flashed_messages(with_categories=true) %}
         {% if messages %}
@@ -231,6 +424,7 @@
     <script src="{{ url_for('static', filename='js/cookie-consent.js') }}"></script>
     <script src="{{ url_for('static', filename='js/analytics-service.js') }}"></script>
     <script src="{{ url_for('static', filename='js/analytics-integration.js') }}"></script>
+    <script src="{{ url_for('static', filename='js/gtm-integration.js') }}"></script>
     
     <!-- AdSense Integration Script -->
     <script>
@@ -273,6 +467,19 @@
         });
     </script>
     {% block extra_js %}{% endblock %}
+    
+    <!-- GTM Testing (Development Only) -->
+    {% if config.DEBUG %}
+    <script src="{{ url_for('static', filename='js/gtm-testing.js') }}"></script>
+    <script>
+        // Add debug tools to console in development
+        console.log('🔧 GTM Debug Tools Available:');
+        console.log('  - testGTM() - Run comprehensive GTM tests');
+        console.log('  - testGTMTriggers() - Test GTM trigger firing');
+        console.log('  - window.gtmTestReport - View last test report');
+        console.log('  - Add ?gtm_debug=1 to URL for auto-testing');
+    </script>
+    {% endif %}
     
     <style>
         /* Animations */

@@ -57,11 +57,39 @@ def index():
             print(f"Dashboard data error: {e}")
             dashboard_data = None
     
+    # Generate dynamic SEO data for homepage
+    from ..utils.seo import SEOGenerator, SEOPageConfigs
+    
+    if current_user.is_authenticated:
+        # Dashboard view for logged-in users
+        seo_data = SEOGenerator.generate_meta_tags(
+            title='Dashboard - Sertifikatet | Din Førerkort Læring',
+            description='Se din fremgang, statistikk og fortsett din førerkort teori læring. Personalisert dashboard med AI-drevet læring.',
+            keywords='dashboard, fremgang, førerkort læring, personlig, statistikk',
+            robots='noindex, nofollow'  # Private dashboard content
+        )
+    else:
+        # Marketing homepage for visitors
+        config = SEOPageConfigs.homepage()
+        seo_data = SEOGenerator.generate_meta_tags(
+            title=config['title'],
+            description=config['description'],
+            keywords=config['keywords'],
+            page_type=config['page_type']
+        )
+        
+        # Generate structured data for homepage
+        structured_data = SEOGenerator.generate_structured_data(
+            page_type=config['structured_data_type']
+        )
+    
     return render_template('index.html', 
                          current_plan=current_plan,
                          subscription_stats=subscription_stats,
                          upgrade_options=upgrade_options,
-                         dashboard_data=dashboard_data)
+                         dashboard_data=dashboard_data,
+                         seo=seo_data,
+                         structured_data=structured_data if not current_user.is_authenticated else None)
 
 
 # Legacy route support for templates that use url_for('index')
@@ -74,42 +102,8 @@ def index_redirect():
 @main_bp.route('/dashboard')
 @login_required
 def dashboard():
-    """User dashboard"""
-    user = current_user
-    
-    # Get comprehensive dashboard data using services
-    progress_service = ProgressService()
-    achievement_service = AchievementService()
-    leaderboard_service = LeaderboardService()
-    
-    # Get user data with error handling
-    try:
-        dashboard_data = progress_service.get_user_dashboard_data(user.id)
-        achievements = achievement_service.get_user_achievements(user.id)
-        user_rank = leaderboard_service.get_user_rank(user.id)
-        
-        # Get recent achievements (last 5 earned)
-        recent_achievements = [a for a in achievements if a['earned']][-5:]
-        
-        # Get achievement stats
-        achievement_stats = {
-            'total_earned': len([a for a in achievements if a['earned']]),
-            'total_available': len(achievements),
-            'recent': recent_achievements
-        }
-    except Exception as e:
-        # Fallback to basic data if services fail
-        print(f"Dashboard data error: {e}")
-        dashboard_data = None
-        achievement_stats = None
-        user_rank = None
-    
-    return render_template('dashboard.html', 
-                         user=user, 
-                         progress=user.progress,
-                         dashboard_data=dashboard_data,
-                         achievement_stats=achievement_stats,
-                         user_rank=user_rank)
+    """Redirect dashboard route to main index - dashboard functionality is now at /"""
+    return redirect(url_for('main.index'))
 
 
 @main_bp.route('/practice')
@@ -197,7 +191,50 @@ def quiz():
         
         questions.append(question_data)
     
-    return render_template('quiz.html', questions=questions, quiz_type=quiz_type, learning_path_id=learning_path_id)
+    # Generate SEO data for quiz page
+    from ..utils.seo import SEOGenerator, SEOPageConfigs
+    
+    # Create dynamic title based on quiz type and category
+    if quiz_type == 'exam':
+        title = 'Prøveeksamen - Sertifikatet'
+        description = 'Ta en fullstendig prøveeksamen med 45 spørsmål. Simuler den virkelige førerkort teorieksamen.'
+    elif category:
+        title = f'Quiz: {category} - Sertifikatet'
+        description = f'Test din kunnskap innen {category.lower()}. Interaktive spørsmål med detaljerte forklaringer.'
+    else:
+        title = 'Øvingsmodus Quiz - Sertifikatet'
+        description = 'Øv på førerkort teori med tilpassede quiz. Velg vanskelighetsgrad og kategorier.'
+    
+    seo_data = SEOGenerator.generate_meta_tags(
+        title=title,
+        description=description,
+        keywords=f'quiz, {category.lower() if category else "teori"}, spørsmål, {quiz_type}, førerkort',
+        page_type='quiz'
+    )
+    
+    # Generate structured data for quiz
+    structured_data = SEOGenerator.generate_structured_data(
+        page_type='Quiz',
+        page_data={
+            'name': title.replace(' - Sertifikatet', ''),
+            'description': description,
+            'additional_schema': {
+                'educationalLevel': 'beginner',
+                'learningResourceType': 'quiz',
+                'about': {
+                    '@type': 'Thing',
+                    'name': f'Norsk Førerkort Teori - {category if category else "Generell"}'
+                }
+            }
+        }
+    )
+    
+    return render_template('quiz.html', 
+                         questions=questions, 
+                         quiz_type=quiz_type, 
+                         learning_path_id=learning_path_id,
+                         seo=seo_data,
+                         structured_data=structured_data)
 
 
 @main_bp.route('/submit_quiz', methods=['POST'])
@@ -319,7 +356,7 @@ def quiz_results(session_id):
     
     if not quiz_session:
         flash('Quiz ikke funnet', 'error')
-        return redirect(url_for('main.dashboard'))
+        return redirect(url_for('main.index'))
     
     # Get responses with questions
     responses = QuizResponse.query.filter_by(session_id=session_id).all()
@@ -336,9 +373,19 @@ def quiz_results(session_id):
             'options': {opt.option_letter: opt.option_text for opt in question.options}
         })
     
+    # Generate SEO data for quiz results page
+    from ..utils.seo import SEOGenerator
+    seo_data = SEOGenerator.generate_meta_tags(
+        title=f'Quiz Resultater - {quiz_session.score:.1f}% Score | Sertifikatet',
+        description=f'Se dine quiz resultater: {quiz_session.correct_answers} av {quiz_session.total_questions} riktige svar ({quiz_session.score:.1f}%).',
+        keywords='quiz resultater, score, fremgang, analyse, førerkort',
+        robots='noindex, nofollow'  # Private results page
+    )
+    
     return render_template('quiz_results.html', 
                          session=quiz_session, 
-                         results=results)
+                         results=results,
+                         seo=seo_data)
 
 
 
@@ -380,9 +427,18 @@ def quiz_preview():
             {'name': 'Opplysningsskilt', 'count': 80}
         ]
     
+    # Generate SEO data for quiz preview page
+    from ..utils.seo import SEOGenerator
+    seo_data = SEOGenerator.generate_meta_tags(
+        title='Gratis Førerkort Quiz - Prøv Før Du Registrerer | Sertifikatet',
+        description=f'Prøv vår førerkort quiz gratis! Over {total_questions} spørsmål i {len(sample_categories)} kategorier. Test din kunnskap før du registrerer deg.',
+        keywords='gratis quiz, førerkort teori, prøv gratis, demo, test din kunnskap, registrer'
+    )
+    
     return render_template('quiz_preview.html', 
                          sample_categories=sample_categories,
-                         total_questions=total_questions)
+                         total_questions=total_questions,
+                         seo=seo_data)
 
 
 @main_bp.route('/quiz/categories')
@@ -431,9 +487,18 @@ def quiz_categories():
     # Sort by count descending
     categories.sort(key=lambda x: x['count'], reverse=True)
     
+    # Generate SEO data for quiz categories page
+    from ..utils.seo import SEOGenerator
+    seo_data = SEOGenerator.generate_meta_tags(
+        title='Quiz Kategorier - Førerkort Teori | Sertifikatet',
+        description=f'Velg blant {len(categories)} quiz kategorier med totalt {total_questions} spørsmål. Trafikkskilt, trafikkregler, vikeplikt og mer.',
+        keywords='quiz kategorier, trafikkskilt, trafikkregler, vikeplikt, førerkort teori, spørsmål'
+    )
+    
     return render_template('quiz_categories.html', 
                          categories=categories,
-                         total_questions=total_questions)
+                         total_questions=total_questions,
+                         seo=seo_data)
 
 
 @main_bp.route('/api/questions')
@@ -504,16 +569,35 @@ def achievements():
     total_earned = len([a for a in achievements_data if a['earned']])
     total_available = len(achievements_data)
     
+    # Generate SEO data for achievements page
+    from ..utils.seo import SEOGenerator
+    seo_data = SEOGenerator.generate_meta_tags(
+        title='Mine Prestasjoner - Sertifikatet',
+        description=f'Se dine låste prestasjoner og badges. {total_earned} av {total_available} prestasjoner oppnådd.',
+        keywords='prestasjoner, badges, achievement, belønninger, gamification',
+        robots='noindex, nofollow'  # Private page
+    )
+    
     return render_template('progress/achievements.html',
                          total_earned=total_earned,
-                         total_available=total_available)
+                         total_available=total_available,
+                         seo=seo_data)
 
 
 @main_bp.route('/leaderboard')
 @login_required
 def leaderboard():
     """Leaderboard page"""
-    return render_template('progress/leaderboard.html')
+    # Generate SEO data for leaderboard page
+    from ..utils.seo import SEOGenerator
+    seo_data = SEOGenerator.generate_meta_tags(
+        title='Ledertavle - Sertifikatet',
+        description='Se topp spillere og din ranking i førerkort teori læring. Konkurrer med andre brukere og klatre på rankinglisten.',
+        keywords='ledertavle, ranking, konkurranse, topp spillere, leaderboard',
+        robots='noindex, nofollow'  # Private page
+    )
+    
+    return render_template('progress/leaderboard.html', seo=seo_data)
 
 
 @main_bp.route('/deploy-webhook', methods=['POST'])

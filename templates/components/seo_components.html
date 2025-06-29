@@ -1,0 +1,64 @@
+<!-- Breadcrumb Navigation Component -->
+{% macro render_breadcrumbs(breadcrumbs) %}
+{% if breadcrumbs %}
+<nav aria-label="breadcrumb" class="bg-gray-800 py-2">
+    <div class="max-w-7xl mx-auto px-4">
+        <ol class="flex items-center space-x-2 text-sm text-gray-300">
+            {% for name, url in breadcrumbs %}
+                {% if not loop.last %}
+                    <li>
+                        <a href="{{ url }}" class="hover:text-purple-400 transition">
+                            {{ name }}
+                        </a>
+                    </li>
+                    <li class="text-gray-500">
+                        <svg class="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
+                            <path fill-rule="evenodd" d="M7.293 14.707a1 1 0 010-1.414L10.586 10 7.293 6.707a1 1 0 011.414-1.414l4 4a1 1 0 010 1.414l-4 4a1 1 0 01-1.414 0z" clip-rule="evenodd"></path>
+                        </svg>
+                    </li>
+                {% else %}
+                    <li class="text-purple-400 font-medium" aria-current="page">
+                        {{ name }}
+                    </li>
+                {% endif %}
+            {% endfor %}
+        </ol>
+    </div>
+</nav>
+{% endif %}
+{% endmacro %}
+
+<!-- SEO-optimized Image Component -->
+{% macro seo_image(src, alt, title=None, class="", loading="lazy", width=None, height=None) %}
+<img src="{{ src }}" 
+     alt="{{ alt }}" 
+     {% if title %}title="{{ title }}"{% endif %}
+     {% if class %}class="{{ class }}"{% endif %}
+     loading="{{ loading }}"
+     {% if width %}width="{{ width }}"{% endif %}
+     {% if height %}height="{{ height }}"{% endif %}
+     decoding="async">
+{% endmacro %}
+
+<!-- Internal Link Component (for SEO) -->
+{% macro internal_link(endpoint, text, class="", title=None) %}
+<a href="{{ url_for(endpoint) }}" 
+   {% if class %}class="{{ class }}"{% endif %}
+   {% if title %}title="{{ title }}"{% endif %}>
+    {{ text }}
+</a>
+{% endmacro %}
+
+<!-- External Link Component (for SEO) -->
+{% macro external_link(url, text, class="", title=None, nofollow=True) %}
+<a href="{{ url }}" 
+   {% if class %}class="{{ class }}"{% endif %}
+   {% if title %}title="{{ title }}"{% endif %}
+   {% if nofollow %}rel="nofollow noopener"{% endif %}
+   target="_blank">
+    {{ text }}
+    <svg class="inline w-3 h-3 ml-1" fill="currentColor" viewBox="0 0 20 20">
+        <path fill-rule="evenodd" d="M10.293 3.293a1 1 0 011.414 0l6 6a1 1 0 010 1.414l-6 6a1 1 0 01-1.414-1.414L14.586 11H3a1 1 0 110-2h11.586l-4.293-4.293a1 1 0 010-1.414z" clip-rule="evenodd"></path>
+    </svg>
+</a>
+{% endmacro %}

@@ -15,8 +15,15 @@ class AnalyticsService {
         window.addEventListener('cookiePreferencesApplied', (event) => {
             this.isEnabled = event.detail.analytics;
             
-            if (this.isEnabled && window.gtag) {
+            if (this.isEnabled && (window.gtag || window.dataLayer)) {
                 // Process queued events
+                this.processEventQueue();
+            }
+        });
+        
+        // Listen for GTM load event
+        window.addEventListener('gtmLoaded', () => {
+            if (this.isEnabled) {
                 this.processEventQueue();
             }
         });
@@ -26,8 +33,8 @@ class AnalyticsService {
     }
     
     checkAnalyticsStatus() {
-        // Check if gtag is already available and user has consented
-        if (window.gtag && window.cookieConsent) {
+        // Check if gtag or dataLayer is available and user has consented
+        if ((window.gtag || window.dataLayer) && window.cookieConsent) {
             this.isEnabled = window.cookieConsent.currentPreferences?.analytics || false;
         }
     }
@@ -71,7 +78,7 @@ class AnalyticsService {
             return;
         }
         
-        // Send the event
+        // Send the event via gtag (GTM provides gtag compatibility)
         if (window.gtag) {
             try {
                 gtag('event', eventName, {
@@ -83,10 +90,28 @@ class AnalyticsService {
                 });
                 
                 if (this.debugMode) {
-                    console.log('📊 Analytics event sent:', eventName, parameters);
+                    console.log('📊 Analytics event sent via GTM:', eventName, parameters);
                 }
             } catch (error) {
                 console.error('Analytics error:', error);
+            }
+        }
+        // Fallback: Send directly to dataLayer if gtag not available
+        else if (window.dataLayer) {
+            try {
+                window.dataLayer.push({
+                    'event': eventName,
+                    ...parameters,
+                    'timestamp': new Date().toISOString(),
+                    'page_location': window.location.href,
+                    'page_title': document.title
+                });
+                
+                if (this.debugMode) {
+                    console.log('📊 Analytics event sent to dataLayer:', eventName, parameters);
+                }
+            } catch (error) {
+                console.error('DataLayer error:', error);
             }
         }
     }
@@ -266,9 +291,9 @@ class AnalyticsService {
     
     // Set user properties for segmentation
     setUserProperties(userProps) {
-        if (!this.isEnabled || !window.gtag) return;
+        if (!this.isEnabled || !window.gtag || !window.googleAnalyticsId) return;
         
-        gtag('config', 'G-353HJJCNYR', {
+        gtag('config', window.googleAnalyticsId, {
             user_properties: userProps
         });
     }

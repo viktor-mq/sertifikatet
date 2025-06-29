@@ -16,10 +16,18 @@ project:
       - playlist management for premium users
     progress_tracking:
       - personalized analytics
+      - ML-powered adaptive learning
     gamification:
       - achievements
       - daily streaks
       - leaderboards
+    analytics:
+      - Google Analytics 4 integration
+      - Google Tag Manager (GTM-M26JWCMT)
+      - advanced event tracking
+      - user journey analytics
+      - ecommerce tracking
+      - GDPR-compliant data collection
     gdpr_compliance:
       - cookie consent management
       - privacy-first design
@@ -43,6 +51,11 @@ tech_stack:
     css_framework: Tailwind CSS
     charts: Chart.js
     games: Phaser.js
+    analytics:
+      google_analytics: Google Analytics 4 (G-353HJJCNYR)
+      google_tag_manager: GTM container (GTM-M26JWCMT)
+      event_tracking: Advanced business intelligence
+      gdpr_compliance: Consent-based loading
   mobile:
     framework: Progressive Web App (PWA)
   infrastructure:
@@ -54,6 +67,23 @@ tech_stack:
     caching: Redis with fallback mechanisms
     monitoring: Centralized error logging
     deployment: Branch-based strategy (develop/main)
+    analytics:
+      google_tag_manager: GTM-M26JWCMT with GDPR compliance
+      google_analytics: G-353HJJCNYR with privacy-first config
+      event_tracking: Comprehensive business intelligence
+      server_side_api: Analytics API endpoints
+      testing_tools: Development validation suite
+    seo:
+      environment_protection: Development/production mode switching
+      search_engine_blocking: Automatic robots.txt and meta tag control
+      development_safety: No indexing during development
+      production_ready: Full SEO activation with environment switch
+      meta_tags: Dynamic generation with structured data
+      search_console: DNS verification via Cloudflare (enterprise-grade)
+      norwegian_optimization: Language, geo-region, and market-specific
+      rich_snippets: JSON-LD structured data for enhanced search results
+      sitemap_generation: Automatic sitemap.xml generation
+      robots_txt: Environment-aware crawler directives
 
 database:
   tables:
