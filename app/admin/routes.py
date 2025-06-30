@@ -57,6 +57,18 @@ def admin_dashboard():
     # Handle search/filter parameters
     search_query = request.args.get('search', '').strip()
     category_filter = request.args.get('category', '').strip()
+    subcategory_filter = request.args.get('subcategory', '').strip()
+    difficulty_filter = request.args.get('difficulty', '').strip()
+    
+    # Pagination parameters
+    page = request.args.get('page', 1, type=int)
+    per_page = request.args.get('per_page', 50, type=int)
+    sort_by = request.args.get('sort_by', 'id')  # Default sort by ID
+    sort_order = request.args.get('sort_order', 'asc')  # asc or desc
+    
+    # Validate per_page options
+    if per_page not in [20, 50, 100] and per_page != -1:  # -1 means "All"
+        per_page = 50
 
     validation_errors = []
     message = None
@@ -183,16 +195,54 @@ def admin_dashboard():
                 db.session.commit()
                 return redirect(url_for('admin.admin_dashboard'))
     
-    # Fetch questions with options using ORM
+    # Fetch questions with options using ORM with advanced filtering
     query = Question.query
     
+    # Apply search filter
     if search_query:
         query = query.filter(Question.question.ilike(f'%{search_query}%'))
     
-    if category_filter:
+    # Apply category filter
+    if category_filter and category_filter != 'all':
         query = query.filter(Question.category == category_filter)
     
-    all_questions = query.all()
+    # Apply subcategory filter
+    if subcategory_filter and subcategory_filter != 'all':
+        query = query.filter(Question.subcategory == subcategory_filter)
+    
+    # Apply difficulty filter
+    if difficulty_filter and difficulty_filter != 'all':
+        try:
+            difficulty_int = int(difficulty_filter)
+            query = query.filter(Question.difficulty_level == difficulty_int)
+        except ValueError:
+            pass  # Invalid difficulty filter, ignore
+    
+    # Apply sorting
+    valid_sort_columns = ['id', 'question', 'category', 'subcategory', 'difficulty_level']
+    if sort_by in valid_sort_columns:
+        sort_column = getattr(Question, sort_by)
+        if sort_order == 'desc':
+            query = query.order_by(sort_column.desc())
+        else:
+            query = query.order_by(sort_column.asc())
+    else:
+        query = query.order_by(Question.id.asc())  # Default sort
+    
+    # Get total count for pagination info (before applying pagination)
+    total_questions = query.count()
+    
+    # Apply pagination
+    if per_page == -1:  # Show all
+        all_questions = query.all()
+        paginated_questions = None
+    else:
+        paginated_questions = query.paginate(
+            page=page, 
+            per_page=per_page, 
+            error_out=False
+        )
+        all_questions = paginated_questions.items
 
     questions = []
     for q in all_questions:
@@ -213,7 +263,7 @@ def admin_dashboard():
             'correct_option': q.correct_option
         })
 
-    # Statistics using ORM
+    # Statistics using ORM (based on all questions, not filtered)
     total = Question.query.count()
     
     # Count by category
@@ -232,13 +282,39 @@ def admin_dashboard():
     
     stats = {
         'total': total, 
+        'filtered': total_questions,  # Add filtered count
         'by_category': by_category, 
         'with_images': with_images, 
         'without_images': without_images
     }
 
-    # Get all unique categories
-    categories = [cat[0] for cat in db.session.query(Question.category).distinct().all() if cat[0]]
+    # Get all unique categories and subcategories for filters
+    categories = [cat[0] for cat in db.session.query(Question.category).distinct().order_by(Question.category).all() if cat[0]]
+    
+    # Get subcategories (all or filtered by category)
+    if category_filter and category_filter != 'all':
+        subcategories = [sub[0] for sub in db.session.query(Question.subcategory).filter(
+            Question.category == category_filter,
+            Question.subcategory.isnot(None),
+            Question.subcategory != ''
+        ).distinct().order_by(Question.subcategory).all() if sub[0]]
+    else:
+        subcategories = [sub[0] for sub in db.session.query(Question.subcategory).filter(
+            Question.subcategory.isnot(None),
+            Question.subcategory != ''
+        ).distinct().order_by(Question.subcategory).all() if sub[0]]
+    
+    # Pagination info
+    pagination_info = {
+        'page': page,
+        'per_page': per_page,
+        'total': total_questions,
+        'pages': (total_questions + per_page - 1) // per_page if per_page != -1 else 1,
+        'has_prev': page > 1 if per_page != -1 else False,
+        'has_next': page < ((total_questions + per_page - 1) // per_page) if per_page != -1 else False,
+        'prev_num': page - 1 if page > 1 else None,
+        'next_num': page + 1 if per_page != -1 and page < ((total_questions + per_page - 1) // per_page) else None
+    }
 
     # Image list for gallery
     images = []
@@ -406,8 +482,14 @@ def admin_dashboard():
         questions=questions,
         stats=stats,
         categories=categories,
+        subcategories=subcategories,
         search_query=search_query,
         category_filter=category_filter,
+        subcategory_filter=subcategory_filter,
+        difficulty_filter=difficulty_filter,
+        sort_by=sort_by,
+        sort_order=sort_order,
+        pagination=pagination_info,
         validation_errors=validation_errors,
         images=images,
         folders=folders,
@@ -1508,8 +1590,312 @@ def export_ml_analytics():
         return redirect(url_for('admin.ml_settings'))
 
 # ========================================
-# MARKETING EMAIL ROUTES
+# AJAX API ENDPOINTS FOR QUESTION MANAGEMENT
 # ========================================
+
+@admin_bp.route('/api/questions', methods=['GET'])
+@admin_required
+def api_get_questions():
+    """AJAX endpoint for getting filtered/paginated questions"""
+    try:
+        # Get parameters
+        search_query = request.args.get('search', '').strip()
+        category_filter = request.args.get('category', '').strip()
+        subcategory_filter = request.args.get('subcategory', '').strip()
+        difficulty_filter = request.args.get('difficulty', '').strip()
+        
+        page = request.args.get('page', 1, type=int)
+        per_page = request.args.get('per_page', 50, type=int)
+        sort_by = request.args.get('sort_by', 'id')
+        sort_order = request.args.get('sort_order', 'asc')
+        
+        # Validate per_page options
+        if per_page not in [20, 50, 100] and per_page != -1:
+            per_page = 50
+
+        # Build query
+        query = Question.query
+        
+        # Apply search filter
+        if search_query:
+            query = query.filter(Question.question.ilike(f'%{search_query}%'))
+        
+        # Apply category filter
+        if category_filter and category_filter != 'all':
+            query = query.filter(Question.category == category_filter)
+        
+        # Apply subcategory filter
+        if subcategory_filter and subcategory_filter != 'all':
+            query = query.filter(Question.subcategory == subcategory_filter)
+        
+        # Apply difficulty filter
+        if difficulty_filter and difficulty_filter != 'all':
+            try:
+                difficulty_int = int(difficulty_filter)
+                query = query.filter(Question.difficulty_level == difficulty_int)
+            except ValueError:
+                pass
+        
+        # Apply sorting
+        valid_sort_columns = ['id', 'question', 'category', 'subcategory', 'difficulty_level']
+        if sort_by in valid_sort_columns:
+            sort_column = getattr(Question, sort_by)
+            if sort_order == 'desc':
+                query = query.order_by(sort_column.desc())
+            else:
+                query = query.order_by(sort_column.asc())
+        else:
+            query = query.order_by(Question.id.asc())
+        
+        # Get total count for pagination
+        total_questions = query.count()
+        total_in_db = Question.query.count()
+        
+        # Apply pagination
+        if per_page == -1:  # Show all
+            all_questions = query.all()
+            pages = 1
+            has_prev = False
+            has_next = False
+            prev_num = None
+            next_num = None
+        else:
+            paginated = query.paginate(page=page, per_page=per_page, error_out=False)
+            all_questions = paginated.items
+            pages = paginated.pages
+            has_prev = paginated.has_prev
+            has_next = paginated.has_next
+            prev_num = paginated.prev_num
+            next_num = paginated.next_num
+
+        # Convert questions to JSON format
+        questions = []
+        for q in all_questions:
+            opts = {opt.option_letter: opt.option_text for opt in q.options}
+            questions.append({
+                'id': q.id,
+                'question': q.question,
+                'category': q.category,
+                'subcategory': q.subcategory,
+                'difficulty_level': q.difficulty_level,
+                'explanation': q.explanation,
+                'image_filename': q.image_filename,
+                'option_a': opts.get('a', ''),
+                'option_b': opts.get('b', ''),
+                'option_c': opts.get('c', ''),
+                'option_d': opts.get('d', ''),
+                'correct_option': q.correct_option
+            })
+
+        # Statistics
+        category_counts = db.session.query(
+            Question.category, 
+            db.func.count(Question.id)
+        ).group_by(Question.category).all()
+        by_category = dict(category_counts)
+        
+        with_images = Question.query.filter(
+            Question.image_filename.isnot(None), 
+            Question.image_filename != ''
+        ).count()
+        
+        stats = {
+            'total': total_in_db,
+            'filtered': total_questions,
+            'by_category': by_category,
+            'with_images': with_images,
+            'without_images': total_in_db - with_images
+        }
+
+        # Pagination info
+        pagination = {
+            'page': page,
+            'per_page': per_page,
+            'total': total_questions,
+            'total_in_db': total_in_db,
+            'pages': pages,
+            'has_prev': has_prev,
+            'has_next': has_next,
+            'prev_num': prev_num,
+            'next_num': next_num,
+            'filtered': total_questions
+        }
+
+        return jsonify({
+            'success': True,
+            'questions': questions,
+            'pagination': pagination,
+            'stats': stats
+        })
+
+    except Exception as e:
+        logger.error(f"Error in api_get_questions: {e}")
+        return jsonify({'success': False, 'error': str(e)})
+
+@admin_bp.route('/api/question/create', methods=['POST'])
+@admin_required
+def api_create_question():
+    """AJAX endpoint for creating a new question"""
+    try:
+        data = request.get_json()
+        
+        # Validate required fields
+        if not data.get('question', '').strip():
+            return jsonify({'success': False, 'error': 'Question text is required'})
+        
+        if not data.get('correct_option', '').strip().lower() in ['a', 'b', 'c', 'd']:
+            return jsonify({'success': False, 'error': 'Valid correct option (a, b, c, d) is required'})
+        
+        # Create new question
+        question = Question(
+            question=data['question'].strip(),
+            correct_option=data['correct_option'].strip().lower(),
+            category=data.get('category', '').strip() or 'Ukategoriseret',
+            subcategory=data.get('subcategory', '').strip() or None,
+            difficulty_level=int(data.get('difficulty_level', 1)),
+            explanation=data.get('explanation', '').strip() or None,
+            image_filename=data.get('image_filename', '').strip() or None
+        )
+        
+        db.session.add(question)
+        db.session.flush()  # Get the ID
+        
+        # Add options
+        for letter, option_key in [('a', 'option_a'), ('b', 'option_b'), ('c', 'option_c'), ('d', 'option_d')]:
+            option_text = data.get(option_key, '').strip()
+            if option_text:
+                option = Option(
+                    question_id=question.id,
+                    option_letter=letter,
+                    option_text=option_text
+                )
+                db.session.add(option)
+        
+        db.session.commit()
+        
+        # Return the created question data
+        opts = {opt.option_letter: opt.option_text for opt in question.options}
+        question_data = {
+            'id': question.id,
+            'question': question.question,
+            'category': question.category,
+            'subcategory': question.subcategory,
+            'difficulty_level': question.difficulty_level,
+            'explanation': question.explanation,
+            'image_filename': question.image_filename,
+            'option_a': opts.get('a', ''),
+            'option_b': opts.get('b', ''),
+            'option_c': opts.get('c', ''),
+            'option_d': opts.get('d', ''),
+            'correct_option': question.correct_option
+        }
+        
+        return jsonify({'success': True, 'question': question_data})
+        
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({'success': False, 'error': str(e)})
+
+@admin_bp.route('/api/question/update/<int:question_id>', methods=['POST'])
+@admin_required
+def api_update_question(question_id):
+    """AJAX endpoint for updating an existing question"""
+    try:
+        question = Question.query.get_or_404(question_id)
+        data = request.get_json()
+        
+        # Validate required fields
+        if not data.get('question', '').strip():
+            return jsonify({'success': False, 'error': 'Question text is required'})
+        
+        if not data.get('correct_option', '').strip().lower() in ['a', 'b', 'c', 'd']:
+            return jsonify({'success': False, 'error': 'Valid correct option (a, b, c, d) is required'})
+        
+        # Update question data
+        question.question = data['question'].strip()
+        question.correct_option = data['correct_option'].strip().lower()
+        question.category = data.get('category', '').strip() or 'Ukategoriseret'
+        question.subcategory = data.get('subcategory', '').strip() or None
+        question.difficulty_level = int(data.get('difficulty_level', 1))
+        question.explanation = data.get('explanation', '').strip() or None
+        question.image_filename = data.get('image_filename', '').strip() or None
+        
+        # Delete existing options and add new ones
+        Option.query.filter_by(question_id=question.id).delete()
+        
+        for letter, option_key in [('a', 'option_a'), ('b', 'option_b'), ('c', 'option_c'), ('d', 'option_d')]:
+            option_text = data.get(option_key, '').strip()
+            if option_text:
+                option = Option(
+                    question_id=question.id,
+                    option_letter=letter,
+                    option_text=option_text
+                )
+                db.session.add(option)
+        
+        db.session.commit()
+        
+        # Return the updated question data
+        opts = {opt.option_letter: opt.option_text for opt in question.options}
+        question_data = {
+            'id': question.id,
+            'question': question.question,
+            'category': question.category,
+            'subcategory': question.subcategory,
+            'difficulty_level': question.difficulty_level,
+            'explanation': question.explanation,
+            'image_filename': question.image_filename,
+            'option_a': opts.get('a', ''),
+            'option_b': opts.get('b', ''),
+            'option_c': opts.get('c', ''),
+            'option_d': opts.get('d', ''),
+            'correct_option': question.correct_option
+        }
+        
+        return jsonify({'success': True, 'question': question_data})
+        
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({'success': False, 'error': str(e)})
+
+@admin_bp.route('/api/question/delete/<int:question_id>', methods=['DELETE'])
+@admin_required
+def api_delete_question(question_id):
+    """AJAX endpoint for deleting a question"""
+    try:
+        question = Question.query.get_or_404(question_id)
+        db.session.delete(question)
+        db.session.commit()
+        
+        return jsonify({'success': True, 'message': 'Question deleted successfully'})
+        
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({'success': False, 'error': str(e)})
+
+@admin_bp.route('/api/subcategories')
+@admin_required
+def api_get_subcategories():
+    """AJAX endpoint to get subcategories for a given category"""
+    category = request.args.get('category')
+    
+    if not category or category == 'all':
+        # Return all subcategories
+        subcategories = db.session.query(Question.subcategory).filter(
+            Question.subcategory.isnot(None),
+            Question.subcategory != ''
+        ).distinct().order_by(Question.subcategory).all()
+    else:
+        # Return subcategories for specific category
+        subcategories = db.session.query(Question.subcategory).filter(
+            Question.category == category,
+            Question.subcategory.isnot(None),
+            Question.subcategory != ''
+        ).distinct().order_by(Question.subcategory).all()
+    
+    subcategory_list = [sub[0] for sub in subcategories if sub[0]]
+    
+    return jsonify({'subcategories': subcategory_list})
 
 @admin_bp.route('/marketing-emails')
 @admin_required

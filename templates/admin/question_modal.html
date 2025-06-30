@@ -1,0 +1,74 @@
+{# Question Modal Template #}
+
+<!-- Question Modal -->
+<div id="questionModalOverlay" class="question-modal-overlay">
+    <div class="question-modal">
+        <div class="modal-header">
+            <h2 class="modal-title">
+                <span id="modalIcon">✏️</span>
+                <span id="modalTitleText">Rediger spørsmål</span>
+            </h2>
+            <button class="modal-close" onclick="closeQuestionModal()">×</button>
+        </div>
+
+        <div class="modal-body">
+            <div id="modalMessage"></div>
+
+            <form id="questionModalForm" onsubmit="saveQuestion(event)">
+                <input type="hidden" id="questionModalId" name="question_id">
+
+                <!-- Question Text -->
+                <div class="form-group">
+                    <label for="questionModalText">Spørsmål:</label>
+                    <textarea id="questionModalText" name="question" required 
+                              placeholder="Skriv inn spørsmålsteksten her..."></textarea>
+                </div>
+
+                <!-- Options Grid -->
+                <div class="options-grid">
+                    <div class="form-group">
+                        <label for="optionModalA">Alternativ A:</label>
+                        <input type="text" id="optionModalA" name="option_a" required 
+                               placeholder="Første alternativ">
+                    </div>
+                    <div class="form-group">
+                        <label for="optionModalB">Alternativ B:</label>
+                        <input type="text" id="optionModalB" name="option_b" required 
+                               placeholder="Andre alternativ">
+                    </div>
+                    <div class="form-group">
+                        <label for="optionModalC">Alternativ C:</label>
+                        <input type="text" id="optionModalC" name="option_c" required 
+                               placeholder="Tredje alternativ">
+                    </div>
+                    <div class="form-group">
+                        <label for="optionModalD">Alternativ D:</label>
+                        <input type="text" id="optionModalD" name="option_d" required 
+                               placeholder="Fjerde alternativ">
+                    </div>
+                </div>
+
+                <!-- Metadata Row -->
+                <div class="form-row">
+                    <div class="form-group">
+                        <label for="correctModalOption">Riktig svar:</label>
+                        <select id="correctModalOption" name="correct_option" required>
+                            <option value="">Velg riktig svar</option>
+                            <option value="a">A</option>
+                            <option value="b">B</option>
+                            <option value="c">C</option>
+                            <option value="d">D</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label for="categoryModalInput">Kategori:</label>
+                        <input type="text" id="categoryModalInput" name="category" 
+                               placeholder="F.eks. Trafikkregler" 
+                               list="categoryModalList">
+                        <datalist id="categoryModalList"></datalist>
+                    </div>
+                    <div class="form-group">
+                        <label for="difficultyModalLevel">Vanskelighetsgrad:</label>
+                        <select id="difficultyModalLevel" name="difficulty_level">
+                            <option value="1">1 - Lett</option>
+                            <option value="2">2 -

@@ -43,6 +43,9 @@
     {% include 'admin/upload_image.html' %}
   </div>
 
+  <!-- Results counter will be inserted here by JavaScript -->
+  <div id="resultsCounterContainer"></div>
+
   <!-- Search and Filter -->
   <form method="GET" action="{{ url_for('admin.admin_dashboard') }}">
     <div class="search-filter-container">
@@ -76,76 +79,85 @@
     <form method="POST" action="{{ url_for('admin.admin_dashboard') }}" enctype="multipart/form-data" id="newQuestionForm">
       <h2>Legg til / Rediger spørsmål</h2>
       <input type="hidden" name="question_id" id="questionId">
-
-      <label for="questionText">Spørsmål:</label>
-      <textarea name="question" id="questionText" required></textarea>
-
-      <label for="optionA">Alternativ A:</label>
-      <input type="text" name="option_a" id="optionA" required>
-
-      <label for="optionB">Alternativ B:</label>
-      <input type="text" name="option_b" id="optionB" required>
-
-      <label for="optionC">Alternativ C:</label>
-      <input type="text" name="option_c" id="optionC" required>
-
-      <label for="optionD">Alternativ D:</label>
-      <input type="text" name="option_d" id="optionD" required>
-
-      <label for="correctOption">Riktig svar:</label>
-      <input type="text" name="correct_option" id="correctOption" required placeholder="a, b, c eller d">
-
-      <label for="categoryInput">Kategori:</label>
-      <input type="text" name="category" id="categoryInput">
-
-      <label for="subcategoryInput">Underkategori:</label>
-      <input type="text" name="subcategory" id="subcategoryInput" placeholder="F.eks. Vikeplikt, Fareskilt, etc.">
-
-      <label for="explanationInput">Forklaring:</label>
-      <textarea name="explanation" id="explanationInput" placeholder="Forklaring av hvorfor det riktige svaret er riktig (valgfritt)" rows="3"></textarea>
-
-      <label for="difficultyLevel">Vanskelighetsgrad:</label>
-      <select name="difficulty_level" id="difficultyLevel">
-        <option value="1">1 - Lett</option>
-        <option value="2">2 - Middels</option>
-        <option value="3">3 - Vanskelig</option>
-        <option value="4">4 - Ekspert</option>
-        <option value="5">5 - Meget vanskelig</option>
-      </select>
-
-      <label for="imageSelect">Velg bilde:</label>
-      <select name="image_filename" id="imageSelect">
-        <option value="" data-folder="">Ingen bilde</option>
-        {% for img in images %}
-        <option value="{{ img.filename }}" data-folder="{{ img.folder }}">
-          {{ img.name }} ({{ img.filename }})
-        </option>
-        {% endfor %}
-      </select>
       
-      <label for="galleryFolderFilter">Filtrer galleri på mappe:</label>
-      <select id="galleryFolderFilter" onchange="filterGalleryByFolder()">
-        <option value="all">Alle mapper</option>
-        {% for f in folders %}
-        <option value="{{ f }}">{{ f }}</option>
-        {% endfor %}
-      </select>
-      
-      <div id="imageGallery">
-        {% for img in images %}
-          <img src="{{ url_for('static', filename=( 'images/' ~ img.folder ~ '/' ~ img.filename ) if img.folder else 'images/' ~ img.filename) }}"
-               data-filename="{{ img.filename }}"
-               data-folder="{{ img.folder }}"
-               class="selectable-img"
-               onclick="pickImage(this)"
-               alt="{{ img.name }}">
-        {% endfor %}
+      <!-- Loading indicator -->
+      <div id="formLoadingIndicator" style="display: none; text-align: center; padding: 20px;">
+        <div style="display: inline-block; width: 20px; height: 20px; border: 3px solid #f3f3f3; border-top: 3px solid #3498db; border-radius: 50%; animation: spin 1s linear infinite;"></div>
+        <span style="margin-left: 10px;">Lagrer spørsmål...</span>
       </div>
+      
+      <!-- Form fields container -->
+      <div id="formFieldsContainer">
+        <label for="questionText">Spørsmål:</label>
+        <textarea name="question" id="questionText" required></textarea>
 
-      <div style="display: flex; gap: 10px; margin-top: 15px;">
-        <button type="submit" class="btn btn-primary">💾 Lagre spørsmål</button>
-        <button type="button" onclick="previewQuestion()" class="btn btn-warning">👁️ Forhåndsvis</button>
-        <button type="button" onclick="cancelForm()" class="btn btn-secondary">Avbryt</button>
+        <label for="optionA">Alternativ A:</label>
+        <input type="text" name="option_a" id="optionA" required>
+
+        <label for="optionB">Alternativ B:</label>
+        <input type="text" name="option_b" id="optionB" required>
+
+        <label for="optionC">Alternativ C:</label>
+        <input type="text" name="option_c" id="optionC" required>
+
+        <label for="optionD">Alternativ D:</label>
+        <input type="text" name="option_d" id="optionD" required>
+
+        <label for="correctOption">Riktig svar:</label>
+        <input type="text" name="correct_option" id="correctOption" required placeholder="a, b, c eller d">
+
+        <label for="categoryInput">Kategori:</label>
+        <input type="text" name="category" id="categoryInput">
+
+        <label for="subcategoryInput">Underkategori:</label>
+        <input type="text" name="subcategory" id="subcategoryInput" placeholder="F.eks. Vikeplikt, Fareskilt, etc.">
+
+        <label for="explanationInput">Forklaring:</label>
+        <textarea name="explanation" id="explanationInput" placeholder="Forklaring av hvorfor det riktige svaret er riktig (valgfritt)" rows="3"></textarea>
+
+        <label for="difficultyLevel">Vanskelighetsgrad:</label>
+        <select name="difficulty_level" id="difficultyLevel">
+          <option value="1">1 - Lett</option>
+          <option value="2">2 - Middels</option>
+          <option value="3">3 - Vanskelig</option>
+          <option value="4">4 - Ekspert</option>
+          <option value="5">5 - Meget vanskelig</option>
+        </select>
+
+        <label for="imageSelect">Velg bilde:</label>
+        <select name="image_filename" id="imageSelect">
+          <option value="" data-folder="">Ingen bilde</option>
+          {% for img in images %}
+          <option value="{{ img.filename }}" data-folder="{{ img.folder }}">
+            {{ img.name }} ({{ img.filename }})
+          </option>
+          {% endfor %}
+        </select>
+        
+        <label for="galleryFolderFilter">Filtrer galleri på mappe:</label>
+        <select id="galleryFolderFilter" onchange="filterGalleryByFolder()">
+          <option value="all">Alle mapper</option>
+          {% for f in folders %}
+          <option value="{{ f }}">{{ f }}</option>
+          {% endfor %}
+        </select>
+        
+        <div id="imageGallery">
+          {% for img in images %}
+            <img src="{{ url_for('static', filename=( 'images/' ~ img.folder ~ '/' ~ img.filename ) if img.folder else 'images/' ~ img.filename) }}"
+                 data-filename="{{ img.filename }}"
+                 data-folder="{{ img.folder }}"
+                 class="selectable-img"
+                 onclick="pickImage(this)"
+                 alt="{{ img.name }}">
+          {% endfor %}
+        </div>
+
+        <div style="display: flex; gap: 10px; margin-top: 15px;">
+          <button type="submit" class="btn btn-primary" id="saveQuestionBtn">💾 Lagre spørsmål</button>
+          <button type="button" onclick="previewQuestion()" class="btn btn-warning">👁️ Forhåndsvis</button>
+          <button type="button" onclick="cancelForm()" class="btn btn-secondary">Avbryt</button>
+        </div>
       </div>
     </form>
   </div>
@@ -169,12 +181,12 @@
       <thead>
         <tr>
           <th class="checkbox-column bulk-checkbox" style="display: none;"><input type="checkbox" onchange="toggleAllCheckboxes(this)"></th>
-          <th data-column="id">ID</th>
-          <th data-column="question">Spørsmål</th>
-          <th data-column="category">Kategori</th>
-          <th data-column="subcategory">Underkategori</th>
+          <th data-column="id" data-sortable="id">ID</th>
+          <th data-column="question" data-sortable="question">Spørsmål</th>
+          <th data-column="category" data-sortable="category">Kategori</th>
+          <th data-column="subcategory" data-sortable="subcategory">Underkategori</th>
           <th data-column="explanation">Forklaring</th>
-          <th data-column="difficulty">Vanskelighetsgrad</th>
+          <th data-column="difficulty" data-sortable="difficulty_level">Vanskelighetsgrad</th>
           <th data-column="image">Bilde</th>
           <th data-column="options">Alternativer</th>
           <th data-column="actions">Handlinger</th>
@@ -586,7 +598,320 @@ document.addEventListener('DOMContentLoaded', function() {
   
   // Initialize export options
   toggleExportOptions();
+  
+  // Setup AJAX form submission
+  setupAjaxForm();
 });
+
+// ========================================
+// AJAX FUNCTIONALITY
+// ========================================
+
+function setupAjaxForm() {
+  const form = document.getElementById('newQuestionForm');
+  if (!form) return;
+  
+  form.addEventListener('submit', function(e) {
+    e.preventDefault();
+    saveQuestionAjax();
+  });
+}
+
+function saveQuestionAjax() {
+  const form = document.getElementById('newQuestionForm');
+  const formData = new FormData(form);
+  const questionId = document.getElementById('questionId').value;
+  const isEdit = questionId !== '';
+  
+  // Convert FormData to JSON
+  const data = {};
+  formData.forEach((value, key) => {
+    data[key] = value;
+  });
+  
+  // Validate required fields
+  if (!data.question || !data.option_a || !data.option_b || !data.option_c || !data.option_d || !data.correct_option) {
+    showNotification('Alle påkrevde felt må fylles ut', 'error');
+    return;
+  }
+  
+  // Show loading state
+  setFormLoading(true);
+  
+  const url = isEdit 
+    ? `/admin/api/question/update/${questionId}`
+    : '/admin/api/question/create';
+  
+  fetch(url, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify(data)
+  })
+  .then(response => response.json())
+  .then(result => {
+    if (result.success) {
+      showNotification(isEdit ? 'Spørsmål oppdatert!' : 'Nytt spørsmål lagt til!', 'success');
+      
+      if (isEdit) {
+        updateTableRow(result.question);
+      } else {
+        addTableRow(result.question);
+        updateStatsAfterAdd();
+      }
+      
+      cancelForm();
+    } else {
+      showNotification('Feil: ' + (result.error || 'Ukjent feil'), 'error');
+    }
+  })
+  .catch(error => {
+    console.error('Error saving question:', error);
+    showNotification('Nettverksfeil ved lagring av spørsmål', 'error');
+  })
+  .finally(() => {
+    setFormLoading(false);
+  });
+}
+
+function setFormLoading(loading) {
+  const indicator = document.getElementById('formLoadingIndicator');
+  const container = document.getElementById('formFieldsContainer');
+  const saveBtn = document.getElementById('saveQuestionBtn');
+  
+  if (loading) {
+    indicator.style.display = 'block';
+    container.style.opacity = '0.5';
+    container.style.pointerEvents = 'none';
+    if (saveBtn) saveBtn.disabled = true;
+  } else {
+    indicator.style.display = 'none';
+    container.style.opacity = '1';
+    container.style.pointerEvents = 'auto';
+    if (saveBtn) saveBtn.disabled = false;
+  }
+}
+
+function updateTableRow(question) {
+  const row = document.querySelector(`tr[data-id="${question.id}"]`);
+  if (!row) return;
+  
+  // Update the row data
+  row.querySelector('td[data-column="question"]').textContent = question.question;
+  row.querySelector('td[data-column="category"]').textContent = question.category || 'Ukategoriseret';
+  row.querySelector('td[data-column="subcategory"]').textContent = question.subcategory || '-';
+  row.querySelector('td[data-column="difficulty"]').textContent = question.difficulty_level || '1';
+  
+  // Update explanation
+  const explanationCell = row.querySelector('td[data-column="explanation"]');
+  if (question.explanation) {
+    explanationCell.innerHTML = `
+      <div style="max-width: 200px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;" title="${escapeHtml(question.explanation)}">
+        ${escapeHtml(question.explanation)}
+      </div>
+    `;
+  } else {
+    explanationCell.innerHTML = '<span style="color: #999;">Ingen forklaring</span>';
+  }
+  
+  // Update image
+  const imageCell = row.querySelector('td[data-column="image"]');
+  if (question.image_filename) {
+    imageCell.innerHTML = `<img src="/static/images/${question.image_filename}" alt="" class="question-image">`;
+  } else {
+    imageCell.innerHTML = '<span style="color: #999;">Ingen bilde</span>';
+  }
+  
+  // Update options
+  const optionsCell = row.querySelector('td[data-column="options"]');
+  optionsCell.innerHTML = `
+    <div ${question.correct_option.toLowerCase() === 'a' ? 'style="color: #10B981; font-weight: 600;"' : ''}>A: ${escapeHtml(question.option_a)}</div>
+    <div ${question.correct_option.toLowerCase() === 'b' ? 'style="color: #10B981; font-weight: 600;"' : ''}>B: ${escapeHtml(question.option_b)}</div>
+    <div ${question.correct_option.toLowerCase() === 'c' ? 'style="color: #10B981; font-weight: 600;"' : ''}>C: ${escapeHtml(question.option_c)}</div>
+    <div ${question.correct_option.toLowerCase() === 'd' ? 'style="color: #10B981; font-weight: 600;"' : ''}>D: ${escapeHtml(question.option_d)}</div>
+    <div style="margin-top: 5px;"><strong>Riktig: <span style="color: #10B981;">${question.correct_option.toUpperCase()}</span></strong></div>
+  `;
+  
+  // Add highlight effect
+  row.style.backgroundColor = '#d4edda';
+  setTimeout(() => {
+    row.style.backgroundColor = '';
+  }, 2000);
+}
+
+function addTableRow(question) {
+  const tbody = document.querySelector('#questionsSection table tbody');
+  if (!tbody) return;
+  
+  const bulkCheckbox = document.querySelector('.bulk-checkbox').style.display !== 'none' 
+    ? `<td class="checkbox-column bulk-checkbox">
+         <input type="checkbox" name="question_ids" value="${question.id}" onchange="updateSelectedCount()">
+       </td>`
+    : `<td class="checkbox-column bulk-checkbox" style="display: none;">
+         <input type="checkbox" name="question_ids" value="${question.id}" onchange="updateSelectedCount()">
+       </td>`;
+
+  const newRow = document.createElement('tr');
+  newRow.dataset.id = question.id;
+  newRow.innerHTML = `
+    ${bulkCheckbox}
+    <td data-column="id">${question.id}</td>
+    <td data-column="question">${escapeHtml(question.question)}</td>
+    <td data-column="category">${question.category || 'Ukategoriseret'}</td>
+    <td data-column="subcategory">${question.subcategory || '-'}</td>
+    <td data-column="explanation">
+      ${question.explanation 
+        ? `<div style="max-width: 200px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;" title="${escapeHtml(question.explanation)}">
+             ${escapeHtml(question.explanation)}
+           </div>`
+        : '<span style="color: #999;">Ingen forklaring</span>'
+      }
+    </td>
+    <td data-column="difficulty">${question.difficulty_level || '1'}</td>
+    <td data-column="image">
+      ${question.image_filename 
+        ? `<img src="/static/images/${question.image_filename}" alt="" class="question-image">`
+        : '<span style="color: #999;">Ingen bilde</span>'
+      }
+    </td>
+    <td data-column="options" class="options-display">
+      <div ${question.correct_option.toLowerCase() === 'a' ? 'style="color: #10B981; font-weight: 600;"' : ''}>A: ${escapeHtml(question.option_a)}</div>
+      <div ${question.correct_option.toLowerCase() === 'b' ? 'style="color: #10B981; font-weight: 600;"' : ''}>B: ${escapeHtml(question.option_b)}</div>
+      <div ${question.correct_option.toLowerCase() === 'c' ? 'style="color: #10B981; font-weight: 600;"' : ''}>C: ${escapeHtml(question.option_c)}</div>
+      <div ${question.correct_option.toLowerCase() === 'd' ? 'style="color: #10B981; font-weight: 600;"' : ''}>D: ${escapeHtml(question.option_d)}</div>
+      <div style="margin-top: 5px;"><strong>Riktig: <span style="color: #10B981;">${question.correct_option.toUpperCase()}</span></strong></div>
+    </td>
+    <td data-column="actions">
+      <button onclick="editQuestionFromRow(this, ${question.id})" class="btn btn-warning btn-small">✏️ Rediger</button>
+      <button onclick="confirmDeleteAjax(${question.id})" class="btn btn-danger btn-small">🗑️ Slett</button>
+    </td>
+  `;
+  
+  // Add to top of table
+  tbody.insertBefore(newRow, tbody.firstChild);
+  
+  // Add highlight effect
+  newRow.style.backgroundColor = '#d4edda';
+  setTimeout(() => {
+    newRow.style.backgroundColor = '';
+  }, 2000);
+}
+
+function updateStatsAfterAdd() {
+  const totalElement = document.getElementById('totalQuestions');
+  if (totalElement) {
+    const currentTotal = parseInt(totalElement.textContent) || 0;
+    totalElement.textContent = currentTotal + 1;
+  }
+}
+
+// AJAX Delete function
+function confirmDeleteAjax(id) {
+  if (!confirm('Er du sikker på at du vil slette dette spørsmålet? Dette kan ikke angres.')) {
+    return;
+  }
+  
+  fetch(`/admin/api/question/delete/${id}`, {
+    method: 'DELETE'
+  })
+  .then(response => response.json())
+  .then(result => {
+    if (result.success) {
+      showNotification('Spørsmål slettet!', 'success');
+      removeTableRow(id);
+      updateStatsAfterDelete();
+    } else {
+      showNotification('Feil ved sletting: ' + (result.error || 'Ukjent feil'), 'error');
+    }
+  })
+  .catch(error => {
+    console.error('Error deleting question:', error);
+    showNotification('Nettverksfeil ved sletting av spørsmål', 'error');
+  });
+}
+
+function removeTableRow(questionId) {
+  const row = document.querySelector(`tr[data-id="${questionId}"]`);
+  if (row) {
+    row.style.backgroundColor = '#f8d7da';
+    setTimeout(() => {
+      row.remove();
+    }, 500);
+  }
+}
+
+function updateStatsAfterDelete() {
+  const totalElement = document.getElementById('totalQuestions');
+  if (totalElement) {
+    const currentTotal = parseInt(totalElement.textContent) || 0;
+    totalElement.textContent = Math.max(0, currentTotal - 1);
+  }
+}
+
+// Notification system
+function showNotification(message, type = 'info') {
+  const notification = document.createElement('div');
+  notification.className = `alert alert-${type} dismissible-alert`;
+  notification.style.cssText = `
+    position: fixed;
+    top: 20px;
+    right: 20px;
+    z-index: 1000;
+    padding: 15px 20px;
+    border-radius: 8px;
+    border-left: 4px solid;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
+    max-width: 400px;
+    animation: slideIn 0.3s ease;
+  `;
+
+  if (type === 'success') {
+    notification.style.backgroundColor = '#d4edda';
+    notification.style.color = '#155724';
+    notification.style.borderLeftColor = '#28a745';
+    message = `✅ ${message}`;
+  } else if (type === 'error') {
+    notification.style.backgroundColor = '#f8d7da';
+    notification.style.color = '#721c24';
+    notification.style.borderLeftColor = '#dc3545';
+    message = `❌ ${message}`;
+  } else {
+    notification.style.backgroundColor = '#d1ecf1';
+    notification.style.color = '#0c5460';
+    notification.style.borderLeftColor = '#17a2b8';
+    message = `ℹ️ ${message}`;
+  }
+
+  notification.innerHTML = `
+    ${message}
+    <button class="alert-close-btn" onclick="this.parentElement.remove()" 
+            style="position: absolute; top: 10px; right: 15px; background: none; border: none; 
+                   font-size: 18px; font-weight: bold; color: inherit; cursor: pointer; opacity: 0.7;">
+      ×
+    </button>
+  `;
+
+  document.body.appendChild(notification);
+
+  // Auto-remove after 5 seconds
+  setTimeout(() => {
+    if (notification.parentElement) {
+      notification.remove();
+    }
+  }, 5000);
+}
+
+function escapeHtml(text) {
+  const div = document.createElement('div');
+  div.textContent = text;
+  return div.innerHTML;
+}
+
+// Update the existing confirmDelete to use AJAX
+function confirmDelete(id) {
+  confirmDeleteAjax(id);
+}
 </script>
 
 <!-- Preview Modal -->
@@ -825,5 +1150,22 @@ td[data-column="options"] div {
 #importExportModal .btn:hover {
   transform: translateY(-1px);
   box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
+}
+
+/* AJAX Loading Animation */
+@keyframes spin {
+  0% { transform: rotate(0deg); }
+  100% { transform: rotate(360deg); }
+}
+
+@keyframes slideIn {
+  from {
+    transform: translateX(100%);
+    opacity: 0;
+  }
+  to {
+    transform: translateX(0);
+    opacity: 1;
+  }
 }
 </style>
