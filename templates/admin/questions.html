@@ -36,7 +36,7 @@
 
   <!-- Action Buttons -->
   <div style="margin-bottom: 20px;">
-    <a href="#" onclick="toggleForm()" class="btn">➕ Legg til nytt spørsmål</a>
+    <button onclick="openQuestionModal()" class="btn">➕ Legg til nytt spørsmål</button>
     <button onclick="showImportExportModal()" class="btn btn-success">📂 Import/Export</button>
     <button onclick="toggleBulkMode()" class="btn btn-warning" id="bulkModeBtn">✅ Bulk-operasjoner</button>
     <button type="button" class="btn btn-secondary btn-small" onclick="showUploadModal()">📷 Administrer bilder</button>
@@ -348,7 +348,16 @@ function editQuestionFromRow(button, id) {
     return;
   }
   
-  // Show form and update title
+  // Extract data for modal
+  const questionData = extractQuestionDataFromRow(row, id);
+  
+  // Open modal with data
+  if (typeof openQuestionModal === 'function') {
+    openQuestionModal(questionData);
+    return;
+  }
+  
+  // Fallback to old inline form if modal not available
   const formDiv = document.getElementById('questionForm');
   formDiv.style.display = 'block';
   document.getElementById('questionId').value = id;
@@ -437,6 +446,62 @@ function editQuestionFromRow(button, id) {
   
   // Scroll into view
   formDiv.scrollIntoView({ behavior: 'smooth' });
+}
+
+function extractQuestionDataFromRow(row, id) {
+  // Get data from row using data-column attributes
+  const questionText = row.querySelector('td[data-column="question"]').textContent.trim();
+  const category = row.querySelector('td[data-column="category"]').textContent.trim();
+  const subcategory = row.querySelector('td[data-column="subcategory"]').textContent.trim();
+  const difficulty = row.querySelector('td[data-column="difficulty"]').textContent.trim();
+  const imageCell = row.querySelector('td[data-column="image"]');
+  const optionsCell = row.querySelector('td[data-column="options"]');
+  
+  const questionData = {
+    id: id,
+    question: questionText,
+    category: category === 'Ukategorisert' ? '' : category,
+    subcategory: subcategory === '-' ? '' : subcategory,
+    difficulty_level: difficulty || '1',
+    explanation: row.querySelector('td[data-column="explanation"] span')?.textContent === 'Ingen forklaring' ? '' : 
+                (row.querySelector('td[data-column="explanation"] div')?.title || ''),
+    image_filename: extractImageFilename(imageCell.querySelector('img'))
+  };
+  
+  // Parse options
+  const optionDivs = optionsCell.querySelectorAll('div');
+  let correctAnswer = '';
+  
+  optionDivs.forEach(div => {
+    const text = div.textContent.trim();
+    if (text.startsWith('A:')) {
+      questionData.option_a = text.substring(2).trim();
+    } else if (text.startsWith('B:')) {
+      questionData.option_b = text.substring(2).trim();
+    } else if (text.startsWith('C:')) {
+      questionData.option_c = text.substring(2).trim();
+    } else if (text.startsWith('D:')) {
+      questionData.option_d = text.substring(2).trim();
+    } else if (text.includes('Riktig:')) {
+      correctAnswer = text.split(':')[1].trim().toLowerCase();
+    }
+  });
+  
+  questionData.correct_option = correctAnswer;
+  return questionData;
+}
+
+function extractImageFilename(imgElement) {
+  if (!imgElement) return '';
+  
+  const src = imgElement.src;
+  const parts = src.split('/images/');
+  if (parts.length === 2) {
+    const path = parts[1];
+    const pathParts = path.split('/');
+    return pathParts.pop(); // Get filename only
+  }
+  return '';
 }
 
 function pickImage(el) {

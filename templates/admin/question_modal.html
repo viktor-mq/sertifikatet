@@ -71,4 +71,414 @@
                         <label for="difficultyModalLevel">Vanskelighetsgrad:</label>
                         <select id="difficultyModalLevel" name="difficulty_level">
                             <option value="1">1 - Lett</option>
-                            <option value="2">2 -
+                            <option value="2">2 - Middels</option>
+                            <option value="3">3 - Vanskelig</option>
+                            <option value="4">4 - Ekspert</option>
+                            <option value="5">5 - Meget vanskelig</option>
+                        </select>
+                    </div>
+                </div>
+
+                <!-- Additional Fields -->
+                <div class="form-row">
+                    <div class="form-group">
+                        <label for="subcategoryModalInput">Underkategori:</label>
+                        <input type="text" id="subcategoryModalInput" name="subcategory" 
+                               placeholder="F.eks. Vikeplikt, Fareskilt">
+                    </div>
+                    <div class="form-group">
+                        <label for="imageModalSelect">Velg bilde:</label>
+                        <select id="imageModalSelect" name="image_filename">
+                            <option value="">Ingen bilde</option>
+                            {% for img in images %}
+                            <option value="{{ img.filename }}" data-folder="{{ img.folder }}">
+                                {{ img.name }} ({{ img.filename }})
+                            </option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                </div>
+
+                <div class="form-group">
+                    <label for="explanationModalInput">Forklaring:</label>
+                    <textarea id="explanationModalInput" name="explanation" 
+                              placeholder="Forklaring av hvorfor det riktige svaret er riktig (valgfritt)" 
+                              rows="3"></textarea>
+                </div>
+
+                <!-- Image Gallery -->
+                <div class="form-group">
+                    <label>Bildegalleri:</label>
+                    <div class="gallery-filter">
+                        <label for="galleryModalFolderFilter">Filtrer på mappe:</label>
+                        <select id="galleryModalFolderFilter" onchange="filterModalGalleryByFolder()" class="form-control">
+                            <option value="all">Alle mapper</option>
+                            {% for f in folders %}
+                            <option value="{{ f }}">{{ f }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    
+                    <div id="imageModalGallery" class="image-gallery">
+                        {% for img in images %}
+                            <img src="{{ url_for('static', filename=( 'images/' ~ img.folder ~ '/' ~ img.filename ) if img.folder else 'images/' ~ img.filename) }}"
+                                 data-filename="{{ img.filename }}"
+                                 data-folder="{{ img.folder }}"
+                                 class="selectable-img"
+                                 onclick="pickModalImage(this)"
+                                 alt="{{ img.name }}"
+                                 title="{{ img.name }}">
+                        {% endfor %}
+                    </div>
+                </div>
+            </form>
+        </div>
+
+        <div class="modal-footer">
+            <button type="button" onclick="saveModalQuestion()" class="btn btn-primary">
+                💾 Lagre spørsmål
+            </button>
+            <button type="button" onclick="closeQuestionModal()" class="btn btn-secondary">
+                Avbryt
+            </button>
+        </div>
+    </div>
+</div>
+
+<style>
+/* Basic Modal Styles */
+.question-modal-overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: rgba(0, 0, 0, 0.5);
+    z-index: 2000;
+    display: none;
+    align-items: center;
+    justify-content: center;
+}
+
+.question-modal {
+    background: white;
+    border-radius: 12px;
+    max-width: 800px;
+    width: 90%;
+    max-height: 90vh;
+    overflow: hidden;
+    display: flex;
+    flex-direction: column;
+}
+
+.modal-header {
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    color: white;
+    padding: 20px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.modal-close {
+    background: none;
+    border: none;
+    color: white;
+    font-size: 24px;
+    cursor: pointer;
+}
+
+.modal-body {
+    padding: 20px;
+    overflow-y: auto;
+    flex: 1;
+}
+
+.modal-footer {
+    padding: 15px 20px;
+    border-top: 1px solid #e5e7eb;
+    display: flex;
+    gap: 10px;
+    justify-content: flex-end;
+}
+
+.options-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 15px;
+}
+
+.form-row {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 15px;
+}
+
+.form-group {
+    margin-bottom: 15px;
+}
+
+.form-group label {
+    display: block;
+    margin-bottom: 5px;
+    font-weight: 600;
+}
+
+.form-group input,
+.form-group select,
+.form-group textarea {
+    width: 100%;
+    padding: 8px 12px;
+    border: 2px solid #e5e7eb;
+    border-radius: 6px;
+    font-size: 14px;
+}
+
+.form-group input:focus,
+.form-group select:focus,
+.form-group textarea:focus {
+    border-color: #3B82F6;
+    outline: none;
+}
+
+/* Image Gallery Styles */
+.gallery-filter {
+    margin-bottom: 10px;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+.gallery-filter label {
+    margin: 0;
+    font-weight: normal;
+    font-size: 14px;
+}
+
+.gallery-filter select {
+    width: auto;
+    min-width: 150px;
+}
+
+.image-gallery {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 10px;
+    max-height: 200px;
+    overflow-y: auto;
+    padding: 15px;
+    background: #f8f9fa;
+    border-radius: 8px;
+    border: 2px dashed #e5e7eb;
+}
+
+.image-gallery:empty::after {
+    content: 'Ingen bilder tilgjengelig';
+    color: #9CA3AF;
+    font-style: italic;
+    width: 100%;
+    text-align: center;
+}
+
+.image-gallery .selectable-img {
+    max-height: 60px;
+    cursor: pointer;
+    border: 3px solid transparent;
+    border-radius: 4px;
+    transition: all 0.2s;
+    opacity: 0.8;
+}
+
+.image-gallery .selectable-img:hover {
+    border-color: #3B82F6;
+    transform: scale(1.05);
+    opacity: 1;
+}
+
+.image-gallery .selectable-img.selected {
+    border-color: #10B981;
+    box-shadow: 0 0 0 3px rgba(16, 185, 129, 0.2);
+    opacity: 1;
+}
+</style>
+
+<script>
+// Modal System JavaScript
+function openQuestionModal(questionData = null) {
+    const modal = document.getElementById('questionModalOverlay');
+    const modalIcon = document.getElementById('modalIcon');
+    const modalTitle = document.getElementById('modalTitleText');
+    
+    if (questionData) {
+        // Edit mode
+        modalIcon.textContent = '✏️';
+        modalTitle.textContent = 'Rediger spørsmål';
+        populateModalForm(questionData);
+    } else {
+        // Create mode
+        modalIcon.textContent = '➕';
+        modalTitle.textContent = 'Legg til nytt spørsmål';
+        resetModalForm();
+    }
+    
+    modal.style.display = 'flex';
+    document.body.style.overflow = 'hidden';
+}
+
+function closeQuestionModal() {
+    document.getElementById('questionModalOverlay').style.display = 'none';
+    document.body.style.overflow = '';
+    resetModalForm();
+}
+
+function resetModalForm() {
+    document.getElementById('questionModalForm').reset();
+    
+    // Clear selected images
+    document.querySelectorAll('#imageModalGallery .selectable-img.selected').forEach(img => {
+        img.classList.remove('selected');
+    });
+    
+    // Reset gallery filter
+    const galleryFilter = document.getElementById('galleryModalFolderFilter');
+    if (galleryFilter) {
+        galleryFilter.value = 'all';
+        filterModalGalleryByFolder();
+    }
+}
+
+function populateModalForm(data) {
+    document.getElementById('questionModalId').value = data.id || '';
+    document.getElementById('questionModalText').value = data.question || '';
+    document.getElementById('optionModalA').value = data.option_a || '';
+    document.getElementById('optionModalB').value = data.option_b || '';
+    document.getElementById('optionModalC').value = data.option_c || '';
+    document.getElementById('optionModalD').value = data.option_d || '';
+    document.getElementById('correctModalOption').value = data.correct_option || '';
+    document.getElementById('categoryModalInput').value = data.category === 'Ukategoriseret' ? '' : (data.category || '');
+    document.getElementById('subcategoryModalInput').value = data.subcategory === '-' ? '' : (data.subcategory || '');
+    document.getElementById('difficultyModalLevel').value = data.difficulty_level || '1';
+    document.getElementById('explanationModalInput').value = data.explanation || '';
+    
+    // Image selection
+    const imageSelect = document.getElementById('imageModalSelect');
+    if (data.image_filename) {
+        imageSelect.value = data.image_filename;
+        
+        // Find and select the image in gallery
+        const targetImg = document.querySelector(`#imageModalGallery .selectable-img[data-filename="${data.image_filename}"]`);
+        if (targetImg) {
+            // Clear other selections
+            document.querySelectorAll('#imageModalGallery .selectable-img.selected').forEach(img => {
+                img.classList.remove('selected');
+            });
+            // Select target image
+            targetImg.classList.add('selected');
+            
+            // Update gallery filter to show the correct folder
+            const folder = targetImg.dataset.folder || 'all';
+            const galleryFilter = document.getElementById('galleryModalFolderFilter');
+            if (galleryFilter) {
+                galleryFilter.value = folder;
+                filterModalGalleryByFolder();
+            }
+        }
+    } else {
+        imageSelect.value = '';
+        // Clear any selected images
+        document.querySelectorAll('#imageModalGallery .selectable-img.selected').forEach(img => {
+            img.classList.remove('selected');
+        });
+    }
+}
+
+function saveModalQuestion() {
+    const formData = {
+        question_id: document.getElementById('questionModalId').value,
+        question: document.getElementById('questionModalText').value.trim(),
+        option_a: document.getElementById('optionModalA').value.trim(),
+        option_b: document.getElementById('optionModalB').value.trim(),
+        option_c: document.getElementById('optionModalC').value.trim(),
+        option_d: document.getElementById('optionModalD').value.trim(),
+        correct_option: document.getElementById('correctModalOption').value,
+        category: document.getElementById('categoryModalInput').value.trim() || 'Ukategoriseret',
+        subcategory: document.getElementById('subcategoryModalInput').value.trim(),
+        difficulty_level: parseInt(document.getElementById('difficultyModalLevel').value) || 1,
+        explanation: document.getElementById('explanationModalInput').value.trim(),
+        image_filename: document.getElementById('imageModalSelect').value
+    };
+    
+    // Basic validation
+    if (!formData.question || !formData.option_a || !formData.option_b || !formData.option_c || !formData.option_d || !formData.correct_option) {
+        alert('Alle påkrevde felt må fylles ut');
+        return;
+    }
+    
+    const isEdit = formData.question_id !== '';
+    const url = isEdit 
+        ? `/admin/api/question/update/${formData.question_id}`
+        : '/admin/api/question/create';
+    
+    fetch(url, {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(formData)
+    })
+    .then(response => response.json())
+    .then(result => {
+        if (result.success) {
+            if (isEdit) {
+                updateTableRow(result.question);
+                showNotification('Spørsmål oppdatert!', 'success');
+            } else {
+                addTableRow(result.question);
+                updateStatsAfterAdd();
+                showNotification('Nytt spørsmål lagt til!', 'success');
+            }
+            closeQuestionModal();
+        } else {
+            alert('Feil: ' + (result.error || 'Ukjent feil'));
+        }
+    })
+    .catch(error => {
+        console.error('Error saving question:', error);
+        alert('Nettverksfeil ved lagring av spørsmål');
+    });
+}
+
+// Make functions globally available
+window.openQuestionModal = openQuestionModal;
+window.closeQuestionModal = closeQuestionModal;
+window.saveModalQuestion = saveModalQuestion;
+window.pickModalImage = pickModalImage;
+window.filterModalGalleryByFolder = filterModalGalleryByFolder;
+
+// Modal image gallery functions
+function pickModalImage(element) {
+    if (!element || !element.dataset) return;
+    
+    // Update dropdown
+    document.getElementById('imageModalSelect').value = element.dataset.filename;
+    
+    // Update gallery selection
+    document.querySelectorAll('#imageModalGallery .selectable-img').forEach(img => {
+        img.classList.remove('selected');
+    });
+    element.classList.add('selected');
+}
+
+function filterModalGalleryByFolder() {
+    const select = document.getElementById('galleryModalFolderFilter');
+    if (!select) return;
+    
+    const selectedFolder = select.value;
+    
+    document.querySelectorAll('#imageModalGallery img').forEach(img => {
+        const imgFolder = img.dataset.folder || '';
+        const shouldShow = selectedFolder === 'all' || imgFolder === selectedFolder;
+        img.style.display = shouldShow ? 'inline-block' : 'none';
+    });
+}
+</script>
