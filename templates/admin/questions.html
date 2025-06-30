@@ -47,21 +47,38 @@
   <div id="resultsCounterContainer"></div>
 
   <!-- Search and Filter -->
-  <form method="GET" action="{{ url_for('admin.admin_dashboard') }}">
-    <div class="search-filter-container">
-      <input type="text" name="search" placeholder="🔍 Søk i spørsmål…" value="{{ search_query }}">
-      <select name="category">
-        <option value="">Alle kategorier</option>
-        {% for category in categories %}
-        <option value="{{ category }}" {% if category == category_filter %}selected{% endif %}>
-          {{ category }}
-        </option>
-        {% endfor %}
-      </select>
-      <button type="submit" class="btn">Søk</button>
-      <a href="{{ url_for('admin.admin_dashboard') }}" class="btn btn-secondary">Tilbakestill</a>
+  <div class="search-filter-container" id="searchFilterContainer">
+    <input type="text" id="realTimeSearch" placeholder="🔍 Søk i spørsmål…" value="{{ search_query }}">
+    <select id="categoryFilter">
+      <option value="">Alle kategorier</option>
+      {% for category in categories %}
+      <option value="{{ category }}" {% if category == category_filter %}selected{% endif %}>
+        {{ category }}
+      </option>
+      {% endfor %}
+    </select>
+    <select id="subcategoryFilter">
+      <option value="">Alle underkategorier</option>
+      {% for subcategory in subcategories %}
+      <option value="{{ subcategory }}" {% if subcategory == subcategory_filter %}selected{% endif %}>
+        {{ subcategory }}
+      </option>
+      {% endfor %}
+    </select>
+    <select id="difficultyFilter">
+      <option value="">Alle vanskelighetsgrader</option>
+      <option value="1" {% if difficulty_filter == '1' %}selected{% endif %}>1 - Lett</option>
+      <option value="2" {% if difficulty_filter == '2' %}selected{% endif %}>2 - Middels</option>
+      <option value="3" {% if difficulty_filter == '3' %}selected{% endif %}>3 - Vanskelig</option>
+      <option value="4" {% if difficulty_filter == '4' %}selected{% endif %}>4 - Ekspert</option>
+      <option value="5" {% if difficulty_filter == '5' %}selected{% endif %}>5 - Meget vanskelig</option>
+    </select>
+    <button type="button" onclick="clearAllFilters()" class="btn btn-secondary">🗙️ Tilbakestill</button>
+    <div id="filterLoadingIndicator" class="filter-loading" style="display: none;">
+      <div class="loading-spinner-small"></div>
+      <span>Søker...</span>
     </div>
-  </form>
+  </div>
 
   <!-- Bulk Operations Panel -->
   <form method="POST" action="{{ url_for('admin.bulk_delete') }}" id="bulkForm">
@@ -666,6 +683,9 @@ document.addEventListener('DOMContentLoaded', function() {
   
   // Setup AJAX form submission
   setupAjaxForm();
+  
+  // Initialize enhanced filtering (Phase 3)
+  initializeEnhancedFiltering();
 });
 
 // ========================================
@@ -780,10 +800,28 @@ function updateTableRow(question) {
     explanationCell.innerHTML = '<span style="color: #999;">Ingen forklaring</span>';
   }
   
-  // Update image
+  // Update image with proper folder-aware path construction
   const imageCell = row.querySelector('td[data-column="image"]');
   if (question.image_filename) {
-    imageCell.innerHTML = `<img src="/static/images/${question.image_filename}" alt="" class="question-image">`;
+    // Construct proper image path using the same logic as the filtered results
+    let imageSrc = '';
+    if (question.image_filename.startsWith('._')) {
+      imageSrc = ''; // Don't load hidden files
+    } else {
+      // Try to find the image in the images array to get the correct folder
+      const imageData = window.adminImages ? window.adminImages.find(img => img.filename === question.image_filename) : null;
+      if (imageData && imageData.folder) {
+        imageSrc = `/static/images/${imageData.folder}/${question.image_filename}`;
+      } else {
+        imageSrc = `/static/images/${question.image_filename}`;
+      }
+    }
+    
+    if (imageSrc) {
+      imageCell.innerHTML = `<img src="${imageSrc}" alt="" class="question-image" onerror="this.style.display='none'; console.log('Failed to load image: ${imageSrc}')">`;
+    } else {
+      imageCell.innerHTML = '<span style="color: #999;">Ingen bilde</span>';
+    }
   } else {
     imageCell.innerHTML = '<span style="color: #999;">Ingen bilde</span>';
   }
@@ -817,6 +855,23 @@ function addTableRow(question) {
          <input type="checkbox" name="question_ids" value="${question.id}" onchange="updateSelectedCount()">
        </td>`;
 
+  // Construct proper image path using the same logic as the filtered results
+  let imageSrc = '';
+  if (question.image_filename) {
+    // Filter out hidden macOS files
+    if (question.image_filename.startsWith('._')) {
+    imageSrc = ''; // Don't load hidden files
+    } else {
+    // Try to find the image in the images array to get the correct folder
+    const imageData = window.adminImages ? window.adminImages.find(img => img.filename === question.image_filename) : null;
+      if (imageData && imageData.folder) {
+        imageSrc = `/static/images/${imageData.folder}/${question.image_filename}`;
+      } else {
+        imageSrc = `/static/images/${question.image_filename}`;
+      }
+    }
+  }
+
   const newRow = document.createElement('tr');
   newRow.dataset.id = question.id;
   newRow.innerHTML = `
@@ -827,40 +882,40 @@ function addTableRow(question) {
     <td data-column="subcategory">${question.subcategory || '-'}</td>
     <td data-column="explanation">
       ${question.explanation 
-        ? `<div style="max-width: 200px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;" title="${escapeHtml(question.explanation)}">
-             ${escapeHtml(question.explanation)}
-           </div>`
-        : '<span style="color: #999;">Ingen forklaring</span>'
+      ? `<div style="max-width: 200px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;" title="${escapeHtml(question.explanation)}">
+      ${escapeHtml(question.explanation)}
+    </div>`
+    : '<span style="color: #999;">Ingen forklaring</span>'
       }
     </td>
     <td data-column="difficulty">${question.difficulty_level || '1'}</td>
-    <td data-column="image">
-      ${question.image_filename 
-        ? `<img src="/static/images/${question.image_filename}" alt="" class="question-image">`
-        : '<span style="color: #999;">Ingen bilde</span>'
-      }
-    </td>
-    <td data-column="options" class="options-display">
-      <div ${question.correct_option.toLowerCase() === 'a' ? 'style="color: #10B981; font-weight: 600;"' : ''}>A: ${escapeHtml(question.option_a)}</div>
-      <div ${question.correct_option.toLowerCase() === 'b' ? 'style="color: #10B981; font-weight: 600;"' : ''}>B: ${escapeHtml(question.option_b)}</div>
-      <div ${question.correct_option.toLowerCase() === 'c' ? 'style="color: #10B981; font-weight: 600;"' : ''}>C: ${escapeHtml(question.option_c)}</div>
-      <div ${question.correct_option.toLowerCase() === 'd' ? 'style="color: #10B981; font-weight: 600;"' : ''}>D: ${escapeHtml(question.option_d)}</div>
-      <div style="margin-top: 5px;"><strong>Riktig: <span style="color: #10B981;">${question.correct_option.toUpperCase()}</span></strong></div>
-    </td>
-    <td data-column="actions">
-      <button onclick="editQuestionFromRow(this, ${question.id})" class="btn btn-warning btn-small">✏️ Rediger</button>
-      <button onclick="confirmDeleteAjax(${question.id})" class="btn btn-danger btn-small">🗑️ Slett</button>
-    </td>
-  `;
-  
-  // Add to top of table
-  tbody.insertBefore(newRow, tbody.firstChild);
-  
-  // Add highlight effect
-  newRow.style.backgroundColor = '#d4edda';
-  setTimeout(() => {
-    newRow.style.backgroundColor = '';
-  }, 2000);
+  <td data-column="image">
+  ${question.image_filename && imageSrc
+  ? `<img src="${imageSrc}" alt="" class="question-image" onerror="this.style.display='none'; console.log('Failed to load image: ${imageSrc}')">`
+  : '<span style="color: #999;">Ingen bilde</span>'
+  }
+  </td>
+  <td data-column="options" class="options-display">
+  <div ${question.correct_option.toLowerCase() === 'a' ? 'style="color: #10B981; font-weight: 600;"' : ''}>A: ${escapeHtml(question.option_a)}</div>
+    <div ${question.correct_option.toLowerCase() === 'b' ? 'style="color: #10B981; font-weight: 600;"' : ''}>B: ${escapeHtml(question.option_b)}</div>
+  <div ${question.correct_option.toLowerCase() === 'c' ? 'style="color: #10B981; font-weight: 600;"' : ''}>C: ${escapeHtml(question.option_c)}</div>
+<div ${question.correct_option.toLowerCase() === 'd' ? 'style="color: #10B981; font-weight: 600;"' : ''}>D: ${escapeHtml(question.option_d)}</div>
+<div style="margin-top: 5px;"><strong>Riktig: <span style="color: #10B981;">${question.correct_option.toUpperCase()}</span></strong></div>
+</td>
+<td data-column="actions">
+<button onclick="editQuestionFromRow(this, ${question.id})" class="btn btn-warning btn-small">✏️ Rediger</button>
+<button onclick="confirmDeleteAjax(${question.id})" class="btn btn-danger btn-small">🗑️ Slett</button>
+</td>
+`;
+
+// Add to top of table
+tbody.insertBefore(newRow, tbody.firstChild);
+
+// Add highlight effect
+newRow.style.backgroundColor = '#d4edda';
+setTimeout(() => {
+newRow.style.backgroundColor = '';
+}, 2000);
 }
 
 function updateStatsAfterAdd() {
@@ -976,6 +1031,316 @@ function escapeHtml(text) {
 // Update the existing confirmDelete to use AJAX
 function confirmDelete(id) {
   confirmDeleteAjax(id);
+}
+
+// ========================================
+// ENHANCED FILTERING & SEARCH (PHASE 3)
+// ========================================
+
+// Global filter state
+let currentFilters = {
+  search: '',
+  category: '',
+  subcategory: '',
+  difficulty: ''
+};
+
+// Debounce timer for search
+let searchTimeout = null;
+
+// Initialize enhanced filtering
+function initializeEnhancedFiltering() {
+  const searchInput = document.getElementById('realTimeSearch');
+  const categoryFilter = document.getElementById('categoryFilter');
+  const subcategoryFilter = document.getElementById('subcategoryFilter');
+  const difficultyFilter = document.getElementById('difficultyFilter');
+  
+  if (!searchInput || !categoryFilter) return;
+  
+  // Store images data globally for path construction
+  window.adminImages = {{ images | tojson }};
+  console.log('Admin images loaded:', window.adminImages); // Debug log
+  
+  // Set initial filter state
+  currentFilters.search = searchInput.value;
+  currentFilters.category = categoryFilter.value;
+  currentFilters.subcategory = subcategoryFilter ? subcategoryFilter.value : '';
+  currentFilters.difficulty = difficultyFilter ? difficultyFilter.value : '';
+  
+  // Real-time search with debouncing
+  searchInput.addEventListener('input', function() {
+    clearTimeout(searchTimeout);
+    searchTimeout = setTimeout(() => {
+      currentFilters.search = this.value;
+      performFilteredSearch();
+    }, 300); // 300ms debounce
+  });
+  
+  // Category filter with cascading subcategories
+  categoryFilter.addEventListener('change', function() {
+    currentFilters.category = this.value;
+    updateSubcategoryFilter(); // Cascading update
+    performFilteredSearch();
+  });
+  
+  // Subcategory filter
+  if (subcategoryFilter) {
+    subcategoryFilter.addEventListener('change', function() {
+      currentFilters.subcategory = this.value;
+      performFilteredSearch();
+    });
+  }
+  
+  // Difficulty filter
+  if (difficultyFilter) {
+    difficultyFilter.addEventListener('change', function() {
+      currentFilters.difficulty = this.value;
+      performFilteredSearch();
+    });
+  }
+  
+  // Initial subcategory population
+  updateSubcategoryFilter();
+}
+
+// Perform filtered search using AJAX
+function performFilteredSearch() {
+  setFilterLoading(true);
+  
+  const params = new URLSearchParams();
+  if (currentFilters.search) params.append('search', currentFilters.search);
+  if (currentFilters.category) params.append('category', currentFilters.category);
+  if (currentFilters.subcategory) params.append('subcategory', currentFilters.subcategory);
+  if (currentFilters.difficulty) params.append('difficulty', currentFilters.difficulty);
+  
+  fetch(`/admin/api/questions?${params.toString()}`)
+    .then(response => response.json())
+    .then(result => {
+      if (result.success) {
+        updateQuestionsTable(result.questions);
+        updateQuestionStats(result.stats);
+        updateResultsCounter(result.pagination);
+      } else {
+        showNotification('Feil ved søking: ' + (result.error || 'Ukjent feil'), 'error');
+      }
+    })
+    .catch(error => {
+      console.error('Error performing filtered search:', error);
+      showNotification('Nettverksfeil ved søking', 'error');
+    })
+    .finally(() => {
+      setFilterLoading(false);
+    });
+}
+
+// Update subcategories based on selected category (cascading filter)
+function updateSubcategoryFilter() {
+  const subcategoryFilter = document.getElementById('subcategoryFilter');
+  if (!subcategoryFilter) return;
+  
+  const selectedCategory = currentFilters.category;
+  
+  if (!selectedCategory) {
+    // Show all subcategories when no category is selected
+    fetch('/admin/api/subcategories')
+      .then(response => response.json())
+      .then(result => {
+        populateSubcategoryOptions(result.subcategories);
+      })
+      .catch(error => {
+        console.error('Error fetching subcategories:', error);
+      });
+  } else {
+    // Show subcategories for selected category
+    fetch(`/admin/api/subcategories?category=${encodeURIComponent(selectedCategory)}`)
+      .then(response => response.json())
+      .then(result => {
+        populateSubcategoryOptions(result.subcategories);
+      })
+      .catch(error => {
+        console.error('Error fetching subcategories:', error);
+      });
+  }
+}
+
+// Populate subcategory dropdown options
+function populateSubcategoryOptions(subcategories) {
+  const subcategoryFilter = document.getElementById('subcategoryFilter');
+  if (!subcategoryFilter) return;
+  
+  const currentValue = subcategoryFilter.value;
+  
+  // Clear existing options except the first
+  subcategoryFilter.innerHTML = '<option value="">Alle underkategorier</option>';
+  
+  // Add new options
+  subcategories.forEach(subcategory => {
+    const option = document.createElement('option');
+    option.value = subcategory;
+    option.textContent = subcategory;
+    if (subcategory === currentValue) {
+      option.selected = true;
+    }
+    subcategoryFilter.appendChild(option);
+  });
+  
+  // Reset subcategory filter if current value is no longer valid
+  if (currentValue && !subcategories.includes(currentValue)) {
+    subcategoryFilter.value = '';
+    currentFilters.subcategory = '';
+  }
+}
+
+// Update questions table with new data
+function updateQuestionsTable(questions) {
+  const tbody = document.querySelector('#questionsSection table tbody');
+  if (!tbody) return;
+  
+  // Clear existing rows
+  tbody.innerHTML = '';
+  
+  // Add new rows
+  questions.forEach(question => {
+    const row = createQuestionTableRow(question);
+    tbody.appendChild(row);
+  });
+  
+  // Add highlight effect
+  tbody.style.opacity = '0.7';
+  setTimeout(() => {
+    tbody.style.opacity = '1';
+  }, 200);
+}
+
+// Create a table row for a question
+function createQuestionTableRow(question) {
+  const row = document.createElement('tr');
+  row.dataset.id = question.id;
+  
+  const bulkCheckbox = document.querySelector('.bulk-checkbox').style.display !== 'none' 
+    ? `<td class="checkbox-column bulk-checkbox">
+         <input type="checkbox" name="question_ids" value="${question.id}" onchange="updateSelectedCount()">
+       </td>`
+    : `<td class="checkbox-column bulk-checkbox" style="display: none;">
+         <input type="checkbox" name="question_ids" value="${question.id}" onchange="updateSelectedCount()">
+       </td>`;
+
+  // Construct proper image path using the same logic as initial page load
+  let imageSrc = '';
+  if (question.image_filename) {
+    // Filter out hidden macOS files
+    if (question.image_filename.startsWith('._')) {
+      console.log('Skipping hidden file:', question.image_filename);
+      imageSrc = ''; // Don't load hidden files
+    } else {
+      // Try to find the image in the images array to get the correct folder
+      const imageData = window.adminImages ? window.adminImages.find(img => img.filename === question.image_filename) : null;
+      if (imageData && imageData.folder) {
+        imageSrc = `/static/images/${imageData.folder}/${question.image_filename}`;
+        console.log('Found image with folder:', imageSrc);
+      } else {
+        imageSrc = `/static/images/${question.image_filename}`;
+        console.log('Image without folder info:', imageSrc);
+      }
+    }
+  }
+
+  row.innerHTML = `
+    ${bulkCheckbox}
+    <td data-column="id">${question.id}</td>
+    <td data-column="question">${escapeHtml(question.question)}</td>
+    <td data-column="category">${question.category || 'Ukategoriseret'}</td>
+    <td data-column="subcategory">${question.subcategory || '-'}</td>
+    <td data-column="explanation">
+      ${question.explanation 
+        ? `<div style="max-width: 200px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;" title="${escapeHtml(question.explanation)}">
+             ${escapeHtml(question.explanation)}
+           </div>`
+        : '<span style="color: #999;">Ingen forklaring</span>'
+      }
+    </td>
+    <td data-column="difficulty">${question.difficulty_level || '1'}</td>
+    <td data-column="image">
+      ${question.image_filename && imageSrc
+        ? `<img src="${imageSrc}" alt="" class="question-image" onerror="this.style.display='none'; console.log('Failed to load image: ${imageSrc}')">`
+        : '<span style="color: #999;">Ingen bilde</span>'
+      }
+    </td>
+    <td data-column="options" class="options-display">
+      <div ${question.correct_option.toLowerCase() === 'a' ? 'style="color: #10B981; font-weight: 600;"' : ''}>A: ${escapeHtml(question.option_a)}</div>
+      <div ${question.correct_option.toLowerCase() === 'b' ? 'style="color: #10B981; font-weight: 600;"' : ''}>B: ${escapeHtml(question.option_b)}</div>
+      <div ${question.correct_option.toLowerCase() === 'c' ? 'style="color: #10B981; font-weight: 600;"' : ''}>C: ${escapeHtml(question.option_c)}</div>
+      <div ${question.correct_option.toLowerCase() === 'd' ? 'style="color: #10B981; font-weight: 600;"' : ''}>D: ${escapeHtml(question.option_d)}</div>
+      <div style="margin-top: 5px;"><strong>Riktig: <span style="color: #10B981;">${question.correct_option.toUpperCase()}</span></strong></div>
+    </td>
+    <td data-column="actions">
+      <button onclick="editQuestionFromRow(this, ${question.id})" class="btn btn-warning btn-small">✏️ Rediger</button>
+      <button onclick="confirmDeleteAjax(${question.id})" class="btn btn-danger btn-small">🗑️ Slett</button>
+    </td>
+  `;
+  
+  return row;
+}
+
+// Update question statistics
+function updateQuestionStats(stats) {
+  const totalElement = document.getElementById('totalQuestions');
+  const categoriesElement = document.getElementById('totalCategories');
+  const withImagesElement = document.getElementById('questionsWithImages');
+  const withoutImagesElement = document.getElementById('questionsWithoutImages');
+  
+  if (totalElement) totalElement.textContent = stats.total || 0;
+  if (categoriesElement) categoriesElement.textContent = Object.keys(stats.by_category || {}).length;
+  if (withImagesElement) withImagesElement.textContent = stats.with_images || 0;
+  if (withoutImagesElement) withoutImagesElement.textContent = stats.without_images || 0;
+}
+
+// Update results counter
+function updateResultsCounter(pagination) {
+  const container = document.getElementById('resultsCounterContainer');
+  if (!container) return;
+  
+  if (pagination.filtered < pagination.total_in_db) {
+    container.innerHTML = `
+      <div class="results-counter">
+        <span class="filter-results">🔍 Viser ${pagination.filtered} av ${pagination.total_in_db} spørsmål</span>
+      </div>
+    `;
+  } else {
+    container.innerHTML = '';
+  }
+}
+
+// Clear all filters
+function clearAllFilters() {
+  document.getElementById('realTimeSearch').value = '';
+  document.getElementById('categoryFilter').value = '';
+  document.getElementById('subcategoryFilter').value = '';
+  document.getElementById('difficultyFilter').value = '';
+  
+  currentFilters = {
+    search: '',
+    category: '',
+    subcategory: '',
+    difficulty: ''
+  };
+  
+  updateSubcategoryFilter();
+  performFilteredSearch();
+}
+
+// Set filter loading state
+function setFilterLoading(loading) {
+  const indicator = document.getElementById('filterLoadingIndicator');
+  const container = document.getElementById('searchFilterContainer');
+  
+  if (loading) {
+    indicator.style.display = 'flex';
+    container.style.opacity = '0.7';
+  } else {
+    indicator.style.display = 'none';
+    container.style.opacity = '1';
+  }
 }
 </script>
 
@@ -1231,6 +1596,85 @@ td[data-column="options"] div {
   to {
     transform: translateX(0);
     opacity: 1;
+  }
+}
+
+/* Enhanced Filtering Styles (Phase 3) */
+.search-filter-container {
+  display: flex;
+  gap: 10px;
+  align-items: center;
+  flex-wrap: wrap;
+  margin-bottom: 20px;
+  padding: 15px;
+  background: #f8f9fa;
+  border-radius: 8px;
+  border: 1px solid #e5e7eb;
+}
+
+.search-filter-container input,
+.search-filter-container select {
+  padding: 8px 12px;
+  border: 2px solid #e5e7eb;
+  border-radius: 6px;
+  font-size: 14px;
+  transition: border-color 0.2s, box-shadow 0.2s;
+}
+
+.search-filter-container input:focus,
+.search-filter-container select:focus {
+  border-color: #3B82F6;
+  box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
+  outline: none;
+}
+
+.search-filter-container input[type="text"] {
+  min-width: 250px;
+  flex: 1;
+}
+
+.filter-loading {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  color: #6B7280;
+  font-size: 14px;
+}
+
+.loading-spinner-small {
+  width: 16px;
+  height: 16px;
+  border: 2px solid #f3f3f3;
+  border-top: 2px solid #3B82F6;
+  border-radius: 50%;
+  animation: spin 1s linear infinite;
+}
+
+.results-counter {
+  background: #e8f5e8;
+  padding: 10px 15px;
+  border-radius: 6px;
+  margin-bottom: 15px;
+  border-left: 4px solid #28a745;
+}
+
+.filter-results {
+  color: #155724;
+  font-weight: 600;
+  font-size: 14px;
+}
+
+/* Responsive filter layout */
+@media (max-width: 768px) {
+  .search-filter-container {
+    flex-direction: column;
+    align-items: stretch;
+  }
+  
+  .search-filter-container input,
+  .search-filter-container select {
+    width: 100%;
+    min-width: auto;
   }
 }
 </style>
