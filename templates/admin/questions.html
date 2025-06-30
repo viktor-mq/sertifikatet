@@ -101,6 +101,9 @@
       <label for="subcategoryInput">Underkategori:</label>
       <input type="text" name="subcategory" id="subcategoryInput" placeholder="F.eks. Vikeplikt, Fareskilt, etc.">
 
+      <label for="explanationInput">Forklaring:</label>
+      <textarea name="explanation" id="explanationInput" placeholder="Forklaring av hvorfor det riktige svaret er riktig (valgfritt)" rows="3"></textarea>
+
       <label for="difficultyLevel">Vanskelighetsgrad:</label>
       <select name="difficulty_level" id="difficultyLevel">
         <option value="1">1 - Lett</option>
@@ -156,6 +159,7 @@
       <label style="margin-left: 10px;"><input type="checkbox" class="column-checkbox" data-column="question" checked> Spørsmål</label>
       <label style="margin-left: 10px;"><input type="checkbox" class="column-checkbox" data-column="category" checked> Kategori</label>
       <label style="margin-left: 10px;"><input type="checkbox" class="column-checkbox" data-column="subcategory" checked> Underkategori</label>
+      <label style="margin-left: 10px;"><input type="checkbox" class="column-checkbox" data-column="explanation" checked> Forklaring</label>
       <label style="margin-left: 10px;"><input type="checkbox" class="column-checkbox" data-column="difficulty" checked> Vanskelighetsgrad</label>
       <label style="margin-left: 10px;"><input type="checkbox" class="column-checkbox" data-column="image" checked> Bilde</label>
       <label style="margin-left: 10px;"><input type="checkbox" class="column-checkbox" data-column="options" checked> Alternativer</label>
@@ -169,6 +173,7 @@
           <th data-column="question">Spørsmål</th>
           <th data-column="category">Kategori</th>
           <th data-column="subcategory">Underkategori</th>
+          <th data-column="explanation">Forklaring</th>
           <th data-column="difficulty">Vanskelighetsgrad</th>
           <th data-column="image">Bilde</th>
           <th data-column="options">Alternativer</th>
@@ -185,6 +190,15 @@
           <td data-column="question">{{ question.question }}</td>
           <td data-column="category">{{ question.category or 'Ukategorisert' }}</td>
           <td data-column="subcategory">{{ question.subcategory or '-' }}</td>
+          <td data-column="explanation">
+            {% if question.explanation %}
+              <div style="max-width: 200px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;" title="{{ question.explanation }}">
+                {{ question.explanation }}
+              </div>
+            {% else %}
+              <span style="color: #999;">Ingen forklaring</span>
+            {% endif %}
+          </td>
           <td data-column="difficulty">{{ question.difficulty_level or '1' }}</td>
           <td data-column="image">
             {% if question.image_filename %}
@@ -344,6 +358,8 @@ function editQuestionFromRow(button, id) {
   
   // Fill subcategory and difficulty
   document.getElementById('subcategoryInput').value = subcategory === '-' ? '' : subcategory;
+  document.getElementById('explanationInput').value = row.querySelector('td[data-column="explanation"] span')?.textContent === 'Ingen forklaring' ? '' : 
+    (row.querySelector('td[data-column="explanation"] div')?.title || '');
   document.getElementById('difficultyLevel').value = difficulty || '1';
   
   // Handle image (generic for any folder depth and category)
@@ -478,17 +494,68 @@ function closeImportExportModal() {
 function confirmImport() {
   const fileInput = document.getElementById('csvFile');
   if (!fileInput.files.length) {
-    alert('Vennligst velg en CSV-fil først.');
+    alert('Vennligst velg en fil først.');
     return false;
   }
   
   const fileName = fileInput.files[0].name;
-  if (!fileName.toLowerCase().endsWith('.csv')) {
-    alert('Filen må være en CSV-fil (.csv)');
+  const isCSV = fileName.toLowerCase().endsWith('.csv');
+  const isJSON = fileName.toLowerCase().endsWith('.json');
+  
+  if (!isCSV && !isJSON) {
+    alert('Filen må være en CSV-fil (.csv) eller JSON-fil (.json)');
     return false;
   }
   
-  return confirm(`Er du sikker på at du vil importere spørsmål fra "${fileName}"?\n\nDette kan overskrive eksisterende data hvis du har valgt det alternativet.`);
+  const fileType = isJSON ? 'JSON' : 'CSV';
+  return confirm(`Er du sikker på at du vil importere spørsmål fra "${fileName}" (${fileType}-format)?\n\nDette kan overskrive eksisterende data hvis du har valgt det alternativet.`);
+}
+
+// Export function for the new export options
+function exportQuestions() {
+  const format = document.querySelector('input[name="export_format"]:checked').value;
+  const delimiter = document.getElementById('exportDelimiter').value;
+  
+  let url = '{{ url_for("admin.export_questions") }}?format=' + format;
+  
+  if (format === 'csv') {
+    url += '&delimiter=' + encodeURIComponent(delimiter);
+  }
+  
+  // Trigger download
+  window.location.href = url;
+}
+
+// Toggle export options based on format selection
+function toggleExportOptions() {
+  const csvSelected = document.querySelector('input[name="export_format"]:checked').value === 'csv';
+  const csvOptions = document.getElementById('csvExportOptions');
+  
+  if (csvOptions) {
+    csvOptions.style.display = csvSelected ? 'block' : 'none';
+  }
+}
+
+// Update import options based on file type
+function updateImportOptions() {
+  const fileInput = document.getElementById('csvFile');
+  const csvOptions = document.getElementById('csvImportOptions');
+  const csvFormatHelp = document.getElementById('csvFormatHelp');
+  const jsonFormatHelp = document.getElementById('jsonFormatHelp');
+  
+  if (fileInput.files.length > 0) {
+    const fileName = fileInput.files[0].name;
+    const isJSON = fileName.toLowerCase().endsWith('.json');
+    
+    if (csvOptions) {
+      csvOptions.style.display = isJSON ? 'none' : 'block';
+    }
+    
+    if (csvFormatHelp && jsonFormatHelp) {
+      csvFormatHelp.style.display = isJSON ? 'none' : 'block';
+      jsonFormatHelp.style.display = isJSON ? 'block' : 'none';
+    }
+  }
 }
 
 // Close modal when clicking outside
@@ -516,6 +583,9 @@ document.addEventListener('DOMContentLoaded', function() {
       });
     });
   });
+  
+  // Initialize export options
+  toggleExportOptions();
 });
 </script>
 
@@ -539,10 +609,37 @@ document.addEventListener('DOMContentLoaded', function() {
       <h3 style="margin-top: 0; color: #28a745; display: flex; align-items: center; gap: 10px;">
         📥 Eksporter Spørsmål
       </h3>
-      <p style="margin-bottom: 15px; color: #555;">Last ned alle spørsmål som en CSV-fil for backup eller redigering i Excel.</p>
-      <a href="{{ url_for('admin.export_questions') }}" class="btn btn-success" style="width: auto; display: inline-block; padding: 12px 24px;">
-        📥 Last ned CSV-fil
-      </a>
+      <p style="margin-bottom: 15px; color: #555;">Last ned alle spørsmål som CSV eller JSON for backup eller redigering.</p>
+      
+      <!-- Export Format Selection -->
+      <div style="margin-bottom: 15px;">
+        <label style="display: block; font-weight: bold; margin-bottom: 5px;">Eksportformat:</label>
+        <div style="display: flex; gap: 15px; margin-bottom: 10px;">
+          <label style="display: flex; align-items: center; gap: 5px; cursor: pointer;">
+            <input type="radio" name="export_format" value="csv" checked onchange="toggleExportOptions()">
+            <span>CSV</span>
+          </label>
+          <label style="display: flex; align-items: center; gap: 5px; cursor: pointer;">
+            <input type="radio" name="export_format" value="json" onchange="toggleExportOptions()">
+            <span>JSON</span>
+          </label>
+        </div>
+      </div>
+      
+      <!-- CSV Delimiter Options -->
+      <div id="csvExportOptions" style="margin-bottom: 15px;">
+        <label for="exportDelimiter" style="display: block; font-weight: bold; margin-bottom: 5px;">CSV-skilletegn:</label>
+        <select id="exportDelimiter" style="width: 100%; padding: 8px; border: 2px solid #ddd; border-radius: 4px;">
+          <option value=",">Komma (,) - Internasjonal standard</option>
+          <option value=";">Semikolon (;) - Norsk standard</option>
+          <option value="\t">Tab (\t) - Tab-separert</option>
+          <option value="|">Pipe (|) - Alternativ</option>
+        </select>
+      </div>
+      
+      <button onclick="exportQuestions()" class="btn btn-success" style="width: auto; display: inline-block; padding: 12px 24px;">
+        📥 Last ned fil
+      </button>
     </div>
 
     <!-- Import Section -->
@@ -550,17 +647,18 @@ document.addEventListener('DOMContentLoaded', function() {
       <h3 style="margin-top: 0; color: #e67e22; display: flex; align-items: center; gap: 10px;">
         📤 Importer Spørsmål
       </h3>
-      <p style="margin-bottom: 15px; color: #555;">Last opp en CSV-fil med spørsmål. Filen må ha samme format som eksport-filen.</p>
+      <p style="margin-bottom: 15px; color: #555;">Last opp en CSV- eller JSON-fil med spørsmål. Filen må ha samme format som eksport-filen.</p>
       
       <!-- Import Form -->
       <form id="importForm" method="POST" action="{{ url_for('admin.import_questions') }}" enctype="multipart/form-data">
         <div style="margin-bottom: 15px;">
-          <label for="csvFile" style="display: block; font-weight: bold; margin-bottom: 5px;">Velg CSV-fil:</label>
-          <input type="file" id="csvFile" name="csv_file" accept=".csv" required 
-                 style="width: 100%; padding: 8px; border: 2px solid #ddd; border-radius: 4px;">
+          <label for="csvFile" style="display: block; font-weight: bold; margin-bottom: 5px;">Velg fil:</label>
+          <input type="file" id="csvFile" name="csv_file" accept=".csv,.json" required 
+                 style="width: 100%; padding: 8px; border: 2px solid #ddd; border-radius: 4px;" onchange="updateImportOptions()">
+          <small style="color: #6c757d; font-size: 11px;">📁 Aksepterte formater: CSV (.csv) og JSON (.json)</small>
         </div>
         
-        <div style="margin-bottom: 15px;">
+        <div id="csvImportOptions" style="margin-bottom: 15px;">
           <label for="csvDelimiter" style="display: block; font-weight: bold; margin-bottom: 5px;">CSV-skilletegn:</label>
           <select id="csvDelimiter" name="csv_delimiter" style="width: 100%; padding: 8px; border: 2px solid #ddd; border-radius: 4px;">
             <option value=";">Semikolon (;) - Norsk standard</option>
@@ -584,13 +682,20 @@ document.addEventListener('DOMContentLoaded', function() {
         </button>
       </form>
       
-      <!-- CSV Format Help -->
+      <!-- Format Help -->
       <div style="background: #f8f9fa; padding: 15px; border-radius: 4px; margin-top: 15px; border: 1px solid #dee2e6;">
-        <h4 style="margin-top: 0; font-size: 14px; color: #495057;">📄 CSV-format:</h4>
-        <p style="margin: 5px 0; font-size: 12px; color: #6c757d;">Kolonner: id, question, option_a, option_b, option_c, option_d, correct_option, category, subcategory, difficulty_level, image_filename</p>
-        <p style="margin: 5px 0; font-size: 12px; color: #6c757d;">🇳🇴 Norsk format: <code>id;question;option_a;option_b;...</code></p>
-        <p style="margin: 5px 0; font-size: 12px; color: #6c757d;">🌍 Internasjonalt: <code>id,question,option_a,option_b,...</code></p>
-        <p style="margin: 5px 0 0 0; font-size: 12px; color: #6c757d;">Tips: Last ned en eksport-fil først for å se det korrekte formatet.</p>
+        <h4 style="margin-top: 0; font-size: 14px; color: #495057;">📄 Filformat:</h4>
+        <div id="csvFormatHelp">
+          <p style="margin: 5px 0; font-size: 12px; color: #6c757d;">CSV-kolonner: id, question, option_a, option_b, option_c, option_d, correct_option, category, subcategory, difficulty_level, explanation, image_filename</p>
+          <p style="margin: 5px 0; font-size: 12px; color: #6c757d;">🇳🇴 Norsk format: <code>id;question;option_a;option_b;...</code></p>
+          <p style="margin: 5px 0; font-size: 12px; color: #6c757d;">🌍 Internasjonalt: <code>id,question,option_a,option_b,...</code></p>
+          <p style="margin: 5px 0 0 0; font-size: 12px; color: #6c757d;">Tips: Last ned en eksport-fil først for å se det korrekte formatet.</p>
+        </div>
+        <div id="jsonFormatHelp" style="display: none;">
+          <p style="margin: 5px 0; font-size: 12px; color: #6c757d;">JSON-format: En liste med spørsmål-objekter med samme felt som CSV</p>
+          <p style="margin: 5px 0; font-size: 12px; color: #6c757d;">Eksempel: <code>[{"id": 1, "question": "...", "option_a": "...", ...}]</code></p>
+          <p style="margin: 5px 0 0 0; font-size: 12px; color: #6c757d;">Tips: Eksporter som JSON først for å se det korrekte formatet.</p>
+        </div>
       </div>
     </div>
   </div>

@@ -123,6 +123,7 @@ def admin_dashboard():
                 'category': request.form.get('category') or 'Ukategorisert',
                 'subcategory': request.form.get('subcategory'),
                 'difficulty_level': int(request.form.get('difficulty_level', 1)),
+                'explanation': request.form.get('explanation'),
                 'image_filename': request.form.get('image_filename')
             }
             validation_errors = validate_question(question_data, question_id)
@@ -136,6 +137,7 @@ def admin_dashboard():
                         q.category = question_data['category']
                         q.subcategory = question_data['subcategory']
                         q.difficulty_level = question_data['difficulty_level']
+                        q.explanation = question_data['explanation']
                         q.image_filename = question_data['image_filename']
                         
                         # Delete existing options
@@ -160,6 +162,7 @@ def admin_dashboard():
                         category=question_data['category'],
                         subcategory=question_data['subcategory'],
                         difficulty_level=question_data['difficulty_level'],
+                        explanation=question_data['explanation'],
                         image_filename=question_data['image_filename']
                     )
                     db.session.add(q)
@@ -201,6 +204,7 @@ def admin_dashboard():
             'category': q.category,
             'subcategory': q.subcategory,
             'difficulty_level': q.difficulty_level,
+            'explanation': q.explanation,
             'image_filename': q.image_filename,
             'option_a': opts.get('a', ''),
             'option_b': opts.get('b', ''),
@@ -537,8 +541,8 @@ def import_questions():
         flash('Ingen fil valgt', 'error')
         return redirect(url_for('admin.admin_dashboard'))
     
-    if not file.filename.lower().endswith('.csv'):
-        flash('Filen må være en CSV-fil (.csv)', 'error')
+    if not (file.filename.lower().endswith('.csv') or file.filename.lower().endswith('.json')):
+        flash('Filen må være en CSV-fil (.csv) eller JSON-fil (.json)', 'error')
         return redirect(url_for('admin.admin_dashboard'))
     
     overwrite_existing = request.form.get('overwrite_existing') == '1'
@@ -549,41 +553,86 @@ def import_questions():
         csv_delimiter = None  # Will be detected automatically
     
     try:
-        # Read CSV content
-        csv_content = file.read().decode('utf-8-sig')
+        # Read file content
+        file_content = file.read().decode('utf-8-sig')
         
-        # Auto-detect delimiter if requested
-        if csv_delimiter is None:
-            import csv as csv_module
-            sniffer = csv_module.Sniffer()
+        # Determine if this is JSON or CSV
+        is_json = file.filename.lower().endswith('.json')
+        
+        if is_json:
+            # JSON Import
             try:
-                # Try to detect delimiter from first few lines
-                sample = csv_content[:1024]
-                csv_delimiter = sniffer.sniff(sample, delimiters=';,\t|').delimiter
-                logger.info(f"Auto-detected CSV delimiter: '{csv_delimiter}'")
-            except:
-                # Fallback to semicolon if detection fails
-                csv_delimiter = ';'
-                logger.info("Could not auto-detect delimiter, using semicolon (;)")
+                questions_data = json.loads(file_content)
+                if not isinstance(questions_data, list):
+                    flash('JSON-filen må inneholde en liste med spørsmål', 'error')
+                    return redirect(url_for('admin.admin_dashboard'))
+                
+                # Convert JSON to CSV-like format for processing
+                expected_fields = ['id', 'question', 'option_a', 'option_b', 'option_c', 'option_d', 'correct_option', 'category', 'subcategory', 'difficulty_level', 'explanation', 'image_filename']
+                csv_data = []
+                
+                for item in questions_data:
+                    if not isinstance(item, dict):
+                        continue
+                    # Ensure all required fields exist
+                    row = {field: item.get(field, '') for field in expected_fields}
+                    csv_data.append(row)
+                
+                # Create a fake CSV reader-like iterator
+                class JSONReader:
+                    def __init__(self, data):
+                        self.data = data
+                        self.fieldnames = expected_fields
+                    
+                    def __iter__(self):
+                        return iter(self.data)
+                
+                csv_reader = JSONReader(csv_data)
+                logger.info(f"Processing JSON file with {len(csv_data)} questions")
+                
+            except json.JSONDecodeError as e:
+                flash(f'Ugyldig JSON-format: {str(e)}', 'error')
+                return redirect(url_for('admin.admin_dashboard'))
         
-        # Handle tab character
-        if csv_delimiter == '\\t':
-            csv_delimiter = '\t'
+        else:
+            # CSV Import
+            # Auto-detect delimiter if requested
+            if csv_delimiter is None:
+                import csv as csv_module
+                sniffer = csv_module.Sniffer()
+                try:
+                    # Try to detect delimiter from first few lines
+                    sample = file_content[:1024]
+                    csv_delimiter = sniffer.sniff(sample, delimiters=';,\t|').delimiter
+                    logger.info(f"Auto-detected CSV delimiter: '{csv_delimiter}'")
+                except:
+                    # Fallback to semicolon if detection fails
+                    csv_delimiter = ';'
+                    logger.info("Could not auto-detect delimiter, using semicolon (;)")
             
-        csv_reader = csv.DictReader(StringIO(csv_content), delimiter=csv_delimiter)
+            # Handle tab character
+            if csv_delimiter == '\\t':
+                csv_delimiter = '\t'
+                
+            csv_reader = csv.DictReader(StringIO(file_content), delimiter=csv_delimiter)
         
-        # Validate CSV headers
-        expected_headers = ['id', 'question', 'option_a', 'option_b', 'option_c', 'option_d', 'correct_option', 'category', 'subcategory', 'difficulty_level', 'image_filename']
+        # Validate headers (works for both CSV and JSON)
+        expected_headers = ['id', 'question', 'option_a', 'option_b', 'option_c', 'option_d', 'correct_option', 'category', 'subcategory', 'difficulty_level', 'explanation', 'image_filename']
         actual_headers = csv_reader.fieldnames or []
         
         # Debug info
-        logger.info(f"Using delimiter: '{csv_delimiter}'")
+        if not is_json:
+            logger.info(f"Using delimiter: '{csv_delimiter}'")
         logger.info(f"Found headers: {actual_headers}")
         logger.info(f"Expected headers: {expected_headers}")
         
         if not all(header in actual_headers for header in expected_headers):
             missing_headers = [h for h in expected_headers if h not in actual_headers]
-            flash(f'CSV-filen mangler følgende kolonner: {", ".join(missing_headers)}. Funnet kolonner: {", ".join(actual_headers)}. Prøv et annet skilletegn.', 'error')
+            file_type = 'JSON-filen' if is_json else 'CSV-filen'
+            if is_json:
+                flash(f'{file_type} mangler følgende felt: {", ".join(missing_headers)}. Funnet felt: {", ".join(actual_headers)}.', 'error')
+            else:
+                flash(f'{file_type} mangler følgende kolonner: {", ".join(missing_headers)}. Funnet kolonner: {", ".join(actual_headers)}. Prøv et annet skilletegn.', 'error')
             return redirect(url_for('admin.admin_dashboard'))
         
         imported_count = 0
@@ -631,6 +680,7 @@ def import_questions():
                 question.category = row.get('category', '').strip() or 'Ukategoriseret'
                 question.subcategory = row.get('subcategory', '').strip() or None
                 question.difficulty_level = int(row.get('difficulty_level', '1').strip() or 1)
+                question.explanation = row.get('explanation', '').strip() or None
                 question.image_filename = row.get('image_filename', '').strip() or None
                 
                 # Add new question to session if it's new
@@ -679,17 +729,21 @@ def import_questions():
                 flash(f'... og {len(errors) - 10} flere feil', 'error')
         
         # Log the import action
+        log_info = {
+            'filename': file.filename,
+            'imported': imported_count,
+            'updated': updated_count,
+            'errors': error_count,
+            'overwrite_mode': overwrite_existing,
+            'format': 'json' if is_json else 'csv'
+        }
+        if not is_json:
+            log_info['csv_delimiter'] = csv_delimiter
+            
         AdminSecurityService.log_admin_action(
             admin_user=current_user,
             action='questions_import',
-            additional_info=json.dumps({
-                'filename': file.filename,
-                'imported': imported_count,
-                'updated': updated_count,
-                'errors': error_count,
-                'overwrite_mode': overwrite_existing,
-                'csv_delimiter': csv_delimiter
-            })
+            additional_info=json.dumps(log_info)
         )
         
     except Exception as e:
@@ -701,57 +755,115 @@ def import_questions():
 @admin_bp.route('/export_questions')
 @admin_required
 def export_questions():
-    """Export all questions to CSV file"""
+    """Export all questions in CSV or JSON format with delimiter options"""
+    
+    # Get export parameters from query string
+    export_format = request.args.get('format', 'csv').lower()  # 'csv' or 'json'
+    csv_delimiter = request.args.get('delimiter', ',')  # Default to comma
+    
+    # Handle tab character
+    if csv_delimiter == '\\t':
+        csv_delimiter = '\t'
     
     # Get all questions with their options
     questions = Question.query.all()
     
-    # Create CSV in memory using BytesIO
-    output = BytesIO()
-    
-    # Create a text wrapper for CSV writing
-    text_stream = StringIO()
-    writer = csv.writer(text_stream)
-    writer.writerow(['id', 'question', 'option_a', 'option_b', 'option_c', 'option_d', 'correct_option', 'category', 'subcategory', 'difficulty_level', 'image_filename'])
-    
-    for q in questions:
-        # Get options as dict
-        opts = {opt.option_letter: opt.option_text for opt in q.options}
+    if export_format == 'json':
+        # JSON Export
+        questions_data = []
+        for q in questions:
+            # Get options as dict
+            opts = {opt.option_letter: opt.option_text for opt in q.options}
+            
+            question_data = {
+                'id': q.id,
+                'question': q.question,
+                'option_a': opts.get('a', ''),
+                'option_b': opts.get('b', ''),
+                'option_c': opts.get('c', ''),
+                'option_d': opts.get('d', ''),
+                'correct_option': q.correct_option,
+                'category': q.category or 'Ukategoriseret',
+                'subcategory': q.subcategory or '',
+                'difficulty_level': q.difficulty_level or 1,
+                'explanation': q.explanation or '',
+                'image_filename': q.image_filename or ''
+            }
+            questions_data.append(question_data)
         
-        writer.writerow([
-            q.id,
-            q.question,
-            opts.get('a', ''),
-            opts.get('b', ''),
-            opts.get('c', ''),
-            opts.get('d', ''),
-            q.correct_option,
-            q.category or 'Ukategoriseret',
-            q.subcategory or '',
-            q.difficulty_level or 1,
-            q.image_filename or ''
-        ])
+        # Create JSON in memory
+        output = BytesIO()
+        json_content = json.dumps(questions_data, ensure_ascii=False, indent=2)
+        output.write(json_content.encode('utf-8'))
+        output.seek(0)
+        
+        # Log the export action
+        AdminSecurityService.log_admin_action(
+            admin_user=current_user,
+            action='questions_export',
+            additional_info=json.dumps({
+                'question_count': len(questions),
+                'format': 'json'
+            })
+        )
+        
+        return send_file(
+            output,
+            mimetype='application/json',
+            as_attachment=True,
+            download_name='questions_export.json'
+        )
     
-    # Convert string to bytes and write to BytesIO
-    csv_content = text_stream.getvalue()
-    output.write(csv_content.encode('utf-8-sig'))  # utf-8-sig adds BOM for Excel compatibility
-    output.seek(0)
-    
-    # Log the export action
-    AdminSecurityService.log_admin_action(
-        admin_user=current_user,
-        action='questions_export',
-        additional_info=json.dumps({
-            'question_count': len(questions)
-        })
-    )
-    
-    return send_file(
-        output,
-        mimetype='text/csv',
-        as_attachment=True,
-        download_name='questions_export.csv'
-    )
+    else:
+        # CSV Export with specified delimiter
+        output = BytesIO()
+        
+        # Create a text wrapper for CSV writing
+        text_stream = StringIO()
+        writer = csv.writer(text_stream, delimiter=csv_delimiter)
+        writer.writerow(['id', 'question', 'option_a', 'option_b', 'option_c', 'option_d', 'correct_option', 'category', 'subcategory', 'difficulty_level', 'explanation', 'image_filename'])
+        
+        for q in questions:
+            # Get options as dict
+            opts = {opt.option_letter: opt.option_text for opt in q.options}
+            
+            writer.writerow([
+                q.id,
+                q.question,
+                opts.get('a', ''),
+                opts.get('b', ''),
+                opts.get('c', ''),
+                opts.get('d', ''),
+                q.correct_option,
+                q.category or 'Ukategoriseret',
+                q.subcategory or '',
+                q.difficulty_level or 1,
+                q.explanation or '',
+                q.image_filename or ''
+            ])
+        
+        # Convert string to bytes and write to BytesIO
+        csv_content = text_stream.getvalue()
+        output.write(csv_content.encode('utf-8-sig'))  # utf-8-sig adds BOM for Excel compatibility
+        output.seek(0)
+        
+        # Log the export action
+        AdminSecurityService.log_admin_action(
+            admin_user=current_user,
+            action='questions_export',
+            additional_info=json.dumps({
+                'question_count': len(questions),
+                'format': 'csv',
+                'delimiter': csv_delimiter
+            })
+        )
+        
+        return send_file(
+            output,
+            mimetype='text/csv',
+            as_attachment=True,
+            download_name='questions_export.csv'
+        )
 
 # ========================================
 # ADMIN USER MANAGEMENT ROUTES
