@@ -1,7 +1,9 @@
 {# templates/admin/questions.html #}
 
 <!-- Questions Section -->
-<div id="questionsSection" class="section active" style="margin-top: 30px;" data-static-url="{{ url_for('static', filename='') }}">
+<div id="questionsSection" class="section active" style="margin-top: 30px;" 
+     data-static-url="{{ url_for('static', filename='') }}"
+     data-initial-pagination='{"page": {{ pagination.page }}, "per_page": {{ current_per_page }}, "total": {{ pagination.total }}, "pages": {{ pagination.pages }}, "has_prev": {{ "true" if pagination.has_prev else "false" }}, "has_next": {{ "true" if pagination.has_next else "false" }}}'>
   <!-- Statistics Section -->
   <div class="stats-container">
     <div class="stat-card">
@@ -198,15 +200,33 @@
       <thead>
         <tr>
           <th class="checkbox-column bulk-checkbox" style="display: none;"><input type="checkbox" onchange="toggleAllCheckboxes(this)"></th>
-          <th data-column="id" data-sortable="id">ID</th>
-          <th data-column="question" data-sortable="question">Spørsmål</th>
-          <th data-column="category" data-sortable="category">Kategori</th>
-          <th data-column="subcategory" data-sortable="subcategory">Underkategori</th>
-          <th data-column="explanation">Forklaring</th>
-          <th data-column="difficulty" data-sortable="difficulty_level">Vanskelighetsgrad</th>
-          <th data-column="image">Bilde</th>
-          <th data-column="options">Alternativer</th>
-          <th data-column="actions">Handlinger</th>
+          <th data-column="id" data-sortable="id" class="sortable-header" onclick="toggleSort('id')">
+            ID <span class="sort-indicator" data-sort="id"></span>
+          </th>
+          <th data-column="question" data-sortable="question" class="sortable-header" onclick="toggleSort('question')">
+            Spørsmål <span class="sort-indicator" data-sort="question"></span>
+          </th>
+          <th data-column="category" data-sortable="category" class="sortable-header" onclick="toggleSort('category')">
+            Kategori <span class="sort-indicator" data-sort="category"></span>
+          </th>
+          <th data-column="subcategory" data-sortable="subcategory" class="sortable-header" onclick="toggleSort('subcategory')">
+            Underkategori <span class="sort-indicator" data-sort="subcategory"></span>
+          </th>
+          <th data-column="explanation">
+            Forklaring
+          </th>
+          <th data-column="difficulty" data-sortable="difficulty_level" class="sortable-header" onclick="toggleSort('difficulty_level')">
+            Vanskelighetsgrad <span class="sort-indicator" data-sort="difficulty_level"></span>
+          </th>
+          <th data-column="image">
+            Bilde
+          </th>
+          <th data-column="options">
+            Alternativer
+          </th>
+          <th data-column="actions">
+            Handlinger
+          </th>
         </tr>
       </thead>
       <tbody>
@@ -265,7 +285,7 @@
   </div>
 
   <!-- Pagination and Per-page Controls -->
-  <div class="pagination-controls" id="paginationControls" style="display: none;">
+  <div class="pagination-controls" id="paginationControls">
     <div class="pagination-info">
       <span id="paginationInfo">Viser 1-50 av 100 spørsmål</span>
     </div>
@@ -707,6 +727,15 @@ document.addEventListener('DOMContentLoaded', function() {
   
   // Initialize enhanced filtering (Phase 3)
   initializeEnhancedFiltering();
+  
+  // Initialize sorting (Phase 5)
+  initializeSorting();
+  
+  // Add keyboard support for sorting
+  addKeyboardSortSupport();
+  
+  // Initialize pagination with server data
+  initializeInitialPagination();
 });
 
 // ========================================
@@ -762,9 +791,13 @@ function saveQuestionAjax() {
       
       if (isEdit) {
         updateTableRow(result.question);
+        // Maintain sort state after edit
+        setTimeout(() => maintainSortState(), 100);
       } else {
         addTableRow(result.question);
         updateStatsAfterAdd();
+        // Maintain sort state after add
+        setTimeout(() => maintainSortState(), 100);
       }
       
       cancelForm();
@@ -962,6 +995,8 @@ function confirmDeleteAjax(id) {
       showNotification('Spørsmål slettet!', 'success');
       removeTableRow(id);
       updateStatsAfterDelete();
+      // Maintain sort state after delete
+      setTimeout(() => maintainSortState(), 600);
     } else {
       showNotification('Feil ved sletting: ' + (result.error || 'Ukjent feil'), 'error');
     }
@@ -1058,7 +1093,7 @@ function confirmDelete(id) {
 // ENHANCED FILTERING & SEARCH (PHASE 3)
 // ========================================
 
-// Global filter and pagination state
+// Global filter, pagination and sort state
 let currentFilters = {
   search: '',
   category: '',
@@ -1073,6 +1108,11 @@ let currentPagination = {
   pages: 1,
   has_prev: false,
   has_next: false
+};
+
+let currentSort = {
+  sort_by: '',
+  sort_order: 'asc'
 };
 
 // Debounce timer for search
@@ -1151,6 +1191,12 @@ function performFilteredSearch(resetPage = false) {
   // Add pagination parameters
   params.append('page', currentPagination.page);
   params.append('per_page', currentPagination.per_page);
+  
+  // Add sort parameters
+  if (currentSort.sort_by) {
+    params.append('sort_by', currentSort.sort_by);
+    params.append('sort_order', currentSort.sort_order);
+  }
   
   fetch(`/admin/api/questions?${params.toString()}`)
     .then(response => response.json())
@@ -1382,14 +1428,20 @@ function updatePagination(pagination) {
     perPageSelector.value = pagination.per_page;
   }
   
-  // Show/hide pagination controls
+  // Always show pagination controls container (contains per-page selector)
   const paginationControls = document.getElementById('paginationControls');
   if (paginationControls) {
-    if (pagination.per_page === -1 || pagination.pages <= 1) {
-      paginationControls.style.display = 'none';
-    } else {
-      paginationControls.style.display = 'flex';
-      renderPaginationButtons(pagination);
+    paginationControls.style.display = 'flex';
+    
+    // Only hide/show the pagination buttons (not the whole container)
+    const paginationButtons = document.getElementById('paginationButtons');
+    if (paginationButtons) {
+      if (pagination.per_page === -1 || pagination.pages <= 1) {
+        paginationButtons.style.display = 'none';  // Hide only buttons
+      } else {
+        paginationButtons.style.display = 'flex';   // Show buttons
+        renderPaginationButtons(pagination);
+      }
     }
   }
 }
@@ -1468,7 +1520,20 @@ function goToPage(page) {
   }
   
   currentPagination.page = page;
-  performFilteredSearch(false); // Don't reset page since we're explicitly setting it
+  
+  // If we have active filters or sort, use AJAX
+  if (currentFilters.search || currentFilters.category || currentFilters.subcategory || 
+      currentFilters.difficulty || currentSort.sort_by) {
+    performFilteredSearch(false); // Don't reset page since we're explicitly setting it
+  } else {
+    // No filters active - reload page with new page parameter
+    const currentUrl = new URL(window.location);
+    currentUrl.searchParams.set('page', page);
+    if (currentPagination.per_page !== 50) {
+      currentUrl.searchParams.set('per_page', currentPagination.per_page);
+    }
+    window.location.href = currentUrl.toString();
+  }
 }
 
 // Change per-page setting
@@ -1482,7 +1547,16 @@ function changePerPage() {
   currentPagination.per_page = newPerPage;
   currentPagination.page = 1; // Reset to first page when changing per-page
   
-  performFilteredSearch(false);
+  // If we have active filters or sort, use AJAX
+  if (currentFilters.search || currentFilters.category || currentFilters.subcategory || 
+      currentFilters.difficulty || currentSort.sort_by) {
+    performFilteredSearch(false);
+  } else {
+    // No filters active - reload page with new per_page parameter
+    const currentUrl = new URL(window.location);
+    currentUrl.searchParams.set('per_page', newPerPage);
+    window.location.href = currentUrl.toString();
+  }
 }
 
 // Clear all filters
@@ -1499,21 +1573,154 @@ function clearAllFilters() {
     difficulty: ''
   };
   
+  // Also clear sorting
+  clearSort();
+  
   updateSubcategoryFilter();
-  performFilteredSearch(true); // Reset to page 1
+  // performFilteredSearch will be called by clearSort()
 }
 
 // Set filter loading state
 function setFilterLoading(loading) {
   const indicator = document.getElementById('filterLoadingIndicator');
   const container = document.getElementById('searchFilterContainer');
+  const tableContainer = document.querySelector('.table-container');
   
   if (loading) {
     indicator.style.display = 'flex';
     container.style.opacity = '0.7';
+    if (tableContainer) {
+      tableContainer.style.opacity = '0.7';
+      tableContainer.style.pointerEvents = 'none';
+    }
   } else {
     indicator.style.display = 'none';
     container.style.opacity = '1';
+    if (tableContainer) {
+      tableContainer.style.opacity = '1';
+      tableContainer.style.pointerEvents = 'auto';
+    }
+  }
+}
+
+// ========================================
+// SORTING FUNCTIONALITY (PHASE 5)
+// ========================================
+
+// Initialize sorting
+function initializeSorting() {
+  // Set up visual indicators for sortable headers
+  updateSortIndicators();
+}
+
+// Toggle sort for a column
+function toggleSort(column) {
+  if (currentSort.sort_by === column) {
+    // Same column - toggle direction
+    currentSort.sort_order = currentSort.sort_order === 'asc' ? 'desc' : 'asc';
+  } else {
+    // New column - default to ascending
+    currentSort.sort_by = column;
+    currentSort.sort_order = 'asc';
+  }
+  
+  // Update visual indicators
+  updateSortIndicators();
+  
+  // Perform search with sort
+  performFilteredSearch(true); // Reset to page 1 when sorting changes
+}
+
+// Update sort indicator arrows
+function updateSortIndicators() {
+  // Clear all indicators
+  document.querySelectorAll('.sort-indicator').forEach(indicator => {
+    indicator.textContent = '';
+    indicator.className = 'sort-indicator';
+  });
+  
+  // Set active indicator
+  if (currentSort.sort_by) {
+    const activeIndicator = document.querySelector(`[data-sort="${currentSort.sort_by}"]`);
+    if (activeIndicator) {
+      activeIndicator.textContent = currentSort.sort_order === 'asc' ? '↑' : '↓';
+      activeIndicator.className = 'sort-indicator active ' + currentSort.sort_order;
+    }
+  }
+  
+  // Update header classes
+  document.querySelectorAll('.sortable-header').forEach(header => {
+    header.classList.remove('sorted-asc', 'sorted-desc');
+    const sortable = header.getAttribute('data-sortable');
+    if (sortable === currentSort.sort_by) {
+      header.classList.add(`sorted-${currentSort.sort_order}`);
+    }
+  });
+}
+
+// Clear sorting
+function clearSort() {
+  currentSort.sort_by = '';
+  currentSort.sort_order = 'asc';
+  updateSortIndicators();
+  performFilteredSearch(true);
+}
+
+// Add keyboard support for sorting
+function addKeyboardSortSupport() {
+  document.querySelectorAll('.sortable-header').forEach(header => {
+    // Make headers focusable
+    header.setAttribute('tabindex', '0');
+    header.setAttribute('role', 'button');
+    header.setAttribute('aria-label', 'Sort by ' + header.textContent.trim());
+    
+    // Add keyboard event listener
+    header.addEventListener('keydown', function(e) {
+      if (e.key === 'Enter' || e.key === ' ') {
+        e.preventDefault();
+        const sortable = this.getAttribute('data-sortable');
+        if (sortable) {
+          toggleSort(sortable);
+        }
+      }
+    });
+  });
+}
+
+// Maintain sort state during CRUD operations
+function maintainSortState() {
+  // This function is called after successful CRUD operations
+  // to refresh the table while maintaining the current sort
+  if (currentSort.sort_by) {
+    // Re-apply current filters and sort without changing page
+    performFilteredSearch(false);
+  }
+}
+
+// Initialize pagination with server data on page load
+function initializeInitialPagination() {
+  const container = document.getElementById('questionsSection');
+  if (!container) return;
+  
+  try {
+    const paginationData = JSON.parse(container.dataset.initialPagination || '{}');
+    
+    // Update global pagination state with server data
+    currentPagination = {
+      page: paginationData.page || 1,
+      per_page: paginationData.per_page || 50,
+      total: paginationData.total || 0,
+      pages: paginationData.pages || 1,
+      has_prev: paginationData.has_prev || false,
+      has_next: paginationData.has_next || false
+    };
+    
+    // Update pagination UI with server data
+    updatePagination(currentPagination);
+    
+    console.log('Initial pagination initialized:', currentPagination);
+  } catch (error) {
+    console.error('Error initializing pagination:', error);
   }
 }
 </script>
@@ -2010,6 +2217,77 @@ td[data-column="options"] div {
   .search-filter-container select {
     width: 100%;
     min-width: auto;
+  }
+}
+
+/* Sortable Table Headers (Phase 5) */
+.sortable-header {
+  cursor: pointer;
+  user-select: none;
+  position: relative;
+  transition: all 0.2s ease;
+  padding: 10px 8px;
+}
+
+.sortable-header:hover {
+  background-color: #f1f5f9;
+  color: #3B82F6;
+}
+
+.sortable-header.sorted-asc,
+.sortable-header.sorted-desc {
+  background-color: #eff6ff;
+  color: #1d4ed8;
+  font-weight: 600;
+}
+
+.sort-indicator {
+  font-size: 12px;
+  color: #9ca3af;
+  margin-left: 4px;
+  display: inline-block;
+  min-width: 12px;
+  text-align: center;
+}
+
+.sort-indicator.active {
+  color: #3B82F6;
+  font-weight: bold;
+}
+
+.sort-indicator.active.asc {
+  color: #059669;
+}
+
+.sort-indicator.active.desc {
+  color: #dc2626;
+}
+
+/* Enhanced loading states */
+.table-container {
+  transition: opacity 0.3s ease;
+}
+
+.table-container.loading {
+  opacity: 0.6;
+  pointer-events: none;
+}
+
+/* Sort indicator hover effects */
+.sortable-header:hover .sort-indicator {
+  color: #3B82F6;
+}
+
+/* Mobile responsive sortable headers */
+@media (max-width: 768px) {
+  .sortable-header {
+    padding: 8px 4px;
+    font-size: 13px;
+  }
+  
+  .sort-indicator {
+    font-size: 10px;
+    margin-left: 2px;
   }
 }
 </style>

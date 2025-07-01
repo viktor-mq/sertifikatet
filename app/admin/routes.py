@@ -490,6 +490,7 @@ def admin_dashboard():
         sort_by=sort_by,
         sort_order=sort_order,
         pagination=pagination_info,
+        current_per_page=per_page,  # Pass current per_page to template
         validation_errors=validation_errors,
         images=images,
         folders=folders,
