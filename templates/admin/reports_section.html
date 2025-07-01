@@ -76,9 +76,11 @@
   </div>
   {% endif %}
 
-  <!-- Filters -->
-  <form method="GET" action="{{ url_for('admin.reports') }}">
-    <div class="search-filter-container">
+  <!-- Enhanced Filters with AJAX -->
+  <form id="reports-filter-form" class="enhanced-filter-form">
+    <div class="search-filter-container enhanced-search">
+      <input type="text" id="reports-search" name="search" placeholder="🔍 Search reports, users, content..." 
+             value="{{ search_filter or '' }}" class="search-input" />
       <select name="type">
         <option value="">All Types</option>
         <option value="user_feedback" {% if report_type_filter == 'user_feedback' %}selected{% endif %}>
@@ -116,23 +118,30 @@
         <option value="low" {% if priority_filter == 'low' %}selected{% endif %}>Low</option>
       </select>
 
-      <button type="submit" class="btn">🔍 Filter</button>
-      <a href="{{ url_for('admin.reports') }}" class="btn btn-secondary">🗑️ Clear</a>
+      <select name="per_page" id="reports-per-page">
+        <option value="20">20 per page</option>
+        <option value="50">50 per page</option>
+        <option value="100">100 per page</option>
+      </select>
+      <button type="button" class="btn" onclick="performReportsSearch()">🔍 Filter</button>
+      <button type="button" class="btn btn-secondary" onclick="clearReportsFilters()">🗑️ Clear</button>
+      <div class="loading-indicator" id="reports-loading" style="display: none;">⏳ Loading...</div>
     </div>
   </form>
 
-  <!-- Reports Table -->
+  <!-- Reports Table with Enhanced Features -->
   <div class="table-container">
-    <table>
+    <div id="reports-results-info" class="results-info"></div>
+    <table id="reports-table">
       <thead>
         <tr>
-          <th>ID</th>
-          <th>Priority</th>
-          <th>Type</th>
-          <th>Title</th>
-          <th>Reported By</th>
-          <th>Status</th>
-          <th>Created</th>
+          <th class="sortable" data-field="id">ID <span class="sort-indicator"></span></th>
+          <th class="sortable" data-field="priority">Priority <span class="sort-indicator"></span></th>
+          <th class="sortable" data-field="report_type">Type <span class="sort-indicator"></span></th>
+          <th class="sortable" data-field="title">Title <span class="sort-indicator"></span></th>
+          <th class="sortable" data-field="reported_by">Reported By <span class="sort-indicator"></span></th>
+          <th class="sortable" data-field="status">Status <span class="sort-indicator"></span></th>
+          <th class="sortable" data-field="created_at">Created <span class="sort-indicator"></span></th>
           <th>Assigned To</th>
           <th>Actions</th>
         </tr>
@@ -186,18 +195,13 @@
               {% endif %}
             </td>
             <td>
-              <a href="{{ url_for('admin.view_report', report_id=report.id) }}" 
-                 class="btn btn-small">
+              <button onclick="openReportModal({{ report.id }})" class="btn btn-small">
                 👁️ View
-              </a>
+              </button>
               {% if report.status == 'new' and not report.assigned_to %}
-              <form method="POST" action="{{ url_for('admin.update_report', report_id=report.id) }}" 
-                    class="d-inline">
-                <input type="hidden" name="action" value="assign">
-                <button type="submit" class="btn btn-warning btn-small">
-                  👤 Assign
-                </button>
-              </form>
+              <button onclick="assignReportAjax({{ report.id }})" class="btn btn-warning btn-small">
+                👤 Assign
+              </button>
               {% endif %}
             </td>
           </tr>
@@ -253,6 +257,27 @@
     </div>
   </div>
   {% endif %}
+  
+  <!-- Pagination Controls -->
+  <div id="reports-pagination" class="pagination-container"></div>
+</div>
+
+<!-- Report Details Modal -->
+<div id="reportModal" class="modal">
+  <div class="modal-content">
+    <div class="modal-header">
+      <h3 id="reportModalTitle">Report Details</h3>
+      <button class="close-btn" onclick="closeReportModal()">&times;</button>
+    </div>
+    <div class="modal-body" id="reportModalBody">
+      <!-- Content loaded via AJAX -->
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-secondary" onclick="closeReportModal()">Close</button>
+      <button class="btn btn-warning" onclick="assignCurrentReport()">Assign to Me</button>
+      <button class="btn btn-success" onclick="resolveCurrentReport()">Mark Resolved</button>
+    </div>
+  </div>
 </div>
 
 <style>
@@ -265,4 +290,613 @@
 #reportsSection form.d-inline {
     display: inline-block;
 }
+
+/* Enhanced CSS for Reports Section */
+.enhanced-filter-form {
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  padding: 20px;
+  border-radius: 12px;
+  margin-bottom: 20px;
+  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+}
+
+.enhanced-search {
+  display: flex;
+  gap: 10px;
+  align-items: center;
+  flex-wrap: wrap;
+}
+
+.search-input {
+  flex: 1;
+  min-width: 300px;
+  padding: 8px 12px;
+  border: 2px solid #e5e7eb;
+  border-radius: 8px;
+  font-size: 14px;
+}
+
+.search-input:focus {
+  border-color: #3b82f6;
+  box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
+}
+
+.sortable {
+  cursor: pointer;
+  user-select: none;
+  position: relative;
+}
+
+.sortable:hover {
+  background-color: rgba(59, 130, 246, 0.1);
+}
+
+.sort-indicator {
+  margin-left: 5px;
+  opacity: 0.5;
+}
+
+.sort-indicator.asc::after {
+  content: '↑';
+  color: #10b981;
+}
+
+.sort-indicator.desc::after {
+  content: '↓';
+  color: #ef4444;
+}
+
+.results-info {
+  margin-bottom: 10px;
+  padding: 8px 12px;
+  background: #f3f4f6;
+  border-radius: 6px;
+  font-size: 14px;
+  color: #374151;
+}
+
+.loading-indicator {
+  color: white;
+  font-weight: bold;
+}
+
+.pagination-container {
+  margin-top: 20px;
+  text-align: center;
+}
+
+.pagination {
+  display: inline-flex;
+  gap: 5px;
+  align-items: center;
+}
+
+.page-btn {
+  padding: 8px 12px;
+  border: 1px solid #d1d5db;
+  background: white;
+  color: #374151;
+  border-radius: 6px;
+  cursor: pointer;
+  text-decoration: none;
+}
+
+.page-btn:hover {
+  background: #f3f4f6;
+}
+
+.page-btn.active {
+  background: #3b82f6;
+  color: white;
+  border-color: #3b82f6;
+}
+
+.page-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+/* Modal Styles */
+.modal {
+  display: none;
+  position: fixed;
+  z-index: 1000;
+  left: 0;
+  top: 0;
+  width: 100%;
+  height: 100%;
+  background-color: rgba(0, 0, 0, 0.5);
+  backdrop-filter: blur(5px);
+}
+
+.modal-content {
+  background-color: white;
+  margin: 5% auto;
+  padding: 0;
+  border-radius: 12px;
+  width: 90%;
+  max-width: 800px;
+  max-height: 80vh;
+  overflow-y: auto;
+  box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1);
+}
+
+.modal-header {
+  padding: 20px;
+  border-bottom: 1px solid #e5e7eb;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  color: white;
+  border-radius: 12px 12px 0 0;
+}
+
+.modal-body {
+  padding: 20px;
+}
+
+.modal-footer {
+  padding: 20px;
+  border-top: 1px solid #e5e7eb;
+  display: flex;
+  gap: 10px;
+  justify-content: flex-end;
+}
+
+.close-btn {
+  background: none;
+  border: none;
+  font-size: 24px;
+  cursor: pointer;
+  color: white;
+}
+
+.close-btn:hover {
+  opacity: 0.7;
+}
+
+.detail-section {
+  margin-bottom: 20px;
+  padding: 15px;
+  background: #f8f9fa;
+  border-radius: 8px;
+}
+
+.detail-section h4 {
+  margin: 0 0 10px 0;
+  color: #374151;
+}
+
+.detail-section pre {
+  background: white;
+  padding: 10px;
+  border-radius: 4px;
+  border: 1px solid #e5e7eb;
+  white-space: pre-wrap;
+  word-wrap: break-word;
+}
+
+@media (max-width: 768px) {
+  .enhanced-search {
+    flex-direction: column;
+    align-items: stretch;
+  }
+  
+  .search-input {
+    min-width: unset;
+  }
+  
+  .modal-content {
+    width: 95%;
+    margin: 10% auto;
+  }
+}
 </style>
+
+<!-- Include admin-base.js -->
+<script src="{{ url_for('static', filename='js/admin-base.js') }}"></script>
+
+<script>
+// Reports Section Enhancement JavaScript
+let currentReportId = null;
+let currentFilters = {};
+let currentSort = { field: 'created_at', order: 'desc' };
+let currentPage = 1;
+let perPage = 20;
+
+document.addEventListener('DOMContentLoaded', function() {
+    // Only initialize if reports section exists and is active
+    const reportsSection = document.getElementById('reportsSection');
+    if (reportsSection && reportsSection.classList.contains('active')) {
+        initializeReportsEnhancements();
+    }
+});
+
+// Global function to initialize reports when section becomes active
+window.initializeReportsSection = function() {
+    if (!window.reportsInitialized) {
+        initializeReportsEnhancements();
+        window.reportsInitialized = true;
+    }
+};
+
+function initializeReportsEnhancements() {
+    // Initialize search with debouncing
+    const searchInput = document.getElementById('reports-search');
+    if (searchInput) {
+        let searchTimeout;
+        searchInput.addEventListener('input', function() {
+            clearTimeout(searchTimeout);
+            searchTimeout = setTimeout(() => {
+                currentPage = 1;
+                performReportsSearch();
+            }, 300);
+        });
+    }
+    
+    // Initialize sorting
+    document.querySelectorAll('.sortable').forEach(header => {
+        header.addEventListener('click', function() {
+            const field = this.dataset.field;
+            if (currentSort.field === field) {
+                currentSort.order = currentSort.order === 'asc' ? 'desc' : 'asc';
+            } else {
+                currentSort.field = field;
+                currentSort.order = 'asc';
+            }
+            currentPage = 1;
+            updateSortIndicators();
+            performReportsSearch();
+        });
+    });
+    
+    // Initialize per-page selector
+    const perPageSelect = document.getElementById('reports-per-page');
+    if (perPageSelect) {
+        perPageSelect.addEventListener('change', function() {
+            perPage = parseInt(this.value);
+            currentPage = 1;
+            performReportsSearch();
+        });
+    }
+    
+    // Initialize keyboard shortcuts
+    document.addEventListener('keydown', function(e) {
+        if (e.ctrlKey || e.metaKey) {
+            switch(e.key) {
+                case 'f':
+                    e.preventDefault();
+                    document.getElementById('reports-search').focus();
+                    break;
+                case 'r':
+                    e.preventDefault();
+                    loadReportsData();
+                    break;
+            }
+        }
+        if (e.key === 'Escape' && document.getElementById('reportModal').style.display === 'block') {
+            closeReportModal();
+        }
+    });
+}
+
+function performReportsSearch() {
+    const form = document.getElementById('reports-filter-form');
+    const formData = new FormData(form);
+    
+    currentFilters = {
+        search: formData.get('search') || '',
+        type: formData.get('type') || '',
+        status: formData.get('status') || '',
+        priority: formData.get('priority') || '',
+        sort_by: currentSort.field,
+        sort_order: currentSort.order,
+        page: currentPage,
+        per_page: perPage
+    };
+    
+    loadReportsData();
+}
+
+async function loadReportsData() {
+    setReportsLoading(true);
+    
+    try {
+        const data = await AdminEnhancements.fetchData('reports', currentFilters);
+        updateReportsTable(data);
+        updateReportsPagination(data.pagination);
+        updateResultsInfo(data.pagination);
+        AdminEnhancements.showToast('Reports updated', 'success');
+    } catch (error) {
+        AdminEnhancements.showToast('Error loading reports: ' + error.message, 'error');
+    } finally {
+        setReportsLoading(false);
+    }
+}
+
+function updateReportsTable(data) {
+    const tbody = document.querySelector('#reports-table tbody');
+    if (!tbody) return;
+    
+    tbody.innerHTML = '';
+    
+    if (data.reports && data.reports.length > 0) {
+        data.reports.forEach(report => {
+            const row = createReportRow(report);
+            tbody.appendChild(row);
+        });
+    } else {
+        const emptyRow = document.createElement('tr');
+        emptyRow.innerHTML = '<td colspan="9" style="text-align: center; color: #999; font-style: italic;">No reports found</td>';
+        tbody.appendChild(emptyRow);
+    }
+}
+
+function createReportRow(report) {
+    const row = document.createElement('tr');
+    row.className = report.priority === 'critical' ? 'table-danger' : (report.priority === 'high' ? 'table-warning' : '');
+    
+    const priorityBadge = getPriorityBadge(report.priority);
+    const statusBadge = getStatusBadge(report.status);
+    const typeBadge = `<span class="btn btn-secondary btn-small" style="cursor: default;">${report.report_type}</span>`;
+    
+    row.innerHTML = `
+        <td>#${report.id}</td>
+        <td>${priorityBadge}</td>
+        <td>${typeBadge}</td>
+        <td><strong>${truncateText(report.title, 50)}</strong></td>
+        <td>${report.reported_by ? report.reported_by.username : '<em>System</em>'}</td>
+        <td>${statusBadge}</td>
+        <td>${formatDate(report.created_at)}</td>
+        <td>${report.assigned_to ? report.assigned_to.username : '<em>Unassigned</em>'}</td>
+        <td>
+            <button onclick="openReportModal(${report.id})" class="btn btn-small">👁️ View</button>
+            ${report.status === 'new' && !report.assigned_to ? 
+                `<button onclick="assignReportAjax(${report.id})" class="btn btn-warning btn-small">👤 Assign</button>` : ''}
+        </td>
+    `;
+    
+    return row;
+}
+
+function getPriorityBadge(priority) {
+    const badges = {
+        'critical': '<span class="btn btn-danger btn-small" style="cursor: default;">CRITICAL</span>',
+        'high': '<span class="btn btn-warning btn-small" style="cursor: default;">HIGH</span>',
+        'medium': '<span class="btn btn-secondary btn-small" style="cursor: default;">MEDIUM</span>',
+        'low': '<span class="btn btn-secondary btn-small" style="cursor: default;">LOW</span>'
+    };
+    return badges[priority] || badges.low;
+}
+
+function getStatusBadge(status) {
+    const badges = {
+        'new': '<span class="btn btn-secondary btn-small" style="cursor: default;">NEW</span>',
+        'in_progress': '<span class="btn btn-warning btn-small" style="cursor: default;">IN PROGRESS</span>',
+        'resolved': '<span class="btn btn-success btn-small" style="cursor: default;">RESOLVED</span>'
+    };
+    return badges[status] || `<span class="btn btn-secondary btn-small" style="cursor: default;">${status.toUpperCase()}</span>`;
+}
+
+function updateReportsPagination(pagination) {
+    const container = document.getElementById('reports-pagination');
+    if (!container || !pagination) return;
+    
+    let html = '<div class="pagination">';
+    
+    // Previous button
+    if (pagination.has_prev) {
+        html += `<button class="page-btn" onclick="goToReportsPage(${pagination.prev_num})">← Previous</button>`;
+    } else {
+        html += '<button class="page-btn" disabled>← Previous</button>';
+    }
+    
+    // Page numbers
+    const startPage = Math.max(1, pagination.page - 2);
+    const endPage = Math.min(pagination.pages, pagination.page + 2);
+    
+    if (startPage > 1) {
+        html += '<button class="page-btn" onclick="goToReportsPage(1)">1</button>';
+        if (startPage > 2) html += '<span class="page-btn" disabled>...</span>';
+    }
+    
+    for (let i = startPage; i <= endPage; i++) {
+        const activeClass = i === pagination.page ? 'active' : '';
+        html += `<button class="page-btn ${activeClass}" onclick="goToReportsPage(${i})">${i}</button>`;
+    }
+    
+    if (endPage < pagination.pages) {
+        if (endPage < pagination.pages - 1) html += '<span class="page-btn" disabled>...</span>';
+        html += `<button class="page-btn" onclick="goToReportsPage(${pagination.pages})">${pagination.pages}</button>`;
+    }
+    
+    // Next button
+    if (pagination.has_next) {
+        html += `<button class="page-btn" onclick="goToReportsPage(${pagination.next_num})">Next →</button>`;
+    } else {
+        html += '<button class="page-btn" disabled>Next →</button>';
+    }
+    
+    html += '</div>';
+    container.innerHTML = html;
+}
+
+function goToReportsPage(page) {
+    currentPage = page;
+    performReportsSearch();
+}
+
+function updateResultsInfo(pagination) {
+    const infoDiv = document.getElementById('reports-results-info');
+    if (!infoDiv || !pagination) return;
+    
+    const start = (pagination.page - 1) * pagination.per_page + 1;
+    const end = Math.min(pagination.page * pagination.per_page, pagination.total);
+    
+    infoDiv.innerHTML = `Showing ${start}-${end} of ${pagination.total} reports`;
+}
+
+function updateSortIndicators() {
+    document.querySelectorAll('.sort-indicator').forEach(indicator => {
+        indicator.className = 'sort-indicator';
+    });
+    
+    const activeHeader = document.querySelector(`[data-field="${currentSort.field}"] .sort-indicator`);
+    if (activeHeader) {
+        activeHeader.className = `sort-indicator ${currentSort.order}`;
+    }
+}
+
+function clearReportsFilters() {
+    document.getElementById('reports-filter-form').reset();
+    currentFilters = {};
+    currentSort = { field: 'created_at', order: 'desc' };
+    currentPage = 1;
+    perPage = 20;
+    updateSortIndicators();
+    loadReportsData();
+}
+
+function setReportsLoading(loading) {
+    const indicator = document.getElementById('reports-loading');
+    const table = document.getElementById('reports-table');
+    
+    if (indicator) {
+        indicator.style.display = loading ? 'inline' : 'none';
+    }
+    if (table) {
+        table.style.opacity = loading ? '0.6' : '1';
+    }
+}
+
+// Modal Functions
+async function openReportModal(reportId) {
+    currentReportId = reportId;
+    const modal = document.getElementById('reportModal');
+    const body = document.getElementById('reportModalBody');
+    
+    try {
+        body.innerHTML = '<div style="text-align: center; padding: 20px;">Loading...</div>';
+        modal.style.display = 'block';
+        
+        const data = await AdminEnhancements.fetchData(`reports/${reportId}`);
+        displayReportDetails(data.report);
+    } catch (error) {
+        body.innerHTML = '<div style="color: red;">Error loading report details</div>';
+        AdminEnhancements.showToast('Error loading report: ' + error.message, 'error');
+    }
+}
+
+function displayReportDetails(report) {
+    const body = document.getElementById('reportModalBody');
+    const title = document.getElementById('reportModalTitle');
+    
+    title.textContent = `Report #${report.id} - ${report.title}`;
+    
+    body.innerHTML = `
+        <div class="report-details">
+            <div class="detail-section">
+                <h4>Basic Information</h4>
+                <p><strong>Type:</strong> ${report.report_type}</p>
+                <p><strong>Priority:</strong> ${report.priority}</p>
+                <p><strong>Status:</strong> ${report.status}</p>
+                <p><strong>Created:</strong> ${formatDate(report.created_at)}</p>
+            </div>
+            
+            <div class="detail-section">
+                <h4>People</h4>
+                <p><strong>Reported By:</strong> ${report.reported_by ? report.reported_by.username : 'System'}</p>
+                <p><strong>Assigned To:</strong> ${report.assigned_to ? report.assigned_to.username : 'Unassigned'}</p>
+            </div>
+            
+            <div class="detail-section">
+                <h4>Description</h4>
+                <p>${report.description || 'No description provided'}</p>
+            </div>
+            
+            ${report.additional_info ? `
+            <div class="detail-section">
+                <h4>Additional Information</h4>
+                <pre>${report.additional_info}</pre>
+            </div>
+            ` : ''}
+        </div>
+    `;
+}
+
+function closeReportModal() {
+    document.getElementById('reportModal').style.display = 'none';
+    currentReportId = null;
+}
+
+async function assignReportAjax(reportId) {
+    try {
+        const response = await fetch(`/admin/api/reports/${reportId}/assign`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' }
+        });
+        
+        if (!response.ok) throw new Error('Failed to assign report');
+        
+        AdminEnhancements.showToast('Report assigned successfully', 'success');
+        loadReportsData();
+        
+        if (currentReportId === reportId) {
+            openReportModal(reportId); // Refresh modal
+        }
+    } catch (error) {
+        AdminEnhancements.showToast('Error assigning report: ' + error.message, 'error');
+    }
+}
+
+async function assignCurrentReport() {
+    if (currentReportId) {
+        await assignReportAjax(currentReportId);
+    }
+}
+
+async function resolveCurrentReport() {
+    if (!currentReportId) return;
+    
+    try {
+        const response = await fetch(`/admin/api/reports/${currentReportId}/resolve`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' }
+        });
+        
+        if (!response.ok) throw new Error('Failed to resolve report');
+        
+        AdminEnhancements.showToast('Report resolved successfully', 'success');
+        closeReportModal();
+        loadReportsData();
+    } catch (error) {
+        AdminEnhancements.showToast('Error resolving report: ' + error.message, 'error');
+    }
+}
+
+// Utility Functions
+function truncateText(text, maxLength) {
+    if (text.length <= maxLength) return text;
+    return text.substring(0, maxLength) + '...';
+}
+
+function formatDate(dateString) {
+    const date = new Date(dateString);
+    return date.toLocaleDateString('en-GB', {
+        day: '2-digit',
+        month: '2-digit', 
+        year: 'numeric',
+        hour: '2-digit',
+        minute: '2-digit'
+    });
+}
+
+// Click outside modal to close
+window.onclick = function(event) {
+    const modal = document.getElementById('reportModal');
+    if (event.target === modal) {
+        closeReportModal();
+    }
+}
+</script>

@@ -2220,3 +2220,388 @@ def get_marketing_template():
         'name': template.name,
         'description': template.description
     })
+
+# ===========================
+# Enhanced Admin API Endpoints
+# ===========================
+
+@admin_bp.route('/api/reports')
+@admin_required
+def api_reports():
+    """API endpoint for reports with filtering, sorting, and pagination"""
+    try:
+        page = int(request.args.get('page', 1))
+        per_page = int(request.args.get('per_page', 20))
+        search = request.args.get('search', '')
+        report_type = request.args.get('type', '')
+        status = request.args.get('status', '')
+        priority = request.args.get('priority', '')
+        sort_by = request.args.get('sort_by', 'created_at')
+        sort_order = request.args.get('sort_order', 'desc')
+        
+        # Build query
+        query = AdminReport.query
+        
+        # Apply filters
+        if search:
+            query = query.filter(
+                AdminReport.title.contains(search) |
+                AdminReport.description.contains(search) |
+                AdminReport.additional_info.contains(search)
+            )
+        
+        if report_type:
+            query = query.filter(AdminReport.report_type == report_type)
+        
+        if status:
+            query = query.filter(AdminReport.status == status)
+        
+        if priority:
+            query = query.filter(AdminReport.priority == priority)
+        
+        # Apply sorting
+        if hasattr(AdminReport, sort_by):
+            if sort_order == 'desc':
+                query = query.order_by(getattr(AdminReport, sort_by).desc())
+            else:
+                query = query.order_by(getattr(AdminReport, sort_by))
+        
+        # Paginate
+        reports = query.paginate(
+            page=page, per_page=per_page, error_out=False
+        )
+        
+        # Format response
+        reports_data = []
+        for report in reports.items:
+            reports_data.append({
+                'id': report.id,
+                'title': report.title,
+                'description': report.description,
+                'report_type': report.report_type,
+                'priority': report.priority,
+                'status': report.status,
+                'created_at': report.created_at.isoformat(),
+                'additional_info': report.additional_info,
+                'reported_by': {
+                    'id': report.reported_by.id,
+                    'username': report.reported_by.username
+                } if report.reported_by else None,
+                'assigned_to': {
+                    'id': report.assigned_to.id,
+                    'username': report.assigned_to.username
+                } if report.assigned_to else None
+            })
+        
+        return jsonify({
+            'reports': reports_data,
+            'pagination': {
+                'page': reports.page,
+                'pages': reports.pages,
+                'per_page': reports.per_page,
+                'total': reports.total,
+                'has_next': reports.has_next,
+                'has_prev': reports.has_prev,
+                'next_num': reports.next_num,
+                'prev_num': reports.prev_num
+            }
+        })
+        
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
+@admin_bp.route('/api/reports/<int:report_id>')
+@admin_required
+def api_report_details(report_id):
+    """Get detailed report information"""
+    try:
+        report = AdminReport.query.get_or_404(report_id)
+        
+        return jsonify({
+            'report': {
+                'id': report.id,
+                'title': report.title,
+                'description': report.description,
+                'report_type': report.report_type,
+                'priority': report.priority,
+                'status': report.status,
+                'created_at': report.created_at.isoformat(),
+                'additional_info': report.additional_info,
+                'reported_by': {
+                    'id': report.reported_by.id,
+                    'username': report.reported_by.username
+                } if report.reported_by else None,
+                'assigned_to': {
+                    'id': report.assigned_to.id,
+                    'username': report.assigned_to.username
+                } if report.assigned_to else None
+            }
+        })
+        
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
+@admin_bp.route('/api/reports/<int:report_id>/assign', methods=['POST'])
+@admin_required
+def api_assign_report(report_id):
+    """Assign report to current admin"""
+    try:
+        report = AdminReport.query.get_or_404(report_id)
+        report.assigned_to = current_user
+        report.status = 'in_progress'
+        
+        db.session.commit()
+        
+        # Log the action
+        AdminSecurityService.log_admin_action(
+            admin_user=current_user,
+            action='report_assign',
+            target_user=None,
+            additional_info=f'Report #{report_id}: {report.title}'
+        )
+        
+        return jsonify({'success': True, 'message': 'Report assigned successfully'})
+        
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
+@admin_bp.route('/api/reports/<int:report_id>/resolve', methods=['POST'])
+@admin_required
+def api_resolve_report(report_id):
+    """Mark report as resolved"""
+    try:
+        report = AdminReport.query.get_or_404(report_id)
+        report.status = 'resolved'
+        
+        db.session.commit()
+        
+        # Log the action
+        AdminSecurityService.log_admin_action(
+            admin_user=current_user,
+            action='report_resolve',
+            target_user=None,
+            additional_info=f'Report #{report_id}: {report.title}'
+        )
+        
+        return jsonify({'success': True, 'message': 'Report resolved successfully'})
+        
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
+@admin_bp.route('/api/users')
+@admin_required
+def api_users():
+    """API endpoint for users with filtering, sorting, and pagination"""
+    try:
+        page = int(request.args.get('page', 1))
+        per_page = int(request.args.get('per_page', 20))
+        search = request.args.get('search', '')
+        admin_status = request.args.get('admin_status', '')
+        status = request.args.get('status', '')
+        sort_by = request.args.get('sort_by', 'created_at')
+        sort_order = request.args.get('sort_order', 'desc')
+        
+        # Build query
+        query = User.query
+        
+        # Apply filters
+        if search:
+            query = query.filter(
+                User.username.contains(search) |
+                User.email.contains(search) |
+                User.full_name.contains(search)
+            )
+        
+        if admin_status == 'admin':
+            query = query.filter(User.is_admin == True)
+        elif admin_status == 'user':
+            query = query.filter(User.is_admin == False)
+        
+        if status == 'active':
+            query = query.filter(User.is_active == True)
+        elif status == 'inactive':
+            query = query.filter(User.is_active == False)
+        
+        # Apply sorting
+        if hasattr(User, sort_by):
+            if sort_order == 'desc':
+                query = query.order_by(getattr(User, sort_by).desc())
+            else:
+                query = query.order_by(getattr(User, sort_by))
+        
+        # Paginate
+        users = query.paginate(
+            page=page, per_page=per_page, error_out=False
+        )
+        
+        # Format response
+        users_data = []
+        for user in users.items:
+            users_data.append({
+                'id': user.id,
+                'username': user.username,
+                'email': user.email,
+                'full_name': user.full_name,
+                'is_active': user.is_active,
+                'is_admin': user.is_admin,
+                'is_verified': user.is_verified,
+                'created_at': user.created_at.isoformat() if user.created_at else None,
+                'last_login': user.last_login.isoformat() if user.last_login else None,
+                'is_current_user': user.id == current_user.id
+            })
+        
+        return jsonify({
+            'users': users_data,
+            'pagination': {
+                'page': users.page,
+                'pages': users.pages,
+                'per_page': users.per_page,
+                'total': users.total,
+                'has_next': users.has_next,
+                'has_prev': users.has_prev,
+                'next_num': users.next_num,
+                'prev_num': users.prev_num
+            }
+        })
+        
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
+@admin_bp.route('/api/users/<int:user_id>/grant-admin', methods=['POST'])
+@admin_required
+def api_grant_admin(user_id):
+    """Grant admin privileges to user"""
+    try:
+        user = User.query.get_or_404(user_id)
+        
+        if user.id == current_user.id:
+            return jsonify({'error': 'Cannot modify own privileges'}), 400
+        
+        if user.is_admin:
+            return jsonify({'error': 'User already has admin privileges'}), 400
+        
+        user.is_admin = True
+        db.session.commit()
+        
+        # Log the action
+        AdminSecurityService.log_admin_action(
+            admin_user=current_user,
+            action='grant_admin',
+            target_user=user,
+            additional_info=f'Admin privileges granted to {user.username}'
+        )
+        
+        return jsonify({'success': True, 'message': f'Admin privileges granted to {user.username}'})
+        
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
+@admin_bp.route('/api/users/<int:user_id>/revoke-admin', methods=['POST'])
+@admin_required
+def api_revoke_admin(user_id):
+    """Revoke admin privileges from user"""
+    try:
+        user = User.query.get_or_404(user_id)
+        
+        if user.id == current_user.id:
+            return jsonify({'error': 'Cannot modify own privileges'}), 400
+        
+        if not user.is_admin:
+            return jsonify({'error': 'User does not have admin privileges'}), 400
+        
+        user.is_admin = False
+        db.session.commit()
+        
+        # Log the action
+        AdminSecurityService.log_admin_action(
+            admin_user=current_user,
+            action='revoke_admin',
+            target_user=user,
+            additional_info=f'Admin privileges revoked from {user.username}'
+        )
+        
+        return jsonify({'success': True, 'message': f'Admin privileges revoked from {user.username}'})
+        
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
+@admin_bp.route('/api/audit-logs')
+@admin_required
+def api_audit_logs():
+    """API endpoint for audit logs with filtering, sorting, and pagination"""
+    try:
+        page = int(request.args.get('page', 1))
+        per_page = int(request.args.get('per_page', 50))
+        search = request.args.get('search', '')
+        action = request.args.get('action', '')
+        ip = request.args.get('ip', '')
+        sort_by = request.args.get('sort_by', 'created_at')
+        sort_order = request.args.get('sort_order', 'desc')
+        
+        # Build query
+        query = AdminAuditLog.query
+        
+        # Apply filters
+        if search:
+            query = query.join(User, AdminAuditLog.admin_user_id == User.id, isouter=True)
+            query = query.filter(
+                AdminAuditLog.action.contains(search) |
+                AdminAuditLog.additional_info.contains(search) |
+                User.username.contains(search)
+            )
+        
+        if action:
+            query = query.filter(AdminAuditLog.action == action)
+        
+        if ip:
+            query = query.filter(AdminAuditLog.ip_address.contains(ip))
+        
+        # Apply sorting
+        if hasattr(AdminAuditLog, sort_by):
+            if sort_order == 'desc':
+                query = query.order_by(getattr(AdminAuditLog, sort_by).desc())
+            else:
+                query = query.order_by(getattr(AdminAuditLog, sort_by))
+        
+        # Paginate
+        logs = query.paginate(
+            page=page, per_page=per_page, error_out=False
+        )
+        
+        # Format response
+        logs_data = []
+        for log in logs.items:
+            logs_data.append({
+                'id': log.id,
+                'action': log.action,
+                'created_at': log.created_at.isoformat(),
+                'ip_address': log.ip_address,
+                'user_agent': log.user_agent,
+                'additional_info': log.additional_info,
+                'admin_user': {
+                    'id': log.admin_user.id,
+                    'username': log.admin_user.username,
+                    'is_current_user': log.admin_user.id == current_user.id
+                } if log.admin_user else None,
+                'target_user': {
+                    'id': log.target_user.id,
+                    'username': log.target_user.username
+                } if log.target_user else None
+            })
+        
+        return jsonify({
+            'logs': logs_data,
+            'pagination': {
+                'page': logs.page,
+                'pages': logs.pages,
+                'per_page': logs.per_page,
+                'total': logs.total,
+                'has_next': logs.has_next,
+                'has_prev': logs.has_prev,
+                'next_num': logs.next_num,
+                'prev_num': logs.prev_num
+            }
+        })
+        
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500

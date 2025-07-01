@@ -63,16 +63,26 @@ th {
         <button type="submit" class="btn" style="margin-top: 10px;">▶️ Kjør SQL</button>
     </form>
 
-    <!-- Table Filter -->
-    <div style="background: #f8f9fa; padding: 15px; border-radius: 8px; margin-bottom: 20px; display: flex; align-items: center; gap: 15px;">
-        <label for="tableFilter" style="font-size: 16px; font-weight: bold; margin: 0;">📊 Vis tabell:</label>
-        <select id="tableFilter" onchange="filterTables()" style="padding: 8px 12px; border: 2px solid #e5e7eb; border-radius: 8px; font-size: 14px; min-width: 200px;">
-            <option value="all">Alle tabeller</option>
-            {% for table in tables.keys() %}
-                <option value="{{ table }}">{{ table }}</option>
-            {% endfor %}
-        </select>
-    </div>
+    <!-- Enhanced Database Filters -->
+    <form id="database-filter-form" class="enhanced-filter-form">
+        <div class="search-filter-container enhanced-search">
+            <input type="text" id="database-search" name="search" placeholder="🔍 Search across tables..." class="search-input" />
+            <select id="tableFilter" name="table" onchange="filterTables()">
+                <option value="all">Alle tabeller</option>
+                {% for table in tables.keys() %}
+                    <option value="{{ table }}">{{ table }}</option>
+                {% endfor %}
+            </select>
+            <select name="per_page" id="database-per-page">
+                <option value="50">50 per page</option>
+                <option value="100">100 per page</option>
+                <option value="200">200 per page</option>
+            </select>
+            <button type="button" class="btn" onclick="performDatabaseSearch()">🔍 Search</button>
+            <button type="button" class="btn btn-secondary" onclick="clearDatabaseFilters()">🗑️ Clear</button>
+            <div class="loading-indicator" id="database-loading" style="display: none;">⏳ Loading...</div>
+        </div>
+    </form>
 
     {% for table, rows in tables.items() %}
         <div class="table-section" data-table="{{ table }}" style="background: white; padding: 20px; border-radius: 12px; margin-bottom: 20px; box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);">
@@ -95,12 +105,13 @@ th {
                 </div>
 
                 <div class="table-container">
-                    <table>
+                    <div id="{{ table }}-results-info" class="results-info"></div>
+                    <table id="{{ table }}-table" class="database-table">
                         <thead>
                             <tr>
                                 {% for col in rows[0].keys() %}
-                                <th data-column="{{ col }}">
-                                    {{ col }}
+                                <th class="sortable" data-column="{{ col }}" data-table="{{ table }}" onclick="sortTable('{{ table }}', '{{ col }}')">
+                                    {{ col }} <span class="sort-indicator"></span>
                                     <select class="column-value-filter" data-table="{{ table }}" data-column="{{ col }}" onchange="filterTableByColumn()">
                                         <option value="all">Alle</option>
                                         {% set unique_values = [] %}
@@ -148,10 +159,394 @@ th {
                 <p>(Ingen data i denne tabellen.)</p>
             {% endif %}
         </div>
+        <!-- Pagination Controls -->
+        <div id="{{ table }}-pagination" class="pagination-container"></div>
     {% endfor %}
+    
+    <!-- Global Database Pagination -->
+    <div id="database-pagination" class="pagination-container"></div>
 </div>
 
+<!-- Enhanced CSS for Database Section -->
+<style>
+/* Reuse enhanced styles from other sections */
+.enhanced-filter-form {
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  padding: 20px;
+  border-radius: 12px;
+  margin-bottom: 20px;
+  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+}
+
+.enhanced-search {
+  display: flex;
+  gap: 10px;
+  align-items: center;
+  flex-wrap: wrap;
+}
+
+.search-input {
+  flex: 1;
+  min-width: 300px;
+  padding: 8px 12px;
+  border: 2px solid #e5e7eb;
+  border-radius: 8px;
+  font-size: 14px;
+}
+
+.search-input:focus {
+  border-color: #3b82f6;
+  box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
+}
+
+.sortable {
+  cursor: pointer;
+  user-select: none;
+  position: relative;
+}
+
+.sortable:hover {
+  background-color: rgba(59, 130, 246, 0.1);
+}
+
+.sort-indicator {
+  margin-left: 5px;
+  opacity: 0.5;
+}
+
+.sort-indicator.asc::after {
+  content: '↑';
+  color: #10b981;
+}
+
+.sort-indicator.desc::after {
+  content: '↓';
+  color: #ef4444;
+}
+
+.results-info {
+  margin-bottom: 10px;
+  padding: 8px 12px;
+  background: #f3f4f6;
+  border-radius: 6px;
+  font-size: 14px;
+  color: #374151;
+}
+
+.loading-indicator {
+  color: white;
+  font-weight: bold;
+}
+
+.pagination-container {
+  margin-top: 20px;
+  text-align: center;
+}
+
+.pagination {
+  display: inline-flex;
+  gap: 5px;
+  align-items: center;
+}
+
+.page-btn {
+  padding: 8px 12px;
+  border: 1px solid #d1d5db;
+  background: white;
+  color: #374151;
+  border-radius: 6px;
+  cursor: pointer;
+  text-decoration: none;
+}
+
+.page-btn:hover {
+  background: #f3f4f6;
+}
+
+.page-btn.active {
+  background: #3b82f6;
+  color: white;
+  border-color: #3b82f6;
+}
+
+.page-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.database-table {
+  margin-bottom: 10px;
+}
+
+@media (max-width: 768px) {
+  .enhanced-search {
+    flex-direction: column;
+    align-items: stretch;
+  }
+  
+  .search-input {
+    min-width: unset;
+  }
+}
+</style>
+
+<!-- Include admin-base.js -->
+<script src="{{ url_for('static', filename='js/admin-base.js') }}"></script>
+
 <script>
+// Database Section Enhancement JavaScript
+let currentDatabaseFilters = {};
+let currentDatabaseSort = {};
+let currentDatabasePage = {};
+let databasePerPage = 50;
+let currentTable = 'all';
+
+document.addEventListener('DOMContentLoaded', function() {
+    // Only initialize if database section exists and is visible
+    const databaseSection = document.getElementById('databaseSection');
+    if (databaseSection && databaseSection.offsetParent !== null) {
+        initializeDatabaseEnhancements();
+    }
+});
+
+function initializeDatabaseEnhancements() {
+    // Initialize search with debouncing
+    const searchInput = document.getElementById('database-search');
+    if (searchInput) {
+        let searchTimeout;
+        searchInput.addEventListener('input', function() {
+            clearTimeout(searchTimeout);
+            searchTimeout = setTimeout(() => {
+                performDatabaseSearch();
+            }, 300);
+        });
+    }
+    
+    // Initialize per-page selector
+    const perPageSelect = document.getElementById('database-per-page');
+    if (perPageSelect) {
+        perPageSelect.addEventListener('change', function() {
+            databasePerPage = parseInt(this.value);
+            performDatabaseSearch();
+        });
+    }
+    
+    // Initialize table filter
+    const tableFilter = document.getElementById('tableFilter');
+    if (tableFilter) {
+        tableFilter.addEventListener('change', function() {
+            currentTable = this.value;
+            filterTables();
+        });
+    }
+    
+    // Initialize column checkboxes
+    document.querySelectorAll('.column-checkbox').forEach(checkbox => {
+        checkbox.addEventListener('change', function() {
+            const table = this.dataset.table;
+            const column = this.dataset.column;
+            const cells = document.querySelectorAll(`.table-section[data-table="${table}"] td[data-column="${column}"]`);
+            
+            cells.forEach(cell => {
+                cell.style.display = this.checked ? '' : 'none';
+            });
+            
+            // Also toggle header
+            const header = document.querySelector(`.table-section[data-table="${table}"] th[data-column="${column}"]`);
+            if (header) {
+                header.style.display = this.checked ? '' : 'none';
+            }
+        });
+    });
+    
+    // Initialize keyboard shortcuts
+    document.addEventListener('keydown', function(e) {
+        if (e.ctrlKey || e.metaKey) {
+            switch(e.key) {
+                case 'd':
+                    e.preventDefault();
+                    document.getElementById('database-search').focus();
+                    break;
+            }
+        }
+    });
+}
+
+function performDatabaseSearch() {
+    const form = document.getElementById('database-filter-form');
+    const formData = new FormData(form);
+    
+    const searchTerm = formData.get('search') || '';
+    
+    if (searchTerm.length > 0) {
+        searchAcrossTables(searchTerm);
+    } else {
+        // Reset all tables if no search term
+        document.querySelectorAll('.table-section tbody tr').forEach(row => {
+            row.style.display = '';
+        });
+        updateAllResultsInfo();
+    }
+}
+
+function searchAcrossTables(searchTerm) {
+    setDatabaseLoading(true);
+    
+    const searchLower = searchTerm.toLowerCase();
+    let totalMatches = 0;
+    
+    document.querySelectorAll('.table-section').forEach(tableSection => {
+        const tableName = tableSection.dataset.table;
+        const rows = tableSection.querySelectorAll('tbody tr');
+        let tableMatches = 0;
+        
+        rows.forEach(row => {
+            const cells = row.querySelectorAll('td');
+            let hasMatch = false;
+            
+            cells.forEach(cell => {
+                if (cell.textContent.toLowerCase().includes(searchLower)) {
+                    hasMatch = true;
+                }
+            });
+            
+            if (hasMatch) {
+                row.style.display = '';
+                tableMatches++;
+                totalMatches++;
+                // Highlight matching text
+                highlightText(row, searchTerm);
+            } else {
+                row.style.display = 'none';
+            }
+        });
+        
+        // Update results info for this table
+        updateTableResultsInfo(tableName, tableMatches, rows.length);
+    });
+    
+    AdminEnhancements.showToast(`Found ${totalMatches} matches across all tables`, 'success');
+    setDatabaseLoading(false);
+}
+
+function highlightText(row, searchTerm) {
+    const cells = row.querySelectorAll('td');
+    const searchLower = searchTerm.toLowerCase();
+    
+    cells.forEach(cell => {
+        const text = cell.textContent;
+        const textLower = text.toLowerCase();
+        
+        if (textLower.includes(searchLower)) {
+            const startIndex = textLower.indexOf(searchLower);
+            const endIndex = startIndex + searchTerm.length;
+            
+            const beforeMatch = text.substring(0, startIndex);
+            const match = text.substring(startIndex, endIndex);
+            const afterMatch = text.substring(endIndex);
+            
+            cell.innerHTML = `${beforeMatch}<mark style="background: yellow; padding: 2px;">${match}</mark>${afterMatch}`;
+        }
+    });
+}
+
+function updateTableResultsInfo(tableName, matches, total) {
+    const infoDiv = document.getElementById(`${tableName}-results-info`);
+    if (!infoDiv) return;
+    
+    if (matches < total) {
+        infoDiv.innerHTML = `Showing ${matches} of ${total} rows`;
+        infoDiv.style.display = 'block';
+    } else {
+        infoDiv.style.display = 'none';
+    }
+}
+
+function updateAllResultsInfo() {
+    document.querySelectorAll('.results-info').forEach(info => {
+        info.style.display = 'none';
+    });
+}
+
+function sortTable(tableName, column) {
+    const tableSection = document.querySelector(`.table-section[data-table="${tableName}"]`);
+    if (!tableSection) return;
+    
+    const tbody = tableSection.querySelector('tbody');
+    const rows = Array.from(tbody.querySelectorAll('tr'));
+    const header = tableSection.querySelector(`th[data-column="${column}"]`);
+    
+    // Determine sort direction
+    let currentOrder = currentDatabaseSort[tableName]?.[column] || 'none';
+    let newOrder = currentOrder === 'asc' ? 'desc' : 'asc';
+    
+    // Initialize sort state for table if not exists
+    if (!currentDatabaseSort[tableName]) {
+        currentDatabaseSort[tableName] = {};
+    }
+    
+    // Clear other column sorts for this table
+    Object.keys(currentDatabaseSort[tableName]).forEach(col => {
+        if (col !== column) {
+            delete currentDatabaseSort[tableName][col];
+        }
+    });
+    
+    currentDatabaseSort[tableName][column] = newOrder;
+    
+    // Get column index
+    const headers = Array.from(tableSection.querySelectorAll('th'));
+    const columnIndex = headers.findIndex(h => h.dataset.column === column);
+    
+    // Sort rows
+    rows.sort((a, b) => {
+        const aValue = a.cells[columnIndex]?.textContent?.trim() || '';
+        const bValue = b.cells[columnIndex]?.textContent?.trim() || '';
+        
+        // Try to parse as numbers if possible
+        const aNum = parseFloat(aValue);
+        const bNum = parseFloat(bValue);
+        
+        let comparison = 0;
+        if (!isNaN(aNum) && !isNaN(bNum)) {
+            comparison = aNum - bNum;
+        } else {
+            comparison = aValue.localeCompare(bValue);
+        }
+        
+        return newOrder === 'asc' ? comparison : -comparison;
+    });
+    
+    // Clear tbody and re-append sorted rows
+    tbody.innerHTML = '';
+    rows.forEach(row => tbody.appendChild(row));
+    
+    // Update sort indicators
+    updateDatabaseSortIndicators(tableName);
+    
+    AdminEnhancements.showToast(`Sorted ${tableName} by ${column} (${newOrder})`, 'success');
+}
+
+function updateDatabaseSortIndicators(tableName) {
+    const tableSection = document.querySelector(`.table-section[data-table="${tableName}"]`);
+    if (!tableSection) return;
+    
+    // Clear all indicators for this table
+    tableSection.querySelectorAll('.sort-indicator').forEach(indicator => {
+        indicator.className = 'sort-indicator';
+    });
+    
+    // Set active indicator
+    if (currentDatabaseSort[tableName]) {
+        Object.entries(currentDatabaseSort[tableName]).forEach(([column, order]) => {
+            const indicator = tableSection.querySelector(`th[data-column="${column}"] .sort-indicator`);
+            if (indicator) {
+                indicator.className = `sort-indicator ${order}`;
+            }
+        });
+    }
+}
+
 function filterTables() {
     const selectedTable = document.getElementById('tableFilter').value;
     const tables = document.querySelectorAll('.table-section');
@@ -163,19 +558,16 @@ function filterTables() {
             table.style.display = 'none';
         }
     });
+    
+    // Update current table
+    currentTable = selectedTable;
+    
+    // Clear search if table changed
+    const searchInput = document.getElementById('database-search');
+    if (searchInput && searchInput.value) {
+        performDatabaseSearch();
+    }
 }
-
-document.querySelectorAll('.column-checkbox').forEach(checkbox => {
-    checkbox.addEventListener('change', function() {
-        const table = this.dataset.table;
-        const column = this.dataset.column;
-        const cells = document.querySelectorAll(`.table-section[data-table="${table}"] td[data-column="${column}"]`);
-        
-        cells.forEach(cell => {
-            cell.style.display = this.checked ? '' : 'none';
-        });
-    });
-});
 
 function filterTableByColumn() {
     const tables = document.querySelectorAll('.table-section');
@@ -192,13 +584,130 @@ function filterTableByColumn() {
                 const filterValue = filter.value;
                 const cell = row.querySelector(`td[data-column="${column}"]`);
                 
-                if (filterValue !== 'all' && cell.textContent.trim() !== filterValue) {
+                if (filterValue !== 'all' && cell && cell.textContent.trim() !== filterValue) {
                     showRow = false;
                 }
             });
             
             row.style.display = showRow ? '' : 'none';
         });
+        
+        // Update results info for filtered table
+        const tableName = table.dataset.table;
+        const visibleRows = table.querySelectorAll('tbody tr[style=""], tbody tr:not([style])').length;
+        const totalRows = table.querySelectorAll('tbody tr').length;
+        updateTableResultsInfo(tableName, visibleRows, totalRows);
     });
+}
+
+function clearDatabaseFilters() {
+    // Clear search input
+    document.getElementById('database-search').value = '';
+    
+    // Clear table filter
+    document.getElementById('tableFilter').value = 'all';
+    
+    // Clear column filters
+    document.querySelectorAll('.column-value-filter').forEach(filter => {
+        filter.value = 'all';
+    });
+    
+    // Reset column checkboxes
+    document.querySelectorAll('.column-checkbox').forEach(checkbox => {
+        checkbox.checked = true;
+        checkbox.dispatchEvent(new Event('change'));
+    });
+    
+    // Clear sorting
+    currentDatabaseSort = {};
+    document.querySelectorAll('.sort-indicator').forEach(indicator => {
+        indicator.className = 'sort-indicator';
+    });
+    
+    // Show all tables and rows
+    filterTables();
+    filterTableByColumn();
+    
+    // Clear highlights
+    document.querySelectorAll('mark').forEach(mark => {
+        mark.replaceWith(mark.textContent);
+    });
+    
+    // Hide results info
+    updateAllResultsInfo();
+    
+    AdminEnhancements.showToast('Database filters cleared', 'success');
+}
+
+function setDatabaseLoading(loading) {
+    const indicator = document.getElementById('database-loading');
+    const tables = document.querySelectorAll('.database-table');
+    
+    if (indicator) {
+        indicator.style.display = loading ? 'inline' : 'none';
+    }
+    tables.forEach(table => {
+        table.style.opacity = loading ? '0.6' : '1';
+    });
+}
+
+// Enhanced export functionality
+function exportTableData(tableName, format = 'csv') {
+    const table = document.querySelector(`.table-section[data-table="${tableName}"] table`);
+    if (!table) return;
+    
+    const rows = Array.from(table.querySelectorAll('tr:not([style*="display: none"])'));
+    
+    if (format === 'csv') {
+        exportToCSV(rows, tableName);
+    } else if (format === 'json') {
+        exportToJSON(rows, tableName);
+    }
+}
+
+function exportToCSV(rows, tableName) {
+    const csvContent = rows.map(row => {
+        const cells = Array.from(row.querySelectorAll('th, td'));
+        return cells.map(cell => {
+            let content = cell.textContent.trim();
+            // Escape quotes and wrap in quotes if contains comma
+            if (content.includes(',') || content.includes('"')) {
+                content = '"' + content.replace(/"/g, '""') + '"';
+            }
+            return content;
+        }).join(',');
+    }).join('\\n');
+    
+    downloadFile(csvContent, `${tableName}_export.csv`, 'text/csv');
+}
+
+function exportToJSON(rows, tableName) {
+    const headers = Array.from(rows[0].querySelectorAll('th')).map(th => th.textContent.trim());
+    const data = [];
+    
+    for (let i = 1; i < rows.length; i++) {
+        const cells = Array.from(rows[i].querySelectorAll('td'));
+        const rowData = {};
+        
+        cells.forEach((cell, index) => {
+            rowData[headers[index]] = cell.textContent.trim();
+        });
+        
+        data.push(rowData);
+    }
+    
+    downloadFile(JSON.stringify(data, null, 2), `${tableName}_export.json`, 'application/json');
+}
+
+function downloadFile(content, fileName, mimeType) {
+    const blob = new Blob([content], { type: mimeType });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = fileName;
+    link.click();
+    URL.revokeObjectURL(url);
+    
+    AdminEnhancements.showToast(`Exported ${fileName}`, 'success');
 }
 </script>
