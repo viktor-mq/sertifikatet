@@ -263,6 +263,27 @@
       </tbody>
     </table>
   </div>
+
+  <!-- Pagination and Per-page Controls -->
+  <div class="pagination-controls" id="paginationControls" style="display: none;">
+    <div class="pagination-info">
+      <span id="paginationInfo">Viser 1-50 av 100 spørsmål</span>
+    </div>
+    <div class="pagination-center">
+      <div class="pagination-buttons" id="paginationButtons">
+        <!-- Pagination buttons will be inserted here by JavaScript -->
+      </div>
+    </div>
+    <div class="pagination-per-page">
+      <label for="perPageSelector">Vis per side:</label>
+      <select id="perPageSelector" onchange="changePerPage()">
+        <option value="20">20</option>
+        <option value="50" selected>50</option>
+        <option value="100">100</option>
+        <option value="-1">Alle</option>
+      </select>
+    </div>
+  </div>
 </div>
 
 <script>
@@ -1037,12 +1058,21 @@ function confirmDelete(id) {
 // ENHANCED FILTERING & SEARCH (PHASE 3)
 // ========================================
 
-// Global filter state
+// Global filter and pagination state
 let currentFilters = {
   search: '',
   category: '',
   subcategory: '',
   difficulty: ''
+};
+
+let currentPagination = {
+  page: 1,
+  per_page: 50,
+  total: 0,
+  pages: 1,
+  has_prev: false,
+  has_next: false
 };
 
 // Debounce timer for search
@@ -1072,7 +1102,7 @@ function initializeEnhancedFiltering() {
     clearTimeout(searchTimeout);
     searchTimeout = setTimeout(() => {
       currentFilters.search = this.value;
-      performFilteredSearch();
+      performFilteredSearch(true); // Reset to page 1 on search
     }, 300); // 300ms debounce
   });
   
@@ -1080,14 +1110,14 @@ function initializeEnhancedFiltering() {
   categoryFilter.addEventListener('change', function() {
     currentFilters.category = this.value;
     updateSubcategoryFilter(); // Cascading update
-    performFilteredSearch();
+    performFilteredSearch(true); // Reset to page 1
   });
   
   // Subcategory filter
   if (subcategoryFilter) {
     subcategoryFilter.addEventListener('change', function() {
       currentFilters.subcategory = this.value;
-      performFilteredSearch();
+      performFilteredSearch(true); // Reset to page 1
     });
   }
   
@@ -1095,7 +1125,7 @@ function initializeEnhancedFiltering() {
   if (difficultyFilter) {
     difficultyFilter.addEventListener('change', function() {
       currentFilters.difficulty = this.value;
-      performFilteredSearch();
+      performFilteredSearch(true); // Reset to page 1
     });
   }
   
@@ -1104,14 +1134,23 @@ function initializeEnhancedFiltering() {
 }
 
 // Perform filtered search using AJAX
-function performFilteredSearch() {
+function performFilteredSearch(resetPage = false) {
   setFilterLoading(true);
+  
+  // Reset to page 1 when filters change
+  if (resetPage) {
+    currentPagination.page = 1;
+  }
   
   const params = new URLSearchParams();
   if (currentFilters.search) params.append('search', currentFilters.search);
   if (currentFilters.category) params.append('category', currentFilters.category);
   if (currentFilters.subcategory) params.append('subcategory', currentFilters.subcategory);
   if (currentFilters.difficulty) params.append('difficulty', currentFilters.difficulty);
+  
+  // Add pagination parameters
+  params.append('page', currentPagination.page);
+  params.append('per_page', currentPagination.per_page);
   
   fetch(`/admin/api/questions?${params.toString()}`)
     .then(response => response.json())
@@ -1120,6 +1159,7 @@ function performFilteredSearch() {
         updateQuestionsTable(result.questions);
         updateQuestionStats(result.stats);
         updateResultsCounter(result.pagination);
+        updatePagination(result.pagination);
       } else {
         showNotification('Feil ved søking: ' + (result.error || 'Ukjent feil'), 'error');
       }
@@ -1311,6 +1351,140 @@ function updateResultsCounter(pagination) {
   }
 }
 
+// Update pagination controls
+function updatePagination(pagination) {
+  // Update global pagination state
+  currentPagination = {
+    page: pagination.page,
+    per_page: pagination.per_page,
+    total: pagination.total,
+    pages: pagination.pages,
+    has_prev: pagination.has_prev,
+    has_next: pagination.has_next
+  };
+  
+  // Update pagination info
+  const paginationInfo = document.getElementById('paginationInfo');
+  if (paginationInfo) {
+    const start = ((pagination.page - 1) * pagination.per_page) + 1;
+    const end = Math.min(pagination.page * pagination.per_page, pagination.total);
+    
+    if (pagination.per_page === -1) {
+      paginationInfo.textContent = `Viser alle ${pagination.total} spørsmål`;
+    } else {
+      paginationInfo.textContent = `Viser ${start}-${end} av ${pagination.total} spørsmål`;
+    }
+  }
+  
+  // Update per-page selector
+  const perPageSelector = document.getElementById('perPageSelector');
+  if (perPageSelector) {
+    perPageSelector.value = pagination.per_page;
+  }
+  
+  // Show/hide pagination controls
+  const paginationControls = document.getElementById('paginationControls');
+  if (paginationControls) {
+    if (pagination.per_page === -1 || pagination.pages <= 1) {
+      paginationControls.style.display = 'none';
+    } else {
+      paginationControls.style.display = 'flex';
+      renderPaginationButtons(pagination);
+    }
+  }
+}
+
+// Render pagination buttons
+function renderPaginationButtons(pagination) {
+  const container = document.getElementById('paginationButtons');
+  if (!container) return;
+  
+  let buttonsHTML = '';
+  
+  // Previous button
+  if (pagination.has_prev) {
+    buttonsHTML += `<button class="pagination-btn" onclick="goToPage(${pagination.page - 1})" title="Forrige side">
+      <span class="pagination-arrow">‹</span> Forrige
+    </button>`;
+  } else {
+    buttonsHTML += `<button class="pagination-btn disabled" disabled title="Ingen forrige side">
+      <span class="pagination-arrow">‹</span> Forrige
+    </button>`;
+  }
+  
+  // Page number buttons
+  const maxVisiblePages = 5;
+  let startPage = Math.max(1, pagination.page - Math.floor(maxVisiblePages / 2));
+  let endPage = Math.min(pagination.pages, startPage + maxVisiblePages - 1);
+  
+  // Adjust start page if we're near the end
+  if (endPage - startPage + 1 < maxVisiblePages) {
+    startPage = Math.max(1, endPage - maxVisiblePages + 1);
+  }
+  
+  // First page + ellipsis
+  if (startPage > 1) {
+    buttonsHTML += `<button class="pagination-btn page-btn" onclick="goToPage(1)">1</button>`;
+    if (startPage > 2) {
+      buttonsHTML += `<span class="pagination-ellipsis">…</span>`;
+    }
+  }
+  
+  // Page number buttons
+  for (let i = startPage; i <= endPage; i++) {
+    if (i === pagination.page) {
+      buttonsHTML += `<button class="pagination-btn page-btn active" disabled>${i}</button>`;
+    } else {
+      buttonsHTML += `<button class="pagination-btn page-btn" onclick="goToPage(${i})">${i}</button>`;
+    }
+  }
+  
+  // Last page + ellipsis
+  if (endPage < pagination.pages) {
+    if (endPage < pagination.pages - 1) {
+      buttonsHTML += `<span class="pagination-ellipsis">…</span>`;
+    }
+    buttonsHTML += `<button class="pagination-btn page-btn" onclick="goToPage(${pagination.pages})">${pagination.pages}</button>`;
+  }
+  
+  // Next button
+  if (pagination.has_next) {
+    buttonsHTML += `<button class="pagination-btn" onclick="goToPage(${pagination.page + 1})" title="Neste side">
+      Neste <span class="pagination-arrow">›</span>
+    </button>`;
+  } else {
+    buttonsHTML += `<button class="pagination-btn disabled" disabled title="Ingen neste side">
+      Neste <span class="pagination-arrow">›</span>
+    </button>`;
+  }
+  
+  container.innerHTML = buttonsHTML;
+}
+
+// Navigate to specific page
+function goToPage(page) {
+  if (page < 1 || page > currentPagination.pages || page === currentPagination.page) {
+    return;
+  }
+  
+  currentPagination.page = page;
+  performFilteredSearch(false); // Don't reset page since we're explicitly setting it
+}
+
+// Change per-page setting
+function changePerPage() {
+  const perPageSelector = document.getElementById('perPageSelector');
+  if (!perPageSelector) return;
+  
+  const newPerPage = parseInt(perPageSelector.value);
+  if (newPerPage === currentPagination.per_page) return;
+  
+  currentPagination.per_page = newPerPage;
+  currentPagination.page = 1; // Reset to first page when changing per-page
+  
+  performFilteredSearch(false);
+}
+
 // Clear all filters
 function clearAllFilters() {
   document.getElementById('realTimeSearch').value = '';
@@ -1326,7 +1500,7 @@ function clearAllFilters() {
   };
   
   updateSubcategoryFilter();
-  performFilteredSearch();
+  performFilteredSearch(true); // Reset to page 1
 }
 
 // Set filter loading state
@@ -1662,6 +1836,167 @@ td[data-column="options"] div {
   color: #155724;
   font-weight: 600;
   font-size: 14px;
+}
+
+/* Pagination Styles */
+.pagination-controls {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 15px;
+  background: #f8f9fa;
+  border-radius: 8px;
+  margin: 20px 0;
+  border: 1px solid #e5e7eb;
+  flex-wrap: wrap;
+  gap: 15px;
+}
+
+.pagination-info {
+  color: #6B7280;
+  font-size: 14px;
+  font-weight: 500;
+}
+
+.pagination-center {
+  flex: 1;
+  display: flex;
+  justify-content: center;
+}
+
+.pagination-buttons {
+  display: flex;
+  gap: 4px;
+  align-items: center;
+}
+
+.pagination-btn {
+  padding: 8px 12px;
+  border: 1px solid #e5e7eb;
+  background: white;
+  color: #374151;
+  border-radius: 6px;
+  cursor: pointer;
+  font-size: 14px;
+  font-weight: 500;
+  transition: all 0.2s;
+  min-width: 40px;
+  height: 36px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+}
+
+.pagination-btn:hover:not(.disabled):not(.active) {
+  background: #f3f4f6;
+  border-color: #d1d5db;
+}
+
+.pagination-btn.active {
+  background: #3B82F6;
+  border-color: #3B82F6;
+  color: white;
+  font-weight: 600;
+}
+
+.pagination-btn.disabled {
+  background: #f9fafb;
+  border-color: #f3f4f6;
+  color: #9ca3af;
+  cursor: not-allowed;
+}
+
+.pagination-btn.page-btn {
+  min-width: 36px;
+  padding: 8px;
+}
+
+.pagination-arrow {
+  font-size: 16px;
+  line-height: 1;
+}
+
+.pagination-ellipsis {
+  padding: 8px 4px;
+  color: #9ca3af;
+  font-size: 14px;
+  line-height: 36px;
+}
+
+.pagination-per-page {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  color: #6B7280;
+  font-size: 14px;
+}
+
+.pagination-per-page label {
+  font-weight: 500;
+  margin: 0;
+}
+
+.pagination-per-page select {
+  padding: 6px 10px;
+  border: 1px solid #e5e7eb;
+  border-radius: 6px;
+  background: white;
+  color: #374151;
+  font-size: 14px;
+  min-width: 70px;
+}
+
+.pagination-per-page select:focus {
+  border-color: #3B82F6;
+  box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
+  outline: none;
+}
+
+/* Responsive pagination layout */
+@media (max-width: 768px) {
+  .pagination-controls {
+    flex-direction: column;
+    align-items: stretch;
+    text-align: center;
+  }
+  
+  .pagination-center {
+    order: 1;
+  }
+  
+  .pagination-info {
+    order: 2;
+    text-align: center;
+  }
+  
+  .pagination-per-page {
+    order: 3;
+    justify-content: center;
+  }
+  
+  .pagination-buttons {
+    flex-wrap: wrap;
+    justify-content: center;
+  }
+  
+  .pagination-btn {
+    flex: 0 0 auto;
+  }
+}
+
+@media (max-width: 480px) {
+  .pagination-btn {
+    padding: 6px 8px;
+    font-size: 13px;
+    min-width: 32px;
+    height: 32px;
+  }
+  
+  .pagination-btn.page-btn {
+    min-width: 32px;
+    padding: 6px;
+  }
 }
 
 /* Responsive filter layout */
