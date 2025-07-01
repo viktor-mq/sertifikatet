@@ -1,5 +1,8 @@
 {# templates/admin/questions.html #}
 
+<!-- Toast Notification Container -->
+<div id="toastContainer" class="toast-container"></div>
+
 <!-- Questions Section -->
 <div id="questionsSection" class="section active" style="margin-top: 30px;" 
      data-static-url="{{ url_for('static', filename='') }}"
@@ -47,6 +50,51 @@
 
   <!-- Results counter will be inserted here by JavaScript -->
   <div id="resultsCounterContainer"></div>
+
+  <!-- Enhanced Features Bar -->
+  <div class="enhanced-features-bar">
+    <div class="feature-group">
+      <label for="advancedSearchColumn">🔍 Søk i:</label>
+      <select id="advancedSearchColumn">
+        <option value="all">Alle felt</option>
+        <option value="question">Kun spørsmål</option>
+        <option value="category">Kun kategori</option>
+        <option value="subcategory">Kun underkategori</option>
+        <option value="explanation">Kun forklaring</option>
+      </select>
+    </div>
+    <div class="feature-group">
+      <label for="tableDensity">📏 Tabellvisning:</label>
+      <select id="tableDensity" onchange="changeTableDensity()">
+        <option value="comfortable">Komfortabel</option>
+        <option value="compact">Kompakt</option>
+        <option value="spacious">Luftig</option>
+      </select>
+    </div>
+    <div class="feature-group">
+      <button type="button" id="keyboardShortcutsBtn" onclick="showKeyboardShortcuts()" class="btn btn-secondary btn-small" title="Vis hurtigtaster">
+        ⌨️ Hurtigtaster
+      </button>
+    </div>
+    <div class="feature-group">
+      <button type="button" id="columnVisibilityBtn" onclick="toggleColumnVisibilityDropdown()" class="btn btn-secondary btn-small" title="Vis/skjul kolonner">
+        👁️ Kolonner
+      </button>
+      <div id="columnVisibilityDropdown" class="column-visibility-dropdown" style="display: none;">
+        <div class="column-checkbox-group">
+          <label><input type="checkbox" class="column-checkbox" data-column="id" checked> ID</label>
+          <label><input type="checkbox" class="column-checkbox" data-column="question" checked> Spørsmål</label>
+          <label><input type="checkbox" class="column-checkbox" data-column="category" checked> Kategori</label>
+          <label><input type="checkbox" class="column-checkbox" data-column="subcategory" checked> Underkategori</label>
+          <label><input type="checkbox" class="column-checkbox" data-column="explanation" checked> Forklaring</label>
+          <label><input type="checkbox" class="column-checkbox" data-column="difficulty" checked> Vanskelighetsgrad</label>
+          <label><input type="checkbox" class="column-checkbox" data-column="image" checked> Bilde</label>
+          <label><input type="checkbox" class="column-checkbox" data-column="options" checked> Alternativer</label>
+          <label><input type="checkbox" class="column-checkbox" data-column="actions" checked> Handlinger</label>
+        </div>
+      </div>
+    </div>
+  </div>
 
   <!-- Search and Filter -->
   <div class="search-filter-container" id="searchFilterContainer">
@@ -183,19 +231,6 @@
 
   <!-- Questions Table -->
   <div class="table-container">
-    <!-- Column Filter -->
-    <div class="column-filter" style="background: #f8f9fa; padding: 10px; border-radius: 5px; margin-bottom: 15px;">
-      <strong>Vis kolonner:</strong>
-      <label style="margin-left: 10px;"><input type="checkbox" class="column-checkbox" data-column="id" checked> ID</label>
-      <label style="margin-left: 10px;"><input type="checkbox" class="column-checkbox" data-column="question" checked> Spørsmål</label>
-      <label style="margin-left: 10px;"><input type="checkbox" class="column-checkbox" data-column="category" checked> Kategori</label>
-      <label style="margin-left: 10px;"><input type="checkbox" class="column-checkbox" data-column="subcategory" checked> Underkategori</label>
-      <label style="margin-left: 10px;"><input type="checkbox" class="column-checkbox" data-column="explanation" checked> Forklaring</label>
-      <label style="margin-left: 10px;"><input type="checkbox" class="column-checkbox" data-column="difficulty" checked> Vanskelighetsgrad</label>
-      <label style="margin-left: 10px;"><input type="checkbox" class="column-checkbox" data-column="image" checked> Bilde</label>
-      <label style="margin-left: 10px;"><input type="checkbox" class="column-checkbox" data-column="options" checked> Alternativer</label>
-      <label style="margin-left: 10px;"><input type="checkbox" class="column-checkbox" data-column="actions" checked> Handlinger</label>
-    </div>
     <table>
       <thead>
         <tr>
@@ -697,6 +732,7 @@ function updateImportOptions() {
 window.onclick = function(event) {
   const previewModal = document.getElementById('previewModal');
   const importExportModal = document.getElementById('importExportModal');
+  const keyboardShortcutsModal = document.getElementById('keyboardShortcutsModal');
   
   if (event.target === previewModal) {
     previewModal.style.display = 'none';
@@ -704,20 +740,15 @@ window.onclick = function(event) {
   if (event.target === importExportModal) {
     importExportModal.style.display = 'none';
   }
+  if (event.target === keyboardShortcutsModal) {
+    closeKeyboardShortcuts();
+  }
 }
 
 // Column visibility toggle for questions table
 document.addEventListener('DOMContentLoaded', function() {
-  document.querySelectorAll('.column-checkbox').forEach(checkbox => {
-    checkbox.addEventListener('change', function() {
-      const column = this.dataset.column;
-      const cells = document.querySelectorAll(`#questionsSection [data-column="${column}"]`);
-      
-      cells.forEach(cell => {
-        cell.style.display = this.checked ? '' : 'none';
-      });
-    });
-  });
+  // Initialize enhanced column visibility system
+  initializeEnhancedColumnVisibility();
   
   // Initialize export options
   toggleExportOptions();
@@ -736,6 +767,9 @@ document.addEventListener('DOMContentLoaded', function() {
   
   // Initialize pagination with server data
   initializeInitialPagination();
+  
+  // Initialize Phase 6 enhancements
+  initializePhase6Enhancements();
 });
 
 // ========================================
@@ -1025,58 +1059,651 @@ function updateStatsAfterDelete() {
   }
 }
 
-// Notification system
-function showNotification(message, type = 'info') {
-  const notification = document.createElement('div');
-  notification.className = `alert alert-${type} dismissible-alert`;
-  notification.style.cssText = `
-    position: fixed;
-    top: 20px;
-    right: 20px;
-    z-index: 1000;
-    padding: 15px 20px;
-    border-radius: 8px;
-    border-left: 4px solid;
-    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
-    max-width: 400px;
-    animation: slideIn 0.3s ease;
-  `;
+// ========================================
+// PHASE 6: POLISH & UX ENHANCEMENTS
+// ========================================
 
-  if (type === 'success') {
-    notification.style.backgroundColor = '#d4edda';
-    notification.style.color = '#155724';
-    notification.style.borderLeftColor = '#28a745';
-    message = `✅ ${message}`;
-  } else if (type === 'error') {
-    notification.style.backgroundColor = '#f8d7da';
-    notification.style.color = '#721c24';
-    notification.style.borderLeftColor = '#dc3545';
-    message = `❌ ${message}`;
-  } else {
-    notification.style.backgroundColor = '#d1ecf1';
-    notification.style.color = '#0c5460';
-    notification.style.borderLeftColor = '#17a2b8';
-    message = `ℹ️ ${message}`;
+// Global undo state
+let lastDeletedQuestion = null;
+let undoTimeoutId = null;
+
+// Enhanced Toast Notification System
+function showToast(message, type = 'info', options = {}) {
+  const {
+    duration = 5000,
+    showProgress = true,
+    allowClose = true,
+    isUndo = false,
+    onUndo = null
+  } = options;
+  
+  const toast = document.createElement('div');
+  toast.className = `toast ${type} ${isUndo ? 'undo' : ''}`;
+  
+  const iconMap = {
+    success: '✅',
+    error: '❌',
+    warning: '⚠️',
+    info: 'ℹ️',
+    undo: '↩️'
+  };
+  
+  let toastContent = `
+    <div class="toast-icon">${iconMap[type] || iconMap.info}</div>
+    <div class="toast-content">${message}</div>
+  `;
+  
+  if (isUndo && onUndo) {
+    toastContent += `<button class="toast-undo-btn" onclick="handleUndo()">Angre</button>`;
   }
-
-  notification.innerHTML = `
-    ${message}
-    <button class="alert-close-btn" onclick="this.parentElement.remove()" 
-            style="position: absolute; top: 10px; right: 15px; background: none; border: none; 
-                   font-size: 18px; font-weight: bold; color: inherit; cursor: pointer; opacity: 0.7;">
-      ×
-    </button>
-  `;
-
-  document.body.appendChild(notification);
-
-  // Auto-remove after 5 seconds
-  setTimeout(() => {
-    if (notification.parentElement) {
-      notification.remove();
-    }
-  }, 5000);
+  
+  if (allowClose) {
+    toastContent += `<button class="toast-close" onclick="removeToast(this.parentElement)">×</button>`;
+  }
+  
+  if (showProgress && duration > 0) {
+    toastContent += `<div class="toast-progress"></div>`;
+  }
+  
+  toast.innerHTML = toastContent;
+  
+  // Store undo callback globally if needed
+  if (isUndo && onUndo) {
+    window.currentUndoCallback = onUndo;
+  }
+  
+  const container = document.getElementById('toastContainer');
+  container.appendChild(toast);
+  
+  // Auto-remove after duration
+  if (duration > 0) {
+    setTimeout(() => {
+      removeToast(toast);
+    }, duration);
+  }
+  
+  return toast;
 }
+
+function removeToast(toast) {
+  if (toast && toast.parentElement) {
+    toast.style.animation = 'slideOutToast 0.3s ease-in';
+    setTimeout(() => {
+      if (toast.parentElement) {
+        toast.remove();
+      }
+    }, 300);
+  }
+}
+
+// Undo functionality
+function handleUndo() {
+  if (window.currentUndoCallback) {
+    window.currentUndoCallback();
+    window.currentUndoCallback = null;
+    
+    // Remove all undo toasts
+    document.querySelectorAll('.toast.undo').forEach(toast => {
+      removeToast(toast);
+    });
+  }
+}
+
+// Enhanced notification system (backwards compatible)
+function showNotification(message, type = 'info') {
+  showToast(message, type, {
+    duration: 5000,
+    showProgress: true,
+    allowClose: true
+  });
+}
+
+// Table Density Management
+function initializeTableDensity() {
+  const savedDensity = localStorage.getItem('adminTableDensity') || 'comfortable';
+  applyTableDensity(savedDensity);
+  
+  const densitySelect = document.getElementById('tableDensity');
+  if (densitySelect) {
+    densitySelect.value = savedDensity;
+  }
+}
+
+function changeTableDensity() {
+  const densitySelect = document.getElementById('tableDensity');
+  if (!densitySelect) return;
+  
+  const density = densitySelect.value;
+  applyTableDensity(density);
+  localStorage.setItem('adminTableDensity', density);
+  
+  showToast(`Tabellvisning endret til ${density}`, 'info', { duration: 2000 });
+}
+
+function applyTableDensity(density) {
+  const tableContainer = document.querySelector('.table-container');
+  if (!tableContainer) return;
+  
+  // Remove existing density classes
+  tableContainer.classList.remove('density-compact', 'density-comfortable', 'density-spacious');
+  
+  // Add new density class
+  tableContainer.classList.add(`density-${density}`);
+}
+
+// Advanced Search Implementation
+function initializeAdvancedSearch() {
+  const searchColumnSelect = document.getElementById('advancedSearchColumn');
+  const searchInput = document.getElementById('realTimeSearch');
+  
+  if (!searchColumnSelect || !searchInput) return;
+  
+  // Update placeholder based on search column
+  searchColumnSelect.addEventListener('change', function() {
+    const column = this.value;
+    const placeholders = {
+      all: '🔍 Søk i alle felt…',
+      question: '🔍 Søk i spørsmål…',
+      category: '🔍 Søk i kategorier…',
+      subcategory: '🔍 Søk i underkategorier…',
+      explanation: '🔍 Søk i forklaringer…'
+    };
+    
+    searchInput.placeholder = placeholders[column] || placeholders.all;
+    
+    // Trigger search if there's current search text
+    if (searchInput.value.trim()) {
+      currentFilters.search = searchInput.value;
+      currentFilters.searchColumn = column;
+      performFilteredSearch(true);
+    }
+  });
+}
+
+// Enhanced smooth transitions
+function addSmoothTransitions() {
+  const tableContainer = document.querySelector('.table-container');
+  if (!tableContainer) return;
+  
+  // Add updating class during operations - use a wrapper approach
+  const originalFetch = window.fetch;
+  let activeRequests = 0;
+  
+  window.fetch = function(...args) {
+    // Only apply to admin API calls
+    if (args[0] && args[0].includes('/admin/api/')) {
+      activeRequests++;
+      if (activeRequests === 1) {
+        tableContainer.classList.add('updating');
+      }
+      
+      return originalFetch.apply(this, args).finally(() => {
+        activeRequests--;
+        if (activeRequests === 0) {
+          setTimeout(() => {
+            tableContainer.classList.remove('updating');
+          }, 300);
+        }
+      });
+    }
+    
+    return originalFetch.apply(this, args);
+  };
+}
+
+// Enhanced AJAX operations with better visual feedback
+function enhancedConfirmDeleteAjax(id) {
+  if (!confirm('Er du sikker på at du vil slette dette spørsmålet?')) {
+    return;
+  }
+  
+  // Get question data before deletion for undo functionality
+  const row = document.querySelector(`tr[data-id="${id}"]`);
+  if (row) {
+    lastDeletedQuestion = {
+      id: id,
+      data: extractQuestionDataFromRow(row, id),
+      rowHtml: row.outerHTML
+    };
+  }
+  
+  fetch(`/admin/api/question/delete/${id}`, {
+    method: 'DELETE'
+  })
+  .then(response => response.json())
+  .then(result => {
+    if (result.success) {
+      // Enhanced deletion with undo
+      enhancedRemoveTableRow(id);
+      updateStatsAfterDelete();
+      
+      // Show undo toast
+      showToast('Spørsmål slettet', 'undo', {
+        duration: 8000,
+        isUndo: true,
+        onUndo: () => restoreDeletedQuestion()
+      });
+      
+      // Maintain sort state after delete
+      setTimeout(() => maintainSortState(), 600);
+    } else {
+      showToast('Feil ved sletting: ' + (result.error || 'Ukjent feil'), 'error');
+    }
+  })
+  .catch(error => {
+    console.error('Error deleting question:', error);
+    showToast('Nettverksfeil ved sletting av spørsmål', 'error');
+  });
+}
+
+function enhancedRemoveTableRow(questionId) {
+  const row = document.querySelector(`tr[data-id="${questionId}"]`);
+  if (row) {
+    row.classList.add('highlight-deleted');
+    setTimeout(() => {
+      if (row.parentElement) {
+        row.remove();
+      }
+    }, 600);
+  }
+}
+
+// Restore deleted question (undo functionality)
+function restoreDeletedQuestion() {
+  if (!lastDeletedQuestion) {
+    showToast('Ingen spørsmål å gjenopprette', 'error');
+    return;
+  }
+  
+  const data = lastDeletedQuestion.data;
+  
+  fetch('/admin/api/question/create', {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify(data)
+  })
+  .then(response => response.json())
+  .then(result => {
+    if (result.success) {
+      // Add the row back with highlight
+      addTableRow(result.question, 'restored');
+      updateStatsAfterAdd();
+      showToast('Spørsmål gjenopprettet!', 'success');
+      
+      // Clear undo state
+      lastDeletedQuestion = null;
+      
+      // Maintain sort state
+      setTimeout(() => maintainSortState(), 100);
+    } else {
+      showToast('Feil ved gjenoppretting: ' + (result.error || 'Ukjent feil'), 'error');
+    }
+  })
+  .catch(error => {
+    console.error('Error restoring question:', error);
+    showToast('Nettverksfeil ved gjenoppretting', 'error');
+  });
+}
+
+// Enhanced table row operations with animations
+function enhancedAddTableRow(question, type = 'added') {
+  const tbody = document.querySelector('#questionsSection table tbody');
+  if (!tbody) return;
+  
+  const newRow = createQuestionTableRow(question);
+  
+  // Add to top of table
+  tbody.insertBefore(newRow, tbody.firstChild);
+  
+  // Add appropriate highlight class
+  newRow.classList.add(`highlight-${type}`);
+  
+  // Remove highlight after animation
+  setTimeout(() => {
+    newRow.classList.remove(`highlight-${type}`);
+  }, 2000);
+}
+
+function enhancedUpdateTableRow(question) {
+  const row = document.querySelector(`tr[data-id="${question.id}"]`);
+  if (!row) return;
+  
+  // Store original content for smooth transition
+  const originalContent = row.innerHTML;
+  
+  // Update the row content
+  updateTableRowContent(row, question);
+  
+  // Add highlight effect
+  row.classList.add('highlight-updated');
+  
+  // Remove highlight after animation
+  setTimeout(() => {
+    row.classList.remove('highlight-updated');
+  }, 2000);
+}
+
+// Keyboard Shortcuts System
+function initializeKeyboardShortcuts() {
+  document.addEventListener('keydown', function(e) {
+    // Only process if not in input/textarea/select
+    if (['INPUT', 'TEXTAREA', 'SELECT'].includes(e.target.tagName)) {
+      // Allow some shortcuts even in inputs
+      if (e.ctrlKey || e.metaKey) {
+        switch(e.key.toLowerCase()) {
+          case 's':
+            if (isModalOpen()) {
+              e.preventDefault();
+              saveModalQuestion();
+            }
+            break;
+        }
+      }
+      return;
+    }
+    
+    // Global keyboard shortcuts
+    if (e.ctrlKey || e.metaKey) {
+      switch(e.key.toLowerCase()) {
+        case 'n':
+          e.preventDefault();
+          openQuestionModal();
+          break;
+        case 'f':
+          e.preventDefault();
+          document.getElementById('realTimeSearch')?.focus();
+          break;
+        case 'r':
+          e.preventDefault();
+          clearAllFilters();
+          break;
+        case 'd':
+          e.preventDefault();
+          cycleDensity();
+          break;
+        case 'h':
+          e.preventDefault();
+          showKeyboardShortcuts();
+          break;
+        case 'z':
+          e.preventDefault();
+          if (lastDeletedQuestion) {
+            handleUndo();
+          }
+          break;
+      }
+    } else {
+      switch(e.key) {
+        case 'Escape':
+          if (isModalOpen()) {
+            closeQuestionModal();
+          } else if (document.getElementById('keyboardShortcutsModal').style.display === 'block') {
+            closeKeyboardShortcuts();
+          }
+          break;
+      }
+    }
+  });
+}
+
+function isModalOpen() {
+  const modal = document.getElementById('questionModalOverlay');
+  return modal && modal.style.display === 'flex';
+}
+
+function cycleDensity() {
+  const densitySelect = document.getElementById('tableDensity');
+  if (!densitySelect) return;
+  
+  const densities = ['comfortable', 'compact', 'spacious'];
+  const currentIndex = densities.indexOf(densitySelect.value);
+  const nextIndex = (currentIndex + 1) % densities.length;
+  
+  densitySelect.value = densities[nextIndex];
+  changeTableDensity();
+}
+
+// Keyboard shortcuts modal
+function showKeyboardShortcuts() {
+  document.getElementById('keyboardShortcutsModal').style.display = 'block';
+}
+
+function closeKeyboardShortcuts() {
+  const modal = document.getElementById('keyboardShortcutsModal');
+  modal.classList.add('closing');
+  setTimeout(() => {
+    modal.style.display = 'none';
+    modal.classList.remove('closing');
+  }, 200);
+}
+
+// Enhanced modal close with animation
+function enhancedCloseQuestionModal() {
+  const modal = document.getElementById('questionModalOverlay');
+  if (modal) {
+    modal.classList.add('closing');
+    setTimeout(() => {
+      modal.style.display = 'none';
+      modal.classList.remove('closing');
+      document.body.style.overflow = '';
+      resetModalForm();
+    }, 200);
+  }
+}
+
+// Mobile responsiveness enhancements
+function initializeMobileEnhancements() {
+  // Add touch-friendly hover effects on mobile
+  if ('ontouchstart' in window) {
+    document.addEventListener('touchstart', function() {}, {passive: true});
+    
+    // Improve button touch targets
+    const buttons = document.querySelectorAll('.btn');
+    buttons.forEach(btn => {
+      btn.style.minHeight = '44px';
+      btn.style.minWidth = '44px';
+    });
+  }
+  
+  // Optimize table for mobile
+  const mediaQuery = window.matchMedia('(max-width: 768px)');
+  function handleMobileView(e) {
+    const tableContainer = document.querySelector('.table-container');
+    if (e.matches) {
+      // Mobile view optimizations
+      tableContainer?.classList.add('mobile-optimized');
+    } else {
+      tableContainer?.classList.remove('mobile-optimized');
+    }
+  }
+  
+  mediaQuery.addListener(handleMobileView);
+  handleMobileView(mediaQuery);
+}
+
+// Enhanced initialization for Phase 6
+function initializePhase6Enhancements() {
+  console.log('🚀 Initializing Phase 6: Polish & UX enhancements...');
+  
+  try {
+    initializeTableDensity();
+    initializeAdvancedSearch();
+    initializeKeyboardShortcuts();
+    initializeMobileEnhancements();
+    addSmoothTransitions();
+    addColumnVisibilityShortcut();
+    
+    // Replace original delete function with enhanced version
+    window.confirmDeleteAjax = enhancedConfirmDeleteAjax;
+    window.addTableRow = enhancedAddTableRow;
+    window.updateTableRow = enhancedUpdateTableRow;
+    window.closeQuestionModal = enhancedCloseQuestionModal;
+    
+    console.log('✅ Phase 6 enhancements initialized successfully');
+    
+    // Show initialization complete toast
+    setTimeout(() => {
+      showToast('Admin panel enhancements loaded', 'success', { duration: 3000 });
+    }, 500);
+    
+  } catch (error) {
+    console.error('❌ Error initializing Phase 6 enhancements:', error);
+    showToast('Error loading enhancements', 'error');
+  }
+}
+
+// Update the original notification function to use new toast system
+
+// Helper function to update table row content (needed for enhanced updates)
+function updateTableRowContent(row, question) {
+  // Update the row data
+  row.querySelector('td[data-column="question"]').textContent = question.question;
+  row.querySelector('td[data-column="category"]').textContent = question.category || 'Ukategoriseret';
+  row.querySelector('td[data-column="subcategory"]').textContent = question.subcategory || '-';
+  row.querySelector('td[data-column="difficulty"]').textContent = question.difficulty_level || '1';
+  
+  // Update explanation
+  const explanationCell = row.querySelector('td[data-column="explanation"]');
+  if (question.explanation) {
+    explanationCell.innerHTML = `
+      <div style="max-width: 200px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;" title="${escapeHtml(question.explanation)}">
+        ${escapeHtml(question.explanation)}
+      </div>
+    `;
+  } else {
+    explanationCell.innerHTML = '<span style="color: #999;">Ingen forklaring</span>';
+  }
+  
+  // Update image with proper folder-aware path construction
+  const imageCell = row.querySelector('td[data-column="image"]');
+  if (question.image_filename) {
+    // Construct proper image path using the same logic as the filtered results
+    let imageSrc = '';
+    if (question.image_filename.startsWith('._')) {
+      imageSrc = ''; // Don't load hidden files
+    } else {
+      // Try to find the image in the images array to get the correct folder
+      const imageData = window.adminImages ? window.adminImages.find(img => img.filename === question.image_filename) : null;
+      if (imageData && imageData.folder) {
+        imageSrc = `/static/images/${imageData.folder}/${question.image_filename}`;
+      } else {
+        imageSrc = `/static/images/${question.image_filename}`;
+      }
+    }
+    
+    if (imageSrc) {
+      imageCell.innerHTML = `<img src="${imageSrc}" alt="" class="question-image" onerror="this.style.display='none'; console.log('Failed to load image: ${imageSrc}')">`;  
+    } else {
+      imageCell.innerHTML = '<span style="color: #999;">Ingen bilde</span>';
+    }
+  } else {
+    imageCell.innerHTML = '<span style="color: #999;">Ingen bilde</span>';
+  }
+  
+  // Update options
+  const optionsCell = row.querySelector('td[data-column="options"]');
+  optionsCell.innerHTML = `
+    <div ${question.correct_option.toLowerCase() === 'a' ? 'style="color: #10B981; font-weight: 600;"' : ''}>A: ${escapeHtml(question.option_a)}</div>
+    <div ${question.correct_option.toLowerCase() === 'b' ? 'style="color: #10B981; font-weight: 600;"' : ''}>B: ${escapeHtml(question.option_b)}</div>
+    <div ${question.correct_option.toLowerCase() === 'c' ? 'style="color: #10B981; font-weight: 600;"' : ''}>C: ${escapeHtml(question.option_c)}</div>
+    <div ${question.correct_option.toLowerCase() === 'd' ? 'style="color: #10B981; font-weight: 600;"' : ''}>D: ${escapeHtml(question.option_d)}</div>
+    <div style="margin-top: 5px;"><strong>Riktig: <span style="color: #10B981;">${question.correct_option.toUpperCase()}</span></strong></div>
+  `;
+}
+
+// Enhanced modal operations with better integration
+
+// Enhanced Column Visibility System
+function initializeEnhancedColumnVisibility() {
+  // Load saved column preferences
+  loadColumnPreferences();
+  
+  // Set up event listeners for checkboxes
+  document.querySelectorAll('.column-checkbox').forEach(checkbox => {
+    checkbox.addEventListener('change', function() {
+      const column = this.dataset.column;
+      toggleColumnVisibility(column, this.checked);
+      saveColumnPreferences();
+    });
+  });
+  
+  // Close dropdown when clicking outside
+  document.addEventListener('click', function(e) {
+    const dropdown = document.getElementById('columnVisibilityDropdown');
+    const button = document.getElementById('columnVisibilityBtn');
+    
+    if (!dropdown.contains(e.target) && !button.contains(e.target)) {
+      dropdown.style.display = 'none';
+    }
+  });
+}
+
+function toggleColumnVisibilityDropdown() {
+  const dropdown = document.getElementById('columnVisibilityDropdown');
+  dropdown.style.display = dropdown.style.display === 'none' ? 'block' : 'none';
+}
+
+function toggleColumnVisibility(column, visible) {
+  const tableContainer = document.querySelector('.table-container');
+  
+  if (visible) {
+    tableContainer.classList.remove(`hide-${column}`);
+  } else {
+    tableContainer.classList.add(`hide-${column}`);
+  }
+}
+
+function saveColumnPreferences() {
+  const preferences = {};
+  document.querySelectorAll('.column-checkbox').forEach(checkbox => {
+    preferences[checkbox.dataset.column] = checkbox.checked;
+  });
+  localStorage.setItem('adminColumnPreferences', JSON.stringify(preferences));
+}
+
+function loadColumnPreferences() {
+  const saved = localStorage.getItem('adminColumnPreferences');
+  if (!saved) return;
+  
+  try {
+    const preferences = JSON.parse(saved);
+    const tableContainer = document.querySelector('.table-container');
+    
+    document.querySelectorAll('.column-checkbox').forEach(checkbox => {
+      const column = checkbox.dataset.column;
+      if (preferences.hasOwnProperty(column)) {
+        checkbox.checked = preferences[column];
+        
+        // Apply the visibility state
+        if (preferences[column]) {
+          tableContainer.classList.remove(`hide-${column}`);
+        } else {
+          tableContainer.classList.add(`hide-${column}`);
+        }
+      }
+    });
+  } catch (error) {
+    console.error('Error loading column preferences:', error);
+  }
+}
+
+// Add keyboard shortcut for column visibility
+function addColumnVisibilityShortcut() {
+  // Add to existing keyboard shortcuts
+  document.addEventListener('keydown', function(e) {
+    if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'k') {
+      if (!['INPUT', 'TEXTAREA', 'SELECT'].includes(e.target.tagName)) {
+        e.preventDefault();
+        toggleColumnVisibilityDropdown();
+      }
+    }
+  });
+}
+
+// Make functions globally available
+window.toggleColumnVisibilityDropdown = toggleColumnVisibilityDropdown;
 
 function escapeHtml(text) {
   const div = document.createElement('div');
@@ -1837,6 +2464,57 @@ function initializeInitialPagination() {
   </div>
 </div>
 
+<!-- Keyboard Shortcuts Modal -->
+<div id="keyboardShortcutsModal" class="modal">
+  <div class="modal-content" style="max-width: 500px;">
+    <span class="close" onclick="closeKeyboardShortcuts()">&times;</span>
+    <h2 style="text-align: center; color: #333; margin-bottom: 30px;">⌨️ Hurtigtaster</h2>
+    
+    <div class="shortcuts-grid">
+      <div class="shortcut-item">
+        <kbd>Ctrl</kbd> + <kbd>N</kbd>
+        <span>Nytt spørsmål</span>
+      </div>
+      <div class="shortcut-item">
+        <kbd>Ctrl</kbd> + <kbd>S</kbd>
+        <span>Lagre spørsmål</span>
+      </div>
+      <div class="shortcut-item">
+        <kbd>Esc</kbd>
+        <span>Lukk modal/form</span>
+      </div>
+      <div class="shortcut-item">
+        <kbd>Ctrl</kbd> + <kbd>F</kbd>
+        <span>Fokus på søk</span>
+      </div>
+      <div class="shortcut-item">
+        <kbd>Ctrl</kbd> + <kbd>Z</kbd>
+        <span>Angre siste sletting</span>
+      </div>
+      <div class="shortcut-item">
+        <kbd>Ctrl</kbd> + <kbd>D</kbd>
+        <span>Bytt tabelltetthet</span>
+      </div>
+      <div class="shortcut-item">
+        <kbd>Ctrl</kbd> + <kbd>R</kbd>
+        <span>Tilbakestill filtre</span>
+      </div>
+      <div class="shortcut-item">
+        <kbd>Ctrl</kbd> + <kbd>H</kbd>
+        <span>Vis hurtigtaster</span>
+      </div>
+      <div class="shortcut-item">
+        <kbd>Ctrl</kbd> + <kbd>K</kbd>
+        <span>Vis/skjul kolonner</span>
+      </div>
+    </div>
+    
+    <div style="text-align: center; margin-top: 20px; color: #666; font-size: 14px;">
+      <em>Tips: Mange av disse funksjonene kan også nås via knappetrykk i grensesnittet</em>
+    </div>
+  </div>
+</div>
+
 <style>
 /* Preview specific styles */
 .preview-question {
@@ -2217,6 +2895,633 @@ td[data-column="options"] div {
   .search-filter-container select {
     width: 100%;
     min-width: auto;
+  }
+}
+
+/* ========================================
+   PHASE 6: POLISH & UX ENHANCEMENTS
+   ======================================== */
+
+/* Toast Notifications */
+.toast-container {
+  position: fixed;
+  top: 20px;
+  right: 20px;
+  z-index: 9999;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  pointer-events: none;
+}
+
+.toast {
+  min-width: 300px;
+  max-width: 500px;
+  padding: 16px 20px;
+  border-radius: 8px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  font-weight: 500;
+  font-size: 14px;
+  line-height: 1.4;
+  pointer-events: auto;
+  animation: slideInToast 0.3s ease-out;
+  position: relative;
+  backdrop-filter: blur(8px);
+  border: 1px solid;
+}
+
+.toast.success {
+  background: rgba(220, 252, 231, 0.95);
+  color: #065f46;
+  border-color: #059669;
+}
+
+.toast.error {
+  background: rgba(254, 226, 226, 0.95);
+  color: #991b1b;
+  border-color: #dc2626;
+}
+
+.toast.info {
+  background: rgba(219, 234, 254, 0.95);
+  color: #1e40af;
+  border-color: #3b82f6;
+}
+
+.toast.warning {
+  background: rgba(255, 237, 213, 0.95);
+  color: #92400e;
+  border-color: #f59e0b;
+}
+
+.toast-icon {
+  font-size: 18px;
+  line-height: 1;
+  flex-shrink: 0;
+}
+
+.toast-content {
+  flex: 1;
+}
+
+.toast-close {
+  background: none;
+  border: none;
+  font-size: 18px;
+  font-weight: bold;
+  color: inherit;
+  cursor: pointer;
+  opacity: 0.7;
+  transition: opacity 0.2s;
+  padding: 0;
+  margin-left: 8px;
+  flex-shrink: 0;
+}
+
+.toast-close:hover {
+  opacity: 1;
+}
+
+.toast-progress {
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  height: 3px;
+  background: currentColor;
+  opacity: 0.3;
+  border-radius: 0 0 8px 8px;
+  animation: toastProgress 5s linear;
+}
+
+.toast.undo {
+  background: rgba(255, 243, 205, 0.95);
+  color: #92400e;
+  border-color: #f59e0b;
+}
+
+.toast-undo-btn {
+  background: #f59e0b;
+  color: white;
+  border: none;
+  padding: 6px 12px;
+  border-radius: 4px;
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+  margin-left: 8px;
+  transition: background-color 0.2s;
+}
+
+.toast-undo-btn:hover {
+  background: #d97706;
+}
+
+@keyframes slideInToast {
+  from {
+    transform: translateX(100%);
+    opacity: 0;
+  }
+  to {
+    transform: translateX(0);
+    opacity: 1;
+  }
+}
+
+@keyframes slideOutToast {
+  to {
+    transform: translateX(100%);
+    opacity: 0;
+  }
+}
+
+@keyframes toastProgress {
+  from {
+    width: 100%;
+  }
+  to {
+    width: 0%;
+  }
+}
+
+/* Enhanced Features Bar */
+.enhanced-features-bar {
+  display: flex;
+  gap: 20px;
+  align-items: center;
+  flex-wrap: wrap;
+  margin-bottom: 15px;
+  padding: 12px 16px;
+  background: linear-gradient(135deg, #f8fafc 0%, #e2e8f0 100%);
+  border-radius: 8px;
+  border: 1px solid #e2e8f0;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+}
+
+.feature-group {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.feature-group label {
+  font-size: 13px;
+  font-weight: 600;
+  color: #475569;
+  margin-bottom: 0;
+}
+
+.feature-group select {
+  padding: 6px 10px;
+  border: 1px solid #d1d5db;
+  border-radius: 6px;
+  font-size: 13px;
+  background: white;
+  min-width: 100px;
+  transition: border-color 0.2s, box-shadow 0.2s;
+}
+
+.feature-group select:focus {
+  border-color: #3b82f6;
+  box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
+  outline: none;
+}
+
+/* Table Density Styles */
+.table-container.density-compact table {
+  font-size: 12px;
+}
+
+.table-container.density-compact th,
+.table-container.density-compact td {
+  padding: 6px 8px;
+  line-height: 1.3;
+}
+
+.table-container.density-compact .question-image {
+  max-width: 60px;
+}
+
+.table-container.density-compact .options-display {
+  font-size: 11px;
+}
+
+.table-container.density-comfortable th,
+.table-container.density-comfortable td {
+  padding: 12px;
+  line-height: 1.5;
+}
+
+.table-container.density-spacious th,
+.table-container.density-spacious td {
+  padding: 18px 16px;
+  line-height: 1.6;
+}
+
+.table-container.density-spacious table {
+  font-size: 15px;
+}
+
+.table-container.density-spacious .question-image {
+  max-width: 120px;
+}
+
+/* Keyboard Shortcuts Modal */
+.shortcuts-grid {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 12px;
+}
+
+.shortcut-item {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 12px 16px;
+  background: #f8fafc;
+  border-radius: 8px;
+  border: 1px solid #e2e8f0;
+  transition: background-color 0.2s;
+}
+
+.shortcut-item:hover {
+  background: #f1f5f9;
+}
+
+.shortcut-item kbd {
+  background: #ffffff;
+  border: 1px solid #d1d5db;
+  border-radius: 4px;
+  padding: 4px 8px;
+  font-size: 12px;
+  font-weight: 600;
+  color: #374151;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.1);
+  margin: 0 2px;
+}
+
+.shortcut-item span {
+  color: #475569;
+  font-weight: 500;
+}
+
+/* Smooth Transitions */
+.table-container {
+  transition: opacity 0.3s ease, transform 0.2s ease;
+}
+
+.table-container.updating {
+  opacity: 0.6;
+  transform: scale(0.995);
+  pointer-events: none;
+}
+
+.table-container tbody tr {
+  transition: background-color 0.3s ease, transform 0.2s ease;
+}
+
+.table-container tbody tr.highlight-added {
+  background-color: #dcfce7 !important;
+  transform: scale(1.01);
+  animation: highlightPulse 2s ease-out;
+}
+
+.table-container tbody tr.highlight-updated {
+  background-color: #dbeafe !important;
+  transform: scale(1.005);
+  animation: highlightPulse 2s ease-out;
+}
+
+.table-container tbody tr.highlight-deleted {
+  background-color: #fee2e2 !important;
+  animation: fadeOutRow 0.6s ease-out forwards;
+}
+
+@keyframes highlightPulse {
+  0% {
+    box-shadow: 0 0 0 0 rgba(34, 197, 94, 0.4);
+  }
+  50% {
+    box-shadow: 0 0 0 10px rgba(34, 197, 94, 0.1);
+  }
+  100% {
+    box-shadow: 0 0 0 0 rgba(34, 197, 94, 0);
+  }
+}
+
+@keyframes fadeOutRow {
+  0% {
+    opacity: 1;
+    transform: scale(1);
+  }
+  50% {
+    opacity: 0.5;
+    transform: scale(0.98);
+  }
+  100% {
+    opacity: 0;
+    transform: scale(0.95);
+    height: 0;
+    padding-top: 0;
+    padding-bottom: 0;
+    margin-top: 0;
+    margin-bottom: 0;
+  }
+}
+
+/* Enhanced Button Hover Effects */
+.btn {
+  transition: all 0.2s ease;
+  position: relative;
+  overflow: hidden;
+}
+
+.btn:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+}
+
+.btn:active {
+  transform: translateY(0);
+}
+
+.btn::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: -100%;
+  width: 100%;
+  height: 100%;
+  background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.2), transparent);
+  transition: left 0.5s;
+}
+
+.btn:hover::before {
+  left: 100%;
+}
+
+/* Enhanced Modal Animations */
+.modal {
+  animation: fadeInModal 0.3s ease-out;
+}
+
+.modal.closing {
+  animation: fadeOutModal 0.2s ease-in;
+}
+
+.modal-content {
+  animation: slideInModal 0.3s ease-out;
+}
+
+.modal.closing .modal-content {
+  animation: slideOutModal 0.2s ease-in;
+}
+
+@keyframes fadeInModal {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+@keyframes fadeOutModal {
+  from {
+    opacity: 1;
+  }
+  to {
+    opacity: 0;
+  }
+}
+
+@keyframes slideInModal {
+  from {
+    transform: translateY(-50px) scale(0.95);
+    opacity: 0;
+  }
+  to {
+    transform: translateY(0) scale(1);
+    opacity: 1;
+  }
+}
+
+@keyframes slideOutModal {
+  from {
+    transform: translateY(0) scale(1);
+    opacity: 1;
+  }
+  to {
+    transform: translateY(-30px) scale(0.95);
+    opacity: 0;
+  }
+}
+
+/* Enhanced Loading States */
+.loading-overlay {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(255, 255, 255, 0.8);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 100;
+  backdrop-filter: blur(2px);
+}
+
+.loading-spinner {
+  width: 40px;
+  height: 40px;
+  border: 3px solid #f3f4f6;
+  border-top: 3px solid #3b82f6;
+  border-radius: 50%;
+  animation: spin 1s linear infinite;
+}
+
+.loading-text {
+  margin-left: 12px;
+  font-weight: 500;
+  color: #6b7280;
+}
+
+/* Enhanced Focus Styles */
+.search-filter-container input:focus,
+.search-filter-container select:focus,
+.enhanced-features-bar select:focus {
+  transform: scale(1.02);
+}
+
+/* Column Visibility Dropdown */
+.column-visibility-dropdown {
+  position: absolute;
+  top: 100%;
+  right: 0;
+  background: white;
+  border: 1px solid #d1d5db;
+  border-radius: 8px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+  z-index: 1000;
+  min-width: 200px;
+  margin-top: 4px;
+}
+
+.column-checkbox-group {
+  padding: 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.column-checkbox-group label {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 8px;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 13px;
+  transition: background-color 0.2s;
+}
+
+.column-checkbox-group label:hover {
+  background: #f8fafc;
+}
+
+.column-checkbox-group input[type="checkbox"] {
+  margin: 0;
+  width: auto;
+}
+
+.feature-group {
+  position: relative;
+}
+
+/* CSS Classes for Column Hiding */
+.table-container.hide-id th[data-column="id"],
+.table-container.hide-id td[data-column="id"] { display: none !important; }
+
+.table-container.hide-question th[data-column="question"],
+.table-container.hide-question td[data-column="question"] { display: none !important; }
+
+.table-container.hide-category th[data-column="category"],
+.table-container.hide-category td[data-column="category"] { display: none !important; }
+
+.table-container.hide-subcategory th[data-column="subcategory"],
+.table-container.hide-subcategory td[data-column="subcategory"] { display: none !important; }
+
+.table-container.hide-explanation th[data-column="explanation"],
+.table-container.hide-explanation td[data-column="explanation"] { display: none !important; }
+
+.table-container.hide-difficulty th[data-column="difficulty"],
+.table-container.hide-difficulty td[data-column="difficulty"] { display: none !important; }
+
+.table-container.hide-image th[data-column="image"],
+.table-container.hide-image td[data-column="image"] { display: none !important; }
+
+.table-container.hide-options th[data-column="options"],
+.table-container.hide-options td[data-column="options"] { display: none !important; }
+
+.table-container.hide-actions th[data-column="actions"],
+.table-container.hide-actions td[data-column="actions"] { display: none !important; }
+
+/* Ensure bulk checkbox columns are handled */
+.table-container.hide-id .checkbox-column.bulk-checkbox { display: none !important; }
+
+/* Mobile Responsiveness for Phase 6 */
+@media (max-width: 768px) {
+  .toast-container {
+    left: 10px;
+    right: 10px;
+    top: 10px;
+  }
+  
+  .toast {
+    min-width: auto;
+    max-width: none;
+  }
+  
+  .enhanced-features-bar {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 12px;
+  }
+  
+  .feature-group {
+    justify-content: space-between;
+  }
+  
+  .feature-group select {
+    min-width: 150px;
+  }
+  
+  .shortcuts-grid {
+    gap: 8px;
+  }
+  
+  .shortcut-item {
+    padding: 10px 12px;
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 6px;
+  }
+  
+  .shortcut-item kbd {
+    font-size: 11px;
+    padding: 3px 6px;
+  }
+}
+
+@media (max-width: 480px) {
+  .table-container.density-compact th,
+  .table-container.density-compact td {
+    padding: 4px 6px;
+  }
+  
+  .table-container.density-comfortable th,
+  .table-container.density-comfortable td {
+    padding: 8px 10px;
+  }
+  
+  .table-container.density-spacious th,
+  .table-container.density-spacious td {
+    padding: 12px;
+  }
+}
+
+/* Accessibility Enhancements */
+.btn:focus-visible,
+.search-filter-container input:focus-visible,
+.search-filter-container select:focus-visible,
+.enhanced-features-bar select:focus-visible {
+  outline: 2px solid #3b82f6;
+  outline-offset: 2px;
+}
+
+/* Print Styles */
+@media print {
+  .toast-container,
+  .enhanced-features-bar,
+  .search-filter-container,
+  .pagination-controls {
+    display: none !important;
+  }
+  
+  .table-container {
+    overflow: visible !important;
+  }
+  
+  table {
+    page-break-inside: auto;
+  }
+  
+  tr {
+    page-break-inside: avoid;
+    page-break-after: auto;
   }
 }
 
