@@ -3,6 +3,83 @@ project:
   purpose: Modern, all-in-one web/mobile app that helps users
     pass the driver’s theory test through quizzes, videos,
     games, progress tracking and gamification in Norway.
+  learning_plan:
+    description: >
+      Structured learning curriculum for Norwegian driving theory test (klasse B).
+      Each module includes goal, script, video, and quiz. Supports AI content generation
+      and short video formats for modern learners.
+    content_format:
+      markdown_variants:
+        - long: Full detailed version with explanations, images, and examples
+        - short: Concise summary version for repetition and quick learning
+      video_shorts:
+        description: Short-form educational videos in vertical format for TikTok-style viewing
+        usage:
+          - Users can swipe through bite-sized videos per submodule
+          - Integrated with quiz check-ins and explanations
+        folder_structure: Each submodule can contain a "shorts/" directory with relevant videos
+    modules:
+      - id: 1
+        title: Grunnleggende trafikklære
+        submodules:
+          - id: 1.1
+            title: Hva er trafikkreglene?
+          - id: 1.2
+            title: Vikeplikt og vikepliktregler
+          - id: 1.3
+            title: Tegn fra politi og trafikklys
+          - id: 1.4
+            title: Plassering og feltskifte
+          - id: 1.5
+            title: Kjøring i rundkjøring
+      - id: 2
+        title: Skilt og oppmerking
+        submodules:
+          - id: 2.1
+            title: Fareskilt – lær mønstrene
+          - id: 2.2
+            title: Forbudsskilt – hva du IKKE kan gjøre
+          - id: 2.3
+            title: Påbudsskilt – følg instruksjonen
+          - id: 2.4
+            title: Opplysningsskilt og serviceskilt
+          - id: 2.5
+            title: Vegoppmerking – linjer og symboler
+      - id: 3
+        title: Kjøretøy og teknologi
+        submodules:
+          - id: 3.1
+            title: Bremselengde og reaksjonstid
+          - id: 3.2
+            title: Sikt, lysbruk og vær
+          - id: 3.3
+            title: Dekk, mønsterdybde og grep
+          - id: 3.4
+            title: Kontrollrutiner før kjøring
+          - id: 3.5
+            title: Elbil, hybrid og moderne hjelpemidler
+      - id: 4
+        title: Mennesket i trafikken
+        submodules:
+          - id: 4.1
+            title: Alkohol, rus og reaksjonsevne
+          - id: 4.2
+            title: Trøtthet og distraksjoner
+          - id: 4.3
+            title: Risikoforståelse og kjørestrategi
+          - id: 4.4
+            title: Førstehjelp og ulykkesberedskap
+      - id: 5
+        title: Øvingskjøring og avsluttende test
+        submodules:
+          - id: 5.1
+            title: Ansvar og regler under øvingskjøring
+          - id: 5.2
+            title: Oppsummeringsquiz
+          - id: 5.3
+            title: Eksamenstrening med tidspress
+          - id: 5.4
+            title: Hva skjer på teoriprøven?
   features:
     quizzes:
       - interactive
