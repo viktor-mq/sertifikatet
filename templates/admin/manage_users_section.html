@@ -1,191 +1,545 @@
-{# templates/admin/manage_users_section.html #}
+<!DOCTYPE html>
+<html lang="no">
+<head>
+    <meta charset="UTF-8">
+    <title>Admin User Management - Sertifikatet</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/admin.css') }}">
+</head>
+<body>
+    <header class="admin-header" style="padding: 10px 20px; box-shadow: 0 2px 4px rgba(0,0,0,0.1); display: flex; align-items: center; justify-content: space-between;">
+      <div style="display: flex; align-items: center;">
+        <a href="{{ url_for('main.index') }}">
+          <img src="{{ url_for('static', filename='images/profiles/selskapslogo.png') }}"
+               alt="Sertifikatet Logo"
+               style="height: 40px; margin-right: 15px;">
+        </a>
+        <h1 style="font-size: 1.5rem; margin: 0; color: rgb(251, 191, 36)">🛡️ Admin User Management</h1>
+      </div>
+      <div>
+        <a href="{{ url_for('admin.security_audit_log') }}" class="btn btn-secondary" style="margin-right: 10px;">
+          🛡️ Security Audit Log
+        </a>
+        <a href="{{ url_for('admin.admin_dashboard') }}" class="btn">
+          ← Back to Dashboard
+        </a>
+        <a href="{{ url_for('auth.logout') }}" style="color: rgba(255, 255, 255, 0.885); text-decoration: none; font-weight: bold; margin-left: 20px;">
+          Logg ut
+        </a>
+      </div>
+    </header>
+    
+    <div class="container">
+        <!-- Security Alert -->
+        <div class="validation-errors" style="background: #fff3cd; color: #856404; border: 1px solid #ffeaa7; margin-bottom: 20px;">
+            <strong>🔒 Security Notice:</strong> Admin privilege management is a critical security operation. All admin changes are:
+            <ul style="margin: 10px 0 0 20px;">
+                <li>📧 <strong>Email notifications</strong> sent to all existing admins</li>
+                <li>📝 <strong>Audit logged</strong> with IP address and timestamp</li>
+                <li>🔒 <strong>Security validated</strong> to prevent unauthorized escalation</li>
+            </ul>
+            <p style="margin: 10px 0 0 0;"><strong>Only grant admin privileges to trusted users.</strong></p>
+        </div>
 
-<!-- Manage Users Section -->
-<div id="manageUsersSection" class="section" style="margin-top: 30px;">
-  
-  <!-- Security Alert -->
-  <div class="validation-errors" style="background: #fff3cd; color: #856404; border: 1px solid #ffeaa7;">
-    <strong>🔒 Security Notice:</strong> Admin privilege management is a critical security operation. All admin changes are:
-    <ul style="margin: 10px 0 0 20px;">
-      <li>📧 <strong>Email notifications</strong> sent to all existing admins</li>
-      <li>📝 <strong>Audit logged</strong> with IP address and timestamp</li>
-      <li>🔒 <strong>Security validated</strong> to prevent unauthorized escalation</li>
-    </ul>
-    <p style="margin: 10px 0 0 0;"><strong>Only grant admin privileges to trusted users.</strong></p>
-  </div>
+        <!-- Enhanced Filter Section -->
+        <div class="enhanced-filter-section" style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); padding: 20px; border-radius: 12px; margin-bottom: 20px; color: white; box-shadow: 0 4px 15px rgba(102, 126, 234, 0.3);">
+            <h3 style="margin-top: 0; display: flex; align-items: center; gap: 10px;">
+                🔍 Advanced User Search & Filters
+                <span id="results-counter" style="font-size: 0.9rem; opacity: 0.8; font-weight: normal;"></span>
+            </h3>
+            
+            <div style="display: grid; grid-template-columns: 2fr 1fr 1fr auto; gap: 10px; align-items: end;">
+                <!-- Search Input -->
+                <div>
+                    <label for="user-search" style="display: block; margin-bottom: 5px; font-weight: 500;">Search Users:</label>
+                    <input type="text" 
+                           id="user-search" 
+                           placeholder="Search by username, email, or name..." 
+                           style="width: 100%; max-width: 300px; padding: 8px 12px; border: none; border-radius: 6px; font-size: 14px; transition: all 0.3s ease;">
+                </div>
 
-  <!-- Statistics Section -->
-  <div class="stats-container">
-    <div class="stat-card">
-      <h3>{{ user_stats.total_users if user_stats else 0 }}</h3>
-      <p>Total Users</p>
-    </div>
-    <div class="stat-card">
-      <h3>{{ user_stats.admin_users if user_stats else 0 }}</h3>
-      <p>Admin Users</p>
-    </div>
-    <div class="stat-card">
-      <h3>{{ user_stats.active_users if user_stats else 0 }}</h3>
-      <p>Active Users</p>
-    </div>
-    <div class="stat-card">
-      <h3>{{ user_stats.inactive_users if user_stats else 0 }}</h3>
-      <p>Inactive Users</p>
-    </div>
-  </div>
+                <!-- Admin Status Filter -->
+                <div>
+                    <label for="admin-status-filter" style="display: block; margin-bottom: 5px; font-weight: 500;">Admin Status:</label>
+                    <select id="admin-status-filter" style="width: 100%; padding: 8px 12px; border: none; border-radius: 6px; font-size: 14px;">
+                        <option value="">All Users</option>
+                        <option value="admin">Admin Users</option>
+                        <option value="non_admin">Non-Admin Users</option>
+                    </select>
+                </div>
 
-  <!-- Users Table -->
-  <div class="table-container">
-    <table>
-      <thead>
-        <tr>
-          <th>ID</th>
-          <th>Username</th>
-          <th>Email</th>
-          <th>Full Name</th>
-          <th>Status</th>
-          <th>Admin</th>
-          <th>Created</th>
-          <th>Last Login</th>
-          <th>Actions</th>
-        </tr>
-      </thead>
-      <tbody>
-        {% if users %}
-          {% for user in users %}
-          <tr class="{% if user.is_admin %}table-warning{% endif %}">
-            <td>{{ user.id }}</td>
-            <td>
-              <strong>{{ user.username }}</strong>
-              {% if user.id == current_user.id %}
-              <span class="btn btn-secondary btn-small" style="cursor: default; margin-left: 5px;">You</span>
-              {% endif %}
-            </td>
-            <td>{{ user.email }}</td>
-            <td>{{ user.full_name or '-' }}</td>
-            <td>
-              {% if user.is_active %}
-              <span class="btn btn-success btn-small" style="cursor: default;">Active</span>
-              {% else %}
-              <span class="btn btn-secondary btn-small" style="cursor: default;">Inactive</span>
-              {% endif %}
-              
-              {% if user.is_verified %}
-              <span class="btn btn-secondary btn-small" style="cursor: default;">Verified</span>
-              {% endif %}
-            </td>
-            <td>
-              {% if user.is_admin %}
-              <span class="btn btn-danger btn-small" style="cursor: default;">🛡️ Admin</span>
-              {% else %}
-              <span class="btn btn-secondary btn-small" style="cursor: default;">User</span>
-              {% endif %}
-            </td>
-            <td>
-              <small>{{ user.created_at.strftime('%Y-%m-%d %H:%M') if user.created_at else '-' }}</small>
-            </td>
-            <td>
-              <small>{{ user.last_login.strftime('%Y-%m-%d %H:%M') if user.last_login else 'Never' }}</small>
-            </td>
-            <td>
-              {% if user.id != current_user.id %}
-                {% if user.is_admin %}
-                <!-- Revoke Admin Button -->
-                <form method="POST" action="{{ url_for('admin.revoke_admin_privileges', user_id=user.id) }}" 
-                      class="d-inline" 
-                      onsubmit="return confirm('Are you sure you want to REVOKE admin privileges from {{ user.username }}?\\n\\nThis action will:\\n- Remove all admin access\\n- Send email notifications to all admins\\n- Be logged in the security audit trail')">
-                  <button type="submit" class="btn btn-danger btn-small">
-                    👤❌ Revoke Admin
-                  </button>
-                </form>
-                {% else %}
-                <!-- Grant Admin Button -->
-                <form method="POST" action="{{ url_for('admin.grant_admin_privileges', user_id=user.id) }}" 
-                      class="d-inline" 
-                      onsubmit="return confirm('Are you sure you want to GRANT admin privileges to {{ user.username }}?\\n\\nThis action will:\\n- Give full admin access\\n- Send email alerts to all existing admins\\n- Be permanently logged for security audit\\n\\nOnly proceed if you trust this user completely.')">
-                  <button type="submit" class="btn btn-warning btn-small">
-                    🛡️ Grant Admin
-                  </button>
-                </form>
-                {% endif %}
-              {% else %}
-              <small style="color: #999; font-style: italic;">Cannot modify own privileges</small>
-              {% endif %}
-            </td>
-          </tr>
-          {% endfor %}
-        {% else %}
-          <tr>
-            <td colspan="9" style="text-align: center; color: #999; font-style: italic;">No users found</td>
-          </tr>
+                <!-- Activity Filter -->
+                <div>
+                    <label for="activity-filter" style="display: block; margin-bottom: 5px; font-weight: 500;">Activity Status:</label>
+                    <select id="activity-filter" style="width: 100%; padding: 8px 12px; border: none; border-radius: 6px; font-size: 14px;">
+                        <option value="">All Activity</option>
+                        <option value="active">Active Users</option>
+                        <option value="inactive">Inactive Users</option>
+                        <option value="recent">Recently Active (30 days)</option>
+                        <option value="dormant">Dormant Users (30+ days)</option>
+                    </select>
+                </div>
+
+                <!-- Clear Filters Button -->
+                <div>
+                    <button id="clear-filters-btn" 
+                            style="background: rgba(255, 255, 255, 0.2); color: white; border: 1px solid rgba(255, 255, 255, 0.3); padding: 8px 16px; border-radius: 6px; cursor: pointer; font-size: 14px; transition: all 0.3s ease;"
+                            onmouseover="this.style.background='rgba(255, 255, 255, 0.3)'"
+                            onmouseout="this.style.background='rgba(255, 255, 255, 0.2)'">
+                        Clear Filters
+                    </button>
+                </div>
+            </div>
+
+            <!-- Loading Indicator for Filters -->
+            <div id="filter-loading" style="display: none; margin-top: 15px; text-align: center;">
+                <div style="display: inline-block; width: 20px; height: 20px; border: 2px solid rgba(255,255,255,0.3); border-radius: 50%; border-top-color: white; animation: spin 1s ease-in-out infinite;"></div>
+                <span style="margin-left: 10px; opacity: 0.8;">Filtering users...</span>
+            </div>
+        </div>
+
+        <!-- Enhanced Statistics Section -->
+        <div class="stats-container" id="user-stats-container">
+            <div class="stat-card">
+                <h3 id="total-users-stat">{{ stats.total_users if stats else 0 }}</h3>
+                <p>Total Users</p>
+            </div>
+            <div class="stat-card">
+                <h3 id="admin-users-stat">{{ stats.admin_users if stats else 0 }}</h3>
+                <p>Admin Users</p>
+            </div>
+            <div class="stat-card">
+                <h3 id="active-users-stat">{{ stats.active_users if stats else 0 }}</h3>
+                <p>Active Users</p>
+            </div>
+            <div class="stat-card">
+                <h3 id="inactive-users-stat">{{ stats.inactive_users if stats else 0 }}</h3>
+                <p>Inactive Users</p>
+            </div>
+        </div>
+
+        <!-- Enhanced Users Table with Sorting -->
+        <div class="table-container">
+            <!-- Enhanced Features Bar -->
+            <div class="enhanced-features-bar" style="
+                background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+                padding: 15px 20px;
+                border-radius: 12px;
+                margin-bottom: 20px;
+                color: white;
+                box-shadow: 0 4px 15px rgba(102, 126, 234, 0.3);
+            ">
+                <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 15px;">
+                    <!-- Left side: Table controls -->
+                    <div style="display: flex; align-items: center; gap: 20px; flex-wrap: wrap;">
+                        <!-- Table Density -->
+                        <div style="display: flex; align-items: center; gap: 8px;">
+                            <label style="font-weight: 500; font-size: 14px;">Visning:</label>
+                            <select id="table-density-select" style="
+                                padding: 6px 10px;
+                                border: none;
+                                border-radius: 6px;
+                                font-size: 13px;
+                                background: rgba(255, 255, 255, 0.9);
+                                color: #333;
+                            ">
+                                <option value="compact" selected>Kompakt</option>
+                                <option value="comfortable">Komfortabel</option>
+                                <option value="spacious">Romslig</option>
+                            </select>
+                        </div>
+
+                        <!-- Column Visibility -->
+                        <div style="display: flex; align-items: center; gap: 8px;">
+                            <label style="font-weight: 500; font-size: 14px;">Kolonner:</label>
+                            <div class="dropdown" style="position: relative;">
+                                <button id="columns-dropdown-btn" style="
+                                    padding: 6px 12px;
+                                    border: none;
+                                    border-radius: 6px;
+                                    font-size: 13px;
+                                    background: rgba(255, 255, 255, 0.9);
+                                    color: #333;
+                                    cursor: pointer;
+                                    display: flex;
+                                    align-items: center;
+                                    gap: 5px;
+                                ">
+                                    Velg kolonner ▼
+                                </button>
+                                <div id="columns-dropdown" style="
+                                    display: none;
+                                    position: absolute;
+                                    top: 100%;
+                                    left: 0;
+                                    background: white;
+                                    border-radius: 8px;
+                                    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.15);
+                                    padding: 10px;
+                                    z-index: 1000;
+                                    min-width: 200px;
+                                    color: #333;
+                                ">
+                                    <label style="display: flex; align-items: center; gap: 8px; padding: 5px; cursor: pointer; font-size: 13px;">
+                                        <input type="checkbox" data-column="id" checked> ID
+                                    </label>
+                                    <label style="display: flex; align-items: center; gap: 8px; padding: 5px; cursor: pointer; font-size: 13px;">
+                                        <input type="checkbox" data-column="username" checked> Username
+                                    </label>
+                                    <label style="display: flex; align-items: center; gap: 8px; padding: 5px; cursor: pointer; font-size: 13px;">
+                                        <input type="checkbox" data-column="email" checked> Email
+                                    </label>
+                                    <label style="display: flex; align-items: center; gap: 8px; padding: 5px; cursor: pointer; font-size: 13px;">
+                                        <input type="checkbox" data-column="full_name" checked> Full Name
+                                    </label>
+                                    <label style="display: flex; align-items: center; gap: 8px; padding: 5px; cursor: pointer; font-size: 13px;">
+                                        <input type="checkbox" data-column="status" checked> Status
+                                    </label>
+                                    <label style="display: flex; align-items: center; gap: 8px; padding: 5px; cursor: pointer; font-size: 13px;">
+                                        <input type="checkbox" data-column="is_admin" checked> Admin
+                                    </label>
+                                    <label style="display: flex; align-items: center; gap: 8px; padding: 5px; cursor: pointer; font-size: 13px;">
+                                        <input type="checkbox" data-column="created_at" checked> Created
+                                    </label>
+                                    <label style="display: flex; align-items: center; gap: 8px; padding: 5px; cursor: pointer; font-size: 13px;">
+                                        <input type="checkbox" data-column="last_login" checked> Last Login
+                                    </label>
+                                    <label style="display: flex; align-items: center; gap: 8px; padding: 5px; cursor: pointer; font-size: 13px;">
+                                        <input type="checkbox" data-column="actions" checked> Actions
+                                    </label>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Sort Controls -->
+                        <div style="display: flex; align-items: center; gap: 8px;">
+                            <label style="font-weight: 500; font-size: 14px;">Sorter:</label>
+                            <select id="sort-by-select" style="
+                                padding: 6px 10px;
+                                border: none;
+                                border-radius: 6px;
+                                font-size: 13px;
+                                background: rgba(255, 255, 255, 0.9);
+                                color: #333;
+                            ">
+                                <option value="created_at">Created Date</option>
+                                <option value="username">Username</option>
+                                <option value="email">Email</option>
+                                <option value="last_login">Last Login</option>
+                                <option value="is_admin">Admin Status</option>
+                            </select>
+                            <select id="sort-order-select" style="
+                                padding: 6px 10px;
+                                border: none;
+                                border-radius: 6px;
+                                font-size: 13px;
+                                background: rgba(255, 255, 255, 0.9);
+                                color: #333;
+                            ">
+                                <option value="desc">Nyeste først</option>
+                                <option value="asc">Eldste først</option>
+                            </select>
+                        </div>
+                    </div>
+
+                    <!-- Right side: Per page and actions -->
+                    <div style="display: flex; align-items: center; gap: 15px;">
+                        <div style="display: flex; align-items: center; gap: 8px;">
+                            <label style="font-weight: 500; font-size: 14px;">Show:</label>
+                            <select id="per-page-select" style="
+                                padding: 6px 10px;
+                                border: none;
+                                border-radius: 6px;
+                                font-size: 13px;
+                                background: rgba(255, 255, 255, 0.9);
+                                color: #333;
+                            ">
+                                <option value="25">25 per page</option>
+                                <option value="50">50 per page</option>
+                                <option value="100">100 per page</option>
+                                <option value="-1">All users</option>
+                            </select>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px;">
+                <h3 style="color: #333; margin: 0;">👥 User Management</h3>
+            </div>
+
+            <!-- Table Loading Overlay -->
+            <div id="table-loading-overlay" style="display: none; position: relative;">
+                <div style="position: absolute; top: 0; left: 0; right: 0; bottom: 0; background: rgba(255, 255, 255, 0.8); display: flex; align-items: center; justify-content: center; z-index: 10;">
+                    <div style="text-align: center;">
+                        <div style="width: 30px; height: 30px; border: 3px solid #f3f3f3; border-top: 3px solid #3498db; border-radius: 50%; animation: spin 1s linear infinite; margin: 0 auto 10px;"></div>
+                        <div style="color: #666;">Loading users...</div>
+                    </div>
+                </div>
+            </div>
+
+            <table id="users-table">
+                <thead>
+                    <tr>
+                        <th class="sortable" data-column="id" data-col="id" style="cursor: pointer; user-select: none;">
+                            ID <span class="sort-indicator"></span>
+                        </th>
+                        <th class="sortable" data-column="username" data-col="username" style="cursor: pointer; user-select: none;">
+                            Username <span class="sort-indicator"></span>
+                        </th>
+                        <th class="sortable" data-column="email" data-col="email" style="cursor: pointer; user-select: none;">
+                            Email <span class="sort-indicator"></span>
+                        </th>
+                        <th data-col="full_name">Full Name</th>
+                        <th data-col="status">Status</th>
+                        <th class="sortable" data-column="is_admin" data-col="is_admin" style="cursor: pointer; user-select: none;">
+                            Admin <span class="sort-indicator"></span>
+                        </th>
+                        <th class="sortable" data-column="created_at" data-col="created_at" style="cursor: pointer; user-select: none;">
+                            Created <span class="sort-indicator"></span>
+                        </th>
+                        <th class="sortable" data-column="last_login" data-col="last_login" style="cursor: pointer; user-select: none;">
+                            Last Login <span class="sort-indicator"></span>
+                        </th>
+                        <th data-col="actions">Actions</th>
+                    </tr>
+                </thead>
+                <tbody id="users-table-body">
+                    {% for user in users %}
+                    <tr class="{% if user.is_admin %}table-warning{% endif %}">
+                        <td data-col="id">{{ user.id }}</td>
+                        <td data-col="username">
+                            <strong>{{ user.username }}</strong>
+                            {% if user.id == current_user.id %}
+                            <span class="btn btn-secondary btn-small" style="cursor: default; margin-left: 5px;">You</span>
+                            {% endif %}
+                        </td>
+                        <td data-col="email">{{ user.email }}</td>
+                        <td data-col="full_name">{{ user.full_name or '-' }}</td>
+                        <td data-col="status">
+                            {% if user.is_active %}
+                            <span class="btn btn-success btn-small" style="cursor: default;">Active</span>
+                            {% else %}
+                            <span class="btn btn-secondary btn-small" style="cursor: default;">Inactive</span>
+                            {% endif %}
+                            
+                            {% if user.is_verified %}
+                            <span class="btn btn-secondary btn-small" style="cursor: default;">Verified</span>
+                            {% endif %}
+                        </td>
+                        <td data-col="is_admin">
+                            {% if user.is_admin %}
+                            <span class="btn btn-danger btn-small" style="cursor: default;">🛡️ Admin</span>
+                            {% else %}
+                            <span class="btn btn-secondary btn-small" style="cursor: default;">User</span>
+                            {% endif %}
+                        </td>
+                        <td data-col="created_at">
+                            <small>{{ user.created_at.strftime('%Y-%m-%d %H:%M') if user.created_at else '-' }}</small>
+                        </td>
+                        <td data-col="last_login">
+                            <small>{{ user.last_login.strftime('%Y-%m-%d %H:%M') if user.last_login else 'Never' }}</small>
+                        </td>
+                        <td data-col="actions">
+                            {% if user.id != current_user.id %}
+                                {% if user.is_admin %}
+                                <!-- Revoke Admin Button -->
+                                <form method="POST" action="{{ url_for('admin.revoke_admin_privileges', user_id=user.id) }}" 
+                                      class="d-inline" 
+                                      onsubmit="return confirm('Are you sure you want to REVOKE admin privileges from {{ user.username }}?\\n\\nThis action will:\\n- Remove all admin access\\n- Send email notifications to all admins\\n- Be logged in the security audit trail')">
+                                    <button type="submit" class="btn btn-danger btn-small">
+                                        👤❌ Revoke Admin
+                                    </button>
+                                </form>
+                                {% else %}
+                                <!-- Grant Admin Button -->
+                                <form method="POST" action="{{ url_for('admin.grant_admin_privileges', user_id=user.id) }}" 
+                                      class="d-inline" 
+                                      onsubmit="return confirm('Are you sure you want to GRANT admin privileges to {{ user.username }}?\\n\\nThis action will:\\n- Give full admin access\\n- Send email alerts to all existing admins\\n- Be permanently logged for security audit\\n\\nOnly proceed if you trust this user completely.')">
+                                    <button type="submit" class="btn btn-warning btn-small">
+                                        🛡️ Grant Admin
+                                    </button>
+                                </form>
+                                {% endif %}
+                            {% else %}
+                            <small style="color: #999; font-style: italic;">Cannot modify own privileges</small>
+                            {% endif %}
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+
+            <!-- Pagination Controls -->
+            <div id="pagination-container" style="margin-top: 20px; text-align: center;">
+                <!-- Pagination will be inserted here -->
+            </div>
+        </div>
+
+        <!-- Recent Admin Activity -->
+        {% if recent_logs %}
+        <div style="background: rgba(255, 255, 255, 0.9); padding: 20px; border-radius: 12px; margin-top: 20px; box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);">
+            <h3 style="color: #333; margin-bottom: 15px;">📋 Recent Admin Activity (Last 50 entries)</h3>
+            <div class="table-container">
+                <table id="admin-activity-table">
+                    <thead>
+                        <tr>
+                            <th>Timestamp</th>
+                            <th>Action</th>
+                            <th>Target User</th>
+                            <th>Admin</th>
+                            <th>IP Address</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for log in recent_logs %}
+                        <tr>
+                            <td><small>{{ log.created_at.strftime('%Y-%m-%d %H:%M:%S') }}</small></td>
+                            <td>
+                                {% if log.action == 'grant_admin' %}
+                                <span class="btn btn-warning btn-small" style="cursor: default;">🛡️ Admin Granted</span>
+                                {% elif log.action == 'revoke_admin' %}
+                                <span class="btn btn-danger btn-small" style="cursor: default;">❌ Admin Revoked</span>
+                                {% elif log.action == 'admin_login_success' %}
+                                <span class="btn btn-success btn-small" style="cursor: default;">✅ Admin Login</span>
+                                {% elif log.action == 'admin_login_failure' %}
+                                <span class="btn btn-danger btn-small" style="cursor: default;">❌ Login Failed</span>
+                                {% else %}
+                                <span class="btn btn-secondary btn-small" style="cursor: default;">{{ log.action }}</span>
+                                {% endif %}
+                            </td>
+                            <td>{{ log.target_user.username if log.target_user else 'Unknown' }}</td>
+                            <td>{{ log.admin_user.username if log.admin_user else 'System' }}</td>
+                            <td><small><code>{{ log.ip_address or '-' }}</code></small></td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+                
+                <!-- Pagination for Admin Activity -->
+                <div style="margin-top: 20px; text-align: center;">
+                    <div style="
+                        background: rgba(255, 255, 255, 0.9);
+                        padding: 15px 20px;
+                        border-radius: 12px;
+                        box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+                        display: inline-flex;
+                        align-items: center;
+                        gap: 15px;
+                    ">
+                        <span style="color: #666; font-size: 14px; font-weight: 500;">
+                            Showing latest 50 admin activities
+                        </span>
+                        <a href="{{ url_for('admin.security_audit_log') }}" class="btn btn-secondary btn-small">
+                            🛡️ View Full Security Audit Log →
+                        </a>
+                    </div>
+                </div>
+            </div>
+        </div>
         {% endif %}
-      </tbody>
-    </table>
-  </div>
-
-  <!-- Recent Admin Activity -->
-  {% if recent_logs %}
-  <div style="background: rgba(255, 255, 255, 0.9); padding: 20px; border-radius: 12px; margin-top: 20px; box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);">
-    <h3 style="color: #333; margin-bottom: 15px; display: flex; align-items: center; gap: 10px;">
-      📋 Recent Admin Activity (Last 50 entries)
-    </h3>
-    <div class="table-container">
-      <table>
-        <thead>
-          <tr>
-            <th>Timestamp</th>
-            <th>Action</th>
-            <th>Target User</th>
-            <th>Admin</th>
-            <th>IP Address</th>
-          </tr>
-        </thead>
-        <tbody>
-          {% for log in recent_logs %}
-          <tr>
-            <td><small>{{ log.created_at.strftime('%Y-%m-%d %H:%M:%S') }}</small></td>
-            <td>
-              {% if log.action == 'grant_admin' %}
-              <span class="btn btn-warning btn-small" style="cursor: default;">🛡️ Admin Granted</span>
-              {% elif log.action == 'revoke_admin' %}
-              <span class="btn btn-danger btn-small" style="cursor: default;">❌ Admin Revoked</span>
-              {% elif log.action == 'admin_login_success' %}
-              <span class="btn btn-success btn-small" style="cursor: default;">✅ Admin Login</span>
-              {% elif log.action == 'admin_login_failure' %}
-              <span class="btn btn-danger btn-small" style="cursor: default;">❌ Login Failed</span>
-              {% else %}
-              <span class="btn btn-secondary btn-small" style="cursor: default;">{{ log.action }}</span>
-              {% endif %}
-            </td>
-            <td>{{ log.target_user.username if log.target_user else 'Unknown' }}</td>
-            <td>{{ log.admin_user.username if log.admin_user else 'System' }}</td>
-            <td><small><code>{{ log.ip_address or '-' }}</code></small></td>
-          </tr>
-          {% endfor %}
-        </tbody>
-      </table>
     </div>
-    <div style="text-align: center; margin-top: 15px;">
-      <a href="{{ url_for('admin.security_audit_log') }}" class="btn">
-        🛡️ View Full Security Audit Log
-      </a>
-    </div>
-  </div>
-  {% endif %}
-</div>
+    
+    <!-- Toast Notification Container -->
+    <div id="toast-container" style="position: fixed; top: 20px; right: 20px; z-index: 9999;"></div>
+    
+    <footer class="admin-footer" style="padding: 15px 20px; text-align: center; margin-top: 40px;">
+        <p style="margin: 0; font-size: 0.9rem; color: rgb(176, 175, 175);">
+            &copy; <span id="currentYear"></span> Sertifikatet. All rights reserved.
+        </p>
+    </footer>
+    
+    <!-- Admin JavaScript -->
+    <script src="{{ url_for('static', filename='js/admin/admin-base.js') }}"></script>
+    <script>
+        // Pass current user ID to JavaScript
+        window.currentUserId = {{ current_user.id }};
+    </script>
+    <script src="{{ url_for('static', filename='js/admin/admin-users.js') }}"></script>
 
-<style>
-.table-warning {
-    background-color: rgba(255, 193, 7, 0.1);
-}
-#manageUsersSection form.d-inline {
-    display: inline-block;
-}
-#manageUsersSection code {
-    background-color: rgba(0, 0, 0, 0.1);
-    padding: 2px 4px;
-    border-radius: 3px;
-    font-family: 'Courier New', monospace;
-    font-size: 12px;
-}
-</style>
+    <style>
+        /* Enhanced Admin User Management Styles */
+        .table-warning {
+            background-color: rgba(255, 193, 7, 0.1);
+        }
+        
+        form.d-inline {
+            display: inline-block;
+        }
+        
+        code {
+            background-color: rgba(0, 0, 0, 0.1);
+            padding: 2px 4px;
+            border-radius: 3px;
+            font-family: 'Courier New', monospace;
+            font-size: 12px;
+        }
+
+        /* Sortable headers */
+        .sortable:hover {
+            background-color: #e3f2fd !important;
+            transition: background-color 0.2s ease;
+        }
+        
+        .sort-indicator {
+            margin-left: 5px;
+            font-weight: normal;
+        }
+
+        /* Enhanced filter section styles */
+        .enhanced-filter-section input:focus,
+        .enhanced-filter-section select:focus {
+            outline: none;
+            box-shadow: 0 0 0 3px rgba(255, 255, 255, 0.3);
+        }
+
+        /* Animations */
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+
+        /* Button hover effects */
+        .btn:hover {
+            transform: translateY(-1px);
+            box-shadow: 0 2px 8px rgba(0,0,0,0.15);
+            transition: all 0.2s ease;
+        }
+
+        /* Table loading overlay */
+        .table-container {
+            position: relative;
+        }
+
+        /* Toast container positioning */
+        #toast-container {
+            max-width: 400px;
+        }
+
+        /* Responsive design */
+        @media (max-width: 768px) {
+            .enhanced-filter-section {
+                padding: 15px;
+            }
+            
+            .enhanced-filter-section > div {
+                grid-template-columns: 1fr;
+                gap: 10px;
+            }
+            
+            .stats-container {
+                grid-template-columns: repeat(2, 1fr);
+                gap: 10px;
+            }
+            
+            table {
+                font-size: 12px;
+            }
+            
+            .btn-small {
+                padding: 4px 8px;
+                font-size: 11px;
+            }
+        }
+    </style>
+</body>
+</html>

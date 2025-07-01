@@ -976,7 +976,7 @@ def manage_users():
     }
     
     return render_template(
-        'admin/manage_users.html',
+        'admin/manage_users_section.html',
         users=users,
         recent_logs=recent_logs,
         stats=stats
@@ -1733,6 +1733,307 @@ def api_get_questions():
         logger.error(f"Error in api_get_questions: {e}")
         return jsonify({'success': False, 'error': str(e)})
 
+@admin_bp.route('/api/users', methods=['GET'])
+@admin_required
+def api_get_users():
+    """AJAX endpoint for getting filtered/paginated users"""
+    try:
+        # Get parameters
+        search_query = request.args.get('search', '').strip()
+        admin_filter = request.args.get('admin_status', '').strip()
+        activity_filter = request.args.get('activity', '').strip()
+        subscription_filter = request.args.get('subscription', '').strip()
+        
+        page = request.args.get('page', 1, type=int)
+        per_page = request.args.get('per_page', 25, type=int)
+        sort_by = request.args.get('sort_by', 'created_at')
+        sort_order = request.args.get('sort_order', 'desc')
+        
+        # Validate per_page options
+        if per_page not in [25, 50, 100] and per_page != -1:
+            per_page = 25
+
+        # Build query
+        query = User.query
+        
+        # Apply search filter
+        if search_query:
+            query = query.filter(
+                db.or_(
+                    User.username.ilike(f'%{search_query}%'),
+                    User.email.ilike(f'%{search_query}%'),
+                    User.full_name.ilike(f'%{search_query}%')
+                )
+            )
+        
+        # Apply admin status filter
+        if admin_filter == 'admin':
+            query = query.filter(User.is_admin == True)
+        elif admin_filter == 'non_admin':
+            query = query.filter(User.is_admin == False)
+        
+        # Apply activity filter
+        if activity_filter == 'active':
+            query = query.filter(User.is_active == True)
+        elif activity_filter == 'inactive':
+            query = query.filter(User.is_active == False)
+        elif activity_filter == 'recent':
+            # Users who logged in within last 30 days
+            from datetime import datetime, timedelta
+            thirty_days_ago = datetime.now() - timedelta(days=30)
+            query = query.filter(User.last_login >= thirty_days_ago)
+        elif activity_filter == 'dormant':
+            # Users who haven't logged in for 30+ days or never
+            from datetime import datetime, timedelta
+            thirty_days_ago = datetime.now() - timedelta(days=30)
+            query = query.filter(
+                db.or_(
+                    User.last_login < thirty_days_ago,
+                    User.last_login.is_(None)
+                )
+            )
+        
+        # Apply subscription filter
+        if subscription_filter:
+            query = query.filter(User.subscription_tier == subscription_filter)
+        
+        # Apply sorting
+        valid_sort_columns = ['id', 'username', 'email', 'created_at', 'last_login', 'is_admin']
+        if sort_by in valid_sort_columns:
+            sort_column = getattr(User, sort_by)
+            if sort_order == 'desc':
+                query = query.order_by(sort_column.desc())
+            else:
+                query = query.order_by(sort_column.asc())
+        else:
+            # Default sorting: admins first, then by creation date
+            query = query.order_by(User.is_admin.desc(), User.created_at.desc())
+        
+        # Get total count for pagination
+        total_users = query.count()
+        
+        # Apply pagination
+        if per_page == -1:  # Show all
+            all_users = query.all()
+            pages = 1
+            has_prev = False
+            has_next = False
+            prev_num = None
+            next_num = None
+        else:
+            paginated = query.paginate(page=page, per_page=per_page, error_out=False)
+            all_users = paginated.items
+            pages = paginated.pages
+            has_prev = paginated.has_prev
+            has_next = paginated.has_next
+            prev_num = paginated.prev_num
+            next_num = paginated.next_num
+
+        # Convert users to JSON format
+        users = []
+        for user in all_users:
+            users.append({
+                'id': user.id,
+                'username': user.username,
+                'email': user.email,
+                'full_name': user.full_name or '',
+                'is_admin': user.is_admin,
+                'is_active': user.is_active,
+                'is_verified': user.is_verified,
+                'subscription_tier': user.subscription_tier or 'free',
+                'created_at': user.created_at.strftime('%Y-%m-%d %H:%M:%S') if user.created_at else '',
+                'last_login': user.last_login.strftime('%Y-%m-%d %H:%M:%S') if user.last_login else None,
+                'total_xp': user.total_xp or 0
+            })
+
+        # Statistics
+        total_in_db = User.query.count()
+        stats = {
+            'total_users': total_in_db,
+            'filtered': total_users,
+            'admin_users': User.query.filter_by(is_admin=True).count(),
+            'active_users': User.query.filter_by(is_active=True).count(),
+            'inactive_users': total_in_db - User.query.filter_by(is_active=True).count(),
+            'verified_users': User.query.filter_by(is_verified=True).count()
+        }
+
+        # Pagination info
+        pagination = {
+            'page': page,
+            'per_page': per_page,
+            'total': total_users,
+            'pages': pages,
+            'has_prev': has_prev,
+            'has_next': has_next,
+            'prev_num': prev_num,
+            'next_num': next_num
+        }
+
+        return jsonify({
+            'success': True,
+            'users': users,
+            'pagination': pagination,
+            'stats': stats
+        })
+
+    except Exception as e:
+        logger.error(f"Error in api_get_users: {e}")
+        return jsonify({'success': False, 'error': str(e)})
+
+@admin_bp.route('/api/user/update-privileges/<int:user_id>', methods=['POST'])
+@admin_required
+def api_update_user_privileges(user_id):
+    """AJAX endpoint for updating user privileges"""
+    try:
+        target_user = User.query.get_or_404(user_id)
+        data = request.get_json()
+        
+        action = data.get('action')
+        
+        if action == 'grant_admin':
+            # Use the security service for safe admin privilege granting
+            result = AdminSecurityService.grant_admin_privileges(
+                target_user=target_user,
+                granting_admin=current_user
+            )
+            
+            if result['success']:
+                return jsonify({
+                    'success': True,
+                    'message': result['message'],
+                    'warnings': result.get('warnings', []),
+                    'user': {
+                        'id': target_user.id,
+                        'username': target_user.username,
+                        'is_admin': target_user.is_admin
+                    }
+                })
+            else:
+                return jsonify({
+                    'success': False,
+                    'error': result['message'],
+                    'warnings': result.get('warnings', [])
+                })
+        
+        elif action == 'revoke_admin':
+            # Prevent self-revocation
+            if target_user.id == current_user.id:
+                return jsonify({
+                    'success': False,
+                    'error': 'You cannot revoke your own admin privileges'
+                })
+            
+            # Use the security service for safe admin privilege revocation
+            result = AdminSecurityService.revoke_admin_privileges(
+                target_user=target_user,
+                revoking_admin=current_user
+            )
+            
+            if result['success']:
+                return jsonify({
+                    'success': True,
+                    'message': result['message'],
+                    'warnings': result.get('warnings', []),
+                    'user': {
+                        'id': target_user.id,
+                        'username': target_user.username,
+                        'is_admin': target_user.is_admin
+                    }
+                })
+            else:
+                return jsonify({
+                    'success': False,
+                    'error': result['message'],
+                    'warnings': result.get('warnings', [])
+                })
+        
+        elif action == 'toggle_active':
+            # Toggle user active status
+            target_user.is_active = not target_user.is_active
+            db.session.commit()
+            
+            # Log the action
+            AdminSecurityService.log_admin_action(
+                admin_user=current_user,
+                action='user_toggle_active',
+                target_user_id=target_user.id,
+                additional_info=json.dumps({
+                    'new_status': target_user.is_active,
+                    'username': target_user.username
+                })
+            )
+            
+            return jsonify({
+                'success': True,
+                'message': f'User {"activated" if target_user.is_active else "deactivated"} successfully',
+                'user': {
+                    'id': target_user.id,
+                    'username': target_user.username,
+                    'is_active': target_user.is_active
+                }
+            })
+        
+        else:
+            return jsonify({'success': False, 'error': 'Invalid action'})
+        
+    except Exception as e:
+        db.session.rollback()
+        logger.error(f"Error in api_update_user_privileges: {e}")
+        return jsonify({'success': False, 'error': str(e)})
+
+@admin_bp.route('/api/reports/create', methods=['POST'])
+@admin_required
+def api_create_report():
+    """AJAX endpoint for creating new reports"""
+    try:
+        data = request.get_json()
+        
+        # Validate required fields
+        if not data.get('report_type') or not data.get('title') or not data.get('description'):
+            return jsonify({'success': False, 'error': 'Report type, title, and description are required'})
+        
+        # Find affected user if specified
+        affected_user_id = None
+        if data.get('affected_user'):
+            affected_user = User.query.filter_by(username=data['affected_user']).first()
+            if affected_user:
+                affected_user_id = affected_user.id
+        
+        # Create new report
+        report = AdminReport(
+            report_type=data['report_type'],
+            priority=data.get('priority', 'medium'),
+            title=data['title'],
+            description=data['description'],
+            reported_by_user_id=current_user.id,
+            affected_user_id=affected_user_id,
+            status='new'
+        )
+        
+        db.session.add(report)
+        db.session.commit()
+        
+        # Log the action
+        AdminSecurityService.log_admin_action(
+            admin_user=current_user,
+            action='report_create',
+            additional_info=json.dumps({
+                'report_id': report.id,
+                'report_type': report.report_type,
+                'priority': report.priority
+            })
+        )
+        
+        return jsonify({
+            'success': True,
+            'message': 'Report created successfully',
+            'report_id': report.id
+        })
+        
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({'success': False, 'error': str(e)})
+
 @admin_bp.route('/api/question/create', methods=['POST'])
 @admin_required
 def api_create_question():
@@ -2172,6 +2473,270 @@ def marketing_templates():
     templates = MarketingTemplate.query.order_by(MarketingTemplate.created_at.desc()).all()
     return render_template('admin/marketing_templates.html', 
                          templates=templates, user=current_user)
+
+@admin_bp.route('/api/reports', methods=['GET'])
+@admin_required
+def api_get_reports():
+    """AJAX endpoint for getting filtered/paginated reports"""
+    try:
+        # Get parameters
+        search_query = request.args.get('search', '').strip()
+        report_type_filter = request.args.get('type', '').strip()
+        status_filter = request.args.get('status', '').strip()
+        priority_filter = request.args.get('priority', '').strip()
+        
+        page = request.args.get('page', 1, type=int)
+        per_page = request.args.get('per_page', 20, type=int)
+        sort_by = request.args.get('sort_by', 'created_at')
+        sort_order = request.args.get('sort_order', 'desc')
+        
+        # Validate per_page options
+        if per_page not in [10, 20, 50, 100] and per_page != -1:
+            per_page = 20
+
+        # Build query
+        query = AdminReport.query
+        
+        # Apply search filter
+        if search_query:
+            query = query.filter(
+                db.or_(
+                    AdminReport.title.ilike(f'%{search_query}%'),
+                    AdminReport.description.ilike(f'%{search_query}%')
+                )
+            )
+        
+        # Apply type filter
+        if report_type_filter:
+            query = query.filter(AdminReport.report_type == report_type_filter)
+        
+        # Apply status filter
+        if status_filter:
+            query = query.filter(AdminReport.status == status_filter)
+        
+        # Apply priority filter
+        if priority_filter:
+            query = query.filter(AdminReport.priority == priority_filter)
+        
+        # Apply sorting with priority-based intelligent sorting
+        if sort_by == 'priority':
+            # Custom priority order: critical, high, medium, low
+            priority_order = db.case(
+                (AdminReport.priority == 'critical', 1),
+                (AdminReport.priority == 'high', 2),
+                (AdminReport.priority == 'medium', 3),
+                (AdminReport.priority == 'low', 4),
+                else_=5
+            )
+            if sort_order == 'desc':
+                query = query.order_by(priority_order.desc())
+            else:
+                query = query.order_by(priority_order.asc())
+        else:
+            # Standard sorting
+            valid_sort_columns = ['id', 'created_at', 'title', 'report_type', 'status']
+            if sort_by in valid_sort_columns:
+                sort_column = getattr(AdminReport, sort_by)
+                if sort_order == 'desc':
+                    query = query.order_by(sort_column.desc())
+                else:
+                    query = query.order_by(sort_column.asc())
+            else:
+                # Default: priority first, then date
+                priority_order = db.case(
+                    (AdminReport.priority == 'critical', 1),
+                    (AdminReport.priority == 'high', 2),
+                    (AdminReport.priority == 'medium', 3),
+                    (AdminReport.priority == 'low', 4),
+                    else_=5
+                )
+                query = query.order_by(priority_order.asc(), AdminReport.created_at.desc())
+        
+        # Get total count for pagination
+        total_reports = query.count()
+        
+        # Apply pagination
+        if per_page == -1:  # Show all
+            all_reports = query.all()
+            pages = 1
+            has_prev = False
+            has_next = False
+            prev_num = None
+            next_num = None
+        else:
+            paginated = query.paginate(page=page, per_page=per_page, error_out=False)
+            all_reports = paginated.items
+            pages = paginated.pages
+            has_prev = paginated.has_prev
+            has_next = paginated.has_next
+            prev_num = paginated.prev_num
+            next_num = paginated.next_num
+
+        # Convert reports to JSON format
+        reports = []
+        for report in all_reports:
+            reports.append({
+                'id': report.id,
+                'title': report.title,
+                'description': report.description,
+                'report_type': report.report_type,
+                'priority': report.priority,
+                'status': report.status,
+                'created_at': report.created_at.strftime('%Y-%m-%d %H:%M:%S'),
+                'reported_by': report.reported_by.username if report.reported_by else 'System',
+                'assigned_to': report.assigned_to.username if report.assigned_to else None,
+                'affected_user': report.affected_user.username if report.affected_user else None,
+                'resolved_at': report.resolved_at.strftime('%Y-%m-%d %H:%M:%S') if report.resolved_at else None
+            })
+
+        # Statistics
+        total_in_db = AdminReport.query.count()
+        stats = {
+            'total': total_in_db,
+            'filtered': total_reports,
+            'new': AdminReport.query.filter_by(status='new').count(),
+            'in_progress': AdminReport.query.filter_by(status='in_progress').count(),
+            'critical': AdminReport.query.filter_by(priority='critical', status='new').count(),
+            'high': AdminReport.query.filter_by(priority='high', status='new').count()
+        }
+
+        # Pagination info
+        pagination = {
+            'page': page,
+            'per_page': per_page,
+            'total': total_reports,
+            'pages': pages,
+            'has_prev': has_prev,
+            'has_next': has_next,
+            'prev_num': prev_num,
+            'next_num': next_num
+        }
+
+        return jsonify({
+            'success': True,
+            'reports': reports,
+            'pagination': pagination,
+            'stats': stats
+        })
+
+    except Exception as e:
+        logger.error(f"Error in api_get_reports: {e}")
+        return jsonify({'success': False, 'error': str(e)})
+
+@admin_bp.route('/api/report/update-status/<int:report_id>', methods=['POST'])
+@admin_required
+def api_update_report_status(report_id):
+    """AJAX endpoint for updating report status"""
+    try:
+        report = AdminReport.query.get_or_404(report_id)
+        data = request.get_json()
+        
+        action = data.get('action')
+        
+        if action == 'assign':
+            report.assigned_to_user_id = current_user.id
+            report.status = 'in_progress'
+            message = 'Report assigned to you'
+        
+        elif action == 'resolve':
+            report.resolved_by_user_id = current_user.id
+            report.resolved_at = datetime.now()
+            report.status = 'resolved'
+            report.resolution_notes = data.get('resolution_notes', '')
+            message = 'Report marked as resolved'
+        
+        elif action == 'archive':
+            report.status = 'archived'
+            message = 'Report archived'
+        
+        elif action == 'change_priority':
+            new_priority = data.get('priority')
+            if new_priority in ['low', 'medium', 'high', 'critical']:
+                old_priority = report.priority
+                report.priority = new_priority
+                message = f'Priority changed from {old_priority} to {new_priority}'
+            else:
+                return jsonify({'success': False, 'error': 'Invalid priority level'})
+        
+        else:
+            return jsonify({'success': False, 'error': 'Invalid action'})
+        
+        db.session.commit()
+        
+        # Log the action
+        AdminSecurityService.log_admin_action(
+            admin_user=current_user,
+            action=f'report_{action}',
+            target_user_id=report.affected_user_id,
+            additional_info=json.dumps({
+                'report_id': report_id,
+                'report_type': report.report_type,
+                'action': action
+            })
+        )
+        
+        # Return updated report data
+        updated_report = {
+            'id': report.id,
+            'title': report.title,
+            'description': report.description,
+            'report_type': report.report_type,
+            'priority': report.priority,
+            'status': report.status,
+            'created_at': report.created_at.strftime('%Y-%m-%d %H:%M:%S'),
+            'reported_by': report.reported_by.username if report.reported_by else 'System',
+            'assigned_to': report.assigned_to.username if report.assigned_to else None,
+            'affected_user': report.affected_user.username if report.affected_user else None,
+            'resolved_at': report.resolved_at.strftime('%Y-%m-%d %H:%M:%S') if report.resolved_at else None
+        }
+        
+        return jsonify({
+            'success': True,
+            'message': message,
+            'report': updated_report
+        })
+        
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({'success': False, 'error': str(e)})
+
+@admin_bp.route('/api/security-alerts', methods=['GET'])
+@admin_required
+def api_get_security_alerts():
+    """AJAX endpoint for real-time security alerts"""
+    try:
+        # Get recent security alerts (last 24 hours)
+        recent_alerts = AdminReport.query.filter(
+            AdminReport.report_type.in_(['security_alert', 'suspicious_activity', 'admin_change']),
+            AdminReport.created_at >= datetime.now() - timedelta(hours=24)
+        ).order_by(AdminReport.created_at.desc()).limit(10).all()
+        
+        alerts = []
+        for alert in recent_alerts:
+            alerts.append({
+                'id': alert.id,
+                'title': alert.title,
+                'description': alert.description[:100] + '...' if len(alert.description) > 100 else alert.description,
+                'priority': alert.priority,
+                'status': alert.status,
+                'created_at': alert.created_at.strftime('%H:%M'),
+                'affected_user': alert.affected_user.username if alert.affected_user else None
+            })
+        
+        # Get critical count
+        critical_count = AdminReport.query.filter_by(
+            priority='critical',
+            status='new'
+        ).count()
+        
+        return jsonify({
+            'success': True,
+            'alerts': alerts,
+            'critical_count': critical_count
+        })
+        
+    except Exception as e:
+        return jsonify({'success': False, 'error': str(e)})
 
 @admin_bp.route('/marketing-templates/create', methods=['GET', 'POST'])
 @admin_required
