@@ -66,7 +66,8 @@
             </div>
             
             <div class="table-container">
-                <table style="background: white; border-radius: 8px; overflow: hidden;">
+                <div id="reports-results-info" class="results-info" style="margin-bottom: 15px; padding: 10px; background: #f3f4f6; border-radius: 6px; font-size: 14px; color: #374151; display: none;"></div>
+                <table id="reports-table" style="background: white; border-radius: 8px; overflow: hidden;">
                     <thead style="background: linear-gradient(135deg, #dc3545, #c82333); color: white;">
                         <tr>
                             <th>🕐 Time</th>
@@ -124,11 +125,11 @@
             <h3 style="margin-top: 0; color: #333; display: flex; align-items: center; gap: 10px;">
                 🔍 Advanced Filters
             </h3>
-            <form method="GET" action="{{ url_for('admin.reports') }}">
+            <div id="reports-filter-form" class="live-filter-form">
                 <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 15px; margin-bottom: 15px;">
                     <div>
                         <label style="display: block; font-weight: bold; margin-bottom: 5px; color: #555;">Report Type:</label>
-                        <select name="type" style="width: 100%; padding: 10px; border: 2px solid #e5e7eb; border-radius: 8px; font-size: 14px;">
+                        <select id="filter-type" name="type" class="live-filter" style="width: 100%; padding: 10px; border: 2px solid #e5e7eb; border-radius: 8px; font-size: 14px;">
                             <option value="">🌐 All Types</option>
                             <option value="user_feedback" {% if report_type_filter == 'user_feedback' %}selected{% endif %}>
                                 💬 User Feedback
@@ -150,7 +151,7 @@
 
                     <div>
                         <label style="display: block; font-weight: bold; margin-bottom: 5px; color: #555;">Status:</label>
-                        <select name="status" style="width: 100%; padding: 10px; border: 2px solid #e5e7eb; border-radius: 8px; font-size: 14px;">
+                        <select id="filter-status" name="status" class="live-filter" style="width: 100%; padding: 10px; border: 2px solid #e5e7eb; border-radius: 8px; font-size: 14px;">
                             <option value="">📊 All Status</option>
                             <option value="new" {% if status_filter == 'new' %}selected{% endif %}>🆕 New</option>
                             <option value="in_progress" {% if status_filter == 'in_progress' %}selected{% endif %}>
@@ -163,7 +164,7 @@
 
                     <div>
                         <label style="display: block; font-weight: bold; margin-bottom: 5px; color: #555;">Priority:</label>
-                        <select name="priority" style="width: 100%; padding: 10px; border: 2px solid #e5e7eb; border-radius: 8px; font-size: 14px;">
+                        <select id="filter-priority" name="priority" class="live-filter" style="width: 100%; padding: 10px; border: 2px solid #e5e7eb; border-radius: 8px; font-size: 14px;">
                             <option value="">⚡ All Priorities</option>
                             <option value="critical" {% if priority_filter == 'critical' %}selected{% endif %}>🚨 Critical</option>
                             <option value="high" {% if priority_filter == 'high' %}selected{% endif %}>⚡ High</option>
@@ -173,15 +174,15 @@
                     </div>
 
                     <div style="display: flex; align-items: end; gap: 10px;">
-                        <button type="submit" class="btn" style="padding: 10px 20px;">
-                            🔍 Apply Filters
-                        </button>
-                        <a href="{{ url_for('admin.reports') }}" class="btn btn-secondary" style="padding: 10px 20px;">
+                        <button type="button" id="clear-all-filters" class="btn btn-secondary" style="padding: 10px 20px;">
                             🗑️ Clear All
-                        </a>
+                        </button>
+                        <div id="filter-status-indicator" style="padding: 10px; font-size: 14px; color: #666;">
+                            ✨ Live filtering
+                        </div>
                     </div>
                 </div>
-            </form>
+            </div>
         </div>
 
         <!-- All Reports Table -->
@@ -199,7 +200,8 @@
             </div>
             
             <div class="table-container">
-                <table style="background: white; border-radius: 8px; overflow: hidden;">
+                <div id="all-reports-results-info" class="results-info" style="margin-bottom: 15px; padding: 10px; background: #f3f4f6; border-radius: 6px; font-size: 14px; color: #374151; display: none;"></div>
+                <table id="all-reports-table" style="background: white; border-radius: 8px; overflow: hidden;">
                     <thead style="background: linear-gradient(135deg, #3B82F6, #2563EB); color: white;">
                         <tr>
                             <th>🆔 ID</th>
@@ -404,6 +406,120 @@
                 location.reload();
             }
         }, 60000);
+
+        // Live filtering functionality
+        let currentFilters = {
+            type: '',
+            status: '',
+            priority: ''
+        };
+
+        function initializeLiveFiltering() {
+            const typeFilter = document.getElementById('filter-type');
+            const statusFilter = document.getElementById('filter-status');
+            const priorityFilter = document.getElementById('filter-priority');
+            const clearButton = document.getElementById('clear-all-filters');
+
+            // Add change event listeners
+            [typeFilter, statusFilter, priorityFilter].forEach(filter => {
+                if (filter) {
+                    filter.addEventListener('change', function() {
+                        currentFilters[this.name] = this.value;
+                        applyLiveFilters();
+                    });
+                }
+            });
+
+            // Clear all filters
+            if (clearButton) {
+                clearButton.addEventListener('click', function() {
+                    typeFilter.value = '';
+                    statusFilter.value = '';
+                    priorityFilter.value = '';
+                    currentFilters = { type: '', status: '', priority: '' };
+                    applyLiveFilters();
+                });
+            }
+
+            // Initialize with current filter values
+            if (typeFilter) currentFilters.type = typeFilter.value;
+            if (statusFilter) currentFilters.status = statusFilter.value;
+            if (priorityFilter) currentFilters.priority = priorityFilter.value;
+        }
+
+        function applyLiveFilters() {
+            const table = document.getElementById('all-reports-table');
+            const resultInfo = document.getElementById('all-reports-results-info');
+            
+            if (!table) return;
+
+            const rows = Array.from(table.querySelectorAll('tbody tr'));
+            let visibleCount = 0;
+            const totalCount = rows.length;
+
+            rows.forEach(row => {
+                let showRow = true;
+
+                // Skip empty state row
+                if (row.cells.length === 1 && row.cells[0].getAttribute('colspan')) {
+                    return;
+                }
+
+                // Type filter
+                if (currentFilters.type && showRow) {
+                    const typeCell = row.cells[2]; // Type column
+                    if (typeCell) {
+                        const typeText = typeCell.textContent.toLowerCase();
+                        if (!typeText.includes(currentFilters.type.replace('_', ' '))) {
+                            showRow = false;
+                        }
+                    }
+                }
+
+                // Status filter
+                if (currentFilters.status && showRow) {
+                    const statusCell = row.cells[5]; // Status column
+                    if (statusCell) {
+                        const statusText = statusCell.textContent.toLowerCase();
+                        if (!statusText.includes(currentFilters.status.replace('_', ' '))) {
+                            showRow = false;
+                        }
+                    }
+                }
+
+                // Priority filter
+                if (currentFilters.priority && showRow) {
+                    const priorityCell = row.cells[1]; // Priority column
+                    if (priorityCell) {
+                        const priorityText = priorityCell.textContent.toLowerCase();
+                        if (!priorityText.includes(currentFilters.priority)) {
+                            showRow = false;
+                        }
+                    }
+                }
+
+                // Show/hide row
+                row.style.display = showRow ? '' : 'none';
+                if (showRow) visibleCount++;
+            });
+
+            // Update results info
+            updateResultsInfo(visibleCount, totalCount, resultInfo);
+        }
+
+        function updateResultsInfo(visible, total, infoElement) {
+            if (!infoElement) return;
+
+            if (visible < total) {
+                infoElement.textContent = `Showing ${visible} of ${total} reports`;
+                infoElement.style.display = 'block';
+            } else {
+                infoElement.style.display = 'none';
+            }
+        }
+
+        // Initialize live filtering
+        initializeLiveFiltering();
     </script>
 
     <style>
