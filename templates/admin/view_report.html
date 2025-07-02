@@ -6,6 +6,9 @@
     <link rel="stylesheet" href="{{ url_for('static', filename='css/admin.css') }}">
 </head>
 <body>
+    <!-- Notification Container -->
+    <div id="notification-container" style="position: fixed; top: 20px; right: 20px; z-index: 10000;"></div>
+    
     <header class="admin-header" style="padding: 10px 20px; box-shadow: 0 2px 4px rgba(0,0,0,0.1); display: flex; align-items: center; justify-content: space-between;">
       <div style="display: flex; align-items: center;">
         <a href="{{ url_for('main.index') }}">
@@ -151,12 +154,9 @@
                     <h3 style="margin-top: 0; color: #333;">⚙️ Actions</h3>
                     
                     {% if report.status == 'new' and not report.assigned_to %}
-                    <form method="POST" action="{{ url_for('admin.update_report', report_id=report.id) }}" style="margin-bottom: 10px;">
-                        <input type="hidden" name="action" value="assign">
-                        <button type="submit" class="btn btn-warning" style="width: 100%;">
-                            👤 Assign to Me
-                        </button>
-                    </form>
+                    <button onclick="assignToMe()" class="btn btn-warning" style="width: 100%;">
+                        👤 Assign to Me
+                    </button>
                     {% endif %}
 
                     {% if report.status in ['new', 'in_progress'] %}
@@ -164,26 +164,22 @@
                         ✅ Mark as Resolved
                     </button>
 
-                    <form method="POST" action="{{ url_for('admin.update_report', report_id=report.id) }}" style="margin-bottom: 10px;">
-                        <input type="hidden" name="action" value="change_priority">
+                    <div style="margin-bottom: 10px;">
                         <label style="display: block; margin-bottom: 5px; font-weight: bold;">Change Priority:</label>
-                        <select name="priority" style="width: 100%; padding: 8px; margin-bottom: 10px; border: 1px solid #ddd; border-radius: 4px;">
+                        <select id="prioritySelect" style="width: 100%; padding: 8px; margin-bottom: 10px; border: 1px solid #ddd; border-radius: 4px;">
                             <option value="critical" {% if report.priority == 'critical' %}selected{% endif %}>Critical</option>
                             <option value="high" {% if report.priority == 'high' %}selected{% endif %}>High</option>
                             <option value="medium" {% if report.priority == 'medium' %}selected{% endif %}>Medium</option>
                             <option value="low" {% if report.priority == 'low' %}selected{% endif %}>Low</option>
                         </select>
-                        <button type="submit" class="btn" style="width: 100%;">Update Priority</button>
-                    </form>
+                        <button onclick="updatePriority()" class="btn" style="width: 100%;">Update Priority</button>
+                    </div>
                     {% endif %}
 
                     {% if report.status != 'archived' %}
-                    <form method="POST" action="{{ url_for('admin.update_report', report_id=report.id) }}">
-                        <input type="hidden" name="action" value="archive">
-                        <button type="submit" class="btn btn-secondary" style="width: 100%;" onclick="return confirm('Are you sure you want to archive this report?')">
-                            📦 Archive Report
-                        </button>
-                    </form>
+                    <button onclick="archiveReport()" class="btn btn-secondary" style="width: 100%;">
+                        📦 Archive Report
+                    </button>
                     {% endif %}
                 </div>
 
@@ -251,18 +247,17 @@
         <div class="modal-content">
             <span class="close" onclick="hideResolveForm()">&times;</span>
             <h2>✅ Resolve Report</h2>
-            <form method="POST" action="{{ url_for('admin.update_report', report_id=report.id) }}">
-                <input type="hidden" name="action" value="resolve">
+            <div id="resolveForm">
                 <label for="resolution_notes" style="display: block; margin-bottom: 5px; font-weight: bold;">Resolution Notes:</label>
-                <textarea name="resolution_notes" id="resolution_notes" rows="4" style="width: 100%; padding: 10px; border: 1px solid #ddd; border-radius: 4px; margin-bottom: 15px;" 
+                <textarea id="resolution_notes" rows="4" style="width: 100%; padding: 10px; border: 1px solid #ddd; border-radius: 4px; margin-bottom: 15px;" 
                           placeholder="Describe how this issue was resolved..."></textarea>
                 <div style="text-align: right;">
                     <button type="button" onclick="hideResolveForm()" class="btn btn-secondary" style="margin-right: 10px;">Cancel</button>
-                    <button type="submit" class="btn btn-success">
+                    <button onclick="resolveReport()" class="btn btn-success">
                         ✅ Mark as Resolved
                     </button>
                 </div>
-            </form>
+            </div>
         </div>
     </div>
     
@@ -281,12 +276,139 @@
             }
         });
 
+        // Notification system
+        function showNotification(message, type = 'success') {
+            const container = document.getElementById('notification-container');
+            const notification = document.createElement('div');
+            notification.style.cssText = `
+                background: ${type === 'success' ? '#d4edda' : type === 'error' ? '#f8d7da' : '#fff3cd'};
+                color: ${type === 'success' ? '#155724' : type === 'error' ? '#721c24' : '#856404'};
+                border: 1px solid ${type === 'success' ? '#c3e6cb' : type === 'error' ? '#f5c6cb' : '#ffeaa7'};
+                padding: 15px 20px;
+                border-radius: 8px;
+                margin-bottom: 10px;
+                box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+                transform: translateX(100%);
+                transition: transform 0.3s ease;
+                max-width: 300px;
+                word-wrap: break-word;
+                font-weight: 500;
+            `;
+            notification.textContent = message;
+            container.appendChild(notification);
+            
+            // Animate in
+            setTimeout(() => {
+                notification.style.transform = 'translateX(0)';
+            }, 100);
+            
+            // Remove after 5 seconds
+            setTimeout(() => {
+                notification.style.transform = 'translateX(100%)';
+                setTimeout(() => {
+                    if (container.contains(notification)) {
+                        container.removeChild(notification);
+                    }
+                }, 300);
+            }, 5000);
+        }
+
+        // AJAX helper function
+        async function performAction(action, data = {}) {
+            try {
+                const formData = new FormData();
+                formData.append('action', action);
+                Object.keys(data).forEach(key => {
+                    formData.append(key, data[key]);
+                });
+
+                const response = await fetch(`{{ url_for('admin.update_report', report_id=report.id) }}`, {
+                    method: 'POST',
+                    body: formData,
+                    headers: {
+                        'X-Requested-With': 'XMLHttpRequest'
+                    }
+                });
+
+                if (response.ok) {
+                    return { success: true };
+                } else {
+                    return { success: false, error: 'Server error' };
+                }
+            } catch (error) {
+                return { success: false, error: error.message };
+            }
+        }
+
+        // Action functions
+        async function assignToMe() {
+            const result = await performAction('assign');
+            if (result.success) {
+                showNotification('✅ Report successfully assigned to you!', 'success');
+                // Optionally refresh the page after a delay
+                setTimeout(() => {
+                    location.reload();
+                }, 2000);
+            } else {
+                showNotification('❌ Failed to assign report: ' + (result.error || 'Unknown error'), 'error');
+            }
+        }
+
+        async function updatePriority() {
+            const priority = document.getElementById('prioritySelect').value;
+            const result = await performAction('change_priority', { priority });
+            if (result.success) {
+                showNotification(`✅ Priority updated to ${priority.toUpperCase()}!`, 'success');
+                setTimeout(() => {
+                    location.reload();
+                }, 2000);
+            } else {
+                showNotification('❌ Failed to update priority: ' + (result.error || 'Unknown error'), 'error');
+            }
+        }
+
+        async function resolveReport() {
+            const resolutionNotes = document.getElementById('resolution_notes').value;
+            if (!resolutionNotes.trim()) {
+                showNotification('⚠️ Please enter resolution notes before resolving the report.', 'warning');
+                return;
+            }
+
+            const result = await performAction('resolve', { resolution_notes: resolutionNotes });
+            if (result.success) {
+                hideResolveForm();
+                showNotification('✅ Report successfully marked as resolved!', 'success');
+                setTimeout(() => {
+                    location.reload();
+                }, 2000);
+            } else {
+                showNotification('❌ Failed to resolve report: ' + (result.error || 'Unknown error'), 'error');
+            }
+        }
+
+        async function archiveReport() {
+            if (!confirm('Are you sure you want to archive this report?')) {
+                return;
+            }
+
+            const result = await performAction('archive');
+            if (result.success) {
+                showNotification('✅ Report successfully archived!', 'success');
+                setTimeout(() => {
+                    location.reload();
+                }, 2000);
+            } else {
+                showNotification('❌ Failed to archive report: ' + (result.error || 'Unknown error'), 'error');
+            }
+        }
+
         function showResolveForm() {
             document.getElementById('resolveModal').style.display = 'block';
         }
 
         function hideResolveForm() {
             document.getElementById('resolveModal').style.display = 'none';
+            document.getElementById('resolution_notes').value = '';
         }
 
         // Close modal when clicking outside
