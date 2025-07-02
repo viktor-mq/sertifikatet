@@ -218,10 +218,9 @@
                     break;
                     
                 case 'database':
-                    if (typeof initializeDatabaseEnhancements === 'function') {
-                        initializeDatabaseEnhancements();
-                        console.log('Database section initialized');
-                    }
+                    // Database section uses its own DatabaseFiltering system
+                    // Skip AdminEnhancements initialization to avoid conflicts
+                    console.log('Database section uses DatabaseFiltering - skipping AdminEnhancements');
                     break;
                     
                 default:

@@ -36,6 +36,43 @@
 
   <!-- Enhanced User Filters -->
   <form id="users-filter-form" class="enhanced-filter-form">
+    <!-- Enhanced Features Bar -->
+    <div class="enhanced-features-bar">
+      <div class="feature-group">
+        <label for="usersAdvancedSearchColumn">Search in:</label>
+        <select id="usersAdvancedSearchColumn" class="form-control">
+          <option value="all">All fields</option>
+          <option value="username">Username only</option>
+          <option value="email">Email only</option>
+          <option value="full_name">Full name only</option>
+        </select>
+      </div>
+      
+      <div class="feature-group">
+        <label for="usersTableDensity">Table density:</label>
+        <select id="usersTableDensity" class="form-control">
+          <option value="comfortable">Comfortable</option>
+          <option value="compact">Compact</option>
+          <option value="spacious">Spacious</option>
+        </select>
+      </div>
+      
+      <div class="feature-group">
+        <button type="button" id="usersColumnVisibilityBtn" class="btn btn-secondary">🔧 Column Visibility</button>
+        <div id="usersColumnVisibilityDropdown" class="column-visibility-dropdown" style="display: none;">
+          <div class="dropdown-header">Show/Hide Columns</div>
+          <label><input type="checkbox" data-column="id" checked> ID</label>
+          <label><input type="checkbox" data-column="username" checked> Username</label>
+          <label><input type="checkbox" data-column="email" checked> Email</label>
+          <label><input type="checkbox" data-column="full_name" checked> Full Name</label>
+          <label><input type="checkbox" data-column="status" checked> Status</label>
+          <label><input type="checkbox" data-column="admin" checked> Admin</label>
+          <label><input type="checkbox" data-column="created_at" checked> Created</label>
+          <label><input type="checkbox" data-column="last_login" checked> Last Login</label>
+          <label><input type="checkbox" data-column="actions" checked> Actions</label>
+        </div>
+      </div>
+    </div>
     <div class="search-filter-container enhanced-search">
       <input type="text" id="users-search" name="search" placeholder="🔍 Search users..." class="search-input" />
       <select name="admin_status">
@@ -65,15 +102,15 @@
     <table id="users-table">
       <thead>
         <tr>
-          <th class="sortable" data-field="id">ID <span class="sort-indicator"></span></th>
-          <th class="sortable" data-field="username">Username <span class="sort-indicator"></span></th>
-          <th class="sortable" data-field="email">Email <span class="sort-indicator"></span></th>
-          <th>Full Name</th>
-          <th class="sortable" data-field="is_active">Status <span class="sort-indicator"></span></th>
-          <th class="sortable" data-field="is_admin">Admin <span class="sort-indicator"></span></th>
-          <th class="sortable" data-field="created_at">Created <span class="sort-indicator"></span></th>
-          <th class="sortable" data-field="last_login">Last Login <span class="sort-indicator"></span></th>
-          <th>Actions</th>
+          <th class="sortable" data-field="id" data-column="id">ID <span class="sort-indicator"></span></th>
+          <th class="sortable" data-field="username" data-column="username">Username <span class="sort-indicator"></span></th>
+          <th class="sortable" data-field="email" data-column="email">Email <span class="sort-indicator"></span></th>
+          <th data-column="full_name">Full Name</th>
+          <th class="sortable" data-field="is_active" data-column="status">Status <span class="sort-indicator"></span></th>
+          <th class="sortable" data-field="is_admin" data-column="admin">Admin <span class="sort-indicator"></span></th>
+          <th class="sortable" data-field="created_at" data-column="created_at">Created <span class="sort-indicator"></span></th>
+          <th class="sortable" data-field="last_login" data-column="last_login">Last Login <span class="sort-indicator"></span></th>
+          <th data-column="actions">Actions</th>
         </tr>
       </thead>
       <tbody>
@@ -147,15 +184,77 @@
     <h3 style="color: #333; margin-bottom: 15px; display: flex; align-items: center; gap: 10px;">
       📋 Recent Admin Activity (Last 50 entries)
     </h3>
+    
+    <!-- Activity Enhanced Features Bar -->
+    <div class="enhanced-features-bar" style="margin-bottom: 15px;">
+      <div class="feature-group">
+        <label for="activityAdvancedSearchColumn">Search in:</label>
+        <select id="activityAdvancedSearchColumn" class="form-control">
+          <option value="all">All fields</option>
+          <option value="action">Action only</option>
+          <option value="target_user">Target user only</option>
+          <option value="admin">Admin only</option>
+        </select>
+      </div>
+      
+      <div class="feature-group">
+        <label for="activityActionFilter">Action type:</label>
+        <select id="activityActionFilter" class="form-control">
+          <option value="">All Actions</option>
+          <option value="grant_admin">Admin Granted</option>
+          <option value="revoke_admin">Admin Revoked</option>
+          <option value="admin_login_success">Login Success</option>
+          <option value="admin_login_failure">Login Failed</option>
+        </select>
+      </div>
+      
+      <div class="feature-group">
+        <label for="activityTimeFilter">Time period:</label>
+        <select id="activityTimeFilter" class="form-control">
+          <option value="">All Time</option>
+          <option value="today">Today</option>
+          <option value="week">This Week</option>
+          <option value="month">This Month</option>
+        </select>
+      </div>
+      
+      <div class="feature-group">
+        <label for="activityTableDensity">Table density:</label>
+        <select id="activityTableDensity" class="form-control">
+          <option value="comfortable">Comfortable</option>
+          <option value="compact">Compact</option>
+          <option value="spacious">Spacious</option>
+        </select>
+      </div>
+      
+      <div class="feature-group">
+        <button type="button" id="activityColumnVisibilityBtn" class="btn btn-secondary">🔧 Column Visibility</button>
+        <div id="activityColumnVisibilityDropdown" class="column-visibility-dropdown" style="display: none;">
+          <div class="dropdown-header">Show/Hide Columns</div>
+          <label><input type="checkbox" data-column="timestamp" checked> Timestamp</label>
+          <label><input type="checkbox" data-column="action" checked> Action</label>
+          <label><input type="checkbox" data-column="target_user" checked> Target User</label>
+          <label><input type="checkbox" data-column="admin" checked> Admin</label>
+          <label><input type="checkbox" data-column="ip_address" checked> IP Address</label>
+        </div>
+      </div>
+      
+      <div class="feature-group">
+        <input type="text" id="activityRealTimeSearch" placeholder="🔍 Search activity..." class="search-input" style="min-width: 200px;" />
+        <button type="button" class="btn btn-secondary" onclick="clearActivityFilters()">🗑️ Clear</button>
+      </div>
+    </div>
+    
     <div class="table-container">
-      <table id="users-table">
+      <div id="activity-results-info" class="results-info" style="display: none;"></div>
+      <table id="activity-table">
         <thead>
           <tr>
-            <th>Timestamp</th>
-            <th>Action</th>
-            <th>Target User</th>
-            <th>Admin</th>
-            <th>IP Address</th>
+            <th class="sortable" data-field="created_at" data-column="timestamp">Timestamp <span class="sort-indicator"></span></th>
+            <th class="sortable" data-field="action" data-column="action">Action <span class="sort-indicator"></span></th>
+            <th class="sortable" data-field="target_user" data-column="target_user">Target User <span class="sort-indicator"></span></th>
+            <th class="sortable" data-field="admin_user" data-column="admin">Admin <span class="sort-indicator"></span></th>
+            <th data-column="ip_address">IP Address</th>
           </tr>
         </thead>
         <tbody>
@@ -217,6 +316,116 @@
   border-radius: 12px;
   margin-bottom: 20px;
   box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+}
+
+/* Enhanced Features Bar */
+.enhanced-features-bar {
+  display: flex;
+  gap: 15px;
+  align-items: center;
+  flex-wrap: wrap;
+  margin-bottom: 15px;
+  padding: 15px;
+  background: rgba(255, 255, 255, 0.1);
+  border-radius: 8px;
+  border: 1px solid rgba(255, 255, 255, 0.2);
+}
+
+.feature-group {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+  min-width: 120px;
+}
+
+.feature-group label {
+  color: white;
+  font-size: 12px;
+  font-weight: 500;
+  margin-bottom: 2px;
+}
+
+.feature-group .form-control,
+.feature-group .search-input {
+  padding: 6px 8px;
+  border: 1px solid #d1d5db;
+  border-radius: 4px;
+  font-size: 13px;
+  background: white;
+}
+
+/* Column Visibility Dropdown */
+.column-visibility-dropdown {
+  position: absolute;
+  top: 100%;
+  left: 0;
+  background: white;
+  border: 1px solid #d1d5db;
+  border-radius: 6px;
+  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+  padding: 10px;
+  min-width: 200px;
+  z-index: 1000;
+  margin-top: 5px;
+}
+
+.dropdown-header {
+  font-weight: bold;
+  color: #374151;
+  margin-bottom: 8px;
+  padding-bottom: 5px;
+  border-bottom: 1px solid #e5e7eb;
+}
+
+.column-visibility-dropdown label {
+  display: block;
+  color: #374151 !important;
+  margin-bottom: 5px;
+  cursor: pointer;
+  padding: 3px;
+  border-radius: 3px;
+}
+
+.column-visibility-dropdown label:hover {
+  background: #f3f4f6;
+}
+
+.column-visibility-dropdown input[type="checkbox"] {
+  margin-right: 8px;
+}
+
+/* Table Density Classes */
+.table-density-comfortable {
+  line-height: 1.6;
+}
+
+.table-density-comfortable td,
+.table-density-comfortable th {
+  padding: 12px 8px;
+}
+
+.table-density-compact {
+  line-height: 1.2;
+}
+
+.table-density-compact td,
+.table-density-compact th {
+  padding: 6px 4px;
+  font-size: 13px;
+}
+
+.table-density-spacious {
+  line-height: 1.8;
+}
+
+.table-density-spacious td,
+.table-density-spacious th {
+  padding: 16px 12px;
+}
+
+/* Hidden columns */
+.column-hidden {
+  display: none !important;
 }
 
 .enhanced-search {
@@ -354,7 +563,7 @@ window.initializeUsersSection = function() {
 };
 
 function initializeUsersEnhancements() {
-    // Initialize search with debouncing
+    // Initialize enhanced search with debouncing
     const searchInput = document.getElementById('users-search');
     if (searchInput) {
         let searchTimeout;
@@ -366,6 +575,28 @@ function initializeUsersEnhancements() {
             }, 300);
         });
     }
+    
+    // Initialize advanced search scope
+    const advancedSearchColumn = document.getElementById('usersAdvancedSearchColumn');
+    if (advancedSearchColumn) {
+        advancedSearchColumn.addEventListener('change', function() {
+            if (searchInput.value) {
+                currentUsersPage = 1;
+                performUsersSearch();
+            }
+        });
+    }
+    
+    // Initialize table density selector
+    const densitySelect = document.getElementById('usersTableDensity');
+    if (densitySelect) {
+        densitySelect.addEventListener('change', function() {
+            changeUsersTableDensity(this.value);
+        });
+    }
+    
+    // Initialize column visibility
+    initializeUsersColumnVisibility();
     
     // Initialize sorting
     document.querySelectorAll('#users-table .sortable').forEach(header => {
@@ -412,20 +643,28 @@ function initializeUsersEnhancements() {
             }
         }
     });
+    
+    // Initialize activity table enhancements
+    initializeActivityEnhancements();
 }
 
 function performUsersSearch() {
     const form = document.getElementById('users-filter-form');
     const formData = new FormData(form);
     
+    // Get advanced search settings
+    const searchColumn = document.getElementById('usersAdvancedSearchColumn')?.value || 'all';
+    const searchValue = formData.get('search') || '';
+    
     currentUsersFilters = {
-        search: formData.get('search') || '',
+        search: searchValue,
         admin_status: formData.get('admin_status') || '',
         status: formData.get('status') || '',
         sort_by: currentUsersSort.field,
         sort_order: currentUsersSort.order,
         page: currentUsersPage,
-        per_page: usersPerPage
+        per_page: usersPerPage,
+        search_column: searchColumn
     };
     
     loadUsersData();
@@ -662,5 +901,364 @@ function formatDate(dateString) {
         hour: '2-digit',
         minute: '2-digit'
     });
+}
+
+// Users Table Enhanced Functions
+function initializeUsersColumnVisibility() {
+    const btn = document.getElementById('usersColumnVisibilityBtn');
+    const dropdown = document.getElementById('usersColumnVisibilityDropdown');
+    
+    if (btn && dropdown) {
+        // Make button container relative for dropdown positioning
+        btn.parentElement.style.position = 'relative';
+        
+        btn.addEventListener('click', function(e) {
+            e.stopPropagation();
+            dropdown.style.display = dropdown.style.display === 'none' ? 'block' : 'none';
+        });
+        
+        // Close dropdown when clicking outside
+        document.addEventListener('click', function() {
+            dropdown.style.display = 'none';
+        });
+        
+        // Prevent dropdown from closing when clicking inside
+        dropdown.addEventListener('click', function(e) {
+            e.stopPropagation();
+        });
+        
+        // Handle column visibility changes
+        dropdown.querySelectorAll('input[type="checkbox"]').forEach(checkbox => {
+            checkbox.addEventListener('change', function() {
+                toggleUsersColumn(this.dataset.column, this.checked);
+            });
+        });
+    }
+}
+
+function toggleUsersColumn(columnName, show) {
+    const table = document.getElementById('users-table');
+    if (!table) return;
+    
+    const elements = table.querySelectorAll(`[data-column="${columnName}"]`);
+    elements.forEach(element => {
+        if (show) {
+            element.classList.remove('column-hidden');
+        } else {
+            element.classList.add('column-hidden');
+        }
+    });
+}
+
+function changeUsersTableDensity(density) {
+    const table = document.getElementById('users-table');
+    if (!table) return;
+    
+    // Remove existing density classes
+    table.classList.remove('table-density-comfortable', 'table-density-compact', 'table-density-spacious');
+    
+    // Add new density class
+    table.classList.add(`table-density-${density}`);
+}
+
+// Activity Table Enhanced Functions
+let currentActivityFilters = {};
+let currentActivitySort = { field: 'created_at', order: 'desc' };
+
+function initializeActivityEnhancements() {
+    // Initialize activity real-time search
+    const activitySearch = document.getElementById('activityRealTimeSearch');
+    if (activitySearch) {
+        let searchTimeout;
+        activitySearch.addEventListener('input', function() {
+            clearTimeout(searchTimeout);
+            searchTimeout = setTimeout(() => {
+                performActivitySearch();
+            }, 300);
+        });
+    }
+    
+    // Initialize activity filters
+    const actionFilter = document.getElementById('activityActionFilter');
+    const timeFilter = document.getElementById('activityTimeFilter');
+    const advancedSearchColumn = document.getElementById('activityAdvancedSearchColumn');
+    
+    [actionFilter, timeFilter, advancedSearchColumn].forEach(filter => {
+        if (filter) {
+            filter.addEventListener('change', performActivitySearch);
+        }
+    });
+    
+    // Initialize activity table density
+    const densitySelect = document.getElementById('activityTableDensity');
+    if (densitySelect) {
+        densitySelect.addEventListener('change', function() {
+            changeActivityTableDensity(this.value);
+        });
+    }
+    
+    // Initialize activity column visibility
+    initializeActivityColumnVisibility();
+    
+    // Initialize activity sorting
+    document.querySelectorAll('#activity-table .sortable').forEach(header => {
+        header.addEventListener('click', function() {
+            const field = this.dataset.field;
+            if (currentActivitySort.field === field) {
+                currentActivitySort.order = currentActivitySort.order === 'asc' ? 'desc' : 'asc';
+            } else {
+                currentActivitySort.field = field;
+                currentActivitySort.order = 'asc';
+            }
+            updateActivitySortIndicators();
+            performActivitySearch();
+        });
+    });
+}
+
+function initializeActivityColumnVisibility() {
+    const btn = document.getElementById('activityColumnVisibilityBtn');
+    const dropdown = document.getElementById('activityColumnVisibilityDropdown');
+    
+    if (btn && dropdown) {
+        btn.parentElement.style.position = 'relative';
+        
+        btn.addEventListener('click', function(e) {
+            e.stopPropagation();
+            dropdown.style.display = dropdown.style.display === 'none' ? 'block' : 'none';
+        });
+        
+        document.addEventListener('click', function() {
+            dropdown.style.display = 'none';
+        });
+        
+        dropdown.addEventListener('click', function(e) {
+            e.stopPropagation();
+        });
+        
+        dropdown.querySelectorAll('input[type="checkbox"]').forEach(checkbox => {
+            checkbox.addEventListener('change', function() {
+                toggleActivityColumn(this.dataset.column, this.checked);
+            });
+        });
+    }
+}
+
+function toggleActivityColumn(columnName, show) {
+    const table = document.getElementById('activity-table');
+    if (!table) return;
+    
+    const elements = table.querySelectorAll(`[data-column="${columnName}"]`);
+    elements.forEach(element => {
+        if (show) {
+            element.classList.remove('column-hidden');
+        } else {
+            element.classList.add('column-hidden');
+        }
+    });
+}
+
+function changeActivityTableDensity(density) {
+    const table = document.getElementById('activity-table');
+    if (!table) return;
+    
+    table.classList.remove('table-density-comfortable', 'table-density-compact', 'table-density-spacious');
+    table.classList.add(`table-density-${density}`);
+}
+
+function performActivitySearch() {
+    const searchInput = document.getElementById('activityRealTimeSearch');
+    const actionFilter = document.getElementById('activityActionFilter');
+    const timeFilter = document.getElementById('activityTimeFilter');
+    const advancedSearchColumn = document.getElementById('activityAdvancedSearchColumn');
+    
+    currentActivityFilters = {
+        search: searchInput ? searchInput.value : '',
+        action: actionFilter ? actionFilter.value : '',
+        timeFilter: timeFilter ? timeFilter.value : '',
+        searchColumn: advancedSearchColumn ? advancedSearchColumn.value : 'all'
+    };
+    
+    loadActivityData();
+}
+
+function loadActivityData() {
+    setActivityLoading(true);
+    
+    try {
+        // Client-side filtering of existing table data
+        const table = document.getElementById('activity-table');
+        if (!table) return;
+        
+        const rows = Array.from(table.querySelectorAll('tbody tr'));
+        let filteredRows = rows;
+        
+        // Apply search filter based on selected column
+        if (currentActivityFilters.search) {
+            const searchTerm = currentActivityFilters.search.toLowerCase();
+            filteredRows = filteredRows.filter(row => {
+                if (currentActivityFilters.searchColumn === 'all') {
+                    return row.textContent.toLowerCase().includes(searchTerm);
+                } else {
+                    const columnIndex = getActivityColumnIndex(currentActivityFilters.searchColumn);
+                    if (columnIndex !== -1 && row.cells[columnIndex]) {
+                        return row.cells[columnIndex].textContent.toLowerCase().includes(searchTerm);
+                    }
+                }
+                return false;
+            });
+        }
+        
+        // Apply action filter
+        if (currentActivityFilters.action) {
+            filteredRows = filteredRows.filter(row => {
+                const actionCell = row.cells[1]; // Action column
+                return actionCell && actionCell.textContent.toLowerCase().includes(currentActivityFilters.action);
+            });
+        }
+        
+        // Apply time filter
+        if (currentActivityFilters.timeFilter) {
+            const now = new Date();
+            filteredRows = filteredRows.filter(row => {
+                const timestampCell = row.cells[0]; // Timestamp column
+                if (!timestampCell) return false;
+                
+                const rowDate = parseActivityDate(timestampCell.textContent);
+                if (!rowDate) return false;
+                
+                switch (currentActivityFilters.timeFilter) {
+                    case 'today':
+                        return rowDate.toDateString() === now.toDateString();
+                    case 'week':
+                        const weekAgo = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
+                        return rowDate >= weekAgo;
+                    case 'month':
+                        const monthAgo = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000);
+                        return rowDate >= monthAgo;
+                    default:
+                        return true;
+                }
+            });
+        }
+        
+        // Apply sorting
+        if (currentActivitySort.field) {
+            filteredRows.sort((a, b) => {
+                const columnIndex = getActivityColumnIndex(currentActivitySort.field);
+                if (columnIndex === -1) return 0;
+                
+                const aValue = a.cells[columnIndex] ? a.cells[columnIndex].textContent.trim() : '';
+                const bValue = b.cells[columnIndex] ? b.cells[columnIndex].textContent.trim() : '';
+                
+                let comparison = 0;
+                if (currentActivitySort.field === 'created_at') {
+                    const aDate = parseActivityDate(aValue);
+                    const bDate = parseActivityDate(bValue);
+                    comparison = aDate && bDate ? aDate.getTime() - bDate.getTime() : 0;
+                } else {
+                    comparison = aValue.localeCompare(bValue);
+                }
+                
+                return currentActivitySort.order === 'desc' ? -comparison : comparison;
+            });
+        }
+        
+        // Show/hide rows
+        rows.forEach(row => row.style.display = 'none');
+        filteredRows.forEach(row => row.style.display = '');
+        
+        // Update results info
+        updateActivityResultsInfo(filteredRows.length, rows.length);
+        
+    } catch (error) {
+        console.error('Error filtering activity data:', error);
+    } finally {
+        setActivityLoading(false);
+    }
+}
+
+function getActivityColumnIndex(fieldName) {
+    const columnMap = {
+        'created_at': 0,
+        'timestamp': 0,
+        'action': 1,
+        'target_user': 2,
+        'admin_user': 3,
+        'admin': 3,
+        'ip_address': 4
+    };
+    return columnMap[fieldName] || -1;
+}
+
+function parseActivityDate(dateString) {
+    try {
+        // Handle different date formats that might be in the table
+        const cleanDateString = dateString.trim();
+        return new Date(cleanDateString);
+    } catch (e) {
+        return null;
+    }
+}
+
+function updateActivityResultsInfo(filtered, total) {
+    const infoDiv = document.getElementById('activity-results-info');
+    if (!infoDiv) return;
+    
+    if (filtered < total) {
+        infoDiv.innerHTML = `Showing ${filtered} of ${total} activity entries`;
+        infoDiv.style.display = 'block';
+    } else {
+        infoDiv.style.display = 'none';
+    }
+}
+
+function updateActivitySortIndicators() {
+    document.querySelectorAll('#activity-table .sort-indicator').forEach(indicator => {
+        indicator.className = 'sort-indicator';
+    });
+    
+    const activeHeader = document.querySelector(`#activity-table [data-field="${currentActivitySort.field}"] .sort-indicator`);
+    if (activeHeader) {
+        activeHeader.className = `sort-indicator ${currentActivitySort.order}`;
+    }
+}
+
+function clearActivityFilters() {
+    // Clear all filter inputs
+    const searchInput = document.getElementById('activityRealTimeSearch');
+    const actionFilter = document.getElementById('activityActionFilter');
+    const timeFilter = document.getElementById('activityTimeFilter');
+    const advancedSearchColumn = document.getElementById('activityAdvancedSearchColumn');
+    
+    if (searchInput) searchInput.value = '';
+    if (actionFilter) actionFilter.value = '';
+    if (timeFilter) timeFilter.value = '';
+    if (advancedSearchColumn) advancedSearchColumn.value = 'all';
+    
+    // Reset filters and sorting
+    currentActivityFilters = {};
+    currentActivitySort = { field: 'created_at', order: 'desc' };
+    
+    // Show all rows
+    const table = document.getElementById('activity-table');
+    if (table) {
+        const rows = Array.from(table.querySelectorAll('tbody tr'));
+        rows.forEach(row => row.style.display = '');
+    }
+    
+    // Hide results info
+    const infoDiv = document.getElementById('activity-results-info');
+    if (infoDiv) infoDiv.style.display = 'none';
+    
+    // Update sort indicators
+    updateActivitySortIndicators();
+}
+
+function setActivityLoading(loading) {
+    const table = document.getElementById('activity-table');
+    if (table) {
+        table.style.opacity = loading ? '0.6' : '1';
+    }
 }
 </script>

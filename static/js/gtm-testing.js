@@ -152,4 +152,316 @@ class GTMTester {
     /**
      * Test cookie consent integration
      */
-    testCookieConsentIntegration() {\n        const test = {\n            name: 'Cookie Consent Integration',\n            passed: false,\n            details: {}\n        };\n        \n        test.details.cookieConsentExists = window.cookieConsent !== undefined;\n        test.details.hasPreferences = window.cookieConsent?.currentPreferences !== undefined;\n        test.details.analyticsConsent = window.cookieConsent?.currentPreferences?.analytics;\n        test.details.gtmLoadedBasedOnConsent = window.gtmLoaded !== undefined;\n        \n        // Test consent event listener\n        test.details.hasConsentListener = true; // We can't easily test this\n        \n        test.passed = test.details.cookieConsentExists && (test.details.analyticsConsent ? test.details.gtmLoadedBasedOnConsent : true);\n        \n        this.testResults.push(test);\n        this.logTest(test);\n    }\n    \n    /**\n     * Test basic event tracking\n     */\n    testBasicEventTracking() {\n        const test = {\n            name: 'Basic Event Tracking',\n            passed: false,\n            details: {}\n        };\n        \n        try {\n            // Test gtag event\n            if (window.gtag) {\n                window.gtag('event', 'test_event', {\n                    'test_parameter': 'test_value',\n                    'event_category': 'testing'\n                });\n                test.details.gtagTest = 'success';\n            } else {\n                test.details.gtagTest = 'gtag not available';\n            }\n            \n            // Test dataLayer push\n            if (window.dataLayer) {\n                window.dataLayer.push({\n                    'event': 'test_datalayer_event',\n                    'test_parameter': 'test_value'\n                });\n                test.details.dataLayerTest = 'success';\n            }\n            \n            test.passed = test.details.gtagTest === 'success' || test.details.dataLayerTest === 'success';\n            \n        } catch (error) {\n            test.details.error = error.message;\n        }\n        \n        this.testResults.push(test);\n        this.logTest(test);\n    }\n    \n    /**\n     * Test enhanced event tracking\n     */\n    testEnhancedEventTracking() {\n        const test = {\n            name: 'Enhanced Event Tracking',\n            passed: false,\n            details: {}\n        };\n        \n        try {\n            // Test enhanced events class\n            test.details.enhancedEventsExists = window.gtmEnhancedEvents !== undefined;\n            test.details.gtmHelperExists = window.gtmHelper !== undefined;\n            \n            // Test convenience functions\n            test.details.trackGTMEventExists = typeof window.trackGTMEvent === 'function';\n            test.details.trackEnhancedEventExists = typeof window.trackEnhancedEvent === 'function';\n            \n            if (window.trackGTMEvent) {\n                window.trackGTMEvent('test_enhanced_event', {\n                    'category': 'testing',\n                    'value': 1\n                });\n                test.details.enhancedEventTest = 'success';\n            }\n            \n            test.passed = test.details.enhancedEventsExists && test.details.trackGTMEventExists;\n            \n        } catch (error) {\n            test.details.error = error.message;\n        }\n        \n        this.testResults.push(test);\n        this.logTest(test);\n    }\n    \n    /**\n     * Test ecommerce tracking\n     */\n    testEcommerceTracking() {\n        const test = {\n            name: 'Ecommerce Tracking',\n            passed: false,\n            details: {}\n        };\n        \n        try {\n            test.details.trackPurchaseExists = typeof window.trackPurchase === 'function';\n            test.details.trackSubscriptionExists = typeof window.trackSubscriptionEvent === 'function';\n            \n            if (window.trackPurchase) {\n                // Test purchase tracking (with test data)\n                window.trackPurchase({\n                    transactionId: 'test_' + Date.now(),\n                    value: 149,\n                    planId: 'premium',\n                    planName: 'Premium Plan',\n                    fromTier: 'free',\n                    toTier: 'premium'\n                });\n                test.details.purchaseTest = 'success';\n            }\n            \n            test.passed = test.details.trackPurchaseExists && test.details.trackSubscriptionExists;\n            \n        } catch (error) {\n            test.details.error = error.message;\n        }\n        \n        this.testResults.push(test);\n        this.logTest(test);\n    }\n    \n    /**\n     * Test analytics service integration\n     */\n    testAnalyticsServiceIntegration() {\n        const test = {\n            name: 'Analytics Service Integration',\n            passed: false,\n            details: {}\n        };\n        \n        test.details.analyticsServiceExists = window.analyticsService !== undefined;\n        test.details.isEnabled = window.analyticsService?.isEnabled;\n        test.details.debugMode = window.analyticsService?.debugMode;\n        test.details.eventQueueLength = window.analyticsService?.eventQueue?.length || 0;\n        \n        // Test if analytics service can send events\n        if (window.analyticsService && window.analyticsService.sendEvent) {\n            try {\n                window.analyticsService.sendEvent('test_analytics_service', {\n                    'test_parameter': 'test_value'\n                });\n                test.details.sendEventTest = 'success';\n            } catch (error) {\n                test.details.sendEventTest = error.message;\n            }\n        }\n        \n        test.passed = test.details.analyticsServiceExists;\n        \n        this.testResults.push(test);\n        this.logTest(test);\n    }\n    \n    /**\n     * Test event queueing functionality\n     */\n    testEventQueueing() {\n        const test = {\n            name: 'Event Queueing',\n            passed: false,\n            details: {}\n        };\n        \n        if (window.analyticsService) {\n            test.details.queueExists = window.analyticsService.eventQueue !== undefined;\n            test.details.initialQueueLength = window.analyticsService.eventQueue?.length || 0;\n            test.details.processQueueMethodExists = typeof window.analyticsService.processEventQueue === 'function';\n            \n            test.passed = test.details.queueExists && test.details.processQueueMethodExists;\n        } else {\n            test.details.error = 'Analytics service not available';\n        }\n        \n        this.testResults.push(test);\n        this.logTest(test);\n    }\n    \n    /**\n     * Generate comprehensive test report\n     */\n    generateTestReport() {\n        const passedTests = this.testResults.filter(test => test.passed).length;\n        const totalTests = this.testResults.length;\n        const successRate = (passedTests / totalTests * 100).toFixed(1);\n        \n        const report = {\n            summary: {\n                total_tests: totalTests,\n                passed_tests: passedTests,\n                failed_tests: totalTests - passedTests,\n                success_rate: successRate + '%',\n                timestamp: new Date().toISOString()\n            },\n            tests: this.testResults,\n            recommendations: this.generateRecommendations()\n        };\n        \n        console.log('📊 GTM Test Report:', report);\n        \n        // Store report globally for debugging\n        window.gtmTestReport = report;\n        \n        return report;\n    }\n    \n    /**\n     * Generate recommendations based on test results\n     */\n    generateRecommendations() {\n        const recommendations = [];\n        \n        this.testResults.forEach(test => {\n            if (!test.passed) {\n                switch (test.name) {\n                    case 'GTM Container Loaded':\n                        recommendations.push('GTM container may not be loading properly. Check network requests and cookie consent.');\n                        break;\n                    case 'DataLayer Structure':\n                        recommendations.push('DataLayer is not properly initialized. Ensure GTM script loads before other tracking code.');\n                        break;\n                    case 'GTM Container ID':\n                        recommendations.push('GTM container ID is missing or invalid. Check environment configuration.');\n                        break;\n                    case 'User Data in DataLayer':\n                        recommendations.push('User data is not being pushed to dataLayer. Check user authentication and data flow.');\n                        break;\n                    case 'Cookie Consent Integration':\n                        recommendations.push('Cookie consent integration may have issues. Verify consent management system.');\n                        break;\n                    default:\n                        recommendations.push(`${test.name} failed. Check implementation details.`);\n                }\n            }\n        });\n        \n        if (recommendations.length === 0) {\n            recommendations.push('All tests passed! GTM integration is working correctly.');\n        }\n        \n        return recommendations;\n    }\n    \n    /**\n     * Log individual test results\n     */\n    logTest(test) {\n        const icon = test.passed ? '✅' : '❌';\n        const method = test.passed ? 'log' : 'warn';\n        \n        console[method](`${icon} ${test.name}:`, test.details);\n    }\n    \n    /**\n     * Test specific GTM triggers and events\n     */\n    testGTMTriggers() {\n        console.log('🎯 Testing GTM Triggers...');\n        \n        // Test page view trigger\n        window.dataLayer.push({\n            'event': 'test_page_view',\n            'page_title': 'Test Page',\n            'page_location': window.location.href\n        });\n        \n        // Test custom event trigger\n        window.dataLayer.push({\n            'event': 'test_custom_event',\n            'event_category': 'test',\n            'event_action': 'trigger_test'\n        });\n        \n        console.log('🎯 Trigger tests sent to dataLayer');\n    }\n}\n\n// Initialize GTM tester\nwindow.gtmTester = new GTMTester();\n\n// Convenience functions for manual testing\nwindow.testGTM = () => window.gtmTester.runAllTests();\nwindow.testGTMTriggers = () => window.gtmTester.testGTMTriggers();\n\n// Auto-run tests in debug mode\nif (window.location.search.includes('gtm_debug=1')) {\n    document.addEventListener('DOMContentLoaded', () => {\n        setTimeout(() => {\n            console.log('🧪 Auto-running GTM tests in debug mode...');\n            window.testGTM();\n        }, 2000);\n    });\n}\n\n// Export for external use\nif (typeof module !== 'undefined' && module.exports) {\n    module.exports = GTMTester;\n}"
+    testCookieConsentIntegration() {
+        const test = {
+            name: 'Cookie Consent Integration',
+            passed: false,
+            details: {}
+        };
+        
+        test.details.cookieConsentExists = window.cookieConsent !== undefined;
+        test.details.hasPreferences = window.cookieConsent?.currentPreferences !== undefined;
+        test.details.analyticsConsent = window.cookieConsent?.currentPreferences?.analytics;
+        test.details.gtmLoadedBasedOnConsent = window.gtmLoaded !== undefined;
+        
+        // Test consent event listener
+        test.details.hasConsentListener = true; // We can't easily test this
+        
+        test.passed = test.details.cookieConsentExists && (test.details.analyticsConsent ? test.details.gtmLoadedBasedOnConsent : true);
+        
+        this.testResults.push(test);
+        this.logTest(test);
+    }
+    
+    /**
+     * Test basic event tracking
+     */
+    testBasicEventTracking() {
+        const test = {
+            name: 'Basic Event Tracking',
+            passed: false,
+            details: {}
+        };
+        
+        try {
+            // Test gtag event
+            if (window.gtag) {
+                window.gtag('event', 'test_event', {
+                    'test_parameter': 'test_value',
+                    'event_category': 'testing'
+                });
+                test.details.gtagTest = 'success';
+            } else {
+                test.details.gtagTest = 'gtag not available';
+            }
+            
+            // Test dataLayer push
+            if (window.dataLayer) {
+                window.dataLayer.push({
+                    'event': 'test_datalayer_event',
+                    'test_parameter': 'test_value'
+                });
+                test.details.dataLayerTest = 'success';
+            }
+            
+            test.passed = test.details.gtagTest === 'success' || test.details.dataLayerTest === 'success';
+            
+        } catch (error) {
+            test.details.error = error.message;
+        }
+        
+        this.testResults.push(test);
+        this.logTest(test);
+    }
+    
+    /**
+     * Test enhanced event tracking
+     */
+    testEnhancedEventTracking() {
+        const test = {
+            name: 'Enhanced Event Tracking',
+            passed: false,
+            details: {}
+        };
+        
+        try {
+            // Test enhanced events class
+            test.details.enhancedEventsExists = window.gtmEnhancedEvents !== undefined;
+            test.details.gtmHelperExists = window.gtmHelper !== undefined;
+            
+            // Test convenience functions
+            test.details.trackGTMEventExists = typeof window.trackGTMEvent === 'function';
+            test.details.trackEnhancedEventExists = typeof window.trackEnhancedEvent === 'function';
+            
+            if (window.trackGTMEvent) {
+                window.trackGTMEvent('test_enhanced_event', {
+                    'category': 'testing',
+                    'value': 1
+                });
+                test.details.enhancedEventTest = 'success';
+            }
+            
+            test.passed = test.details.enhancedEventsExists && test.details.trackGTMEventExists;
+            
+        } catch (error) {
+            test.details.error = error.message;
+        }
+        
+        this.testResults.push(test);
+        this.logTest(test);
+    }
+    
+    /**
+     * Test ecommerce tracking
+     */
+    testEcommerceTracking() {
+        const test = {
+            name: 'Ecommerce Tracking',
+            passed: false,
+            details: {}
+        };
+        
+        try {
+            test.details.trackPurchaseExists = typeof window.trackPurchase === 'function';
+            test.details.trackSubscriptionExists = typeof window.trackSubscriptionEvent === 'function';
+            
+            if (window.trackPurchase) {
+                // Test purchase tracking (with test data)
+                window.trackPurchase({
+                    transactionId: 'test_' + Date.now(),
+                    value: 149,
+                    planId: 'premium',
+                    planName: 'Premium Plan',
+                    fromTier: 'free',
+                    toTier: 'premium'
+                });
+                test.details.purchaseTest = 'success';
+            }
+            
+            test.passed = test.details.trackPurchaseExists && test.details.trackSubscriptionExists;
+            
+        } catch (error) {
+            test.details.error = error.message;
+        }
+        
+        this.testResults.push(test);
+        this.logTest(test);
+    }
+    
+    /**
+     * Test analytics service integration
+     */
+    testAnalyticsServiceIntegration() {
+        const test = {
+            name: 'Analytics Service Integration',
+            passed: false,
+            details: {}
+        };
+        
+        test.details.analyticsServiceExists = window.analyticsService !== undefined;
+        test.details.isEnabled = window.analyticsService?.isEnabled;
+        test.details.debugMode = window.analyticsService?.debugMode;
+        test.details.eventQueueLength = window.analyticsService?.eventQueue?.length || 0;
+        
+        // Test if analytics service can send events
+        if (window.analyticsService && window.analyticsService.sendEvent) {
+            try {
+                window.analyticsService.sendEvent('test_analytics_service', {
+                    'test_parameter': 'test_value'
+                });
+                test.details.sendEventTest = 'success';
+            } catch (error) {
+                test.details.sendEventTest = error.message;
+            }
+        }
+        
+        test.passed = test.details.analyticsServiceExists;
+        
+        this.testResults.push(test);
+        this.logTest(test);
+    }
+    
+    /**
+     * Test event queueing functionality
+     */
+    testEventQueueing() {
+        const test = {
+            name: 'Event Queueing',
+            passed: false,
+            details: {}
+        };
+        
+        if (window.analyticsService) {
+            test.details.queueExists = window.analyticsService.eventQueue !== undefined;
+            test.details.initialQueueLength = window.analyticsService.eventQueue?.length || 0;
+            test.details.processQueueMethodExists = typeof window.analyticsService.processEventQueue === 'function';
+            
+            test.passed = test.details.queueExists && test.details.processQueueMethodExists;
+        } else {
+            test.details.error = 'Analytics service not available';
+        }
+        
+        this.testResults.push(test);
+        this.logTest(test);
+    }
+    
+    /**
+     * Generate comprehensive test report
+     */
+    generateTestReport() {
+        const passedTests = this.testResults.filter(test => test.passed).length;
+        const totalTests = this.testResults.length;
+        const successRate = (passedTests / totalTests * 100).toFixed(1);
+        
+        const report = {
+            summary: {
+                total_tests: totalTests,
+                passed_tests: passedTests,
+                failed_tests: totalTests - passedTests,
+                success_rate: successRate + '%',
+                timestamp: new Date().toISOString()
+            },
+            tests: this.testResults,
+            recommendations: this.generateRecommendations()
+        };
+        
+        console.log('📊 GTM Test Report:', report);
+        
+        // Store report globally for debugging
+        window.gtmTestReport = report;
+        
+        return report;
+    }
+    
+    /**
+     * Generate recommendations based on test results
+     */
+    generateRecommendations() {
+        const recommendations = [];
+        
+        this.testResults.forEach(test => {
+            if (!test.passed) {
+                switch (test.name) {
+                    case 'GTM Container Loaded':
+                        recommendations.push('GTM container may not be loading properly. Check network requests and cookie consent.');
+                        break;
+                    case 'DataLayer Structure':
+                        recommendations.push('DataLayer is not properly initialized. Ensure GTM script loads before other tracking code.');
+                        break;
+                    case 'GTM Container ID':
+                        recommendations.push('GTM container ID is missing or invalid. Check environment configuration.');
+                        break;
+                    case 'User Data in DataLayer':
+                        recommendations.push('User data is not being pushed to dataLayer. Check user authentication and data flow.');
+                        break;
+                    case 'Cookie Consent Integration':
+                        recommendations.push('Cookie consent integration may have issues. Verify consent management system.');
+                        break;
+                    default:
+                        recommendations.push(`${test.name} failed. Check implementation details.`);
+                }
+            }
+        });
+        
+        if (recommendations.length === 0) {
+            recommendations.push('All tests passed! GTM integration is working correctly.');
+        }
+        
+        return recommendations;
+    }
+    
+    /**
+     * Log individual test results
+     */
+    logTest(test) {
+        const icon = test.passed ? '✅' : '❌';
+        const method = test.passed ? 'log' : 'warn';
+        
+        console[method](`${icon} ${test.name}:`, test.details);
+    }
+    
+    /**
+     * Test specific GTM triggers and events
+     */
+    testGTMTriggers() {
+        console.log('🎯 Testing GTM Triggers...');
+        
+        // Test page view trigger
+        window.dataLayer.push({
+            'event': 'test_page_view',
+            'page_title': 'Test Page',
+            'page_location': window.location.href
+        });
+        
+        // Test custom event trigger
+        window.dataLayer.push({
+            'event': 'test_custom_event',
+            'event_category': 'test',
+            'event_action': 'trigger_test'
+        });
+        
+        console.log('🎯 Trigger tests sent to dataLayer');
+    }
+}
+
+// Initialize GTM tester
+window.gtmTester = new GTMTester();
+
+// Convenience functions for manual testing
+window.testGTM = () => window.gtmTester.runAllTests();
+window.testGTMTriggers = () => window.gtmTester.testGTMTriggers();
+
+// Auto-run tests in debug mode
+if (window.location.search.includes('gtm_debug=1')) {
+    document.addEventListener('DOMContentLoaded', () => {
+        setTimeout(() => {
+            console.log('🧪 Auto-running GTM tests in debug mode...');
+            window.testGTM();
+        }, 2000);
+    });
+}
+
+// Export for external use
+if (typeof module !== 'undefined' && module.exports) {
+    module.exports = GTMTester;
+}

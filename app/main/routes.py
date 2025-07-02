@@ -24,6 +24,17 @@ def ads_txt():
     return Response(ads_txt_content, mimetype='text/plain')
 
 
+@main_bp.route('/sw.js')
+def service_worker():
+    """Serve the service worker from the root directory"""
+    from flask import send_from_directory
+    import os
+    
+    # Send the service worker file from the project root
+    root_dir = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+    return send_from_directory(root_dir, 'sw.js', mimetype='application/javascript')
+
+
 @main_bp.route('/offline')
 def offline():
     """Offline page for PWA"""
