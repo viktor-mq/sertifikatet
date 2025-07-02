@@ -120,7 +120,7 @@
         {% include 'admin/database_section.html' %}
 
         <!-- Reports & Security Section -->
-        {% include 'admin/reports_section.html' %}
+        {% include 'admin/sections/reports_standalone.html' %}
 
         <!-- Manage Users Section -->
         {% include 'admin/manage_users_section.html' %}
@@ -158,7 +158,7 @@
             }
         }
 
-        // Section management
+        // Section management with proper initialization
         function showSection(sectionName) {
             // Hide all sections
             document.querySelectorAll('.section').forEach(section => {
@@ -180,6 +180,52 @@
             const selectedTab = document.getElementById(sectionName + 'Tab');
             if (selectedTab) {
                 selectedTab.classList.add('active');
+            }
+            
+            // Initialize section-specific JavaScript
+            initializeSection(sectionName);
+        }
+        
+        // Initialize section-specific functionality
+        function initializeSection(sectionName) {
+            console.log('Initializing section:', sectionName);
+            
+            switch(sectionName) {
+                case 'questions':
+                    // Questions section is already initialized on page load
+                    break;
+                    
+                case 'reports':
+                    // Load standalone reports section
+                    if (typeof initializeReportsSection === 'function') {
+                        initializeReportsSection();
+                        console.log('Standalone Reports section initialized');
+                    }
+                    break;
+                    
+                case 'manageUsers':
+                    if (typeof initializeUsersEnhancements === 'function') {
+                        initializeUsersEnhancements();
+                        console.log('Users section initialized');
+                    }
+                    break;
+                    
+                case 'auditLog':
+                    if (typeof initializeAuditEnhancements === 'function') {
+                        initializeAuditEnhancements();
+                        console.log('Audit section initialized');
+                    }
+                    break;
+                    
+                case 'database':
+                    if (typeof initializeDatabaseEnhancements === 'function') {
+                        initializeDatabaseEnhancements();
+                        console.log('Database section initialized');
+                    }
+                    break;
+                    
+                default:
+                    console.log('No specific initialization for section:', sectionName);
             }
         }
 

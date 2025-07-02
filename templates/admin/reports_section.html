@@ -30,20 +30,48 @@
     </div>
   </div>
 
-  <!-- Recent Security Alerts -->
+  <!-- Security Alerts Table -->
   {% if recent_security_alerts %}
-  <div style="background: rgba(255, 255, 255, 0.9); padding: 20px; border-radius: 12px; margin-bottom: 20px; box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1); border-left: 4px solid #dc3545;">
+  <div class="table-section" style="margin-bottom: 30px;">
     <h3 style="color: #dc3545; margin-bottom: 15px; display: flex; align-items: center; gap: 10px;">
       🚨 Recent Security Alerts
     </h3>
+    
+    <!-- Security Alerts Filter Form -->
+    <form id="security-alerts-filter-form" class="enhanced-filter-form" onsubmit="event.preventDefault(); performSecurityAlertsSearch(); return false;">
+      <div class="search-filter-container enhanced-search">
+        <input type="text" id="security-alerts-search" name="search" placeholder="🔍 Search security alerts..." class="search-input" oninput="debouncedSecurityAlertsSearch()" />
+        <select name="type" id="security-alerts-type" onchange="performSecurityAlertsSearch()">
+          <option value="">All Alert Types</option>
+          <option value="security_alert">Security Alert</option>
+          <option value="suspicious_activity">Suspicious Activity</option>
+          <option value="admin_change">Admin Change</option>
+          <option value="system_error">System Error</option>
+        </select>
+        <select name="user" id="security-alerts-user" onchange="performSecurityAlertsSearch()">
+          <option value="">All Users</option>
+          <option value="unknown">Unknown/System</option>
+        </select>
+        <select name="per_page" id="security-alerts-per-page" onchange="performSecurityAlertsSearch()">
+          <option value="10">10 per page</option>
+          <option value="20" selected>20 per page</option>
+          <option value="50">50 per page</option>
+        </select>
+        <button type="button" class="btn" onclick="performSecurityAlertsSearch()">🔍 Filter</button>
+        <button type="button" class="btn btn-secondary" onclick="clearSecurityAlertsFilters()">🗑️ Clear</button>
+        <div class="loading-indicator" id="security-alerts-loading" style="display: none;">⏳ Loading...</div>
+      </div>
+    </form>
+
     <div class="table-container">
-      <table>
+      <div id="security-alerts-results-info" class="results-info"></div>
+      <table id="security-alerts-table">
         <thead>
           <tr>
-            <th>Time</th>
-            <th>Type</th>
-            <th>Description</th>
-            <th>User</th>
+            <th class="sortable" data-field="created_at">Time <span class="sort-indicator"></span></th>
+            <th class="sortable" data-field="report_type">Type <span class="sort-indicator"></span></th>
+            <th class="sortable" data-field="title">Description <span class="sort-indicator"></span></th>
+            <th class="sortable" data-field="user">User <span class="sort-indicator"></span></th>
             <th>Action</th>
           </tr>
         </thead>
@@ -73,61 +101,70 @@
         </tbody>
       </table>
     </div>
+    
+    <!-- Security Alerts Pagination Controls -->
+    <div id="security-alerts-pagination" class="pagination-container"></div>
   </div>
   {% endif %}
 
-  <!-- Enhanced Filters with AJAX -->
-  <form id="reports-filter-form" class="enhanced-filter-form">
-    <div class="search-filter-container enhanced-search">
-      <input type="text" id="reports-search" name="search" placeholder="🔍 Search reports, users, content..." 
-             value="{{ search_filter or '' }}" class="search-input" />
-      <select name="type">
-        <option value="">All Types</option>
-        <option value="user_feedback" {% if report_type_filter == 'user_feedback' %}selected{% endif %}>
-          User Feedback
-        </option>
-        <option value="system_error" {% if report_type_filter == 'system_error' %}selected{% endif %}>
-          System Error
-        </option>
-        <option value="security_alert" {% if report_type_filter == 'security_alert' %}selected{% endif %}>
-          Security Alert
-        </option>
-        <option value="admin_change" {% if report_type_filter == 'admin_change' %}selected{% endif %}>
-          Admin Change
-        </option>
-        <option value="suspicious_activity" {% if report_type_filter == 'suspicious_activity' %}selected{% endif %}>
-          Suspicious Activity
-        </option>
-      </select>
+  <!-- Reports Table -->
+  <div class="table-section">
+    <h3 style="color: #374151; margin-bottom: 15px; display: flex; align-items: center; gap: 10px;">
+      📊 All Reports
+    </h3>
+    
+    <!-- Reports Filter Form -->
+    <form id="reports-filter-form" class="enhanced-filter-form" onsubmit="event.preventDefault(); performReportsSearch(); return false;">
+      <div class="search-filter-container enhanced-search">
+        <input type="text" id="reports-search" name="search" placeholder="🔍 Search reports, users, content..." 
+               value="{{ search_filter or '' }}" class="search-input" oninput="debouncedReportsSearch()" />
+        <select name="type" id="reports-type" onchange="performReportsSearch()">
+          <option value="">All Types</option>
+          <option value="user_feedback" {% if report_type_filter == 'user_feedback' %}selected{% endif %}>
+            User Feedback
+          </option>
+          <option value="system_error" {% if report_type_filter == 'system_error' %}selected{% endif %}>
+            System Error
+          </option>
+          <option value="security_alert" {% if report_type_filter == 'security_alert' %}selected{% endif %}>
+            Security Alert
+          </option>
+          <option value="admin_change" {% if report_type_filter == 'admin_change' %}selected{% endif %}>
+            Admin Change
+          </option>
+          <option value="suspicious_activity" {% if report_type_filter == 'suspicious_activity' %}selected{% endif %}>
+            Suspicious Activity
+          </option>
+        </select>
 
-      <select name="status">
-        <option value="">All Status</option>
-        <option value="new" {% if status_filter == 'new' %}selected{% endif %}>New</option>
-        <option value="in_progress" {% if status_filter == 'in_progress' %}selected{% endif %}>
-          In Progress
-        </option>
-        <option value="resolved" {% if status_filter == 'resolved' %}selected{% endif %}>Resolved</option>
-        <option value="archived" {% if status_filter == 'archived' %}selected{% endif %}>Archived</option>
-      </select>
+        <select name="status" id="reports-status" onchange="performReportsSearch()">
+          <option value="">All Status</option>
+          <option value="new" {% if status_filter == 'new' %}selected{% endif %}>New</option>
+          <option value="in_progress" {% if status_filter == 'in_progress' %}selected{% endif %}>
+            In Progress
+          </option>
+          <option value="resolved" {% if status_filter == 'resolved' %}selected{% endif %}>Resolved</option>
+          <option value="archived" {% if status_filter == 'archived' %}selected{% endif %}>Archived</option>
+        </select>
 
-      <select name="priority">
-        <option value="">All Priorities</option>
-        <option value="critical" {% if priority_filter == 'critical' %}selected{% endif %}>Critical</option>
-        <option value="high" {% if priority_filter == 'high' %}selected{% endif %}>High</option>
-        <option value="medium" {% if priority_filter == 'medium' %}selected{% endif %}>Medium</option>
-        <option value="low" {% if priority_filter == 'low' %}selected{% endif %}>Low</option>
-      </select>
+        <select name="priority" id="reports-priority" onchange="performReportsSearch()">
+          <option value="">All Priorities</option>
+          <option value="critical" {% if priority_filter == 'critical' %}selected{% endif %}>Critical</option>
+          <option value="high" {% if priority_filter == 'high' %}selected{% endif %}>High</option>
+          <option value="medium" {% if priority_filter == 'medium' %}selected{% endif %}>Medium</option>
+          <option value="low" {% if priority_filter == 'low' %}selected{% endif %}>Low</option>
+        </select>
 
-      <select name="per_page" id="reports-per-page">
-        <option value="20">20 per page</option>
-        <option value="50">50 per page</option>
-        <option value="100">100 per page</option>
-      </select>
-      <button type="button" class="btn" onclick="performReportsSearch()">🔍 Filter</button>
-      <button type="button" class="btn btn-secondary" onclick="clearReportsFilters()">🗑️ Clear</button>
-      <div class="loading-indicator" id="reports-loading" style="display: none;">⏳ Loading...</div>
-    </div>
-  </form>
+        <select name="per_page" id="reports-per-page" onchange="performReportsSearch()">
+          <option value="20">20 per page</option>
+          <option value="50">50 per page</option>
+          <option value="100">100 per page</option>
+        </select>
+        <button type="button" class="btn" onclick="performReportsSearch()">🔍 Filter</button>
+        <button type="button" class="btn btn-secondary" onclick="clearReportsFilters()">🗑️ Clear</button>
+        <div class="loading-indicator" id="reports-loading" style="display: none;">⏳ Loading...</div>
+      </div>
+    </form>
 
   <!-- Reports Table with Enhanced Features -->
   <div class="table-container">
@@ -214,21 +251,49 @@
       </tbody>
     </table>
   </div>
+  
+  <!-- Reports Pagination Controls -->
+  <div id="reports-pagination" class="pagination-container"></div>
+  </div>
 
   <!-- Unresolved User Feedback -->
   {% if user_feedback %}
-  <div style="background: rgba(255, 255, 255, 0.9); padding: 20px; border-radius: 12px; margin-top: 20px; box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);">
+  <div class="table-section" style="margin-top: 30px;">
     <h3 style="color: #333; margin-bottom: 15px; display: flex; align-items: center; gap: 10px;">
       💬 Unresolved User Feedback
     </h3>
+    
+    <!-- User Feedback Filter Form -->
+    <form id="user-feedback-filter-form" class="enhanced-filter-form" onsubmit="event.preventDefault(); performUserFeedbackSearch(); return false;">
+      <div class="search-filter-container enhanced-search">
+        <input type="text" id="user-feedback-search" name="search" placeholder="🔍 Search feedback..." class="search-input" oninput="debouncedUserFeedbackSearch()" />
+        <select name="type" id="user-feedback-type" onchange="performUserFeedbackSearch()">
+          <option value="">All Feedback Types</option>
+          <option value="bug">Bug Report</option>
+          <option value="feature">Feature Request</option>
+          <option value="general">General Feedback</option>
+          <option value="complaint">Complaint</option>
+        </select>
+        <select name="per_page" id="user-feedback-per-page" onchange="performUserFeedbackSearch()">
+          <option value="10">10 per page</option>
+          <option value="20" selected>20 per page</option>
+          <option value="50">50 per page</option>
+        </select>
+        <button type="button" class="btn" onclick="performUserFeedbackSearch()">🔍 Filter</button>
+        <button type="button" class="btn btn-secondary" onclick="clearUserFeedbackFilters()">🗑️ Clear</button>
+        <div class="loading-indicator" id="user-feedback-loading" style="display: none;">⏳ Loading...</div>
+      </div>
+    </form>
+
     <div class="table-container">
-      <table>
+      <div id="user-feedback-results-info" class="results-info"></div>
+      <table id="user-feedback-table">
         <thead>
           <tr>
-            <th>User</th>
-            <th>Type</th>
-            <th>Subject</th>
-            <th>Date</th>
+            <th class="sortable" data-field="user">User <span class="sort-indicator"></span></th>
+            <th class="sortable" data-field="feedback_type">Type <span class="sort-indicator"></span></th>
+            <th class="sortable" data-field="subject">Subject <span class="sort-indicator"></span></th>
+            <th class="sortable" data-field="created_at">Date <span class="sort-indicator"></span></th>
             <th>Action</th>
           </tr>
         </thead>
@@ -255,11 +320,12 @@
         </tbody>
       </table>
     </div>
+    
+    <!-- User Feedback Pagination Controls -->
+    <div id="user-feedback-pagination" class="pagination-container"></div>
   </div>
   {% endif %}
-  
-  <!-- Pagination Controls -->
-  <div id="reports-pagination" class="pagination-container"></div>
+
 </div>
 
 <!-- Report Details Modal -->
@@ -498,12 +564,31 @@
 <script src="{{ url_for('static', filename='js/admin-base.js') }}"></script>
 
 <script>
-// Reports Section Enhancement JavaScript
+// Reports Section Enhancement JavaScript - Support for multiple tables
 let currentReportId = null;
-let currentFilters = {};
-let currentSort = { field: 'created_at', order: 'desc' };
-let currentPage = 1;
-let perPage = 20;
+
+// Reports table state
+let reportsCurrentFilters = {};
+let reportsCurrentSort = { field: 'created_at', order: 'desc' };
+let reportsCurrentPage = 1;
+let reportsPerPage = 20;
+
+// Security Alerts table state
+let securityAlertsCurrentFilters = {};
+let securityAlertsCurrentSort = { field: 'created_at', order: 'desc' };
+let securityAlertsCurrentPage = 1;
+let securityAlertsPerPage = 20;
+
+// User Feedback table state
+let userFeedbackCurrentFilters = {};
+let userFeedbackCurrentSort = { field: 'created_at', order: 'desc' };
+let userFeedbackCurrentPage = 1;
+let userFeedbackPerPage = 20;
+
+// Debounce timers for search
+let reportsSearchTimeout;
+let securityAlertsSearchTimeout;
+let userFeedbackSearchTimeout;
 
 document.addEventListener('DOMContentLoaded', function() {
     // Only initialize if reports section exists and is active
@@ -512,6 +597,15 @@ document.addEventListener('DOMContentLoaded', function() {
         initializeReportsEnhancements();
     }
 });
+
+// Make functions globally available for section switching
+window.initializeReportsEnhancements = initializeReportsEnhancements;
+window.performReportsSearch = performReportsSearch;
+window.performSecurityAlertsSearch = performSecurityAlertsSearch;
+window.performUserFeedbackSearch = performUserFeedbackSearch;
+window.clearReportsFilters = clearReportsFilters;
+window.clearSecurityAlertsFilters = clearSecurityAlertsFilters;
+window.clearUserFeedbackFilters = clearUserFeedbackFilters;
 
 // Global function to initialize reports when section becomes active
 window.initializeReportsSection = function() {
@@ -522,16 +616,53 @@ window.initializeReportsSection = function() {
 };
 
 function initializeReportsEnhancements() {
-    // Initialize search with debouncing
-    const searchInput = document.getElementById('reports-search');
-    if (searchInput) {
-        let searchTimeout;
-        searchInput.addEventListener('input', function() {
-            clearTimeout(searchTimeout);
-            searchTimeout = setTimeout(() => {
-                currentPage = 1;
-                performReportsSearch();
-            }, 300);
+    console.log('🔧 Initializing Reports section enhancements...');
+    
+    // Initialize search inputs with debouncing
+    const reportsSearchInput = document.getElementById('reports-search');
+    if (reportsSearchInput) {
+        // Remove any existing event listeners and add new one
+        reportsSearchInput.removeEventListener('input', debouncedReportsSearch);
+        reportsSearchInput.addEventListener('input', debouncedReportsSearch);
+    }
+    
+    const securityAlertsSearchInput = document.getElementById('security-alerts-search');
+    if (securityAlertsSearchInput) {
+        securityAlertsSearchInput.removeEventListener('input', debouncedSecurityAlertsSearch);
+        securityAlertsSearchInput.addEventListener('input', debouncedSecurityAlertsSearch);
+    }
+    
+    const userFeedbackSearchInput = document.getElementById('user-feedback-search');
+    if (userFeedbackSearchInput) {
+        userFeedbackSearchInput.removeEventListener('input', debouncedUserFeedbackSearch);
+        userFeedbackSearchInput.addEventListener('input', debouncedUserFeedbackSearch);
+    }
+    
+    // Initialize form event prevention
+    const reportsForm = document.getElementById('reports-filter-form');
+    if (reportsForm) {
+        reportsForm.addEventListener('submit', function(e) {
+            e.preventDefault();
+            performReportsSearch();
+            return false;
+        });
+    }
+    
+    const securityAlertsForm = document.getElementById('security-alerts-filter-form');
+    if (securityAlertsForm) {
+        securityAlertsForm.addEventListener('submit', function(e) {
+            e.preventDefault();
+            performSecurityAlertsSearch();
+            return false;
+        });
+    }
+    
+    const userFeedbackForm = document.getElementById('user-feedback-filter-form');
+    if (userFeedbackForm) {
+        userFeedbackForm.addEventListener('submit', function(e) {
+            e.preventDefault();
+            performUserFeedbackSearch();
+            return false;
         });
     }
     
@@ -539,13 +670,13 @@ function initializeReportsEnhancements() {
     document.querySelectorAll('.sortable').forEach(header => {
         header.addEventListener('click', function() {
             const field = this.dataset.field;
-            if (currentSort.field === field) {
-                currentSort.order = currentSort.order === 'asc' ? 'desc' : 'asc';
+            if (reportsCurrentSort.field === field) {
+                reportsCurrentSort.order = reportsCurrentSort.order === 'asc' ? 'desc' : 'asc';
             } else {
-                currentSort.field = field;
-                currentSort.order = 'asc';
+                reportsCurrentSort.field = field;
+                reportsCurrentSort.order = 'asc';
             }
-            currentPage = 1;
+            reportsCurrentPage = 1;
             updateSortIndicators();
             performReportsSearch();
         });
@@ -555,8 +686,8 @@ function initializeReportsEnhancements() {
     const perPageSelect = document.getElementById('reports-per-page');
     if (perPageSelect) {
         perPageSelect.addEventListener('change', function() {
-            perPage = parseInt(this.value);
-            currentPage = 1;
+            reportsPerPage = parseInt(this.value);
+            reportsCurrentPage = 1;
             performReportsSearch();
         });
     }
@@ -567,33 +698,65 @@ function initializeReportsEnhancements() {
             switch(e.key) {
                 case 'f':
                     e.preventDefault();
-                    document.getElementById('reports-search').focus();
+                    const searchInput = document.getElementById('reports-search');
+                    if (searchInput) searchInput.focus();
                     break;
                 case 'r':
                     e.preventDefault();
-                    loadReportsData();
+                    clearReportsFilters();
                     break;
             }
         }
-        if (e.key === 'Escape' && document.getElementById('reportModal').style.display === 'block') {
-            closeReportModal();
+        if (e.key === 'Escape') {
+            const reportModal = document.getElementById('reportModal');
+            if (reportModal && reportModal.style.display === 'block') {
+                closeReportModal();
+            }
         }
     });
+    
+    console.log('✅ Reports section enhancements initialized successfully');
+}
+
+function debouncedReportsSearch() {
+    clearTimeout(reportsSearchTimeout);
+    reportsSearchTimeout = setTimeout(() => {
+        reportsCurrentPage = 1;
+        performReportsSearch();
+    }, 300);
+}
+
+function debouncedSecurityAlertsSearch() {
+    clearTimeout(securityAlertsSearchTimeout);
+    securityAlertsSearchTimeout = setTimeout(() => {
+        securityAlertsCurrentPage = 1;
+        performSecurityAlertsSearch();
+    }, 300);
+}
+
+function debouncedUserFeedbackSearch() {
+    clearTimeout(userFeedbackSearchTimeout);
+    userFeedbackSearchTimeout = setTimeout(() => {
+        userFeedbackCurrentPage = 1;
+        performUserFeedbackSearch();
+    }, 300);
 }
 
 function performReportsSearch() {
     const form = document.getElementById('reports-filter-form');
+    if (!form) return;
+    
     const formData = new FormData(form);
     
-    currentFilters = {
+    reportsCurrentFilters = {
         search: formData.get('search') || '',
         type: formData.get('type') || '',
         status: formData.get('status') || '',
         priority: formData.get('priority') || '',
-        sort_by: currentSort.field,
-        sort_order: currentSort.order,
-        page: currentPage,
-        per_page: perPage
+        sort_by: reportsCurrentSort.field,
+        sort_order: reportsCurrentSort.order,
+        page: reportsCurrentPage,
+        per_page: reportsPerPage
     };
     
     loadReportsData();
@@ -603,15 +766,77 @@ async function loadReportsData() {
     setReportsLoading(true);
     
     try {
-        const data = await AdminEnhancements.fetchData('reports', currentFilters);
-        updateReportsTable(data);
-        updateReportsPagination(data.pagination);
-        updateResultsInfo(data.pagination);
-        AdminEnhancements.showToast('Reports updated', 'success');
+        // For now, implement client-side filtering since we don't have API endpoints
+        // In production, this would call: const data = await AdminEnhancements.fetchData('reports', reportsCurrentFilters);
+        performClientSideReportsFiltering();
     } catch (error) {
-        AdminEnhancements.showToast('Error loading reports: ' + error.message, 'error');
+        console.error('Error loading reports:', error);
+        if (typeof AdminEnhancements !== 'undefined' && AdminEnhancements.showToast) {
+            AdminEnhancements.showToast('Error loading reports: ' + error.message, 'error');
+        }
     } finally {
         setReportsLoading(false);
+    }
+}
+
+function performClientSideReportsFiltering() {
+    const table = document.getElementById('reports-table');
+    if (!table) return;
+    
+    const rows = Array.from(table.querySelectorAll('tbody tr:not(.no-results)'));
+    let filteredRows = rows;
+    
+    // Apply search filter
+    if (reportsCurrentFilters.search) {
+        const searchTerm = reportsCurrentFilters.search.toLowerCase();
+        filteredRows = filteredRows.filter(row => {
+            const text = row.textContent.toLowerCase();
+            return text.includes(searchTerm);
+        });
+    }
+    
+    // Apply type filter
+    if (reportsCurrentFilters.type) {
+        filteredRows = filteredRows.filter(row => {
+            const typeCell = row.cells[2]; // Type is in 3rd column
+            return typeCell.textContent.toLowerCase().includes(reportsCurrentFilters.type);
+        });
+    }
+    
+    // Apply status filter
+    if (reportsCurrentFilters.status) {
+        filteredRows = filteredRows.filter(row => {
+            const statusCell = row.cells[5]; // Status is in 6th column
+            return statusCell.textContent.toLowerCase().includes(reportsCurrentFilters.status);
+        });
+    }
+    
+    // Apply priority filter
+    if (reportsCurrentFilters.priority) {
+        filteredRows = filteredRows.filter(row => {
+            const priorityCell = row.cells[1]; // Priority is in 2nd column
+            return priorityCell.textContent.toLowerCase().includes(reportsCurrentFilters.priority);
+        });
+    }
+    
+    // Show/hide rows based on filters
+    rows.forEach(row => row.style.display = 'none');
+    filteredRows.forEach(row => row.style.display = '');
+    
+    // Update results info
+    const totalRows = rows.length;
+    updateReportsResultsInfo(filteredRows.length, totalRows);
+}
+
+function updateReportsResultsInfo(filtered, total) {
+    const infoDiv = document.getElementById('reports-results-info');
+    if (!infoDiv) return;
+    
+    if (filtered < total) {
+        infoDiv.innerHTML = `Showing ${filtered} of ${total} reports`;
+        infoDiv.style.display = 'block';
+    } else {
+        infoDiv.style.display = 'none';
     }
 }
 
@@ -738,24 +963,36 @@ function updateResultsInfo(pagination) {
 }
 
 function updateSortIndicators() {
-    document.querySelectorAll('.sort-indicator').forEach(indicator => {
+    document.querySelectorAll('#reports-table .sort-indicator').forEach(indicator => {
         indicator.className = 'sort-indicator';
     });
     
-    const activeHeader = document.querySelector(`[data-field="${currentSort.field}"] .sort-indicator`);
+    const activeHeader = document.querySelector(`#reports-table [data-field="${reportsCurrentSort.field}"] .sort-indicator`);
     if (activeHeader) {
-        activeHeader.className = `sort-indicator ${currentSort.order}`;
+        activeHeader.className = `sort-indicator ${reportsCurrentSort.order}`;
     }
 }
 
 function clearReportsFilters() {
-    document.getElementById('reports-filter-form').reset();
-    currentFilters = {};
-    currentSort = { field: 'created_at', order: 'desc' };
-    currentPage = 1;
-    perPage = 20;
+    const form = document.getElementById('reports-filter-form');
+    if (form) form.reset();
+    
+    reportsCurrentFilters = {};
+    reportsCurrentSort = { field: 'created_at', order: 'desc' };
+    reportsCurrentPage = 1;
+    reportsPerPage = 20;
     updateSortIndicators();
-    loadReportsData();
+    
+    // Show all rows
+    const table = document.getElementById('reports-table');
+    if (table) {
+        const rows = Array.from(table.querySelectorAll('tbody tr'));
+        rows.forEach(row => row.style.display = '');
+    }
+    
+    // Hide results info
+    const infoDiv = document.getElementById('reports-results-info');
+    if (infoDiv) infoDiv.style.display = 'none';
 }
 
 function setReportsLoading(loading) {
@@ -875,7 +1112,230 @@ async function resolveCurrentReport() {
     }
 }
 
-// Utility Functions
+// Security Alerts table functions
+function performSecurityAlertsSearch() {
+    const form = document.getElementById('security-alerts-filter-form');
+    if (!form) return;
+    
+    const formData = new FormData(form);
+    
+    securityAlertsCurrentFilters = {
+        search: formData.get('search') || '',
+        type: formData.get('type') || '',
+        user: formData.get('user') || ''
+    };
+    
+    loadSecurityAlertsData();
+}
+
+function loadSecurityAlertsData() {
+    setSecurityAlertsLoading(true);
+    
+    try {
+        // Client-side filtering of existing table data
+        const table = document.getElementById('security-alerts-table');
+        if (!table) return;
+        
+        const rows = Array.from(table.querySelectorAll('tbody tr'));
+        let filteredRows = rows;
+        
+        // Apply search filter
+        if (securityAlertsCurrentFilters.search) {
+            const searchTerm = securityAlertsCurrentFilters.search.toLowerCase();
+            filteredRows = filteredRows.filter(row => {
+                const text = row.textContent.toLowerCase();
+                return text.includes(searchTerm);
+            });
+        }
+        
+        // Apply type filter
+        if (securityAlertsCurrentFilters.type) {
+            filteredRows = filteredRows.filter(row => {
+                const typeCell = row.cells[1];
+                return typeCell.textContent.toLowerCase().includes(securityAlertsCurrentFilters.type);
+            });
+        }
+        
+        // Show/hide rows based on filters
+        rows.forEach(row => row.style.display = 'none');
+        filteredRows.forEach(row => row.style.display = '');
+        
+        // Update results info
+        const totalRows = rows.length;
+        updateSecurityAlertsResultsInfo(filteredRows.length, totalRows);
+        
+    } catch (error) {
+        console.error('Error filtering security alerts:', error);
+    } finally {
+        setSecurityAlertsLoading(false);
+    }
+}
+
+function updateSecurityAlertsResultsInfo(filtered, total) {
+    const infoDiv = document.getElementById('security-alerts-results-info');
+    if (!infoDiv) return;
+    
+    if (filtered < total) {
+        infoDiv.innerHTML = `Showing ${filtered} of ${total} security alerts`;
+        infoDiv.style.display = 'block';
+    } else {
+        infoDiv.style.display = 'none';
+    }
+}
+
+function updateSecurityAlertsSortIndicators() {
+    document.querySelectorAll('#security-alerts-table .sort-indicator').forEach(indicator => {
+        indicator.className = 'sort-indicator';
+    });
+    
+    const activeHeader = document.querySelector(`#security-alerts-table [data-field="${securityAlertsCurrentSort.field}"] .sort-indicator`);
+    if (activeHeader) {
+        activeHeader.className = `sort-indicator ${securityAlertsCurrentSort.order}`;
+    }
+}
+
+function clearSecurityAlertsFilters() {
+    const form = document.getElementById('security-alerts-filter-form');
+    if (form) form.reset();
+    
+    securityAlertsCurrentFilters = {};
+    securityAlertsCurrentSort = { field: 'created_at', order: 'desc' };
+    
+    // Show all rows
+    const table = document.getElementById('security-alerts-table');
+    if (table) {
+        const rows = Array.from(table.querySelectorAll('tbody tr'));
+        rows.forEach(row => row.style.display = '');
+    }
+    
+    // Hide results info
+    const infoDiv = document.getElementById('security-alerts-results-info');
+    if (infoDiv) infoDiv.style.display = 'none';
+}
+
+function setSecurityAlertsLoading(loading) {
+    const indicator = document.getElementById('security-alerts-loading');
+    const table = document.getElementById('security-alerts-table');
+    
+    if (indicator) {
+        indicator.style.display = loading ? 'inline' : 'none';
+    }
+    if (table) {
+        table.style.opacity = loading ? '0.6' : '1';
+    }
+}
+
+// User Feedback table functions
+function performUserFeedbackSearch() {
+    const form = document.getElementById('user-feedback-filter-form');
+    if (!form) return;
+    
+    const formData = new FormData(form);
+    
+    userFeedbackCurrentFilters = {
+        search: formData.get('search') || '',
+        type: formData.get('type') || ''
+    };
+    
+    loadUserFeedbackData();
+}
+
+function loadUserFeedbackData() {
+    setUserFeedbackLoading(true);
+    
+    try {
+        // Client-side filtering of existing table data
+        const table = document.getElementById('user-feedback-table');
+        if (!table) return;
+        
+        const rows = Array.from(table.querySelectorAll('tbody tr'));
+        let filteredRows = rows;
+        
+        // Apply search filter
+        if (userFeedbackCurrentFilters.search) {
+            const searchTerm = userFeedbackCurrentFilters.search.toLowerCase();
+            filteredRows = filteredRows.filter(row => {
+                const text = row.textContent.toLowerCase();
+                return text.includes(searchTerm);
+            });
+        }
+        
+        // Apply type filter
+        if (userFeedbackCurrentFilters.type) {
+            filteredRows = filteredRows.filter(row => {
+                const typeCell = row.cells[1];
+                return typeCell.textContent.toLowerCase().includes(userFeedbackCurrentFilters.type);
+            });
+        }
+        
+        // Show/hide rows based on filters
+        rows.forEach(row => row.style.display = 'none');
+        filteredRows.forEach(row => row.style.display = '');
+        
+        // Update results info
+        const totalRows = rows.length;
+        updateUserFeedbackResultsInfo(filteredRows.length, totalRows);
+        
+    } catch (error) {
+        console.error('Error filtering user feedback:', error);
+    } finally {
+        setUserFeedbackLoading(false);
+    }
+}
+
+function updateUserFeedbackResultsInfo(filtered, total) {
+    const infoDiv = document.getElementById('user-feedback-results-info');
+    if (!infoDiv) return;
+    
+    if (filtered < total) {
+        infoDiv.innerHTML = `Showing ${filtered} of ${total} feedback entries`;
+        infoDiv.style.display = 'block';
+    } else {
+        infoDiv.style.display = 'none';
+    }
+}
+
+function updateUserFeedbackSortIndicators() {
+    document.querySelectorAll('#user-feedback-table .sort-indicator').forEach(indicator => {
+        indicator.className = 'sort-indicator';
+    });
+    
+    const activeHeader = document.querySelector(`#user-feedback-table [data-field="${userFeedbackCurrentSort.field}"] .sort-indicator`);
+    if (activeHeader) {
+        activeHeader.className = `sort-indicator ${userFeedbackCurrentSort.order}`;
+    }
+}
+
+function clearUserFeedbackFilters() {
+    const form = document.getElementById('user-feedback-filter-form');
+    if (form) form.reset();
+    
+    userFeedbackCurrentFilters = {};
+    userFeedbackCurrentSort = { field: 'created_at', order: 'desc' };
+    
+    // Show all rows
+    const table = document.getElementById('user-feedback-table');
+    if (table) {
+        const rows = Array.from(table.querySelectorAll('tbody tr'));
+        rows.forEach(row => row.style.display = '');
+    }
+    
+    // Hide results info
+    const infoDiv = document.getElementById('user-feedback-results-info');
+    if (infoDiv) infoDiv.style.display = 'none';
+}
+
+function setUserFeedbackLoading(loading) {
+    const indicator = document.getElementById('user-feedback-loading');
+    const table = document.getElementById('user-feedback-table');
+    
+    if (indicator) {
+        indicator.style.display = loading ? 'inline' : 'none';
+    }
+    if (table) {
+        table.style.opacity = loading ? '0.6' : '1';
+    }
+}
 function truncateText(text, maxLength) {
     if (text.length <= maxLength) return text;
     return text.substring(0, maxLength) + '...';

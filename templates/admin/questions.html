@@ -1213,8 +1213,8 @@ function initializeAdvancedSearch() {
     
     // Trigger search if there's current search text
     if (searchInput.value.trim()) {
-      currentFilters.search = searchInput.value;
-      currentFilters.searchColumn = column;
+      questionsCurrentFilters.search = searchInput.value;
+      questionsCurrentFilters.searchColumn = column;
       performFilteredSearch(true);
     }
   });
@@ -1720,15 +1720,15 @@ function confirmDelete(id) {
 // ENHANCED FILTERING & SEARCH (PHASE 3)
 // ========================================
 
-// Global filter, pagination and sort state
-let currentFilters = {
+// Questions section filter, pagination and sort state (isolated from other sections)
+let questionsCurrentFilters = {
   search: '',
   category: '',
   subcategory: '',
   difficulty: ''
 };
 
-let currentPagination = {
+let questionsCurrentPagination = {
   page: 1,
   per_page: 50,
   total: 0,
@@ -1737,7 +1737,7 @@ let currentPagination = {
   has_next: false
 };
 
-let currentSort = {
+let questionsCurrentSort = {
   sort_by: '',
   sort_order: 'asc'
 };
@@ -1759,23 +1759,23 @@ function initializeEnhancedFiltering() {
   console.log('Admin images loaded:', window.adminImages); // Debug log
   
   // Set initial filter state
-  currentFilters.search = searchInput.value;
-  currentFilters.category = categoryFilter.value;
-  currentFilters.subcategory = subcategoryFilter ? subcategoryFilter.value : '';
-  currentFilters.difficulty = difficultyFilter ? difficultyFilter.value : '';
+  questionsCurrentFilters.search = searchInput.value;
+  questionsCurrentFilters.category = categoryFilter.value;
+  questionsCurrentFilters.subcategory = subcategoryFilter ? subcategoryFilter.value : '';
+  questionsCurrentFilters.difficulty = difficultyFilter ? difficultyFilter.value : '';
   
   // Real-time search with debouncing
   searchInput.addEventListener('input', function() {
     clearTimeout(searchTimeout);
     searchTimeout = setTimeout(() => {
-      currentFilters.search = this.value;
+      questionsCurrentFilters.search = this.value;
       performFilteredSearch(true); // Reset to page 1 on search
     }, 300); // 300ms debounce
   });
   
   // Category filter with cascading subcategories
   categoryFilter.addEventListener('change', function() {
-    currentFilters.category = this.value;
+    questionsCurrentFilters.category = this.value;
     updateSubcategoryFilter(); // Cascading update
     performFilteredSearch(true); // Reset to page 1
   });
@@ -1783,7 +1783,7 @@ function initializeEnhancedFiltering() {
   // Subcategory filter
   if (subcategoryFilter) {
     subcategoryFilter.addEventListener('change', function() {
-      currentFilters.subcategory = this.value;
+      questionsCurrentFilters.subcategory = this.value;
       performFilteredSearch(true); // Reset to page 1
     });
   }
@@ -1791,7 +1791,7 @@ function initializeEnhancedFiltering() {
   // Difficulty filter
   if (difficultyFilter) {
     difficultyFilter.addEventListener('change', function() {
-      currentFilters.difficulty = this.value;
+      questionsCurrentFilters.difficulty = this.value;
       performFilteredSearch(true); // Reset to page 1
     });
   }
@@ -1806,23 +1806,23 @@ function performFilteredSearch(resetPage = false) {
   
   // Reset to page 1 when filters change
   if (resetPage) {
-    currentPagination.page = 1;
+    questionsCurrentPagination.page = 1;
   }
   
   const params = new URLSearchParams();
-  if (currentFilters.search) params.append('search', currentFilters.search);
-  if (currentFilters.category) params.append('category', currentFilters.category);
-  if (currentFilters.subcategory) params.append('subcategory', currentFilters.subcategory);
-  if (currentFilters.difficulty) params.append('difficulty', currentFilters.difficulty);
+  if (questionsCurrentFilters.search) params.append('search', questionsCurrentFilters.search);
+  if (questionsCurrentFilters.category) params.append('category', questionsCurrentFilters.category);
+  if (questionsCurrentFilters.subcategory) params.append('subcategory', questionsCurrentFilters.subcategory);
+  if (questionsCurrentFilters.difficulty) params.append('difficulty', questionsCurrentFilters.difficulty);
   
   // Add pagination parameters
-  params.append('page', currentPagination.page);
-  params.append('per_page', currentPagination.per_page);
+  params.append('page', questionsCurrentPagination.page);
+  params.append('per_page', questionsCurrentPagination.per_page);
   
   // Add sort parameters
-  if (currentSort.sort_by) {
-    params.append('sort_by', currentSort.sort_by);
-    params.append('sort_order', currentSort.sort_order);
+  if (questionsCurrentSort.sort_by) {
+    params.append('sort_by', questionsCurrentSort.sort_by);
+    params.append('sort_order', questionsCurrentSort.sort_order);
   }
   
   fetch(`/admin/api/questions?${params.toString()}`)
@@ -1851,7 +1851,7 @@ function updateSubcategoryFilter() {
   const subcategoryFilter = document.getElementById('subcategoryFilter');
   if (!subcategoryFilter) return;
   
-  const selectedCategory = currentFilters.category;
+  const selectedCategory = questionsCurrentFilters.category;
   
   if (!selectedCategory) {
     // Show all subcategories when no category is selected
@@ -1900,7 +1900,7 @@ function populateSubcategoryOptions(subcategories) {
   // Reset subcategory filter if current value is no longer valid
   if (currentValue && !subcategories.includes(currentValue)) {
     subcategoryFilter.value = '';
-    currentFilters.subcategory = '';
+    questionsCurrentFilters.subcategory = '';
   }
 }
 
@@ -2026,8 +2026,8 @@ function updateResultsCounter(pagination) {
 
 // Update pagination controls
 function updatePagination(pagination) {
-  // Update global pagination state
-  currentPagination = {
+  // Update questions section pagination state
+  questionsCurrentPagination = {
     page: pagination.page,
     per_page: pagination.per_page,
     total: pagination.total,
@@ -2142,22 +2142,22 @@ function renderPaginationButtons(pagination) {
 
 // Navigate to specific page
 function goToPage(page) {
-  if (page < 1 || page > currentPagination.pages || page === currentPagination.page) {
+  if (page < 1 || page > questionsCurrentPagination.pages || page === questionsCurrentPagination.page) {
     return;
   }
   
-  currentPagination.page = page;
+  questionsCurrentPagination.page = page;
   
   // If we have active filters or sort, use AJAX
-  if (currentFilters.search || currentFilters.category || currentFilters.subcategory || 
-      currentFilters.difficulty || currentSort.sort_by) {
+  if (questionsCurrentFilters.search || questionsCurrentFilters.category || questionsCurrentFilters.subcategory || 
+      questionsCurrentFilters.difficulty || questionsCurrentSort.sort_by) {
     performFilteredSearch(false); // Don't reset page since we're explicitly setting it
   } else {
     // No filters active - reload page with new page parameter
     const currentUrl = new URL(window.location);
     currentUrl.searchParams.set('page', page);
-    if (currentPagination.per_page !== 50) {
-      currentUrl.searchParams.set('per_page', currentPagination.per_page);
+    if (questionsCurrentPagination.per_page !== 50) {
+      currentUrl.searchParams.set('per_page', questionsCurrentPagination.per_page);
     }
     window.location.href = currentUrl.toString();
   }
@@ -2169,14 +2169,14 @@ function changePerPage() {
   if (!perPageSelector) return;
   
   const newPerPage = parseInt(perPageSelector.value);
-  if (newPerPage === currentPagination.per_page) return;
+  if (newPerPage === questionsCurrentPagination.per_page) return;
   
-  currentPagination.per_page = newPerPage;
-  currentPagination.page = 1; // Reset to first page when changing per-page
+  questionsCurrentPagination.per_page = newPerPage;
+  questionsCurrentPagination.page = 1; // Reset to first page when changing per-page
   
   // If we have active filters or sort, use AJAX
-  if (currentFilters.search || currentFilters.category || currentFilters.subcategory || 
-      currentFilters.difficulty || currentSort.sort_by) {
+  if (questionsCurrentFilters.search || questionsCurrentFilters.category || questionsCurrentFilters.subcategory || 
+      questionsCurrentFilters.difficulty || questionsCurrentSort.sort_by) {
     performFilteredSearch(false);
   } else {
     // No filters active - reload page with new per_page parameter
@@ -2193,7 +2193,7 @@ function clearAllFilters() {
   document.getElementById('subcategoryFilter').value = '';
   document.getElementById('difficultyFilter').value = '';
   
-  currentFilters = {
+  questionsCurrentFilters = {
     search: '',
     category: '',
     subcategory: '',
@@ -2242,13 +2242,13 @@ function initializeSorting() {
 
 // Toggle sort for a column
 function toggleSort(column) {
-  if (currentSort.sort_by === column) {
+  if (questionsCurrentSort.sort_by === column) {
     // Same column - toggle direction
-    currentSort.sort_order = currentSort.sort_order === 'asc' ? 'desc' : 'asc';
+    questionsCurrentSort.sort_order = questionsCurrentSort.sort_order === 'asc' ? 'desc' : 'asc';
   } else {
     // New column - default to ascending
-    currentSort.sort_by = column;
-    currentSort.sort_order = 'asc';
+    questionsCurrentSort.sort_by = column;
+    questionsCurrentSort.sort_order = 'asc';
   }
   
   // Update visual indicators
@@ -2267,11 +2267,11 @@ function updateSortIndicators() {
   });
   
   // Set active indicator
-  if (currentSort.sort_by) {
-    const activeIndicator = document.querySelector(`[data-sort="${currentSort.sort_by}"]`);
+  if (questionsCurrentSort.sort_by) {
+    const activeIndicator = document.querySelector(`[data-sort="${questionsCurrentSort.sort_by}"]`);
     if (activeIndicator) {
-      activeIndicator.textContent = currentSort.sort_order === 'asc' ? '↑' : '↓';
-      activeIndicator.className = 'sort-indicator active ' + currentSort.sort_order;
+      activeIndicator.textContent = questionsCurrentSort.sort_order === 'asc' ? '↑' : '↓';
+      activeIndicator.className = 'sort-indicator active ' + questionsCurrentSort.sort_order;
     }
   }
   
@@ -2279,16 +2279,16 @@ function updateSortIndicators() {
   document.querySelectorAll('.sortable-header').forEach(header => {
     header.classList.remove('sorted-asc', 'sorted-desc');
     const sortable = header.getAttribute('data-sortable');
-    if (sortable === currentSort.sort_by) {
-      header.classList.add(`sorted-${currentSort.sort_order}`);
+    if (sortable === questionsCurrentSort.sort_by) {
+      header.classList.add(`sorted-${questionsCurrentSort.sort_order}`);
     }
   });
 }
 
 // Clear sorting
 function clearSort() {
-  currentSort.sort_by = '';
-  currentSort.sort_order = 'asc';
+  questionsCurrentSort.sort_by = '';
+  questionsCurrentSort.sort_order = 'asc';
   updateSortIndicators();
   performFilteredSearch(true);
 }
@@ -2318,7 +2318,7 @@ function addKeyboardSortSupport() {
 function maintainSortState() {
   // This function is called after successful CRUD operations
   // to refresh the table while maintaining the current sort
-  if (currentSort.sort_by) {
+  if (questionsCurrentSort.sort_by) {
     // Re-apply current filters and sort without changing page
     performFilteredSearch(false);
   }
@@ -2332,8 +2332,8 @@ function initializeInitialPagination() {
   try {
     const paginationData = JSON.parse(container.dataset.initialPagination || '{}');
     
-    // Update global pagination state with server data
-    currentPagination = {
+    // Update questions section pagination state with server data
+    questionsCurrentPagination = {
       page: paginationData.page || 1,
       per_page: paginationData.per_page || 50,
       total: paginationData.total || 0,
@@ -2343,9 +2343,9 @@ function initializeInitialPagination() {
     };
     
     // Update pagination UI with server data
-    updatePagination(currentPagination);
+    updatePagination(questionsCurrentPagination);
     
-    console.log('Initial pagination initialized:', currentPagination);
+    console.log('Initial questions pagination initialized:', questionsCurrentPagination);
   } catch (error) {
     console.error('Error initializing pagination:', error);
   }
