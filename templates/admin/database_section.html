@@ -59,6 +59,42 @@ th {
         <button type="submit" class="btn" style="margin-top: 10px;">▶️ Kjør SQL</button>
     </form>
 
+    <!-- Database Control Container - Now positioned below SQL console -->
+    <div class="database-control-container">
+        <div class="control-group">
+            <label class="control-label">👁️ Tabellsynlighet:</label>
+            <div class="control-label-subtitle" id="visibilityStatus">Viser alle tabeller</div>
+            <div class="multiselect-container">
+                <div class="multiselect-dropdown" id="tableVisibilityDropdown">
+                    <div class="multiselect-selected" id="tableVisibilitySelected">
+                        <span class="selected-text">Velg tabeller...</span>
+                        <span class="dropdown-arrow">▼</span>
+                    </div>
+                    <div class="multiselect-options" id="tableVisibilityOptions" style="display: none;">
+                        <div class="multiselect-header">
+                            <button type="button" class="multiselect-btn" id="selectAllTables">Velg alle</button>
+                            <button type="button" class="multiselect-btn" id="deselectAllTables">Fjern alle</button>
+                        </div>
+                        {% for table, rows in tables.items() %}
+                        <label class="multiselect-option">
+                            <input type="checkbox" class="table-visibility-checkbox" data-table="{{ table }}" checked>
+                            <span class="option-text">{{ table|upper|replace('_', ' ') }}</span>
+                        </label>
+                        {% endfor %}
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="control-group">
+            <label for="tableDensitySelector" class="control-label">📏 Visningsmode:</label>
+            <select id="tableDensitySelector" class="density-selector">
+                <option value="comfortable">Komfortabel</option>
+                <option value="airy">Luftig</option>
+                <option value="compact">Kompakt</option>
+            </select>
+        </div>
+    </div>
+
 
     {% for table, rows in tables.items() %}
         <div class="table-section" data-table="{{ table }}" style="background: white; border-radius: 12px; margin-bottom: 20px; box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1); overflow: hidden;">
@@ -94,7 +130,7 @@ th {
                     <div id="{{ table }}-results-info" class="results-info" style="margin: 20px; background: #f1f5f9; border: none; border-radius: 6px;"></div>
                     <table id="{{ table }}-table" class="database-table modern-table">
                         <thead class="table-header">
-                            <tr style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white;">
+                            <tr style="background: #4f72d6; color: white;">
                                 {% if rows and rows|length > 0 %}
                                   {% for col in rows[0].keys() %}
                                   <th class="sortable header-cell" data-field="{{ col }}" data-column="{{ col }}" data-table="{{ table }}" style="padding: 12px 16px; text-align: left; font-weight: 600; border: none; color: white; cursor: pointer; user-select: none; position: relative;">
@@ -182,7 +218,7 @@ th {
 }
 
 .table-header th {
-  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%) !important;
+  background: #4f72d6 !important;
   color: white !important;
   font-weight: 600;
   text-transform: uppercase;
@@ -446,7 +482,7 @@ th {
 </style>
 
 <!-- Include database-specific enhancements only -->
-<script src="{{ url_for('static', filename='js/admin-database.js') }}?v=20250102"></script>
+<script src="{{ url_for('static', filename='js/admin-database.js') }}?v=20250102_enhanced"></script>
 <script>
   document.addEventListener('DOMContentLoaded', () => {
     // Initialize client-side database filtering system
@@ -454,6 +490,9 @@ th {
       DatabaseFiltering.initializeTableFiltering('{{ table }}');
     {% endfor %}
     
-    console.log('✅ DatabaseFiltering initialized for database section');
+    // Initialize database control features
+    DatabaseFiltering.initializeDatabaseControls();
+    
+    console.log('✅ DatabaseFiltering initialized for database section with controls');
   });
 </script>

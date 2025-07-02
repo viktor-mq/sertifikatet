@@ -415,9 +415,271 @@ function showToast(message, type = 'info') {
     renderPage();
   }
   
-  // Expose DatabaseFiltering globally
-  window.DatabaseFiltering = DatabaseFiltering;
-  console.log('✅ FINAL: DatabaseFiltering exposed globally with functions:', Object.keys(DatabaseFiltering));
-  console.log('✅ FINAL: applyFilters type:', typeof DatabaseFiltering.applyFilters);
+  // Database Control Features
+  DatabaseFiltering.initializeDatabaseControls = function() {
+  console.log('🎛️ Initializing database controls...');
+  
+  // Initialize multiselect dropdown
+  DatabaseFiltering.initializeMultiselectDropdown();
+  
+  // Initialize table visibility toggles
+  const visibilityCheckboxes = document.querySelectorAll('.table-visibility-checkbox');
+  visibilityCheckboxes.forEach(checkbox => {
+  checkbox.addEventListener('change', function() {
+  const tableName = this.dataset.table;
+  const tableSection = document.querySelector(`.table-section[data-table="${tableName}"]`);
+  const paginationControls = document.getElementById(`${tableName}PaginationControls`);
+  if (tableSection) {
+  tableSection.style.display = this.checked ? '' : 'none';
+  }
+  if (paginationControls) {
+      paginationControls.style.display = this.checked ? '' : 'none';
+      }
+          DatabaseFiltering.saveTableVisibilityPreferences();
+          DatabaseFiltering.updateVisibilityStatus();
+          DatabaseFiltering.updateDropdownSelectedText();
+      });
+  });
+  
+  // Initialize select all / deselect all buttons
+  const selectAllBtn = document.getElementById('selectAllTables');
+  const deselectAllBtn = document.getElementById('deselectAllTables');
+  
+  if (selectAllBtn) {
+      selectAllBtn.addEventListener('click', function() {
+          const checkboxes = document.querySelectorAll('.table-visibility-checkbox');
+          checkboxes.forEach(cb => {
+              if (!cb.checked) {
+                  cb.checked = true;
+                      cb.dispatchEvent(new Event('change'));
+                    }
+                });
+            });
+        }
+        
+        if (deselectAllBtn) {
+            deselectAllBtn.addEventListener('click', function() {
+                const checkboxes = document.querySelectorAll('.table-visibility-checkbox');
+                checkboxes.forEach(cb => {
+                    if (cb.checked) {
+                        cb.checked = false;
+                        cb.dispatchEvent(new Event('change'));
+                    }
+                });
+            });
+        }
+        
+        // Initialize table display mode selector
+        const densitySelector = document.getElementById('tableDensitySelector');
+        if (densitySelector) {
+            densitySelector.addEventListener('change', function() {
+                DatabaseFiltering.applyTableDisplayMode(this.value);
+                DatabaseFiltering.saveDisplayModePreference(this.value);
+            });
+        }
+        
+        // Load saved preferences
+        DatabaseFiltering.loadSavedPreferences();
+        
+        // Update initial visibility status
+        DatabaseFiltering.updateVisibilityStatus();
+        DatabaseFiltering.updateDropdownSelectedText();
+    };
+    
+    DatabaseFiltering.applyTableDisplayMode = function(mode) {
+        const tables = document.querySelectorAll('.database-table');
+        tables.forEach(table => {
+            // Remove existing mode classes
+            table.classList.remove('compact', 'airy', 'comfortable');
+            // Add new mode class
+            table.classList.add(mode);
+        });
+        console.log(`🎨 Applied table display mode: ${mode}`);
+    };
+    
+    DatabaseFiltering.saveTableVisibilityPreferences = function() {
+        const preferences = {};
+        const checkboxes = document.querySelectorAll('.table-visibility-checkbox');
+        checkboxes.forEach(checkbox => {
+            preferences[checkbox.dataset.table] = checkbox.checked;
+        });
+        localStorage.setItem('database_table_visibility', JSON.stringify(preferences));
+        console.log('💾 Saved table visibility preferences:', preferences);
+    };
+    
+    DatabaseFiltering.saveDisplayModePreference = function(mode) {
+        localStorage.setItem('database_display_mode', mode);
+        console.log(`💾 Saved display mode preference: ${mode}`);
+    };
+    
+    DatabaseFiltering.updateVisibilityStatus = function() {
+        const checkboxes = document.querySelectorAll('.table-visibility-checkbox');
+        const total = checkboxes.length;
+        const visible = Array.from(checkboxes).filter(cb => cb.checked).length;
+        const statusElement = document.getElementById('visibilityStatus');
+        
+        if (statusElement) {
+            if (visible === total) {
+                statusElement.textContent = 'Viser alle tabeller';
+                statusElement.style.color = '#64748b';
+            } else if (visible === 0) {
+                statusElement.textContent = 'Ingen tabeller synlige';
+                statusElement.style.color = '#ef4444';
+            } else {
+                statusElement.textContent = `Viser ${visible} av ${total} tabeller`;
+                statusElement.style.color = '#f59e0b';
+            }
+        }
+    };
+    
+    DatabaseFiltering.initializeMultiselectDropdown = function() {
+        console.log('🌍 Browser:', navigator.userAgent);
+        
+        const dropdown = document.getElementById('tableVisibilityDropdown');
+        const selected = document.getElementById('tableVisibilitySelected');
+        const options = document.getElementById('tableVisibilityOptions');
+        
+        console.log('🔍 Element check:');
+        console.log('dropdown:', dropdown);
+        console.log('selected:', selected);
+        console.log('options:', options);
+        
+        if (!dropdown || !selected || !options) {
+            console.warn('⚠️ Multiselect dropdown elements not found');
+            return;
+        }
+        
+        console.log('🔧 Initializing multiselect dropdown...');
+        
+        // Ensure dropdown starts closed
+        dropdown.classList.remove('open');
+        options.style.display = 'none';
+        
+        // Add a temporary border to show the clickable area (for debugging)
+        selected.style.border = '1px solid red';
+        setTimeout(() => {
+            selected.style.border = '';
+        }, 2000);
+        
+        // Try multiple event binding approaches for better browser compatibility
+        function toggleDropdown(e) {
+            console.log('🖱️ Dropdown clicked!', e.type);
+            e.preventDefault();
+            e.stopPropagation();
+            
+            const isOpen = dropdown.classList.contains('open');
+            console.log('Current state - isOpen:', isOpen);
+            
+            if (isOpen) {
+                dropdown.classList.remove('open');
+                options.style.display = 'none';
+                console.log('🔧 Dropdown closed');
+            } else {
+                dropdown.classList.add('open');
+                options.style.display = 'flex';
+                options.style.flexDirection = 'column';
+                console.log('🔧 Dropdown opened');
+            }
+        }
+        
+        // Multiple event binding for compatibility
+        selected.addEventListener('click', toggleDropdown);
+        selected.addEventListener('mousedown', function(e) {
+            console.log('🖱️ Mousedown on dropdown');
+        });
+        
+        // Also try with the arrow specifically
+        const arrow = selected.querySelector('.dropdown-arrow');
+        if (arrow) {
+            arrow.addEventListener('click', toggleDropdown);
+        }
+        
+        // Close dropdown when clicking outside
+        document.addEventListener('click', function(e) {
+            if (!dropdown.contains(e.target)) {
+                dropdown.classList.remove('open');
+                options.style.display = 'none';
+            }
+        });
+        
+        // Prevent dropdown from closing when clicking inside options
+        options.addEventListener('click', function(e) {
+            e.stopPropagation();
+        });
+        
+        console.log('✅ Multiselect dropdown initialized successfully');
+    };
+    
+    DatabaseFiltering.updateDropdownSelectedText = function() {
+        const checkboxes = document.querySelectorAll('.table-visibility-checkbox');
+        const selectedText = document.querySelector('.selected-text');
+        
+        if (!selectedText) {
+            console.warn('⚠️ Selected text element not found');
+            return;
+        }
+        
+        const checkedBoxes = Array.from(checkboxes).filter(cb => cb.checked);
+        const total = checkboxes.length;
+        
+        if (checkedBoxes.length === 0) {
+            selectedText.textContent = 'Ingen tabeller valgt';
+        } else if (checkedBoxes.length === total) {
+            selectedText.textContent = 'Alle tabeller valgt';
+        } else if (checkedBoxes.length === 1) {
+            const tableName = checkedBoxes[0].dataset.table.replace(/_/g, ' ').toUpperCase();
+            selectedText.textContent = tableName;
+        } else {
+            selectedText.textContent = `${checkedBoxes.length} tabeller valgt`;
+        }
+        
+        console.log(`🔄 Updated dropdown text: "${selectedText.textContent}"`);
+    };
+    
+    DatabaseFiltering.loadSavedPreferences = function() {
+        // Load table visibility preferences
+        const savedVisibility = localStorage.getItem('database_table_visibility');
+        if (savedVisibility) {
+            try {
+                const preferences = JSON.parse(savedVisibility);
+                Object.entries(preferences).forEach(([tableName, isVisible]) => {
+                    const checkbox = document.querySelector(`.table-visibility-checkbox[data-table="${tableName}"]`);
+                    const tableSection = document.querySelector(`.table-section[data-table="${tableName}"]`);
+                    const paginationControls = document.getElementById(`${tableName}PaginationControls`);
+                    if (checkbox && tableSection) {
+                        checkbox.checked = isVisible;
+                        tableSection.style.display = isVisible ? '' : 'none';
+                    }
+                    if (paginationControls) {
+                        paginationControls.style.display = isVisible ? '' : 'none';
+                    }
+                });
+                console.log('📂 Loaded table visibility preferences:', preferences);
+                DatabaseFiltering.updateVisibilityStatus();
+                DatabaseFiltering.updateDropdownSelectedText();
+            } catch (e) {
+                console.warn('⚠️ Failed to load table visibility preferences:', e);
+            }
+        }
+        
+        // Load display mode preference
+        const savedMode = localStorage.getItem('database_display_mode');
+        if (savedMode) {
+            const densitySelector = document.getElementById('tableDensitySelector');
+            if (densitySelector) {
+                densitySelector.value = savedMode;
+                DatabaseFiltering.applyTableDisplayMode(savedMode);
+                console.log(`📂 Loaded display mode preference: ${savedMode}`);
+            }
+        } else {
+            // Default to comfortable mode
+            DatabaseFiltering.applyTableDisplayMode('comfortable');
+        }
+    };
+    
+    // Expose DatabaseFiltering globally
+    window.DatabaseFiltering = DatabaseFiltering;
+    console.log('✅ FINAL: DatabaseFiltering exposed globally with functions:', Object.keys(DatabaseFiltering));
+    console.log('✅ FINAL: applyFilters type:', typeof DatabaseFiltering.applyFilters);
   
   })(window);
