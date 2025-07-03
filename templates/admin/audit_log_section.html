@@ -24,31 +24,51 @@
   </div>
 
   <!-- Enhanced Filters -->
-  <form id="audit-filter-form" class="enhanced-filter-form">
+  <div class="table-section">
+  <h3 style="color: #374151; margin-bottom: 15px; display: flex; align-items: center; gap: 10px;">
+      📊 Audit Log Filters
+    </h3>
+  <form id="audit-filter-form" class="enhanced-filter-form" onsubmit="event.preventDefault(); performAuditSearch();">
     <div class="search-filter-container enhanced-search">
       <input type="text" id="audit-search" name="search" placeholder="🔍 Search actions, users, details..." class="search-input" />
-      <select name="action">
+      <select name="action" id="audit-action-filter">
         <option value="">All Actions</option>
-        {% if actions %}
-          {% for action in actions %}
-          <option value="{{ action }}" {% if action_filter == action %}selected{% endif %}>
-            {{ action|replace('_', ' ')|title }}
-          </option>
-          {% endfor %}
-        {% endif %}
+        {# Options will be populated by JavaScript if needed, or can be pre-filled #}
       </select>
 
-      <input type="text" name="ip" placeholder="🔍 Filter by IP address..." class="search-input" style="flex: 0 0 200px;" />
       <select name="per_page" id="audit-per-page">
+        <option value="20">20 per page</option>
         <option value="50">50 per page</option>
         <option value="100">100 per page</option>
-        <option value="200">200 per page</option>
       </select>
-      <button type="button" class="btn" onclick="performAuditSearch()">🔍 Filter</button>
       <button type="button" class="btn btn-secondary" onclick="clearAuditFilters()">🗑️ Clear</button>
       <div class="loading-indicator" id="audit-loading" style="display: none;">⏳ Loading...</div>
     </div>
   </form>
+
+  <!-- Table Controls -->
+  <div class="table-controls">
+    <div class="control-group">
+        <label>Table View:</label>
+        <div class="btn-group">
+            <button class="btn btn-small dropdown-toggle" id="view-mode-btn">Comfortable</button>
+            <div class="dropdown-menu" id="view-mode-menu">
+                <a class="dropdown-item" href="#" data-view="compact">Compact</a>
+                <a class="dropdown-item active" href="#" data-view="comfortable">Comfortable</a>
+                <a class="dropdown-item" href="#" data-view="spacious">Spacious</a>
+            </div>
+        </div>
+    </div>
+    <div class="control-group">
+        <label>Columns:</label>
+        <div class="btn-group">
+            <button class="btn btn-small dropdown-toggle" id="column-toggle-btn">Toggle Columns</button>
+            <div class="dropdown-menu" id="column-toggle-menu">
+                <!-- Column toggles will be inserted here by JavaScript -->
+            </div>
+        </div>
+    </div>
+  </div>
 
   <!-- Audit Log Table -->
   <div class="table-container">
@@ -59,8 +79,8 @@
           <th class="sortable" data-field="id">ID <span class="sort-indicator"></span></th>
           <th class="sortable" data-field="created_at">Timestamp <span class="sort-indicator"></span></th>
           <th class="sortable" data-field="action">Action <span class="sort-indicator"></span></th>
-          <th class="sortable" data-field="admin_user">Admin User <span class="sort-indicator"></span></th>
-          <th class="sortable" data-field="target_user">Target User <span class="sort-indicator"></span></th>
+          <th class="sortable" data-field="admin_user_id">Admin User <span class="sort-indicator"></span></th>
+          <th class="sortable" data-field="target_user_id">Target User <span class="sort-indicator"></span></th>
           <th class="sortable" data-field="ip_address">IP Address <span class="sort-indicator"></span></th>
           <th>User Agent</th>
           <th>Additional Info</th>
@@ -194,6 +214,65 @@
 .close-btn:hover {
   opacity: 0.7;
 }
+
+.table-controls {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 15px;
+    padding: 10px;
+    background: #f8f9fa;
+    border-radius: 8px;
+}
+
+.control-group {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+.control-group label {
+    font-weight: bold;
+    color: #555;
+}
+
+#column-toggle-menu {
+    position: absolute;
+    background-color: white;
+    border: 1px solid #ddd;
+    border-radius: 4px;
+    box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+    padding: 10px;
+    display: none; /* Hidden by default */
+    z-index: 10;
+}
+
+#column-toggle-menu .dropdown-item {
+    display: block;
+    padding: 5px;
+}
+
+#column-toggle-btn:focus + #column-toggle-menu, 
+#column-toggle-menu:hover {
+    display: block;
+}
+
+/* Table View Density Styles */
+#audit-table.view-compact td, #audit-table.view-compact th {
+    padding: 4px 8px;
+    font-size: 12px;
+}
+
+#audit-table.view-comfortable td, #audit-table.view-comfortable th {
+    padding: 8px 12px;
+    font-size: 14px;
+}
+
+#audit-table.view-spacious td, #audit-table.view-spacious th {
+    padding: 16px 12px;
+    font-size: 16px;
+}
+
 </style>
 
 <script src="{{ url_for('static', filename='js/admin/admin-audit-log.js') }}"></script>
