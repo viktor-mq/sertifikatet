@@ -97,8 +97,7 @@ th {
             </select>
         </div>
         <div class="feature-group">
-            <label for="tableVisibilityDropdown">👁️ Tabellsynlighet:</label>
-            <div class="control-label-subtitle" id="visibilityStatus">Viser 2 av 65 tabeller</div>
+            <label for="tableVisibilityDropdown">Tabellsynlighet:</label>
             <div class="multiselect-container">
                 <div class="multiselect-dropdown" id="tableVisibilityDropdown">
                     <div class="multiselect-selected" id="tableVisibilitySelected">
@@ -119,6 +118,7 @@ th {
                     </div>
                 </div>
             </div>
+            <div class="control-label-subtitle" id="visibilityStatus">Viser 2 av 65 tabeller</div>
         </div>
     </div>
 
@@ -236,11 +236,37 @@ th {
 <!-- Enhanced CSS for Database Section -->
 <style>
 /* Enhanced Features Bar Database-specific extensions */
+.enhanced-features-bar .feature-group {
+  display: flex !important;
+  flex-direction: row !important;
+  align-items: center !important;
+  gap: 20px !important;
+  margin-right: 30px !important;
+}
+
+.enhanced-features-bar .feature-group label {
+  display: flex !important;
+  align-items: center !important;
+  margin: 0 !important;
+  line-height: 1 !important;
+  vertical-align: middle !important;
+  font-size: 14px !important;
+}
+
+.enhanced-features-bar .feature-group label[for="tableVisibilityDropdown"]::before {
+  content: '👁️';
+  margin-right: 6px;
+  vertical-align: middle;
+  line-height: 1;
+}
+
 .enhanced-features-bar .control-label-subtitle {
   font-size: 11px;
   color: #f59e0b;
   font-weight: 600;
   margin-left: 8px;
+  white-space: nowrap !important;
+  flex-shrink: 0 !important;
 }
 
 .enhanced-features-bar .multiselect-container {
