@@ -310,6 +310,7 @@
             <div style="margin-top: 5px;"><strong>Riktig: <span style="color: #10B981;">{{ question.correct_option|upper }}</span></strong></div>
           </td>
           <td data-column="actions">
+            <button onclick="previewQuestionFromRow(this, {{ question.id }})" class="btn btn-info btn-small">👁️ Forhåndsvis</button>
             <button onclick="editQuestionFromRow(this, {{ question.id }})" class="btn btn-warning btn-small">✏️ Rediger</button>
             <button onclick="confirmDelete({{ question.id }})" class="btn btn-danger btn-small">🗑️ Slett</button>
           </td>
@@ -644,6 +645,55 @@ function previewQuestion() {
   previewHTML += `<div class="preview-option ${correctOption === 'c' ? 'correct' : ''}">C: ${optionC || 'Alternativ C'}</div>`;
   previewHTML += `<div class="preview-option ${correctOption === 'd' ? 'correct' : ''}">D: ${optionD || 'Alternativ D'}</div>`;
   previewHTML += '</div></div>';
+  document.getElementById('previewContent').innerHTML = previewHTML;
+  document.getElementById('previewModal').style.display = 'block';
+}
+
+function previewQuestionFromRow(button, id) {
+  const row = button.closest('tr');
+  if (!row) {
+    alert('Kunne ikke finne raden.');
+    return;
+  }
+  
+  // Extract data from the table row
+  const questionData = extractQuestionDataFromRow(row, id);
+  
+  // Build preview HTML
+  let previewHTML = '<div class="preview-question">';
+  
+  // Add image if present
+  if (questionData.image_filename) {
+    const staticUrl = document.getElementById('questionsSection').dataset.staticUrl || '/static/';
+    // Try to find the image in the images array to get the correct folder
+    const imageData = window.adminImages ? window.adminImages.find(img => img.filename === questionData.image_filename) : null;
+    let imagePath;
+    if (imageData && imageData.folder) {
+      imagePath = `images/${imageData.folder}/${questionData.image_filename}`;
+    } else {
+      imagePath = `images/${questionData.image_filename}`;
+    }
+    const imageUrl = `${staticUrl}${imagePath}`;
+    previewHTML += `<img src="${imageUrl}" alt="Question image" onerror="console.error('Failed to load image:', this.src); this.style.display='none'">`;
+  }
+  
+  previewHTML += `<h3>${questionData.question}</h3>`;
+  previewHTML += '<div class="preview-options">';
+  
+  const correctOption = questionData.correct_option.toLowerCase();
+  previewHTML += `<div class="preview-option ${correctOption === 'a' ? 'correct' : ''}">A: ${questionData.option_a}</div>`;
+  previewHTML += `<div class="preview-option ${correctOption === 'b' ? 'correct' : ''}">B: ${questionData.option_b}</div>`;
+  previewHTML += `<div class="preview-option ${correctOption === 'c' ? 'correct' : ''}">C: ${questionData.option_c}</div>`;
+  previewHTML += `<div class="preview-option ${correctOption === 'd' ? 'correct' : ''}">D: ${questionData.option_d}</div>`;
+  previewHTML += '</div>';
+  
+  // Add explanation if present
+  if (questionData.explanation) {
+    previewHTML += `<div class="preview-explanation"><strong>Forklaring:</strong> ${questionData.explanation}</div>`;
+  }
+  
+  previewHTML += '</div>';
+  
   document.getElementById('previewContent').innerHTML = previewHTML;
   document.getElementById('previewModal').style.display = 'block';
 }
@@ -991,6 +1041,7 @@ function addTableRow(question) {
 <div style="margin-top: 5px;"><strong>Riktig: <span style="color: #10B981;">${question.correct_option.toUpperCase()}</span></strong></div>
 </td>
 <td data-column="actions">
+<button onclick="previewQuestionFromRow(this, ${question.id})" class="btn btn-info btn-small">👁️ Forhåndsvis</button>
 <button onclick="editQuestionFromRow(this, ${question.id})" class="btn btn-warning btn-small">✏️ Rediger</button>
 <button onclick="confirmDeleteAjax(${question.id})" class="btn btn-danger btn-small">🗑️ Slett</button>
 </td>
@@ -1328,7 +1379,7 @@ function restoreDeletedQuestion() {
   .then(result => {
     if (result.success) {
       // Add the row back with highlight
-      addTableRow(result.question, 'restored');
+      addTableRow(result.question);
       updateStatsAfterAdd();
       showToast('Spørsmål gjenopprettet!', 'success');
       
@@ -1987,6 +2038,7 @@ function createQuestionTableRow(question) {
       <div style="margin-top: 5px;"><strong>Riktig: <span style="color: #10B981;">${question.correct_option.toUpperCase()}</span></strong></div>
     </td>
     <td data-column="actions">
+      <button onclick="previewQuestionFromRow(this, ${question.id})" class="btn btn-info btn-small">👁️ Forhåndsvis</button>
       <button onclick="editQuestionFromRow(this, ${question.id})" class="btn btn-warning btn-small">✏️ Rediger</button>
       <button onclick="confirmDeleteAjax(${question.id})" class="btn btn-danger btn-small">🗑️ Slett</button>
     </td>
@@ -2356,7 +2408,7 @@ function initializeInitialPagination() {
 <div id="previewModal" class="modal">
   <div class="modal-content">
     <span class="close" onclick="closePreview()">&times;</span>
-    <h2>👁️ Forhåndsvisning av spørsmål</h2>
+    <h2 style="text-align: center; margin-bottom: 20px;">👁️ Forhåndsvisning av spørsmål</h2>
     <div id="previewContent"></div>
   </div>
 </div>
@@ -2541,6 +2593,45 @@ function initializeInitialPagination() {
   border-color: #10B981;
   color: #10B981;
   font-weight: 600;
+}
+
+.preview-explanation {
+  margin-top: 15px;
+  padding: 15px;
+  background: #E0F2FE;
+  border-left: 4px solid #0EA5E9;
+  border-radius: 4px;
+  font-size: 14px;
+  line-height: 1.5;
+}
+
+/* Info button styling */
+.btn-info {
+  background-color: #0EA5E9;
+  border-color: #0EA5E9;
+  color: white;
+}
+
+.btn-info:hover {
+  background-color: #0284C7;
+  border-color: #0284C7;
+}
+
+.btn-info.btn-small {
+  font-size: 12px;
+  padding: 4px 8px;
+  margin: 2px;
+}
+
+/* Actions column button alignment */
+td[data-column="actions"] {
+  white-space: nowrap;
+}
+
+td[data-column="actions"] .btn {
+  display: inline-block;
+  vertical-align: middle;
+  margin: 1px 2px;
 }
 
 /* Image gallery enhancement */

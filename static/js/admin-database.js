@@ -45,7 +45,6 @@ function showToast(message, type = 'info') {
             return;
         }
         
-        console.log(`✅ Initializing database filtering for table: ${tableName} (scoped to database section)`);
         
         // AGGRESSIVE: Remove any existing AdminEnhancements listeners on this table
         if (table) {
@@ -572,72 +571,80 @@ function showToast(message, type = 'info') {
     };
     
     DatabaseFiltering.initializeMultiselectDropdown = function() {
-        console.log('🌍 Browser:', navigator.userAgent);
+        
         
         const dropdown = document.getElementById('tableVisibilityDropdown');
         const selected = document.getElementById('tableVisibilitySelected');
         const options = document.getElementById('tableVisibilityOptions');
-        
-        console.log('🔍 Element check:');
-        console.log('dropdown:', dropdown);
-        console.log('selected:', selected);
-        console.log('options:', options);
+        // GUARD: Prevent duplicate initialization 
+        if (selected && selected.dataset.dropdownInitialized === 'true') {
+            console.log('🚫 Dropdown already initialized, skipping...');
+            return;
+        }
         
         if (!dropdown || !selected || !options) {
             console.warn('⚠️ Multiselect dropdown elements not found');
             return;
         }
         
-        console.log('🔧 Initializing multiselect dropdown...');
         
         // Ensure dropdown starts closed
         dropdown.classList.remove('open');
         options.style.display = 'none';
         
-        // Add a temporary border to show the clickable area (for debugging)
-        selected.style.border = '1px solid red';
-        setTimeout(() => {
-            selected.style.border = '';
-        }, 2000);
+        // Track if we're currently in a toggle operation to prevent immediate closing
+        let isToggling = false;
         
-        // Try multiple event binding approaches for better browser compatibility
         function toggleDropdown(e) {
-            console.log('🖱️ Dropdown clicked!', e.type);
+            
             e.preventDefault();
             e.stopPropagation();
             
+            // Set toggling flag to prevent document click from immediately closing
+            isToggling = true;
+            
             const isOpen = dropdown.classList.contains('open');
-            console.log('Current state - isOpen:', isOpen);
+
             
             if (isOpen) {
                 dropdown.classList.remove('open');
                 options.style.display = 'none';
-                console.log('🔧 Dropdown closed');
             } else {
                 dropdown.classList.add('open');
                 options.style.display = 'flex';
                 options.style.flexDirection = 'column';
-                console.log('🔧 Dropdown opened');
             }
+            
+            // Reset the toggling flag after a brief delay
+            setTimeout(() => {
+                isToggling = false;
+            }, 100); // Increased delay to 100ms
         }
         
-        // Multiple event binding for compatibility
-        selected.addEventListener('click', toggleDropdown);
-        selected.addEventListener('mousedown', function(e) {
-            console.log('🖱️ Mousedown on dropdown');
+        // Debug: Add listener to track all clicks on the document
+        document.addEventListener('click', function(e) {
+            if (dropdown.contains(e.target)) {
+            }
+        }, true); // Use capture phase
+        
+        // Bind single click event to the selected element only
+        selected.addEventListener('click', function(e) {
+            // Prevent event bubbling to avoid double-firing
+            e.stopPropagation();
+            toggleDropdown(e);
         });
         
-        // Also try with the arrow specifically
-        const arrow = selected.querySelector('.dropdown-arrow');
-        if (arrow) {
-            arrow.addEventListener('click', toggleDropdown);
-        }
-        
-        // Close dropdown when clicking outside
+        // Close dropdown when clicking outside - but only if not currently toggling
         document.addEventListener('click', function(e) {
-            if (!dropdown.contains(e.target)) {
-                dropdown.classList.remove('open');
-                options.style.display = 'none';
+            
+            if (!isToggling && !dropdown.contains(e.target) && !e.target.closest('.btn[onclick*="showSection"]')) {
+                if (dropdown.classList.contains('open')) {
+                    console.log('🔧 Dropdown closed by outside click');
+                    dropdown.classList.remove('open');
+                    options.style.display = 'none';
+                }
+            } else {
+                console.log('🚫 Outside click ignored - isToggling:', isToggling, 'contains:', dropdown.contains(e.target));
             }
         });
         
@@ -645,6 +652,10 @@ function showToast(message, type = 'info') {
         options.addEventListener('click', function(e) {
             e.stopPropagation();
         });
+
+        if (selected) {
+            selected.dataset.dropdownInitialized = 'true';
+        }
         
         console.log('✅ Multiselect dropdown initialized successfully');
     };
@@ -672,7 +683,6 @@ function showToast(message, type = 'info') {
             selectedText.textContent = `${checkedBoxes.length} tabeller valgt`;
         }
         
-        console.log(`🔄 Updated dropdown text: "${selectedText.textContent}"`);
     };
     
     DatabaseFiltering.loadSavedPreferences = function() {
@@ -693,7 +703,6 @@ function showToast(message, type = 'info') {
                         paginationControls.style.display = isVisible ? '' : 'none';
                     }
                 });
-                console.log('📂 Loaded table visibility preferences:', preferences);
                 DatabaseFiltering.updateVisibilityStatus();
                 DatabaseFiltering.updateDropdownSelectedText();
             } catch (e) {
@@ -708,7 +717,6 @@ function showToast(message, type = 'info') {
             if (densitySelector) {
                 densitySelector.value = savedMode;
                 DatabaseFiltering.applyTableDisplayMode(savedMode);
-                console.log(`📂 Loaded display mode preference: ${savedMode}`);
             }
         } else {
             // Default to comfortable mode
