@@ -94,9 +94,9 @@ self.addEventListener('fetch', (event) => {
         return;
     }
     
-    // CRITICAL: Skip ALL admin requests to prevent interference
-    if (url.pathname.startsWith('/admin/')) {
-        console.log('Service Worker: Skipping ALL admin requests:', url.pathname);
+    // CRITICAL: Skip ALL admin and auth requests to prevent interference
+    if (url.pathname.startsWith('/admin/') || url.pathname.startsWith('/auth/')) {
+        console.log('Service Worker: Skipping ALL admin and auth requests:', url.pathname);
         return; // Let the request go through normally without any service worker intervention
     }
     
@@ -142,8 +142,9 @@ async function handlePostRequest(request) {
     const url = new URL(request.url);
     
     try {
-        // Try network first
-        const response = await fetch(request);
+        // Clone the request before attempting to read its body
+        const clonedRequest = request.clone();
+        const response = await fetch(clonedRequest);
         
         if (response.ok) {
             return response;
