@@ -4,6 +4,19 @@
     <meta charset="UTF-8">
     <title>Adminpanel - Sertifikatet</title>
     <link rel="stylesheet" href="{{ url_for('static', filename='css/admin.css') }}">
+    
+    <!-- Disable service worker for admin section -->
+    <script>
+        // Unregister service worker for admin operations
+        if ('serviceWorker' in navigator) {
+            navigator.serviceWorker.getRegistrations().then(function(registrations) {
+                for(let registration of registrations) {
+                    console.log('Unregistering service worker for admin section');
+                    registration.unregister();
+                }
+            });
+        }
+    </script>
 </head>
 <body style="
     font-family: Arial, sans-serif;

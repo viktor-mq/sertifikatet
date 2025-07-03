@@ -485,14 +485,58 @@ th {
 <script src="{{ url_for('static', filename='js/admin-database.js') }}?v=20250102_enhanced"></script>
 <script>
   document.addEventListener('DOMContentLoaded', () => {
-    // Initialize client-side database filtering system
-    {% for table, rows in tables.items() %}
-      DatabaseFiltering.initializeTableFiltering('{{ table }}');
-    {% endfor %}
+    // ONLY initialize database filtering if we're in the database section
+    function initializeDatabaseWhenActive() {
+      const databaseSection = document.getElementById('databaseSection');
+      
+      // Check if database section exists and is active
+      if (!databaseSection) {
+        console.log('🚫 Database section not found - skipping database filtering initialization');
+        return;
+      }
+      
+      // Additional check: only initialize if database section is visible/active
+      const isActive = databaseSection.classList.contains('active') || 
+                      getComputedStyle(databaseSection).display !== 'none';
+      
+      if (!isActive) {
+        console.log('🚫 Database section not active - deferring initialization');
+        return;
+      }
+      
+      console.log('✅ Database section is active - initializing database filtering');
+      
+      // Initialize client-side database filtering system (scoped to database section)
+      {% for table, rows in tables.items() %}
+        DatabaseFiltering.initializeTableFiltering('{{ table }}');
+      {% endfor %}
+      
+      // Initialize database control features
+      DatabaseFiltering.initializeDatabaseControls();
+      
+      console.log('✅ DatabaseFiltering initialized for database section with controls');
+    }
     
-    // Initialize database control features
-    DatabaseFiltering.initializeDatabaseControls();
+    // Try to initialize immediately
+    initializeDatabaseWhenActive();
     
-    console.log('✅ DatabaseFiltering initialized for database section with controls');
+    // Also try to initialize when database section becomes active
+    // (for when users switch between sections)
+    const observer = new MutationObserver(function(mutations) {
+      mutations.forEach(function(mutation) {
+        if (mutation.type === 'attributes' && mutation.attributeName === 'class') {
+          const target = mutation.target;
+          if (target.id === 'databaseSection' && target.classList.contains('active')) {
+            console.log('🔄 Database section became active - initializing');
+            initializeDatabaseWhenActive();
+          }
+        }
+      });
+    });
+    
+    const databaseSection = document.getElementById('databaseSection');
+    if (databaseSection) {
+      observer.observe(databaseSection, { attributes: true, attributeFilter: ['class'] });
+    }
   });
 </script>

@@ -2487,7 +2487,6 @@ def api_grant_admin(user_id):
         AdminSecurityService.log_admin_action(
             admin_user=current_user,
             action='grant_admin',
-            target_user=user,
             additional_info=f'Admin privileges granted to {user.username}'
         )
         
@@ -2516,7 +2515,6 @@ def api_revoke_admin(user_id):
         AdminSecurityService.log_admin_action(
             admin_user=current_user,
             action='revoke_admin',
-            target_user=user,
             additional_info=f'Admin privileges revoked from {user.username}'
         )
         

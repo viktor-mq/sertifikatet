@@ -23,16 +23,29 @@ function showToast(message, type = 'info') {
      * @param {string} tableName - The table name to initialize
      */
     DatabaseFiltering.initializeTableFiltering = function(tableName) {
-        const form = document.querySelector(`#filter-form-${tableName}`);
+        // SCOPE CHECK: Only work within the database section
+        const databaseSection = document.getElementById('databaseSection');
+        if (!databaseSection) {
+            console.log(`🚫 Database section not found - skipping table filtering for ${tableName}`);
+            return;
+        }
+        
+        // SCOPE ALL SELECTORS to only look within the database section
+        const form = databaseSection.querySelector(`#filter-form-${tableName}`);
         const searchInput = form?.querySelector('.search-input');
         const columnFilters = form?.querySelectorAll('.column-value-filter');
         const searchBtn = form?.querySelector('.search-btn');
         const clearBtn = form?.querySelector('.clear-btn');
-        const tableSection = document.querySelector(`.table-section[data-table="${tableName}"]`);
+        const tableSection = databaseSection.querySelector(`.table-section[data-table="${tableName}"]`);
         const sortableHeaders = tableSection?.querySelectorAll('th.sortable');
-        const table = document.querySelector(`#${tableName}-table`);
+        const table = databaseSection.querySelector(`#${tableName}-table`);
         
-        if (!form || !tableSection) return;
+        if (!form || !tableSection) {
+            console.log(`🚫 Required elements not found in database section for table ${tableName}`);
+            return;
+        }
+        
+        console.log(`✅ Initializing database filtering for table: ${tableName} (scoped to database section)`);
         
         // AGGRESSIVE: Remove any existing AdminEnhancements listeners on this table
         if (table) {
@@ -40,8 +53,8 @@ function showToast(message, type = 'info') {
             table.parentNode.replaceChild(newTable, table);
         }
         
-        // Re-get elements after cloning
-        const newTableSection = document.querySelector(`.table-section[data-table="${tableName}"]`);
+        // Re-get elements after cloning (still scoped to database section)
+        const newTableSection = databaseSection.querySelector(`.table-section[data-table="${tableName}"]`);
         const newSortableHeaders = newTableSection?.querySelectorAll('th.sortable');
         
         // Prevent form submission
@@ -108,11 +121,24 @@ function showToast(message, type = 'info') {
      * @param {string} tableName - The table to filter
      */
     DatabaseFiltering.applyFilters = function(tableName) {
-        const form = document.querySelector(`#filter-form-${tableName}`);
-        const tableSection = document.querySelector(`.table-section[data-table="${tableName}"]`);
+        // SCOPE CHECK: Only work within the database section
+        const databaseSection = document.getElementById('databaseSection');
+        if (!databaseSection) {
+            console.log(`🚫 Database section not found - skipping filtering for ${tableName}`);
+            return;
+        }
+        
+        console.log(`🔍 Applying database filters for table: ${tableName}`);
+        
+        // SCOPE ALL SELECTORS to database section
+        const form = databaseSection.querySelector(`#filter-form-${tableName}`);
+        const tableSection = databaseSection.querySelector(`.table-section[data-table="${tableName}"]`);
         const rows = tableSection?.querySelectorAll('tbody tr');
         
-        if (!form || !rows) return;
+        if (!form || !rows) {
+            console.log(`🚫 Required elements not found for filtering table ${tableName}`);
+            return;
+        }
         
         const searchTerm = form.querySelector('.search-input')?.value.trim().toLowerCase() || '';
         const columnFilters = {};
@@ -167,8 +193,21 @@ function showToast(message, type = 'info') {
      * @param {string} tableName - The table to clear filters for
      */
     DatabaseFiltering.clearFilters = function(tableName) {
-        const form = document.querySelector(`#filter-form-${tableName}`);
-        if (!form) return;
+        // SCOPE CHECK: Only work within the database section
+        const databaseSection = document.getElementById('databaseSection');
+        if (!databaseSection) {
+            console.log(`🚫 Database section not found - skipping clear for ${tableName}`);
+            return;
+        }
+        
+        console.log(`🗑️ Clearing database filters for table: ${tableName}`);
+        
+        // SCOPE ALL SELECTORS to database section
+        const form = databaseSection.querySelector(`#filter-form-${tableName}`);
+        if (!form) {
+            console.log(`🚫 Form not found for clearing table ${tableName}`);
+            return;
+        }
         
         // Clear search input
         const searchInput = form.querySelector('.search-input');
