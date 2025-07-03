@@ -1,5 +1,238 @@
 {# templates/admin/manage_users_section.html #}
+<script>
 
+// ============================================================================
+// ENHANCED ACTIVITY TABLE FUNCTIONALITY
+// ============================================================================
+
+
+function initializeActivitySection() {
+    // Set up real-time search for activity table
+    const searchInput = document.getElementById('activityRealTimeSearch');
+    if (searchInput) {
+        searchInput.addEventListener('input', function() {
+            clearTimeout(activitySearchDebounceTimer);
+            activitySearchDebounceTimer = setTimeout(() => {
+                activityCurrentPage = 1;
+                applyActivityFilters();
+            }, 300);
+        });
+    }
+
+    // Set up filter dropdowns for activity
+    const actionFilter = document.getElementById('activityActionFilter');
+    const timeFilter = document.getElementById('activityTimeFilter');
+    
+    if (actionFilter) {
+        actionFilter.addEventListener('change', () => {
+            activityCurrentPage = 1;
+            applyActivityFilters();
+        });
+    }
+    
+    if (timeFilter) {
+        timeFilter.addEventListener('change', () => {
+            activityCurrentPage = 1;
+            applyActivityFilters();
+        });
+    }
+
+    // Set up column visibility checkboxes for activity
+    const columnCheckboxes = document.querySelectorAll('.activity-column-checkbox');
+    columnCheckboxes.forEach(checkbox => {
+        checkbox.addEventListener('change', function() {
+            toggleActivityColumnVisibility(this.dataset.column, this.checked);
+        });
+    });
+
+    // Initialize activity table if it exists
+    if (document.getElementById('activity-table')) {
+        loadActivityData();
+    }
+}
+
+function applyActivityFilters() {
+    const searchValue = document.getElementById('activityRealTimeSearch')?.value || '';
+    const action = document.getElementById('activityActionFilter')?.value || '';
+    const timeRange = document.getElementById('activityTimeFilter')?.value || '';
+    const searchColumn = document.getElementById('activityAdvancedSearchColumn')?.value || 'all';
+
+    activityCurrentFilters = {
+        search: searchValue,
+        action: action,
+        time_range: timeRange,
+        search_column: searchColumn
+    };
+
+    showActivityLoading(true);
+    loadActivityData();
+}
+
+function loadActivityData() {
+    // Apply client-side filtering to existing data
+    const table = document.getElementById('activity-table');
+    if (!table) return;
+    
+    const rows = table.querySelectorAll('tbody tr');
+    let visibleCount = 0;
+    
+    rows.forEach(row => {
+        let shouldShow = true;
+        
+        // Apply search filter
+        if (activityCurrentFilters.search) {
+            const searchText = activityCurrentFilters.search.toLowerCase();
+            const rowText = row.textContent.toLowerCase();
+            shouldShow = shouldShow && rowText.includes(searchText);
+        }
+        
+        // Apply action filter
+        if (activityCurrentFilters.action) {
+            const actionCell = row.querySelector('[data-column="action"]');
+            if (actionCell) {
+                const actionText = actionCell.textContent.toLowerCase();
+                shouldShow = shouldShow && actionText.includes(activityCurrentFilters.action.toLowerCase());
+            }
+        }
+        
+        row.style.display = shouldShow ? '' : 'none';
+        if (shouldShow) visibleCount++;
+    });
+    
+    updateActivityInfo(visibleCount, 1, visibleCount);
+    showActivityLoading(false);
+}
+
+function toggleActivitySort(field) {
+    if (activityCurrentSort.field === field) {
+        activityCurrentSort.order = activityCurrentSort.order === 'asc' ? 'desc' : 'asc';
+    } else {
+        activityCurrentSort.field = field;
+        activityCurrentSort.order = 'asc';
+    }
+    
+    activityCurrentPage = 1;
+    updateActivitySortIndicators();
+    loadActivityData();
+}
+
+function updateActivitySortIndicators() {
+    // Clear all indicators
+    document.querySelectorAll('#activity-table .sort-indicator').forEach(indicator => {
+        indicator.textContent = '';
+        indicator.className = 'sort-indicator';
+    });
+    
+    // Set active indicator
+    const activeIndicator = document.querySelector(`#activity-table [data-sortable="${activityCurrentSort.field}"] .sort-indicator`);
+    if (activeIndicator) {
+        activeIndicator.textContent = activityCurrentSort.order === 'asc' ? '↑' : '↓';
+        activeIndicator.className = `sort-indicator ${activityCurrentSort.order}`;
+    }
+}
+
+function changeActivityTableDensity() {
+    const density = document.getElementById('activityTableDensity').value;
+    const table = document.getElementById('activity-table');
+    if (table) {
+        table.className = table.className.replace(/density-\w+/g, '');
+        table.classList.add(`density-${density}`);
+    }
+}
+
+function toggleActivityColumnVisibilityDropdown() {
+    const dropdown = document.getElementById('activityColumnVisibilityDropdown');
+    if (dropdown) {
+        dropdown.style.display = dropdown.style.display === 'none' ? 'block' : 'none';
+    }
+}
+
+function toggleActivityColumnVisibility(column, visible) {
+    const table = document.getElementById('activity-table');
+    if (!table) return;
+    
+    const elements = table.querySelectorAll(`[data-column="${column}"]`);
+    elements.forEach(el => {
+        el.style.display = visible ? '' : 'none';
+    });
+}
+
+function clearAllActivityFilters() {
+    document.getElementById('activityRealTimeSearch').value = '';
+    document.getElementById('activityActionFilter').value = '';
+    document.getElementById('activityTimeFilter').value = '';
+    document.getElementById('activityAdvancedSearchColumn').value = 'all';
+    
+    activityCurrentFilters = {};
+    activityCurrentPage = 1;
+    loadActivityData();
+}
+
+function changeActivityPerPage() {
+    activityPerPage = parseInt(document.getElementById('activityPerPageSelector').value);
+    activityCurrentPage = 1;
+    loadActivityData();
+}
+
+function updateActivityInfo(total, page, perPage) {
+    const info = document.getElementById('activityPaginationInfo');
+    if (info) {
+        const start = (page - 1) * perPage + 1;
+        const end = Math.min(page * perPage, total);
+        info.textContent = `Showing ${start}-${end} of ${total} activity records`;
+    }
+}
+
+function updateActivityPagination(currentPage, totalPages) {
+    const container = document.getElementById('activityPaginationButtons');
+    if (!container) return;
+    
+    let buttonsHtml = '';
+    
+    // Previous button
+    if (currentPage > 1) {
+        buttonsHtml += `<button onclick="goToActivityPage(${currentPage - 1})" class="btn btn-secondary">Previous</button>`;
+    }
+    
+    // Page numbers
+    const maxVisible = 5;
+    let startPage = Math.max(1, currentPage - Math.floor(maxVisible / 2));
+    let endPage = Math.min(totalPages, startPage + maxVisible - 1);
+    
+    if (endPage - startPage + 1 < maxVisible) {
+        startPage = Math.max(1, endPage - maxVisible + 1);
+    }
+    
+    for (let i = startPage; i <= endPage; i++) {
+        const isActive = i === currentPage;
+        buttonsHtml += `<button onclick="goToActivityPage(${i})" class="btn ${isActive ? 'btn-primary' : 'btn-secondary'}">${i}</button>`;
+    }
+    
+    // Next button
+    if (currentPage < totalPages) {
+        buttonsHtml += `<button onclick="goToActivityPage(${currentPage + 1})" class="btn btn-secondary">Next</button>`;
+    }
+    
+    container.innerHTML = buttonsHtml;
+}
+
+function goToActivityPage(page) {
+    activityCurrentPage = page;
+    loadActivityData();
+}
+
+function showActivityLoading(loading) {
+    const indicator = document.getElementById('activityFilterLoadingIndicator');
+    if (indicator) {
+        indicator.style.display = loading ? 'flex' : 'none';
+    }
+    
+    const table = document.getElementById('activity-table');
+    if (table) {
+        table.style.opacity = loading ? '0.6' : '1';
+    }
+}
+</script>
 <!-- Manage Users Section -->
 <div id="manageUsersSection" class="section" style="margin-top: 30px;">
   
@@ -34,82 +267,98 @@
     </div>
   </div>
 
-  <!-- Enhanced User Filters -->
-  <form id="users-filter-form" class="enhanced-filter-form">
-    <!-- Enhanced Features Bar -->
-    <div class="enhanced-features-bar">
-      <div class="feature-group">
-        <label for="usersAdvancedSearchColumn">Search in:</label>
-        <select id="usersAdvancedSearchColumn" class="form-control">
-          <option value="all">All fields</option>
-          <option value="username">Username only</option>
-          <option value="email">Email only</option>
-          <option value="full_name">Full name only</option>
-        </select>
-      </div>
-      
-      <div class="feature-group">
-        <label for="usersTableDensity">Table density:</label>
-        <select id="usersTableDensity" class="form-control">
-          <option value="comfortable">Comfortable</option>
-          <option value="compact">Compact</option>
-          <option value="spacious">Spacious</option>
-        </select>
-      </div>
-      
-      <div class="feature-group">
-        <button type="button" id="usersColumnVisibilityBtn" class="btn btn-secondary">🔧 Column Visibility</button>
-        <div id="usersColumnVisibilityDropdown" class="column-visibility-dropdown" style="display: none;">
-          <div class="dropdown-header">Show/Hide Columns</div>
-          <label><input type="checkbox" data-column="id" checked> ID</label>
-          <label><input type="checkbox" data-column="username" checked> Username</label>
-          <label><input type="checkbox" data-column="email" checked> Email</label>
-          <label><input type="checkbox" data-column="full_name" checked> Full Name</label>
-          <label><input type="checkbox" data-column="status" checked> Status</label>
-          <label><input type="checkbox" data-column="admin" checked> Admin</label>
-          <label><input type="checkbox" data-column="created_at" checked> Created</label>
-          <label><input type="checkbox" data-column="last_login" checked> Last Login</label>
-          <label><input type="checkbox" data-column="actions" checked> Actions</label>
+  <!-- Enhanced Features Bar -->
+  <div class="enhanced-features-bar">
+    <div class="feature-group">
+      <label for="usersAdvancedSearchColumn">🔍 Search in:</label>
+      <select id="usersAdvancedSearchColumn">
+        <option value="all">All fields</option>
+        <option value="username">Username only</option>
+        <option value="email">Email only</option>
+        <option value="full_name">Full Name only</option>
+        <option value="role">Role only</option>
+      </select>
+    </div>
+    <div class="feature-group">
+      <label for="usersTableDensity">📏 Table view:</label>
+      <select id="usersTableDensity" onchange="changeUsersTableDensity()">
+        <option value="comfortable">Comfortable</option>
+        <option value="compact">Compact</option>
+        <option value="spacious">Spacious</option>
+      </select>
+    </div>
+    <div class="feature-group">
+      <button type="button" id="usersColumnVisibilityBtn" onclick="toggleUsersColumnVisibilityDropdown()" class="btn btn-secondary btn-small" title="Show/hide columns">
+        👁️ Columns
+      </button>
+      <div id="usersColumnVisibilityDropdown" class="column-visibility-dropdown" style="display: none;">
+        <div class="column-checkbox-group">
+          <label><input type="checkbox" class="users-column-checkbox" data-column="id" checked> ID</label>
+          <label><input type="checkbox" class="users-column-checkbox" data-column="username" checked> Username</label>
+          <label><input type="checkbox" class="users-column-checkbox" data-column="email" checked> Email</label>
+          <label><input type="checkbox" class="users-column-checkbox" data-column="full_name" checked> Full Name</label>
+          <label><input type="checkbox" class="users-column-checkbox" data-column="status" checked> Status</label>
+          <label><input type="checkbox" class="users-column-checkbox" data-column="admin" checked> Admin</label>
+          <label><input type="checkbox" class="users-column-checkbox" data-column="created_at" checked> Created</label>
+          <label><input type="checkbox" class="users-column-checkbox" data-column="last_login" checked> Last Login</label>
+          <label><input type="checkbox" class="users-column-checkbox" data-column="actions" checked> Actions</label>
         </div>
       </div>
     </div>
-    <div class="search-filter-container enhanced-search">
-      <input type="text" id="users-search" name="search" placeholder="🔍 Search users..." class="search-input" />
-      <select name="admin_status">
-        <option value="">All Users</option>
-        <option value="admin">Admin Users</option>
-        <option value="user">Regular Users</option>
-      </select>
-      <select name="status">
-        <option value="">All Status</option>
-        <option value="active">Active</option>
-        <option value="inactive">Inactive</option>
-      </select>
-      <select name="per_page" id="users-per-page">
-        <option value="20">20 per page</option>
-        <option value="50">50 per page</option>
-        <option value="100">100 per page</option>
-      </select>
-      <button type="button" class="btn" onclick="performUsersSearch()">🔍 Filter</button>
-      <button type="button" class="btn btn-secondary" onclick="clearUsersFilters()">🗑️ Clear</button>
-      <div class="loading-indicator" id="users-loading" style="display: none;">⏳ Loading...</div>
+  </div>
+
+  <!-- Enhanced User Filters -->
+  <div class="search-filter-container" id="usersSearchFilterContainer">
+    <input type="text" id="usersRealTimeSearch" placeholder="🔍 Search users..." value="">
+    <select id="usersAdminStatusFilter">
+      <option value="">All Users</option>
+      <option value="admin">Admin Users</option>
+      <option value="user">Regular Users</option>
+    </select>
+    <select id="usersStatusFilter">
+      <option value="">All Status</option>
+      <option value="active">Active</option>
+      <option value="inactive">Inactive</option>
+      <option value="verified">Verified</option>
+      <option value="unverified">Unverified</option>
+    </select>
+    <button type="button" onclick="clearAllUsersFilters()" class="btn btn-secondary">🗙️ Clear</button>
+    <div id="usersFilterLoadingIndicator" class="filter-loading" style="display: none;">
+      <div class="loading-spinner-small"></div>
+      <span>Searching...</span>
     </div>
-  </form>
+  </div>
 
   <!-- Users Table -->
   <div class="table-container">
     <div id="users-results-info" class="results-info"></div>
-    <table id="users-table">
+    <table id="users-table-enhanced">
       <thead>
         <tr>
-          <th class="sortable" data-field="id" data-column="id">ID <span class="sort-indicator"></span></th>
-          <th class="sortable" data-field="username" data-column="username">Username <span class="sort-indicator"></span></th>
-          <th class="sortable" data-field="email" data-column="email">Email <span class="sort-indicator"></span></th>
-          <th data-column="full_name">Full Name</th>
-          <th class="sortable" data-field="is_active" data-column="status">Status <span class="sort-indicator"></span></th>
-          <th class="sortable" data-field="is_admin" data-column="admin">Admin <span class="sort-indicator"></span></th>
-          <th class="sortable" data-field="created_at" data-column="created_at">Created <span class="sort-indicator"></span></th>
-          <th class="sortable" data-field="last_login" data-column="last_login">Last Login <span class="sort-indicator"></span></th>
+          <th data-column="id" data-sortable="id" class="sortable-header" onclick="toggleUsersSort('id')">
+            ID <span class="sort-indicator" data-sort="id"></span>
+          </th>
+          <th data-column="username" data-sortable="username" class="sortable-header" onclick="toggleUsersSort('username')">
+            Username <span class="sort-indicator" data-sort="username"></span>
+          </th>
+          <th data-column="email" data-sortable="email" class="sortable-header" onclick="toggleUsersSort('email')">
+            Email <span class="sort-indicator" data-sort="email"></span>
+          </th>
+          <th data-column="full_name" data-sortable="full_name" class="sortable-header" onclick="toggleUsersSort('full_name')">
+            Full Name <span class="sort-indicator" data-sort="full_name"></span>
+          </th>
+          <th data-column="status" data-sortable="is_active" class="sortable-header" onclick="toggleUsersSort('is_active')">
+            Status <span class="sort-indicator" data-sort="is_active"></span>
+          </th>
+          <th data-column="admin" data-sortable="is_admin" class="sortable-header" onclick="toggleUsersSort('is_admin')">
+            Admin <span class="sort-indicator" data-sort="is_admin"></span>
+          </th>
+          <th data-column="created_at" data-sortable="created_at" class="sortable-header" onclick="toggleUsersSort('created_at')">
+            Created <span class="sort-indicator" data-sort="created_at"></span>
+          </th>
+          <th data-column="last_login" data-sortable="last_login" class="sortable-header" onclick="toggleUsersSort('last_login')">
+            Last Login <span class="sort-indicator" data-sort="last_login"></span>
+          </th>
           <th data-column="actions">Actions</th>
         </tr>
       </thead>
@@ -117,16 +366,16 @@
         {% if users %}
           {% for user in users %}
           <tr class="{% if user.is_admin %}table-warning{% endif %}">
-            <td>{{ user.id }}</td>
-            <td>
+            <td data-column="id">{{ user.id }}</td>
+            <td data-column="username">
               <strong>{{ user.username }}</strong>
               {% if user.id == current_user.id %}
               <span class="btn btn-secondary btn-small" style="cursor: default; margin-left: 5px;">You</span>
               {% endif %}
             </td>
-            <td>{{ user.email }}</td>
-            <td>{{ user.full_name or '-' }}</td>
-            <td>
+            <td data-column="email">{{ user.email }}</td>
+            <td data-column="full_name">{{ user.full_name or '-' }}</td>
+            <td data-column="status">
               {% if user.is_active %}
               <span class="btn btn-success btn-small" style="cursor: default;">Active</span>
               {% else %}
@@ -134,23 +383,19 @@
               {% endif %}
               
               {% if user.is_verified %}
-              <span class="btn btn-secondary btn-small" style="cursor: default;">Verified</span>
+              <span class="btn btn-info btn-small" style="cursor: default; margin-left: 3px;">Verified</span>
               {% endif %}
             </td>
-            <td>
+            <td data-column="admin">
               {% if user.is_admin %}
               <span class="btn btn-danger btn-small" style="cursor: default;">🛡️ Admin</span>
               {% else %}
               <span class="btn btn-secondary btn-small" style="cursor: default;">User</span>
               {% endif %}
             </td>
-            <td>
-              <small>{{ user.created_at.strftime('%Y-%m-%d %H:%M') if user.created_at else '-' }}</small>
-            </td>
-            <td>
-              <small>{{ user.last_login.strftime('%Y-%m-%d %H:%M') if user.last_login else 'Never' }}</small>
-            </td>
-            <td>
+            <td data-column="created_at">{{ user.created_at.strftime('%d.%m.%Y %H:%M') if user.created_at else '-' }}</td>
+            <td data-column="last_login">{{ user.last_login.strftime('%d.%m.%Y %H:%M') if user.last_login else 'Never' }}</td>
+            <td data-column="actions">
               {% if user.id != current_user.id %}
                 {% if user.is_admin %}
                 <!-- Revoke Admin Button -->
@@ -178,6 +423,27 @@
     </table>
   </div>
 
+  <!-- Pagination and Per-page Controls -->
+  <div class="pagination-controls" id="usersPaginationControls">
+    <div class="pagination-info">
+      <span id="usersPaginationInfo">Showing users</span>
+    </div>
+    <div class="pagination-center">
+      <div class="pagination-buttons" id="usersPaginationButtons">
+        <!-- Pagination buttons will be inserted here by JavaScript -->
+      </div>
+    </div>
+    <div class="pagination-per-page">
+      <label for="usersPerPageSelector">Show per page:</label>
+      <select id="usersPerPageSelector" onchange="changeUsersPerPage()">
+        <option value="20">20</option>
+        <option value="50" selected>50</option>
+        <option value="100">100</option>
+        <option value="-1">All</option>
+      </select>
+    </div>
+  </div>
+
   <!-- Recent Admin Activity -->
   {% if recent_logs %}
   <div style="background: rgba(255, 255, 255, 0.9); padding: 20px; border-radius: 12px; margin-top: 20px; box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);">
@@ -185,83 +451,91 @@
       📋 Recent Admin Activity (Last 50 entries)
     </h3>
     
-    <!-- Activity Enhanced Features Bar -->
-    <div class="enhanced-features-bar" style="margin-bottom: 15px;">
+    <!-- Enhanced Features Bar for Admin Activity -->
+    <div class="enhanced-features-bar">
       <div class="feature-group">
-        <label for="activityAdvancedSearchColumn">Search in:</label>
-        <select id="activityAdvancedSearchColumn" class="form-control">
+        <label for="activityAdvancedSearchColumn">🔍 Search in:</label>
+        <select id="activityAdvancedSearchColumn">
           <option value="all">All fields</option>
           <option value="action">Action only</option>
-          <option value="target_user">Target user only</option>
-          <option value="admin">Admin only</option>
+          <option value="target_user">Target User only</option>
+          <option value="admin_user">Admin only</option>
+          <option value="ip_address">IP Address only</option>
         </select>
       </div>
-      
       <div class="feature-group">
-        <label for="activityActionFilter">Action type:</label>
-        <select id="activityActionFilter" class="form-control">
-          <option value="">All Actions</option>
-          <option value="grant_admin">Admin Granted</option>
-          <option value="revoke_admin">Admin Revoked</option>
-          <option value="admin_login_success">Login Success</option>
-          <option value="admin_login_failure">Login Failed</option>
-        </select>
-      </div>
-      
-      <div class="feature-group">
-        <label for="activityTimeFilter">Time period:</label>
-        <select id="activityTimeFilter" class="form-control">
-          <option value="">All Time</option>
-          <option value="today">Today</option>
-          <option value="week">This Week</option>
-          <option value="month">This Month</option>
-        </select>
-      </div>
-      
-      <div class="feature-group">
-        <label for="activityTableDensity">Table density:</label>
-        <select id="activityTableDensity" class="form-control">
+        <label for="activityTableDensity">📏 Table view:</label>
+        <select id="activityTableDensity" onchange="changeActivityTableDensity()">
           <option value="comfortable">Comfortable</option>
           <option value="compact">Compact</option>
           <option value="spacious">Spacious</option>
         </select>
       </div>
-      
       <div class="feature-group">
-        <button type="button" id="activityColumnVisibilityBtn" class="btn btn-secondary">🔧 Column Visibility</button>
+        <button type="button" id="activityColumnVisibilityBtn" onclick="toggleActivityColumnVisibilityDropdown()" class="btn btn-secondary btn-small" title="Show/hide columns">
+          👁️ Columns
+        </button>
         <div id="activityColumnVisibilityDropdown" class="column-visibility-dropdown" style="display: none;">
-          <div class="dropdown-header">Show/Hide Columns</div>
-          <label><input type="checkbox" data-column="timestamp" checked> Timestamp</label>
-          <label><input type="checkbox" data-column="action" checked> Action</label>
-          <label><input type="checkbox" data-column="target_user" checked> Target User</label>
-          <label><input type="checkbox" data-column="admin" checked> Admin</label>
-          <label><input type="checkbox" data-column="ip_address" checked> IP Address</label>
+          <div class="column-checkbox-group">
+            <label><input type="checkbox" class="activity-column-checkbox" data-column="timestamp" checked> Timestamp</label>
+            <label><input type="checkbox" class="activity-column-checkbox" data-column="action" checked> Action</label>
+            <label><input type="checkbox" class="activity-column-checkbox" data-column="target_user" checked> Target User</label>
+            <label><input type="checkbox" class="activity-column-checkbox" data-column="admin_user" checked> Admin</label>
+            <label><input type="checkbox" class="activity-column-checkbox" data-column="ip_address" checked> IP Address</label>
+          </div>
         </div>
       </div>
-      
-      <div class="feature-group">
-        <input type="text" id="activityRealTimeSearch" placeholder="🔍 Search activity..." class="search-input" style="min-width: 200px;" />
-        <button type="button" class="btn btn-secondary" onclick="clearActivityFilters()">🗑️ Clear</button>
+    </div>
+
+    <!-- Enhanced Activity Filters -->
+    <div class="search-filter-container" id="activitySearchFilterContainer">
+      <input type="text" id="activityRealTimeSearch" placeholder="🔍 Search activity..." value="">
+      <select id="activityActionFilter">
+        <option value="">All Actions</option>
+        <option value="grant_admin">Admin Granted</option>
+        <option value="revoke_admin">Admin Revoked</option>
+        <option value="admin_login_success">Login Success</option>
+        <option value="admin_login_failure">Login Failed</option>
+      </select>
+      <select id="activityTimeFilter">
+        <option value="">All Time</option>
+        <option value="today">Today</option>
+        <option value="week">This Week</option>
+        <option value="month">This Month</option>
+      </select>
+      <button type="button" onclick="clearAllActivityFilters()" class="btn btn-secondary">🗙️ Clear</button>
+      <div id="activityFilterLoadingIndicator" class="filter-loading" style="display: none;">
+        <div class="loading-spinner-small"></div>
+        <span>Searching...</span>
       </div>
     </div>
-    
     <div class="table-container">
-      <div id="activity-results-info" class="results-info" style="display: none;"></div>
+      <div id="activity-results-info" class="results-info"></div>
       <table id="activity-table">
         <thead>
           <tr>
-            <th class="sortable" data-field="created_at" data-column="timestamp">Timestamp <span class="sort-indicator"></span></th>
-            <th class="sortable" data-field="action" data-column="action">Action <span class="sort-indicator"></span></th>
-            <th class="sortable" data-field="target_user" data-column="target_user">Target User <span class="sort-indicator"></span></th>
-            <th class="sortable" data-field="admin_user" data-column="admin">Admin <span class="sort-indicator"></span></th>
-            <th data-column="ip_address">IP Address</th>
+            <th data-column="timestamp" data-sortable="created_at" class="sortable-header" onclick="toggleActivitySort('created_at')">
+              Timestamp <span class="sort-indicator" data-sort="created_at"></span>
+            </th>
+            <th data-column="action" data-sortable="action" class="sortable-header" onclick="toggleActivitySort('action')">
+              Action <span class="sort-indicator" data-sort="action"></span>
+            </th>
+            <th data-column="target_user" data-sortable="target_user" class="sortable-header" onclick="toggleActivitySort('target_user')">
+              Target User <span class="sort-indicator" data-sort="target_user"></span>
+            </th>
+            <th data-column="admin_user" data-sortable="admin_user" class="sortable-header" onclick="toggleActivitySort('admin_user')">
+              Admin <span class="sort-indicator" data-sort="admin_user"></span>
+            </th>
+            <th data-column="ip_address" data-sortable="ip_address" class="sortable-header" onclick="toggleActivitySort('ip_address')">
+              IP Address <span class="sort-indicator" data-sort="ip_address"></span>
+            </th>
           </tr>
         </thead>
         <tbody>
           {% for log in recent_logs %}
           <tr>
-            <td><small>{{ log.created_at.strftime('%Y-%m-%d %H:%M:%S') }}</small></td>
-            <td>
+            <td data-column="timestamp">{{ log.created_at.strftime('%d.%m.%Y %H:%M:%S') }}</td>
+            <td data-column="action">
               {% if log.action == 'grant_admin' %}
               <span class="btn btn-warning btn-small" style="cursor: default;">🛡️ Admin Granted</span>
               {% elif log.action == 'revoke_admin' %}
@@ -274,13 +548,34 @@
               <span class="btn btn-secondary btn-small" style="cursor: default;">{{ log.action }}</span>
               {% endif %}
             </td>
-            <td>{{ log.target_user.username if log.target_user else 'Unknown' }}</td>
-            <td>{{ log.admin_user.username if log.admin_user else 'System' }}</td>
-            <td><small><code>{{ log.ip_address or '-' }}</code></small></td>
+            <td data-column="target_user">{{ log.target_user.username if log.target_user else 'Unknown' }}</td>
+            <td data-column="admin_user">{{ log.admin_user.username if log.admin_user else 'System' }}</td>
+            <td data-column="ip_address"><code>{{ log.ip_address or '-' }}</code></td>
           </tr>
           {% endfor %}
         </tbody>
       </table>
+    </div>
+    
+    <!-- Pagination and Per-page Controls for Activity -->
+    <div class="pagination-controls" id="activityPaginationControls">
+      <div class="pagination-info">
+        <span id="activityPaginationInfo">Showing activity</span>
+      </div>
+      <div class="pagination-center">
+        <div class="pagination-buttons" id="activityPaginationButtons">
+          <!-- Pagination buttons will be inserted here by JavaScript -->
+        </div>
+      </div>
+      <div class="pagination-per-page">
+        <label for="activityPerPageSelector">Show per page:</label>
+        <select id="activityPerPageSelector" onchange="changeActivityPerPage()">
+          <option value="20">20</option>
+          <option value="50" selected>50</option>
+          <option value="100">100</option>
+          <option value="-1">All</option>
+        </select>
+      </div>
     </div>
     <div style="text-align: center; margin-top: 15px;">
       <a href="{{ url_for('admin.security_audit_log') }}" class="btn">
@@ -316,116 +611,6 @@
   border-radius: 12px;
   margin-bottom: 20px;
   box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
-}
-
-/* Enhanced Features Bar */
-.enhanced-features-bar {
-  display: flex;
-  gap: 15px;
-  align-items: center;
-  flex-wrap: wrap;
-  margin-bottom: 15px;
-  padding: 15px;
-  background: rgba(255, 255, 255, 0.1);
-  border-radius: 8px;
-  border: 1px solid rgba(255, 255, 255, 0.2);
-}
-
-.feature-group {
-  display: flex;
-  flex-direction: column;
-  gap: 5px;
-  min-width: 120px;
-}
-
-.feature-group label {
-  color: white;
-  font-size: 12px;
-  font-weight: 500;
-  margin-bottom: 2px;
-}
-
-.feature-group .form-control,
-.feature-group .search-input {
-  padding: 6px 8px;
-  border: 1px solid #d1d5db;
-  border-radius: 4px;
-  font-size: 13px;
-  background: white;
-}
-
-/* Column Visibility Dropdown */
-.column-visibility-dropdown {
-  position: absolute;
-  top: 100%;
-  left: 0;
-  background: white;
-  border: 1px solid #d1d5db;
-  border-radius: 6px;
-  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
-  padding: 10px;
-  min-width: 200px;
-  z-index: 1000;
-  margin-top: 5px;
-}
-
-.dropdown-header {
-  font-weight: bold;
-  color: #374151;
-  margin-bottom: 8px;
-  padding-bottom: 5px;
-  border-bottom: 1px solid #e5e7eb;
-}
-
-.column-visibility-dropdown label {
-  display: block;
-  color: #374151 !important;
-  margin-bottom: 5px;
-  cursor: pointer;
-  padding: 3px;
-  border-radius: 3px;
-}
-
-.column-visibility-dropdown label:hover {
-  background: #f3f4f6;
-}
-
-.column-visibility-dropdown input[type="checkbox"] {
-  margin-right: 8px;
-}
-
-/* Table Density Classes */
-.table-density-comfortable {
-  line-height: 1.6;
-}
-
-.table-density-comfortable td,
-.table-density-comfortable th {
-  padding: 12px 8px;
-}
-
-.table-density-compact {
-  line-height: 1.2;
-}
-
-.table-density-compact td,
-.table-density-compact th {
-  padding: 6px 4px;
-  font-size: 13px;
-}
-
-.table-density-spacious {
-  line-height: 1.8;
-}
-
-.table-density-spacious td,
-.table-density-spacious th {
-  padding: 16px 12px;
-}
-
-/* Hidden columns */
-.column-hidden {
-  display: none !important;
 }
 
 .enhanced-search {
@@ -539,12 +724,269 @@
 <!-- Include admin-base.js -->
 <script src="{{ url_for('static', filename='js/admin-base.js') }}"></script>
 
+<style>
+/* Enhanced Features Bar */
+.enhanced-features-bar {
+    background: linear-gradient(135deg, #f3f4f6 0%, #e5e7eb 100%);
+    padding: 15px 20px;
+    border-radius: 8px;
+    margin-bottom: 15px;
+    display: flex;
+    gap: 20px;
+    align-items: center;
+    flex-wrap: wrap;
+    border: 1px solid #d1d5db;
+}
+
+.feature-group {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.feature-group label {
+    font-weight: 500;
+    color: #374151;
+    font-size: 14px;
+}
+
+.feature-group select {
+    padding: 6px 10px;
+    border: 1px solid #d1d5db;
+    border-radius: 6px;
+    font-size: 14px;
+    background: white;
+}
+
+.feature-group select:focus {
+    border-color: #3b82f6;
+    box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.1);
+}
+
+/* Column Visibility Dropdown */
+.column-visibility-dropdown {
+    position: absolute;
+    background: white;
+    border: 1px solid #d1d5db;
+    border-radius: 8px;
+    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+    padding: 15px;
+    z-index: 1000;
+    margin-top: 5px;
+    min-width: 200px;
+}
+
+.column-checkbox-group {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+
+.column-checkbox-group label {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    cursor: pointer;
+    padding: 4px 8px;
+    border-radius: 4px;
+    transition: background-color 0.2s;
+}
+
+.column-checkbox-group label:hover {
+    background-color: #f3f4f6;
+}
+
+.column-checkbox-group input[type="checkbox"] {
+    margin: 0;
+}
+
+/* Table Header Styling */
+#users-table, #users-table-enhanced, #activity-table {
+    width: 100%;
+    border-collapse: collapse;
+    background: white;
+    border-radius: 8px;
+    overflow: hidden;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+}
+
+#users-table th, #users-table-enhanced th, #activity-table th {
+    background: linear-gradient(135deg, #3b82f6 0%, #1d4ed8 100%);
+    color: white;
+    font-weight: 600;
+    text-align: left;
+    padding: 12px 16px;
+    border-bottom: 2px solid #1e40af;
+    position: relative;
+}
+
+#users-table th:first-child, #users-table-enhanced th:first-child, #activity-table th:first-child {
+    border-top-left-radius: 8px;
+}
+
+#users-table th:last-child, #users-table-enhanced th:last-child, #activity-table th:last-child {
+    border-top-right-radius: 8px;
+}
+
+#users-table td, #users-table-enhanced td, #activity-table td {
+    padding: 12px 16px;
+    border-bottom: 1px solid #e5e7eb;
+    vertical-align: middle;
+}
+
+#users-table tbody tr:hover, #users-table-enhanced tbody tr:hover, #activity-table tbody tr:hover {
+    background-color: #f8fafc;
+}
+
+#users-table tbody tr:last-child td, #users-table-enhanced tbody tr:last-child td, #activity-table tbody tr:last-child td {
+    border-bottom: none;
+}
+
+/* Sortable Headers */
+#manageUsersSection .sortable-header {
+    cursor: pointer;
+    user-select: none;
+    transition: background-color 0.2s;
+}
+
+#manageUsersSection .sortable-header:hover {
+    background: linear-gradient(135deg, #2563eb 0%, #1e40af 100%);
+}
+
+#manageUsersSection .sort-indicator {
+    font-weight: bold;
+    color: #fbbf24;
+    margin-left: 5px;
+}
+
+/* Table Density Classes */
+#users-table.density-compact, #users-table-enhanced.density-compact, #activity-table.density-compact {
+    font-size: 13px;
+}
+
+#users-table.density-compact th, #users-table-enhanced.density-compact th, #activity-table.density-compact th,
+#users-table.density-compact td, #users-table-enhanced.density-compact td, #activity-table.density-compact td {
+    padding: 6px 8px;
+}
+
+#users-table.density-comfortable, #users-table-enhanced.density-comfortable, #activity-table.density-comfortable {
+    font-size: 14px;
+}
+
+#users-table.density-comfortable th, #users-table-enhanced.density-comfortable th, #activity-table.density-comfortable th,
+#users-table.density-comfortable td, #users-table-enhanced.density-comfortable td, #activity-table.density-comfortable td {
+    padding: 12px 8px;
+}
+
+#users-table.density-spacious, #users-table-enhanced.density-spacious, #activity-table.density-spacious {
+    font-size: 15px;
+}
+
+#users-table.density-spacious th, #users-table-enhanced.density-spacious th, #activity-table.density-spacious th,
+#users-table.density-spacious td, #users-table-enhanced.density-spacious td, #activity-table.density-spacious td {
+    padding: 16px 12px;
+}
+
+/* Loading Spinners */
+.filter-loading {
+    display: none;
+    align-items: center;
+    gap: 8px;
+    color: #374151;
+    font-weight: bold;
+}
+
+.loading-spinner-small {
+    width: 16px;
+    height: 16px;
+    border: 2px solid #d1d5db;
+    border-top: 2px solid #3b82f6;
+    border-radius: 50%;
+    animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+    0% { transform: rotate(0deg); }
+    100% { transform: rotate(360deg); }
+}
+
+#manageUsersSection .pagination-per-page label {
+    margin-right: 8px;
+    font-weight: 500;
+}
+
+.table-warning {
+    background-color: rgba(255, 193, 7, 0.1);
+}
+</style>
+
 <script>
-// Users Section Enhancement JavaScript
-let currentUsersFilters = {};
-let currentUsersSort = { field: 'created_at', order: 'desc' };
-let currentUsersPage = 1;
-let usersPerPage = 20;
+// Enhanced Users Section JavaScript - Full Reports-style Implementation
+
+// Global state for Users table
+let usersCurrentPage = 1;
+let usersPerPage = 50;
+let usersTotalPages = 1;
+let usersTotalRecords = 0;
+let usersCurrentSort = { field: 'created_at', order: 'desc' };
+let usersCurrentFilters = {};
+let usersSearchDebounceTimer = null;
+let usersAllData = []; // Store all data for client-side filtering
+
+// Global state for Activity table
+let activityCurrentPage = 1;
+let activityPerPage = 50;
+let activityTotalPages = 1;
+let activityTotalRecords = 0;
+let activityCurrentSort = { field: 'created_at', order: 'desc' };
+let activityCurrentFilters = {};
+let activitySearchDebounceTimer = null;
+let activityAllData = []; // Store all data for client-side filtering
+
+// Initialize when DOM is loaded
+document.addEventListener('DOMContentLoaded', function() {
+    initializeUsersSection();
+    initializeActivitySection();
+    
+    // Force our event listeners to override any conflicting ones
+    setTimeout(() => {
+        console.log('Forcing our event listeners to take precedence...');
+        
+        const searchInput = document.getElementById('usersRealTimeSearch');
+        const adminFilter = document.getElementById('usersAdminStatusFilter');
+        const statusFilter = document.getElementById('usersStatusFilter');
+        
+        if (searchInput) {
+            // Clone elements to remove all existing event listeners
+            const newSearchInput = searchInput.cloneNode(true);
+            const newAdminFilter = adminFilter.cloneNode(true);
+            const newStatusFilter = statusFilter.cloneNode(true);
+            
+            // Replace the old elements
+            searchInput.parentNode.replaceChild(newSearchInput, searchInput);
+            adminFilter.parentNode.replaceChild(newAdminFilter, adminFilter);
+            statusFilter.parentNode.replaceChild(newStatusFilter, statusFilter);
+            
+            // Add OUR event listeners
+            newSearchInput.addEventListener('input', function() {
+                console.log('Enhanced table search triggered!');
+                applyUsersFilters();
+            });
+            
+            newAdminFilter.addEventListener('change', function() {
+                console.log('Enhanced table admin filter triggered!');
+                applyUsersFilters();
+            });
+            
+            newStatusFilter.addEventListener('change', function() {
+                console.log('Enhanced table status filter triggered!');
+                applyUsersFilters();
+            });
+            
+            console.log('Enhanced table event listeners successfully installed!');
+        }
+    }, 1000); // Wait 1 second for other scripts to load
+});
 
 document.addEventListener('DOMContentLoaded', function() {
     // Only initialize if users section exists and is active
@@ -563,7 +1005,7 @@ window.initializeUsersSection = function() {
 };
 
 function initializeUsersEnhancements() {
-    // Initialize enhanced search with debouncing
+    // Initialize search with debouncing
     const searchInput = document.getElementById('users-search');
     if (searchInput) {
         let searchTimeout;
@@ -576,32 +1018,10 @@ function initializeUsersEnhancements() {
         });
     }
     
-    // Initialize advanced search scope
-    const advancedSearchColumn = document.getElementById('usersAdvancedSearchColumn');
-    if (advancedSearchColumn) {
-        advancedSearchColumn.addEventListener('change', function() {
-            if (searchInput.value) {
-                currentUsersPage = 1;
-                performUsersSearch();
-            }
-        });
-    }
-    
-    // Initialize table density selector
-    const densitySelect = document.getElementById('usersTableDensity');
-    if (densitySelect) {
-        densitySelect.addEventListener('change', function() {
-            changeUsersTableDensity(this.value);
-        });
-    }
-    
-    // Initialize column visibility
-    initializeUsersColumnVisibility();
-    
     // Initialize sorting
-    document.querySelectorAll('#users-table .sortable').forEach(header => {
+    document.querySelectorAll('#manageUsersSection #users-table-enhanced .sortable').forEach(header => {
         header.addEventListener('click', function() {
-            const field = this.dataset.field;
+            const field = this.dataset.sortable;
             if (currentUsersSort.field === field) {
                 currentUsersSort.order = currentUsersSort.order === 'asc' ? 'desc' : 'asc';
             } else {
@@ -643,28 +1063,20 @@ function initializeUsersEnhancements() {
             }
         }
     });
-    
-    // Initialize activity table enhancements
-    initializeActivityEnhancements();
 }
 
 function performUsersSearch() {
     const form = document.getElementById('users-filter-form');
     const formData = new FormData(form);
     
-    // Get advanced search settings
-    const searchColumn = document.getElementById('usersAdvancedSearchColumn')?.value || 'all';
-    const searchValue = formData.get('search') || '';
-    
     currentUsersFilters = {
-        search: searchValue,
+        search: formData.get('search') || '',
         admin_status: formData.get('admin_status') || '',
         status: formData.get('status') || '',
         sort_by: currentUsersSort.field,
         sort_order: currentUsersSort.order,
         page: currentUsersPage,
-        per_page: usersPerPage,
-        search_column: searchColumn
+        per_page: usersPerPage
     };
     
     loadUsersData();
@@ -687,7 +1099,7 @@ async function loadUsersData() {
 }
 
 function updateUsersTable(data) {
-    const tbody = document.querySelector('#users-table tbody');
+    const tbody = document.querySelector('#users-table-enhanced tbody');
     if (!tbody) return;
     
     tbody.innerHTML = '';
@@ -805,11 +1217,11 @@ function updateUsersResultsInfo(pagination) {
 }
 
 function updateUsersSortIndicators() {
-    document.querySelectorAll('#users-table .sort-indicator').forEach(indicator => {
+    document.querySelectorAll('#users-table-enhanced .sort-indicator').forEach(indicator => {
         indicator.className = 'sort-indicator';
     });
     
-    const activeHeader = document.querySelector(`#users-table [data-field="${currentUsersSort.field}"] .sort-indicator`);
+    const activeHeader = document.querySelector(`#manageUsersSection #users-table-enhanced [data-field="${currentUsersSort.field}"] .sort-indicator`);
     if (activeHeader) {
         activeHeader.className = `sort-indicator ${currentUsersSort.order}`;
     }
@@ -827,7 +1239,7 @@ function clearUsersFilters() {
 
 function setUsersLoading(loading) {
     const indicator = document.getElementById('users-loading');
-    const table = document.getElementById('users-table');
+    const table = document.getElementById('users-table-enhanced');
     
     if (indicator) {
         indicator.style.display = loading ? 'inline' : 'none';
@@ -903,362 +1315,438 @@ function formatDate(dateString) {
     });
 }
 
-// Users Table Enhanced Functions
-function initializeUsersColumnVisibility() {
-    const btn = document.getElementById('usersColumnVisibilityBtn');
-    const dropdown = document.getElementById('usersColumnVisibilityDropdown');
-    
-    if (btn && dropdown) {
-        // Make button container relative for dropdown positioning
-        btn.parentElement.style.position = 'relative';
-        
-        btn.addEventListener('click', function(e) {
-            e.stopPropagation();
-            dropdown.style.display = dropdown.style.display === 'none' ? 'block' : 'none';
-        });
-        
-        // Close dropdown when clicking outside
-        document.addEventListener('click', function() {
-            dropdown.style.display = 'none';
-        });
-        
-        // Prevent dropdown from closing when clicking inside
-        dropdown.addEventListener('click', function(e) {
-            e.stopPropagation();
-        });
-        
-        // Handle column visibility changes
-        dropdown.querySelectorAll('input[type="checkbox"]').forEach(checkbox => {
-            checkbox.addEventListener('change', function() {
-                toggleUsersColumn(this.dataset.column, this.checked);
-            });
-        });
-    }
-}
+// ============================================================================
+// ENHANCED USERS TABLE FUNCTIONALITY
+// ============================================================================
 
-function toggleUsersColumn(columnName, show) {
-    const table = document.getElementById('users-table');
-    if (!table) return;
-    
-    const elements = table.querySelectorAll(`[data-column="${columnName}"]`);
-    elements.forEach(element => {
-        if (show) {
-            element.classList.remove('column-hidden');
-        } else {
-            element.classList.add('column-hidden');
-        }
-    });
-}
-
-function changeUsersTableDensity(density) {
-    const table = document.getElementById('users-table');
-    if (!table) return;
-    
-    // Remove existing density classes
-    table.classList.remove('table-density-comfortable', 'table-density-compact', 'table-density-spacious');
-    
-    // Add new density class
-    table.classList.add(`table-density-${density}`);
-}
-
-// Activity Table Enhanced Functions
-let currentActivityFilters = {};
-let currentActivitySort = { field: 'created_at', order: 'desc' };
-
-function initializeActivityEnhancements() {
-    // Initialize activity real-time search
-    const activitySearch = document.getElementById('activityRealTimeSearch');
-    if (activitySearch) {
-        let searchTimeout;
-        activitySearch.addEventListener('input', function() {
-            clearTimeout(searchTimeout);
-            searchTimeout = setTimeout(() => {
-                performActivitySearch();
+function initializeUsersSection() {
+    // Set up real-time search
+    const searchInput = document.getElementById('usersRealTimeSearch');
+    if (searchInput) {
+        searchInput.addEventListener('input', function() {
+            clearTimeout(usersSearchDebounceTimer);
+            usersSearchDebounceTimer = setTimeout(() => {
+                usersCurrentPage = 1;
+                applyUsersFilters();
             }, 300);
         });
     }
+
+    // Set up filter dropdowns
+    const adminStatusFilter = document.getElementById('usersAdminStatusFilter');
+    const statusFilter = document.getElementById('usersStatusFilter');
     
-    // Initialize activity filters
-    const actionFilter = document.getElementById('activityActionFilter');
-    const timeFilter = document.getElementById('activityTimeFilter');
-    const advancedSearchColumn = document.getElementById('activityAdvancedSearchColumn');
-    
-    [actionFilter, timeFilter, advancedSearchColumn].forEach(filter => {
-        if (filter) {
-            filter.addEventListener('change', performActivitySearch);
-        }
-    });
-    
-    // Initialize activity table density
-    const densitySelect = document.getElementById('activityTableDensity');
-    if (densitySelect) {
-        densitySelect.addEventListener('change', function() {
-            changeActivityTableDensity(this.value);
+    if (adminStatusFilter) {
+        adminStatusFilter.addEventListener('change', () => {
+            usersCurrentPage = 1;
+            applyUsersFilters();
         });
     }
     
-    // Initialize activity column visibility
-    initializeActivityColumnVisibility();
-    
-    // Initialize activity sorting
-    document.querySelectorAll('#activity-table .sortable').forEach(header => {
-        header.addEventListener('click', function() {
-            const field = this.dataset.field;
-            if (currentActivitySort.field === field) {
-                currentActivitySort.order = currentActivitySort.order === 'asc' ? 'desc' : 'asc';
-            } else {
-                currentActivitySort.field = field;
-                currentActivitySort.order = 'asc';
-            }
-            updateActivitySortIndicators();
-            performActivitySearch();
+    if (statusFilter) {
+        statusFilter.addEventListener('change', () => {
+            usersCurrentPage = 1;
+            applyUsersFilters();
+        });
+    }
+
+    // Set up column visibility checkboxes
+    const columnCheckboxes = document.querySelectorAll('.users-column-checkbox');
+    columnCheckboxes.forEach(checkbox => {
+        checkbox.addEventListener('change', function() {
+            toggleUsersColumnVisibility(this.dataset.column, this.checked);
         });
     });
-}
 
-function initializeActivityColumnVisibility() {
-    const btn = document.getElementById('activityColumnVisibilityBtn');
-    const dropdown = document.getElementById('activityColumnVisibilityDropdown');
-    
-    if (btn && dropdown) {
-        btn.parentElement.style.position = 'relative';
-        
-        btn.addEventListener('click', function(e) {
-            e.stopPropagation();
-            dropdown.style.display = dropdown.style.display === 'none' ? 'block' : 'none';
-        });
-        
-        document.addEventListener('click', function() {
-            dropdown.style.display = 'none';
-        });
-        
-        dropdown.addEventListener('click', function(e) {
-            e.stopPropagation();
-        });
-        
-        dropdown.querySelectorAll('input[type="checkbox"]').forEach(checkbox => {
-            checkbox.addEventListener('change', function() {
-                toggleActivityColumn(this.dataset.column, this.checked);
-            });
-        });
+    // Load initial data if available
+    if (typeof loadUsersData === 'function') {
+        loadUsersData();
     }
 }
 
-function toggleActivityColumn(columnName, show) {
-    const table = document.getElementById('activity-table');
-    if (!table) return;
-    
-    const elements = table.querySelectorAll(`[data-column="${columnName}"]`);
-    elements.forEach(element => {
-        if (show) {
-            element.classList.remove('column-hidden');
-        } else {
-            element.classList.add('column-hidden');
-        }
-    });
-}
+function applyUsersFilters() {
+    const searchValue = document.getElementById('usersRealTimeSearch')?.value || '';
+    const adminStatus = document.getElementById('usersAdminStatusFilter')?.value || '';
+    const status = document.getElementById('usersStatusFilter')?.value || '';
+    const searchColumn = document.getElementById('usersAdvancedSearchColumn')?.value || 'all';
 
-function changeActivityTableDensity(density) {
-    const table = document.getElementById('activity-table');
-    if (!table) return;
-    
-    table.classList.remove('table-density-comfortable', 'table-density-compact', 'table-density-spacious');
-    table.classList.add(`table-density-${density}`);
-}
-
-function performActivitySearch() {
-    const searchInput = document.getElementById('activityRealTimeSearch');
-    const actionFilter = document.getElementById('activityActionFilter');
-    const timeFilter = document.getElementById('activityTimeFilter');
-    const advancedSearchColumn = document.getElementById('activityAdvancedSearchColumn');
-    
-    currentActivityFilters = {
-        search: searchInput ? searchInput.value : '',
-        action: actionFilter ? actionFilter.value : '',
-        timeFilter: timeFilter ? timeFilter.value : '',
-        searchColumn: advancedSearchColumn ? advancedSearchColumn.value : 'all'
+    usersCurrentFilters = {
+        search: searchValue,
+        admin_status: adminStatus,
+        status: status,
+        search_column: searchColumn
     };
+
+    showUsersLoading(true);
+    if (typeof loadUsersData === 'function') {
+        loadUsersData();
+    }
+}
+
+function toggleUsersSort(field) {
+    if (usersCurrentSort.field === field) {
+        usersCurrentSort.order = usersCurrentSort.order === 'asc' ? 'desc' : 'asc';
+    } else {
+        usersCurrentSort.field = field;
+        usersCurrentSort.order = 'asc';
+    }
     
+    usersCurrentPage = 1;
+    if (typeof loadUsersData === 'function') {
+        loadUsersData();
+    }
+}
+
+function updateUsersSortIndicators() {
+    // Clear all indicators
+    document.querySelectorAll('#manageUsersSection #users-table-enhanced .sort-indicator').forEach(indicator => {
+        indicator.textContent = '';
+        indicator.className = 'sort-indicator';
+    });
+    
+    // Set active indicator
+    const activeIndicator = document.querySelector(`#users-table-enhanced [data-sortable="${usersCurrentSort.field}"] .sort-indicator`);
+    if (activeIndicator) {
+        activeIndicator.textContent = usersCurrentSort.order === 'asc' ? '↑' : '↓';
+        activeIndicator.className = `sort-indicator ${usersCurrentSort.order}`;
+    }
+}
+
+function changeUsersTableDensity() {
+    const density = document.getElementById('usersTableDensity').value;
+    const table = document.getElementById('users-table-enhanced');
+    if (table) {
+        table.className = table.className.replace(/density-\w+/g, '');
+        table.classList.add(`density-${density}`);
+    }
+}
+
+function toggleUsersColumnVisibilityDropdown() {
+    const dropdown = document.getElementById('usersColumnVisibilityDropdown');
+    if (dropdown) {
+        dropdown.style.display = dropdown.style.display === 'none' ? 'block' : 'none';
+    }
+}
+
+function toggleUsersColumnVisibility(column, visible) {
+    const table = document.getElementById('users-table-enhanced');
+    if (!table) return;
+    
+    const elements = table.querySelectorAll(`[data-column="${column}"]`);
+    elements.forEach(el => {
+        el.style.display = visible ? '' : 'none';
+    });
+}
+
+function clearAllUsersFilters() {
+    document.getElementById('usersRealTimeSearch').value = '';
+    document.getElementById('usersAdminStatusFilter').value = '';
+    document.getElementById('usersStatusFilter').value = '';
+    document.getElementById('usersAdvancedSearchColumn').value = 'all';
+    
+    usersCurrentFilters = {};
+    usersCurrentPage = 1;
+    if (typeof loadUsersData === 'function') {
+        loadUsersData();
+    }
+}
+
+function changeUsersPerPage() {
+    usersPerPage = parseInt(document.getElementById('usersPerPageSelector').value);
+    usersCurrentPage = 1;
+    if (typeof loadUsersData === 'function') {
+        loadUsersData();
+    }
+}
+
+function updateUsersInfo(total, page, perPage) {
+    const info = document.getElementById('usersPaginationInfo');
+    if (info) {
+        const start = (page - 1) * perPage + 1;
+        const end = Math.min(page * perPage, total);
+        info.textContent = `Showing ${start}-${end} of ${total} users`;
+    }
+}
+
+function updateUsersPagination(currentPage, totalPages) {
+    const container = document.getElementById('usersPaginationButtons');
+    if (!container) return;
+    
+    let buttonsHtml = '';
+    
+    // Previous button
+    if (currentPage > 1) {
+        buttonsHtml += `<button onclick="goToUsersPage(${currentPage - 1})" class="btn btn-secondary">Previous</button>`;
+    }
+    
+    // Page numbers
+    const maxVisible = 5;
+    let startPage = Math.max(1, currentPage - Math.floor(maxVisible / 2));
+    let endPage = Math.min(totalPages, startPage + maxVisible - 1);
+    
+    if (endPage - startPage + 1 < maxVisible) {
+        startPage = Math.max(1, endPage - maxVisible + 1);
+    }
+    
+    for (let i = startPage; i <= endPage; i++) {
+        const isActive = i === currentPage;
+        buttonsHtml += `<button onclick="goToUsersPage(${i})" class="btn ${isActive ? 'btn-primary' : 'btn-secondary'}">${i}</button>`;
+    }
+    
+    // Next button
+    if (currentPage < totalPages) {
+        buttonsHtml += `<button onclick="goToUsersPage(${currentPage + 1})" class="btn btn-secondary">Next</button>`;
+    }
+    
+    container.innerHTML = buttonsHtml;
+}
+
+function goToUsersPage(page) {
+    usersCurrentPage = page;
+    if (typeof loadUsersData === 'function') {
+        loadUsersData();
+    }
+}
+
+function showUsersLoading(loading) {
+    const indicator = document.getElementById('usersFilterLoadingIndicator');
+    if (indicator) {
+        indicator.style.display = loading ? 'flex' : 'none';
+    }
+    
+    const table = document.getElementById('users-table-enhanced');
+    if (table) {
+        table.style.opacity = loading ? '0.6' : '1';
+    }
+// ============================================================================
+// ENHANCED ACTIVITY TABLE FUNCTIONALITY  
+// ============================================================================
+
+function initializeActivitySection() {
+    // Set up real-time search for activity table
+    const searchInput = document.getElementById('activityRealTimeSearch');
+    if (searchInput) {
+        searchInput.addEventListener('input', function() {
+            clearTimeout(activitySearchDebounceTimer);
+            activitySearchDebounceTimer = setTimeout(() => {
+                activityCurrentPage = 1;
+                applyActivityFilters();
+            }, 300);
+        });
+    }
+
+    // Set up filter dropdowns for activity
+    const actionFilter = document.getElementById('activityActionFilter');
+    const timeFilter = document.getElementById('activityTimeFilter');
+    
+    if (actionFilter) {
+        actionFilter.addEventListener('change', () => {
+            activityCurrentPage = 1;
+            applyActivityFilters();
+        });
+    }
+    
+    if (timeFilter) {
+        timeFilter.addEventListener('change', () => {
+            activityCurrentPage = 1;
+            applyActivityFilters();
+        });
+    }
+
+    // Set up column visibility checkboxes for activity
+    const columnCheckboxes = document.querySelectorAll('.activity-column-checkbox');
+    columnCheckboxes.forEach(checkbox => {
+        checkbox.addEventListener('change', function() {
+            toggleActivityColumnVisibility(this.dataset.column, this.checked);
+        });
+    });
+
+    // Initialize activity table if it exists
+    if (document.getElementById('activity-table')) {
+        loadActivityData();
+    }
+}
+
+function applyActivityFilters() {
+    const searchValue = document.getElementById('activityRealTimeSearch')?.value || '';
+    const action = document.getElementById('activityActionFilter')?.value || '';
+    const timeRange = document.getElementById('activityTimeFilter')?.value || '';
+    const searchColumn = document.getElementById('activityAdvancedSearchColumn')?.value || 'all';
+
+    activityCurrentFilters = {
+        search: searchValue,
+        action: action,
+        time_range: timeRange,
+        search_column: searchColumn
+    };
+
+    showActivityLoading(true);
     loadActivityData();
 }
 
 function loadActivityData() {
-    setActivityLoading(true);
+    // Apply client-side filtering to existing data
+    const table = document.getElementById('activity-table');
+    if (!table) return;
     
-    try {
-        // Client-side filtering of existing table data
-        const table = document.getElementById('activity-table');
-        if (!table) return;
+    const rows = table.querySelectorAll('tbody tr');
+    let visibleCount = 0;
+    
+    rows.forEach(row => {
+        let shouldShow = true;
         
-        const rows = Array.from(table.querySelectorAll('tbody tr'));
-        let filteredRows = rows;
-        
-        // Apply search filter based on selected column
-        if (currentActivityFilters.search) {
-            const searchTerm = currentActivityFilters.search.toLowerCase();
-            filteredRows = filteredRows.filter(row => {
-                if (currentActivityFilters.searchColumn === 'all') {
-                    return row.textContent.toLowerCase().includes(searchTerm);
-                } else {
-                    const columnIndex = getActivityColumnIndex(currentActivityFilters.searchColumn);
-                    if (columnIndex !== -1 && row.cells[columnIndex]) {
-                        return row.cells[columnIndex].textContent.toLowerCase().includes(searchTerm);
-                    }
-                }
-                return false;
-            });
+        // Apply search filter
+        if (activityCurrentFilters.search) {
+            const searchText = activityCurrentFilters.search.toLowerCase();
+            const rowText = row.textContent.toLowerCase();
+            shouldShow = shouldShow && rowText.includes(searchText);
         }
         
         // Apply action filter
-        if (currentActivityFilters.action) {
-            filteredRows = filteredRows.filter(row => {
-                const actionCell = row.cells[1]; // Action column
-                return actionCell && actionCell.textContent.toLowerCase().includes(currentActivityFilters.action);
-            });
+        if (activityCurrentFilters.action) {
+            const actionCell = row.querySelector('[data-column="action"]');
+            if (actionCell) {
+                const actionText = actionCell.textContent.toLowerCase();
+                shouldShow = shouldShow && actionText.includes(activityCurrentFilters.action.toLowerCase());
+            }
         }
         
-        // Apply time filter
-        if (currentActivityFilters.timeFilter) {
-            const now = new Date();
-            filteredRows = filteredRows.filter(row => {
-                const timestampCell = row.cells[0]; // Timestamp column
-                if (!timestampCell) return false;
-                
-                const rowDate = parseActivityDate(timestampCell.textContent);
-                if (!rowDate) return false;
-                
-                switch (currentActivityFilters.timeFilter) {
-                    case 'today':
-                        return rowDate.toDateString() === now.toDateString();
-                    case 'week':
-                        const weekAgo = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
-                        return rowDate >= weekAgo;
-                    case 'month':
-                        const monthAgo = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000);
-                        return rowDate >= monthAgo;
-                    default:
-                        return true;
-                }
-            });
-        }
-        
-        // Apply sorting
-        if (currentActivitySort.field) {
-            filteredRows.sort((a, b) => {
-                const columnIndex = getActivityColumnIndex(currentActivitySort.field);
-                if (columnIndex === -1) return 0;
-                
-                const aValue = a.cells[columnIndex] ? a.cells[columnIndex].textContent.trim() : '';
-                const bValue = b.cells[columnIndex] ? b.cells[columnIndex].textContent.trim() : '';
-                
-                let comparison = 0;
-                if (currentActivitySort.field === 'created_at') {
-                    const aDate = parseActivityDate(aValue);
-                    const bDate = parseActivityDate(bValue);
-                    comparison = aDate && bDate ? aDate.getTime() - bDate.getTime() : 0;
-                } else {
-                    comparison = aValue.localeCompare(bValue);
-                }
-                
-                return currentActivitySort.order === 'desc' ? -comparison : comparison;
-            });
-        }
-        
-        // Show/hide rows
-        rows.forEach(row => row.style.display = 'none');
-        filteredRows.forEach(row => row.style.display = '');
-        
-        // Update results info
-        updateActivityResultsInfo(filteredRows.length, rows.length);
-        
-    } catch (error) {
-        console.error('Error filtering activity data:', error);
-    } finally {
-        setActivityLoading(false);
-    }
-}
-
-function getActivityColumnIndex(fieldName) {
-    const columnMap = {
-        'created_at': 0,
-        'timestamp': 0,
-        'action': 1,
-        'target_user': 2,
-        'admin_user': 3,
-        'admin': 3,
-        'ip_address': 4
-    };
-    return columnMap[fieldName] || -1;
-}
-
-function parseActivityDate(dateString) {
-    try {
-        // Handle different date formats that might be in the table
-        const cleanDateString = dateString.trim();
-        return new Date(cleanDateString);
-    } catch (e) {
-        return null;
-    }
-}
-
-function updateActivityResultsInfo(filtered, total) {
-    const infoDiv = document.getElementById('activity-results-info');
-    if (!infoDiv) return;
+        row.style.display = shouldShow ? '' : 'none';
+        if (shouldShow) visibleCount++;
+    });
     
-    if (filtered < total) {
-        infoDiv.innerHTML = `Showing ${filtered} of ${total} activity entries`;
-        infoDiv.style.display = 'block';
+    updateActivityInfo(visibleCount, 1, visibleCount);
+    showActivityLoading(false);
+}
+
+function toggleActivitySort(field) {
+    if (activityCurrentSort.field === field) {
+        activityCurrentSort.order = activityCurrentSort.order === 'asc' ? 'desc' : 'asc';
     } else {
-        infoDiv.style.display = 'none';
+        activityCurrentSort.field = field;
+        activityCurrentSort.order = 'asc';
     }
+    
+    activityCurrentPage = 1;
+    updateActivitySortIndicators();
+    loadActivityData();
 }
 
 function updateActivitySortIndicators() {
+    // Clear all indicators
     document.querySelectorAll('#activity-table .sort-indicator').forEach(indicator => {
+        indicator.textContent = '';
         indicator.className = 'sort-indicator';
     });
     
-    const activeHeader = document.querySelector(`#activity-table [data-field="${currentActivitySort.field}"] .sort-indicator`);
-    if (activeHeader) {
-        activeHeader.className = `sort-indicator ${currentActivitySort.order}`;
+    // Set active indicator
+    const activeIndicator = document.querySelector(`#activity-table [data-sortable="${activityCurrentSort.field}"] .sort-indicator`);
+    if (activeIndicator) {
+        activeIndicator.textContent = activityCurrentSort.order === 'asc' ? '↑' : '↓';
+        activeIndicator.className = `sort-indicator ${activityCurrentSort.order}`;
     }
 }
 
-function clearActivityFilters() {
-    // Clear all filter inputs
-    const searchInput = document.getElementById('activityRealTimeSearch');
-    const actionFilter = document.getElementById('activityActionFilter');
-    const timeFilter = document.getElementById('activityTimeFilter');
-    const advancedSearchColumn = document.getElementById('activityAdvancedSearchColumn');
-    
-    if (searchInput) searchInput.value = '';
-    if (actionFilter) actionFilter.value = '';
-    if (timeFilter) timeFilter.value = '';
-    if (advancedSearchColumn) advancedSearchColumn.value = 'all';
-    
-    // Reset filters and sorting
-    currentActivityFilters = {};
-    currentActivitySort = { field: 'created_at', order: 'desc' };
-    
-    // Show all rows
+function changeActivityTableDensity() {
+    const density = document.getElementById('activityTableDensity').value;
     const table = document.getElementById('activity-table');
     if (table) {
-        const rows = Array.from(table.querySelectorAll('tbody tr'));
-        rows.forEach(row => row.style.display = '');
+        table.className = table.className.replace(/density-\w+/g, '');
+        table.classList.add(`density-${density}`);
     }
-    
-    // Hide results info
-    const infoDiv = document.getElementById('activity-results-info');
-    if (infoDiv) infoDiv.style.display = 'none';
-    
-    // Update sort indicators
-    updateActivitySortIndicators();
 }
 
-function setActivityLoading(loading) {
+function toggleActivityColumnVisibilityDropdown() {
+    const dropdown = document.getElementById('activityColumnVisibilityDropdown');
+    if (dropdown) {
+        dropdown.style.display = dropdown.style.display === 'none' ? 'block' : 'none';
+    }
+}
+
+function toggleActivityColumnVisibility(column, visible) {
+    const table = document.getElementById('activity-table');
+    if (!table) return;
+    
+    const elements = table.querySelectorAll(`[data-column="${column}"]`);
+    elements.forEach(el => {
+        el.style.display = visible ? '' : 'none';
+    });
+}
+
+function clearAllActivityFilters() {
+    document.getElementById('activityRealTimeSearch').value = '';
+    document.getElementById('activityActionFilter').value = '';
+    document.getElementById('activityTimeFilter').value = '';
+    document.getElementById('activityAdvancedSearchColumn').value = 'all';
+    
+    activityCurrentFilters = {};
+    activityCurrentPage = 1;
+    loadActivityData();
+}
+
+function changeActivityPerPage() {
+    activityPerPage = parseInt(document.getElementById('activityPerPageSelector').value);
+    activityCurrentPage = 1;
+    loadActivityData();
+}
+
+function updateActivityInfo(total, page, perPage) {
+    const info = document.getElementById('activityPaginationInfo');
+    if (info) {
+        const start = (page - 1) * perPage + 1;
+        const end = Math.min(page * perPage, total);
+        info.textContent = `Showing ${start}-${end} of ${total} activity records`;
+    }
+}
+
+function updateActivityPagination(currentPage, totalPages) {
+    const container = document.getElementById('activityPaginationButtons');
+    if (!container) return;
+    
+    let buttonsHtml = '';
+    
+    // Previous button
+    if (currentPage > 1) {
+        buttonsHtml += `<button onclick="goToActivityPage(${currentPage - 1})" class="btn btn-secondary">Previous</button>`;
+    }
+    
+    // Page numbers
+    const maxVisible = 5;
+    let startPage = Math.max(1, currentPage - Math.floor(maxVisible / 2));
+    let endPage = Math.min(totalPages, startPage + maxVisible - 1);
+    
+    if (endPage - startPage + 1 < maxVisible) {
+        startPage = Math.max(1, endPage - maxVisible + 1);
+    }
+    
+    for (let i = startPage; i <= endPage; i++) {
+        const isActive = i === currentPage;
+        buttonsHtml += `<button onclick="goToActivityPage(${i})" class="btn ${isActive ? 'btn-primary' : 'btn-secondary'}">${i}</button>`;
+    }
+    
+    // Next button
+    if (currentPage < totalPages) {
+        buttonsHtml += `<button onclick="goToActivityPage(${currentPage + 1})" class="btn btn-secondary">Next</button>`;
+    }
+    
+    container.innerHTML = buttonsHtml;
+}
+
+function goToActivityPage(page) {
+    activityCurrentPage = page;
+    loadActivityData();
+}
+
+function showActivityLoading(loading) {
+    const indicator = document.getElementById('activityFilterLoadingIndicator');
+    if (indicator) {
+        indicator.style.display = loading ? 'flex' : 'none';
+    }
+    
     const table = document.getElementById('activity-table');
     if (table) {
         table.style.opacity = loading ? '0.6' : '1';
     }
+}
 }
 </script>
