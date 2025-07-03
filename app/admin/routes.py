@@ -2575,6 +2575,142 @@ def api_user_details(user_id):
     except Exception as e:
         return jsonify({'error': str(e)}), 500
 
+@admin_bp.route('/api/activity-logs')
+@admin_required
+def api_activity_logs():
+    """API endpoint for activity logs with filtering, sorting, and pagination"""
+    try:
+        page = int(request.args.get('page', 1))
+        per_page = int(request.args.get('per_page', 50))
+        search = request.args.get('search', '')
+        search_column = request.args.get('search_column', 'all')
+        action = request.args.get('action', '')
+        time_range = request.args.get('time_range', '')
+        sort_by = request.args.get('sort_by', 'created_at')
+        sort_order = request.args.get('sort_order', 'desc')
+        
+        # Validate per_page
+        if per_page not in [20, 50, 100] and per_page != -1:
+            per_page = 50
+            
+        # Build query
+        query = AdminAuditLog.query
+        
+        # Apply search filters
+        if search:
+            search_filter = None
+            if search_column == 'action':
+                search_filter = AdminAuditLog.action.contains(search)
+            elif search_column == 'target_user':
+                query = query.join(User, AdminAuditLog.target_user_id == User.id, isouter=True)
+                search_filter = User.username.contains(search)
+            elif search_column == 'admin_user':
+                query = query.join(User, AdminAuditLog.admin_user_id == User.id, isouter=True)
+                search_filter = User.username.contains(search)
+            elif search_column == 'ip_address':
+                search_filter = AdminAuditLog.ip_address.contains(search)
+            else:  # 'all'
+                admin_user_alias = db.aliased(User)
+                target_user_alias = db.aliased(User)
+                query = query.join(admin_user_alias, AdminAuditLog.admin_user_id == admin_user_alias.id, isouter=True)
+                query = query.join(target_user_alias, AdminAuditLog.target_user_id == target_user_alias.id, isouter=True)
+                search_filter = (
+                    AdminAuditLog.action.contains(search) |
+                    AdminAuditLog.additional_info.contains(search) |
+                    AdminAuditLog.ip_address.contains(search) |
+                    admin_user_alias.username.contains(search) |
+                    target_user_alias.username.contains(search)
+                )
+            
+            if search_filter is not None:
+                query = query.filter(search_filter)
+        
+        # Apply action filter
+        if action:
+            query = query.filter(AdminAuditLog.action == action)
+        
+        # Apply time range filter
+        if time_range:
+            from datetime import datetime, timedelta
+            now = datetime.utcnow()
+            if time_range == 'today':
+                start_date = now.replace(hour=0, minute=0, second=0, microsecond=0)
+                query = query.filter(AdminAuditLog.created_at >= start_date)
+            elif time_range == 'week':
+                start_date = now - timedelta(days=7)
+                query = query.filter(AdminAuditLog.created_at >= start_date)
+            elif time_range == 'month':
+                start_date = now - timedelta(days=30)
+                query = query.filter(AdminAuditLog.created_at >= start_date)
+        
+        # Apply sorting
+        if hasattr(AdminAuditLog, sort_by):
+            if sort_order == 'desc':
+                query = query.order_by(getattr(AdminAuditLog, sort_by).desc())
+            else:
+                query = query.order_by(getattr(AdminAuditLog, sort_by))
+        
+        # Handle "All" option for per_page
+        if per_page == -1:
+            logs = query.all()
+            # Create a mock pagination object
+            class MockPagination:
+                def __init__(self, items):
+                    self.items = items
+                    self.page = 1
+                    self.pages = 1
+                    self.per_page = len(items)
+                    self.total = len(items)
+                    self.has_next = False
+                    self.has_prev = False
+                    self.next_num = None
+                    self.prev_num = None
+            
+            logs = MockPagination(logs)
+        else:
+            # Paginate
+            logs = query.paginate(
+                page=page, per_page=per_page, error_out=False
+            )
+        
+        # Format response
+        logs_data = []
+        for log in logs.items:
+            logs_data.append({
+                'id': log.id,
+                'action': log.action,
+                'created_at': log.created_at.strftime('%d.%m.%Y %H:%M:%S') if log.created_at else '',
+                'ip_address': log.ip_address or '-',
+                'user_agent': log.user_agent or '',
+                'additional_info': log.additional_info or '',
+                'admin_user': {
+                    'id': log.admin_user.id,
+                    'username': log.admin_user.username
+                } if log.admin_user else {'id': None, 'username': 'System'},
+                'target_user': {
+                    'id': log.target_user.id,
+                    'username': log.target_user.username
+                } if log.target_user else {'id': None, 'username': 'Unknown'}
+            })
+        
+        return jsonify({
+            'logs': logs_data,
+            'pagination': {
+                'page': logs.page,
+                'pages': logs.pages,
+                'per_page': logs.per_page,
+                'total': logs.total,
+                'has_next': logs.has_next,
+                'has_prev': logs.has_prev,
+                'next_num': logs.next_num,
+                'prev_num': logs.prev_num
+            }
+        })
+        
+    except Exception as e:
+        current_app.logger.error(f'Error in api_activity_logs: {str(e)}')
+        return jsonify({'error': str(e)}), 500
+
 @admin_bp.route('/api/audit-logs')
 @admin_required
 def api_audit_logs():

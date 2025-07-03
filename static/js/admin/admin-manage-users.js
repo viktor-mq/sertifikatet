@@ -6,6 +6,8 @@
 (function() {
     'use strict';
     function initializeActivitySection() {
+        console.log('Initializing activity section...');
+        
         // Set up real-time search for activity table
         const searchInput = document.getElementById('activityRealTimeSearch');
         if (searchInput) {
@@ -46,7 +48,10 @@
 
         // Initialize activity table if it exists
         if (document.getElementById('activity-table')) {
+            console.log('Activity table found, loading initial data...');
             loadActivityData();
+        } else {
+            console.log('Activity table not found in DOM');
         }
     }
 
@@ -68,100 +73,132 @@
     }
 
     function loadActivityData() {
-        console.log('Loading activity data with filters:', activityCurrentFilters);
+        console.log('Loading activity data from API with filters:', activityCurrentFilters);
         
-        // Apply client-side filtering to existing data
-        const table = document.getElementById('activity-table');
-        if (!table) {
-            console.log('Activity table not found!');
+        showActivityLoading(true);
+        
+        // Prepare API parameters
+        const params = {
+            page: activityCurrentPage,
+            per_page: activityPerPage,
+            sort_by: activityCurrentSort.field,
+            sort_order: activityCurrentSort.order,
+            ...activityCurrentFilters
+        };
+        
+        // Build query string
+        const queryString = new URLSearchParams(params).toString();
+        
+        fetch(`/admin/api/activity-logs?${queryString}`, {
+            method: 'GET',
+            headers: {
+                'Accept': 'application/json',
+                'X-Requested-With': 'XMLHttpRequest'
+            }
+        })
+        .then(response => {
+            if (!response.ok) {
+                throw new Error(`HTTP error! status: ${response.status}`);
+            }
+            return response.json();
+        })
+        .then(data => {
+            console.log('Activity data loaded:', data);
+            
+            // Update the activity table
+            updateActivityTable(data.logs);
+            
+            // Update pagination
+            updateActivityPagination(data.pagination.page, data.pagination.pages);
+            
+            // Update info
+            updateActivityInfo(data.pagination.total, data.pagination.page, data.pagination.per_page);
+            
+            // Update sort indicators
+            updateActivitySortIndicators();
+            
+        })
+        .catch(error => {
+            console.error('Error loading activity data:', error);
+            
+            // Show error message in table
+            const tbody = document.querySelector('#activity-table tbody');
+            if (tbody) {
+                tbody.innerHTML = `
+                    <tr>
+                        <td colspan="5" style="text-align: center; color: #ef4444; font-style: italic;">
+                            Error loading activity data: ${error.message}
+                        </td>
+                    </tr>
+                `;
+            }
+        })
+        .finally(() => {
+            showActivityLoading(false);
+        });
+    }
+    
+    function updateActivityTable(logs) {
+        console.log(`Updating activity table with ${logs.length} logs`);
+        
+        const tbody = document.querySelector('#activity-table tbody');
+        if (!tbody) {
+            console.error('Activity table tbody not found!');
             return;
         }
         
-        const rows = table.querySelectorAll('tbody tr');
-        let visibleCount = 0;
+        // Clear existing rows
+        tbody.innerHTML = '';
         
-        console.log(`Found ${rows.length} activity rows to filter`);
+        if (logs.length === 0) {
+            tbody.innerHTML = `
+                <tr>
+                    <td colspan="5" style="text-align: center; color: #999; font-style: italic;">
+                        No activity records found
+                    </td>
+                </tr>
+            `;
+            return;
+        }
         
-        rows.forEach(row => {
-            let shouldShow = true;
+        // Add new rows
+        logs.forEach(log => {
+            const row = document.createElement('tr');
             
-            // Apply search filter
-            if (activityCurrentFilters.search) {
-                const searchText = activityCurrentFilters.search.toLowerCase();
-                
-                if (activityCurrentFilters.search_column && activityCurrentFilters.search_column !== 'all') {
-                    const specificCell = row.querySelector(`[data-column="${activityCurrentFilters.search_column}"]`);
-                    shouldShow = shouldShow && specificCell && specificCell.textContent.toLowerCase().includes(searchText);
-                } else {
-                    const rowText = row.textContent.toLowerCase();
-                    shouldShow = shouldShow && rowText.includes(searchText);
-                }
+            // Format action badge
+            let actionBadge = '';
+            switch(log.action) {
+                case 'grant_admin':
+                    actionBadge = '<span class="btn btn-warning btn-small" style="cursor: default;">🛡️ Admin Granted</span>';
+                    break;
+                case 'revoke_admin':
+                    actionBadge = '<span class="btn btn-danger btn-small" style="cursor: default;">❌ Admin Revoked</span>';
+                    break;
+                case 'admin_login_success':
+                    actionBadge = '<span class="btn btn-success btn-small" style="cursor: default;">✅ Admin Login</span>';
+                    break;
+                case 'admin_login_failure':
+                    actionBadge = '<span class="btn btn-danger btn-small" style="cursor: default;">❌ Login Failed</span>';
+                    break;
+                default:
+                    actionBadge = `<span class="btn btn-secondary btn-small" style="cursor: default;">${log.action}</span>`;
             }
             
-            // Apply action filter
-            if (activityCurrentFilters.action) {
-                const actionCell = row.querySelector('[data-column="action"]');
-                if (actionCell) {
-                    const actionText = actionCell.textContent.toLowerCase();
-                    let actionMatch = false;
-                    
-                    // Map filter values to actual text content
-                    switch(activityCurrentFilters.action) {
-                        case 'grant_admin':
-                            actionMatch = actionText.includes('admin granted');
-                            break;
-                        case 'revoke_admin':
-                            actionMatch = actionText.includes('admin revoked');
-                            break;
-                        case 'admin_login_success':
-                            actionMatch = actionText.includes('admin login');
-                            break;
-                        case 'admin_login_failure':
-                            actionMatch = actionText.includes('login failed');
-                            break;
-                        default:
-                            actionMatch = actionText.includes(activityCurrentFilters.action.toLowerCase());
-                    }
-                    shouldShow = shouldShow && actionMatch;
-                }
-            }
+            row.innerHTML = `
+                <td data-column="timestamp">${log.created_at}</td>
+                <td data-column="action">${actionBadge}</td>
+                <td data-column="target_user">${log.target_user.username}</td>
+                <td data-column="admin_user">${log.admin_user.username}</td>
+                <td data-column="ip_address"><code>${log.ip_address}</code></td>
+            `;
             
-            // Apply time filter (basic implementation)
-            if (activityCurrentFilters.time_range) {
-                const timestampCell = row.querySelector('[data-column="timestamp"]');
-                if (timestampCell) {
-                    const timestampText = timestampCell.textContent;
-                    const now = new Date();
-                    const rowDate = new Date(timestampText.split(' ')[0].split('.').reverse().join('-'));
-                    
-                    switch(activityCurrentFilters.time_range) {
-                        case 'today':
-                            const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
-                            shouldShow = shouldShow && rowDate >= today;
-                            break;
-                        case 'week':
-                            const weekAgo = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
-                            shouldShow = shouldShow && rowDate >= weekAgo;
-                            break;
-                        case 'month':
-                            const monthAgo = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000);
-                            shouldShow = shouldShow && rowDate >= monthAgo;
-                            break;
-                    }
-                }
-            }
-            
-            row.style.display = shouldShow ? '' : 'none';
-            if (shouldShow) visibleCount++;
+            tbody.appendChild(row);
         });
-        
-        console.log(`Showing ${visibleCount} of ${rows.length} activity rows`);
-        
-        updateActivityInfo(visibleCount, 1, visibleCount);
-        showActivityLoading(false);
     }
 
     function toggleActivitySort(field) {
+        console.log(`Toggling activity sort for field: ${field}`);
+        
         if (activityCurrentSort.field === field) {
             activityCurrentSort.order = activityCurrentSort.order === 'asc' ? 'desc' : 'asc';
         } else {
@@ -170,7 +207,6 @@
         }
         
         activityCurrentPage = 1;
-        updateActivitySortIndicators();
         loadActivityData();
     }
 
@@ -228,15 +264,8 @@
         activityCurrentFilters = {};
         activityCurrentPage = 1;
         
-        // Show all rows
-        const table = document.getElementById('activity-table');
-        if (table) {
-            const rows = table.querySelectorAll('tbody tr');
-            rows.forEach(row => {
-                row.style.display = '';
-            });
-            updateActivityInfo(rows.length, 1, rows.length);
-        }
+        // Reload data from API
+        loadActivityData();
     }
 
     function changeActivityPerPage() {
@@ -288,6 +317,7 @@
     }
 
     function goToActivityPage(page) {
+        console.log(`Going to activity page: ${page}`);
         activityCurrentPage = page;
         loadActivityData();
     }
@@ -302,6 +332,73 @@
         if (table) {
             table.style.opacity = loading ? '0.6' : '1';
         }
+    }
+
+    // ============================================================================
+    // LIVE TABLE UPDATE FUNCTIONS
+    // ============================================================================
+
+    function updateUserRowAdminStatus(userId, isAdmin, username) {
+        console.log(`Updating user row for ${username} (ID: ${userId}) - Admin: ${isAdmin}`);
+        
+        // Find the user row
+        const table = document.getElementById('users-table-enhanced');
+        if (!table) {
+            console.error('Users table not found!');
+            return;
+        }
+        
+        const rows = table.querySelectorAll('tbody tr');
+        let targetRow = null;
+        
+        rows.forEach(row => {
+            const idCell = row.querySelector('[data-column="id"]');
+            if (idCell && parseInt(idCell.textContent) === userId) {
+                targetRow = row;
+            }
+        });
+        
+        if (!targetRow) {
+            console.error(`User row with ID ${userId} not found!`);
+            return;
+        }
+        
+        // Update the admin status column
+        const adminCell = targetRow.querySelector('[data-column="admin"]');
+        if (adminCell) {
+            if (isAdmin) {
+                adminCell.innerHTML = '<span class="btn btn-danger btn-small" style="cursor: default;">🛡️ Admin</span>';
+                targetRow.classList.add('table-warning'); // Add admin highlighting
+            } else {
+                adminCell.innerHTML = '<span class="btn btn-secondary btn-small" style="cursor: default;">User</span>';
+                targetRow.classList.remove('table-warning'); // Remove admin highlighting
+            }
+        }
+        
+        // Update the actions column
+        const actionsCell = targetRow.querySelector('[data-column="actions"]');
+        if (actionsCell) {
+            // Keep the View button
+            const viewButton = `<button onclick="openUserModal(${userId})" class="btn btn-info btn-small" style="margin-right: 5px;">
+                👁️ View
+              </button>`;
+            
+            // Update the admin action button
+            let adminActionButton;
+            if (isAdmin) {
+                adminActionButton = `<button onclick="revokeAdminAjax(${userId}, '${username}')" class="btn btn-danger btn-small">
+                  👤❌ Revoke Admin
+                </button>`;
+            } else {
+                adminActionButton = `<button onclick="grantAdminAjax(${userId}, '${username}')" class="btn btn-warning btn-small">
+                  🛡️ Grant Admin
+                </button>`;
+            }
+            
+            actionsCell.innerHTML = viewButton + adminActionButton;
+        }
+        
+        console.log(`Successfully updated user row for ${username}`);
     }
 
     // ============================================================================
@@ -321,6 +418,8 @@
         try {
             console.log(`Making API call to: /admin/api/users/${userId}/grant-admin`);
             
+            showUsersLoading(true);
+            
             const response = await fetch(`/admin/api/users/${userId}/grant-admin`, {
                 method: 'POST',
                 headers: {
@@ -330,14 +429,16 @@
             });
             
             console.log('API Response status:', response.status);
-            console.log('API Response headers:', [...response.headers.entries()]);
             
             const result = await response.json();
             console.log('API Response data:', result);
             
             if (result.success) {
                 alert(`✅ Admin privileges granted to ${username}`);
-                location.reload(); // Refresh to show updated status
+                
+                // Update the user row in the table instead of reloading
+                updateUserRowAdminStatus(userId, true, username);
+                
             } else {
                 alert(`❌ Error: ${result.error || 'Failed to grant admin privileges'}`);
             }
@@ -345,6 +446,8 @@
         } catch (error) {
             console.error('Error granting admin privileges:', error);
             alert(`❌ Network error: ${error.message}`);
+        } finally {
+            showUsersLoading(false);
         }
     }
 
@@ -361,6 +464,8 @@
         try {
             console.log(`Making API call to: /admin/api/users/${userId}/revoke-admin`);
             
+            showUsersLoading(true);
+            
             const response = await fetch(`/admin/api/users/${userId}/revoke-admin`, {
                 method: 'POST',
                 headers: {
@@ -370,14 +475,16 @@
             });
             
             console.log('API Response status:', response.status);
-            console.log('API Response headers:', [...response.headers.entries()]);
             
             const result = await response.json();
             console.log('API Response data:', result);
             
             if (result.success) {
                 alert(`✅ Admin privileges revoked from ${username}`);
-                location.reload(); // Refresh to show updated status
+                
+                // Update the user row in the table instead of reloading
+                updateUserRowAdminStatus(userId, false, username);
+                
             } else {
                 alert(`❌ Error: ${result.error || 'Failed to revoke admin privileges'}`);
             }
@@ -385,6 +492,8 @@
         } catch (error) {
             console.error('Error revoking admin privileges:', error);
             alert(`❌ Network error: ${error.message}`);
+        } finally {
+            showUsersLoading(false);
         }
     }
 
@@ -1221,6 +1330,7 @@
     window.revokeAdminAjax = revokeAdminAjax;
     window.openUserModal = openUserModal;
     window.closeUserModal = closeUserModal;
+    window.updateUserRowAdminStatus = updateUserRowAdminStatus;
     window.toggleUsersSort = toggleUsersSort;
     window.toggleActivitySort = toggleActivitySort;
     window.toggleUsersColumnVisibilityDropdown = toggleUsersColumnVisibilityDropdown;
@@ -1231,4 +1341,5 @@
     window.changeActivityTableDensity = changeActivityTableDensity;
     window.clearAllActivityFilters = clearAllActivityFilters;
     window.changeActivityPerPage = changeActivityPerPage;
+    window.goToActivityPage = goToActivityPage;
 })();
