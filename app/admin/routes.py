@@ -1247,6 +1247,46 @@ def create_report_from_feedback(feedback_id):
     return redirect(url_for('admin.view_report', report_id=report.id))
 
 # ========================================
+# AJAX API ENDPOINTS FOR REPORTS
+# ========================================
+
+@admin_bp.route('/api/reports/<int:report_id>/assign', methods=['POST'])
+@admin_required
+def api_assign_report(report_id):
+    """AJAX endpoint to assign a report to the current user."""
+    try:
+        report = AdminReport.query.get_or_404(report_id)
+        
+        if report.assigned_to_user_id:
+            return jsonify({'success': False, 'error': 'Report is already assigned.'}), 400
+
+        report.assigned_to_user_id = current_user.id
+        report.status = 'in_progress'
+        db.session.commit()
+
+        AdminSecurityService.log_admin_action(
+            admin_user=current_user,
+            action='report_assign_ajax',
+            target_user_id=report.affected_user_id,
+            additional_info=json.dumps({
+                'report_id': report.id,
+                'report_type': report.report_type
+            })
+        )
+        
+        return jsonify({
+            'success': True, 
+            'message': 'Report assigned successfully',
+            'assigned_to': current_user.username,
+            'status': 'in_progress'
+        })
+
+    except Exception as e:
+        db.session.rollback()
+        logger.error(f"Error in api_assign_report: {e}")
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+# ========================================
 # ML SETTINGS ROUTES
 # ========================================
 
@@ -2310,6 +2350,7 @@ def api_reports():
     except Exception as e:
         return jsonify({'error': str(e)}), 500
 
+
 @admin_bp.route('/api/reports/<int:report_id>')
 @admin_required
 def api_report_details(report_id):
@@ -2341,29 +2382,7 @@ def api_report_details(report_id):
     except Exception as e:
         return jsonify({'error': str(e)}), 500
 
-@admin_bp.route('/api/reports/<int:report_id>/assign', methods=['POST'])
-@admin_required
-def api_assign_report(report_id):
-    """Assign report to current admin"""
-    try:
-        report = AdminReport.query.get_or_404(report_id)
-        report.assigned_to = current_user
-        report.status = 'in_progress'
-        
-        db.session.commit()
-        
-        # Log the action
-        AdminSecurityService.log_admin_action(
-            admin_user=current_user,
-            action='report_assign',
-            target_user=None,
-            additional_info=f'Report #{report_id}: {report.title}'
-        )
-        
-        return jsonify({'success': True, 'message': 'Report assigned successfully'})
-        
-    except Exception as e:
-        return jsonify({'error': str(e)}), 500
+
 
 @admin_bp.route('/api/reports/<int:report_id>/resolve', methods=['POST'])
 @admin_required
@@ -2574,6 +2593,8 @@ def api_user_details(user_id):
         
     except Exception as e:
         return jsonify({'error': str(e)}), 500
+
+
 
 @admin_bp.route('/api/activity-logs')
 @admin_required

@@ -531,14 +531,35 @@ function setReportsFilterLoading(loading) {
     }
 }
 
-// Report actions (placeholders)
+// Report actions - Redirect to HTML pages
 function viewReport(reportId) {
-    alert(`View report ${reportId} - This would open a modal or navigate to report details`);
+    // Redirect to the HTML view page instead of showing an alert
+    window.location.href = `/admin/reports/${reportId}`;
 }
 
 function assignReport(reportId) {
     if (confirm(`Assign report ${reportId} to yourself?`)) {
-        alert(`Report ${reportId} assigned! - This would make an API call`);
+        // Make the API call to assign the report, then redirect to view page
+        fetch(`/admin/api/reports/${reportId}/assign`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-Requested-With': 'XMLHttpRequest'
+            }
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                // Redirect to the HTML view page after successful assignment
+                window.location.href = `/admin/reports/${reportId}`;
+            } else {
+                alert(`Error: ${data.error || 'Failed to assign report'}`);
+            }
+        })
+        .catch(error => {
+            console.error('Error:', error);
+            alert(`Network error: ${error.message}`);
+        });
     }
 }
 
