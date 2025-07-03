@@ -163,6 +163,9 @@
             <td data-column="created_at">{{ user.created_at.strftime('%d.%m.%Y %H:%M') if user.created_at else '-' }}</td>
             <td data-column="last_login">{{ user.last_login.strftime('%d.%m.%Y %H:%M') if user.last_login else 'Never' }}</td>
             <td data-column="actions">
+              <button onclick="openUserModal({{ user.id }})" class="btn btn-info btn-small" style="margin-right: 5px;">
+                👁️ View
+              </button>
               {% if user.id != current_user.id %}
                 {% if user.is_admin %}
                 <!-- Revoke Admin Button -->
@@ -690,4 +693,92 @@
 .table-warning {
     background-color: rgba(255, 193, 7, 0.1);
 }
+
+/* User Detail Modal */
+.modal {
+    display: none;
+    position: fixed;
+    z-index: 1000;
+    left: 0;
+    top: 0;
+    width: 100%;
+    height: 100%;
+    background-color: rgba(0, 0, 0, 0.5);
+}
+
+.modal-content {
+    background-color: white;
+    margin: 5% auto;
+    padding: 20px;
+    border-radius: 12px;
+    width: 80%;
+    max-width: 600px;
+    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+}
+
+.modal-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 20px;
+    border-bottom: 2px solid #e5e7eb;
+    padding-bottom: 15px;
+}
+
+.modal-header h2 {
+    margin: 0;
+    color: #1f2937;
+}
+
+.close {
+    color: #6b7280;
+    font-size: 28px;
+    font-weight: bold;
+    cursor: pointer;
+    transition: color 0.2s;
+}
+
+.close:hover {
+    color: #ef4444;
+}
+
+.modal-body {
+    line-height: 1.6;
+}
+
+.user-detail-row {
+    display: flex;
+    justify-content: space-between;
+    padding: 8px 0;
+    border-bottom: 1px solid #f3f4f6;
+}
+
+.user-detail-row:last-child {
+    border-bottom: none;
+}
+
+.user-detail-label {
+    font-weight: 600;
+    color: #374151;
+    width: 40%;
+}
+
+.user-detail-value {
+    color: #6b7280;
+    width: 60%;
+    text-align: right;
+}
 </style>
+
+<!-- User Detail Modal -->
+<div id="userModal" class="modal">
+  <div class="modal-content">
+    <div class="modal-header">
+      <h2 id="userModalTitle">User Details</h2>
+      <span class="close" onclick="closeUserModal()">&times;</span>
+    </div>
+    <div class="modal-body" id="userModalBody">
+      <!-- User details will be loaded here -->
+    </div>
+  </div>
+</div>

@@ -2523,6 +2523,58 @@ def api_revoke_admin(user_id):
     except Exception as e:
         return jsonify({'error': str(e)}), 500
 
+@admin_bp.route('/api/users/<int:user_id>')
+@admin_required
+def api_user_details(user_id):
+    """API endpoint for getting detailed user information"""
+    try:
+        user = User.query.get_or_404(user_id)
+        
+        # Get user progress if available
+        user_progress = None
+        try:
+            from ..models import UserProgress
+            user_progress = UserProgress.query.filter_by(user_id=user.id).first()
+        except:
+            pass
+        
+        # Format user data
+        user_data = {
+            'id': user.id,
+            'username': user.username,
+            'email': user.email,
+            'full_name': user.full_name,
+            'date_of_birth': user.date_of_birth.isoformat() if user.date_of_birth else None,
+            'is_active': user.is_active,
+            'is_verified': user.is_verified,
+            'is_admin': user.is_admin,
+            'created_at': user.created_at.isoformat() if user.created_at else None,
+            'last_login': user.last_login.isoformat() if user.last_login else None,
+            'total_xp': user.total_xp,
+            'subscription_tier': user.subscription_tier,
+            'current_plan_id': user.current_plan_id,
+            'subscription_status': user.subscription_status,
+            'profile_picture': user.profile_picture,
+            'preferred_language': user.preferred_language,
+            'is_current_user': user.id == current_user.id
+        }
+        
+        # Add progress data if available
+        if user_progress:
+            user_data['progress'] = {
+                'total_quizzes_taken': user_progress.total_quizzes_taken,
+                'total_questions_answered': user_progress.total_questions_answered,
+                'correct_answers': user_progress.correct_answers,
+                'current_streak_days': user_progress.current_streak_days,
+                'longest_streak_days': user_progress.longest_streak_days,
+                'last_activity_date': user_progress.last_activity_date.isoformat() if user_progress.last_activity_date else None
+            }
+        
+        return jsonify(user_data)
+        
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
 @admin_bp.route('/api/audit-logs')
 @admin_required
 def api_audit_logs():

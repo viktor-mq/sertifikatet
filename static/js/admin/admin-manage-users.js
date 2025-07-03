@@ -68,12 +68,19 @@
     }
 
     function loadActivityData() {
+        console.log('Loading activity data with filters:', activityCurrentFilters);
+        
         // Apply client-side filtering to existing data
         const table = document.getElementById('activity-table');
-        if (!table) return;
+        if (!table) {
+            console.log('Activity table not found!');
+            return;
+        }
         
         const rows = table.querySelectorAll('tbody tr');
         let visibleCount = 0;
+        
+        console.log(`Found ${rows.length} activity rows to filter`);
         
         rows.forEach(row => {
             let shouldShow = true;
@@ -81,8 +88,14 @@
             // Apply search filter
             if (activityCurrentFilters.search) {
                 const searchText = activityCurrentFilters.search.toLowerCase();
-                const rowText = row.textContent.toLowerCase();
-                shouldShow = shouldShow && rowText.includes(searchText);
+                
+                if (activityCurrentFilters.search_column && activityCurrentFilters.search_column !== 'all') {
+                    const specificCell = row.querySelector(`[data-column="${activityCurrentFilters.search_column}"]`);
+                    shouldShow = shouldShow && specificCell && specificCell.textContent.toLowerCase().includes(searchText);
+                } else {
+                    const rowText = row.textContent.toLowerCase();
+                    shouldShow = shouldShow && rowText.includes(searchText);
+                }
             }
             
             // Apply action filter
@@ -90,13 +103,59 @@
                 const actionCell = row.querySelector('[data-column="action"]');
                 if (actionCell) {
                     const actionText = actionCell.textContent.toLowerCase();
-                    shouldShow = shouldShow && actionText.includes(activityCurrentFilters.action.toLowerCase());
+                    let actionMatch = false;
+                    
+                    // Map filter values to actual text content
+                    switch(activityCurrentFilters.action) {
+                        case 'grant_admin':
+                            actionMatch = actionText.includes('admin granted');
+                            break;
+                        case 'revoke_admin':
+                            actionMatch = actionText.includes('admin revoked');
+                            break;
+                        case 'admin_login_success':
+                            actionMatch = actionText.includes('admin login');
+                            break;
+                        case 'admin_login_failure':
+                            actionMatch = actionText.includes('login failed');
+                            break;
+                        default:
+                            actionMatch = actionText.includes(activityCurrentFilters.action.toLowerCase());
+                    }
+                    shouldShow = shouldShow && actionMatch;
+                }
+            }
+            
+            // Apply time filter (basic implementation)
+            if (activityCurrentFilters.time_range) {
+                const timestampCell = row.querySelector('[data-column="timestamp"]');
+                if (timestampCell) {
+                    const timestampText = timestampCell.textContent;
+                    const now = new Date();
+                    const rowDate = new Date(timestampText.split(' ')[0].split('.').reverse().join('-'));
+                    
+                    switch(activityCurrentFilters.time_range) {
+                        case 'today':
+                            const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+                            shouldShow = shouldShow && rowDate >= today;
+                            break;
+                        case 'week':
+                            const weekAgo = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
+                            shouldShow = shouldShow && rowDate >= weekAgo;
+                            break;
+                        case 'month':
+                            const monthAgo = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000);
+                            shouldShow = shouldShow && rowDate >= monthAgo;
+                            break;
+                    }
                 }
             }
             
             row.style.display = shouldShow ? '' : 'none';
             if (shouldShow) visibleCount++;
         });
+        
+        console.log(`Showing ${visibleCount} of ${rows.length} activity rows`);
         
         updateActivityInfo(visibleCount, 1, visibleCount);
         showActivityLoading(false);
@@ -157,14 +216,27 @@
     }
 
     function clearAllActivityFilters() {
+        console.log('Clearing all activity filters');
+        
+        // Reset form fields
         document.getElementById('activityRealTimeSearch').value = '';
         document.getElementById('activityActionFilter').value = '';
         document.getElementById('activityTimeFilter').value = '';
         document.getElementById('activityAdvancedSearchColumn').value = 'all';
         
+        // Reset filter state
         activityCurrentFilters = {};
         activityCurrentPage = 1;
-        loadActivityData();
+        
+        // Show all rows
+        const table = document.getElementById('activity-table');
+        if (table) {
+            const rows = table.querySelectorAll('tbody tr');
+            rows.forEach(row => {
+                row.style.display = '';
+            });
+            updateActivityInfo(rows.length, 1, rows.length);
+        }
     }
 
     function changeActivityPerPage() {
@@ -772,13 +844,13 @@
             search_column: searchColumn
         };
 
-        setUsersLoading(true);
-        if (typeof loadUsersData === 'function') {
-            loadUsersData();
-        }
+        console.log('Applying users filters:', usersCurrentFilters);
+        performUsersSearch();
     }
 
     function toggleUsersSort(field) {
+        console.log(`Toggling sort for field: ${field}`);
+        
         if (usersCurrentSort.field === field) {
             usersCurrentSort.order = usersCurrentSort.order === 'asc' ? 'desc' : 'asc';
         } else {
@@ -787,9 +859,8 @@
         }
         
         usersCurrentPage = 1;
-        if (typeof loadUsersData === 'function') {
-            loadUsersData();
-        }
+        updateUsersSortIndicators();
+        performUsersSearch();
     }
 
     function updateUsersSortIndicators() {
@@ -834,15 +905,26 @@
     }
 
     function clearAllUsersFilters() {
+        console.log('Clearing all users filters');
+        
+        // Reset form fields
         document.getElementById('usersRealTimeSearch').value = '';
         document.getElementById('usersAdminStatusFilter').value = '';
         document.getElementById('usersStatusFilter').value = '';
         document.getElementById('usersAdvancedSearchColumn').value = 'all';
         
+        // Reset filter state
         usersCurrentFilters = {};
         usersCurrentPage = 1;
-        if (typeof loadUsersData === 'function') {
-            loadUsersData();
+        
+        // Show all rows
+        const table = document.getElementById('users-table-enhanced');
+        if (table) {
+            const rows = table.querySelectorAll('tbody tr');
+            rows.forEach(row => {
+                row.style.display = '';
+            });
+            updateUsersInfo(rows.length, 1, rows.length);
         }
     }
 
@@ -914,9 +996,239 @@
             table.style.opacity = loading ? '0.6' : '1';
         }
     }
+    
+    // Alias for backward compatibility
+
+
+    // ============================================================================
+    // USER MODAL FUNCTIONALITY
+    // ============================================================================
+
+    async function openUserModal(userId) {
+        console.log(`Opening user modal for user ID: ${userId}`);
+        
+        try {
+            showUsersLoading(true);
+            
+            const response = await fetch(`/admin/api/users/${userId}`, {
+                method: 'GET',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-Requested-With': 'XMLHttpRequest'
+                }
+            });
+            
+            if (!response.ok) {
+                throw new Error(`Failed to fetch user details: ${response.statusText}`);
+            }
+            
+            const user = await response.json();
+            
+            // Update modal title
+            document.getElementById('userModalTitle').textContent = `User Details: ${user.username}`;
+            
+            // Format user data for display
+            const userDetails = [
+                { label: 'User ID', value: user.id },
+                { label: 'Username', value: user.username },
+                { label: 'Email', value: user.email },
+                { label: 'Full Name', value: user.full_name || 'Not provided' },
+                { label: 'Status', value: user.is_active ? 'Active' : 'Inactive' },
+                { label: 'Verified', value: user.is_verified ? 'Yes' : 'No' },
+                { label: 'Admin', value: user.is_admin ? 'Yes' : 'No' },
+                { label: 'Created', value: user.created_at ? formatDate(user.created_at) : 'Unknown' },
+                { label: 'Last Login', value: user.last_login ? formatDate(user.last_login) : 'Never' },
+                { label: 'Total XP', value: user.total_xp || 0 },
+                { label: 'Current Plan', value: user.subscription_tier || 'Free' },
+                { label: 'Profile Picture', value: user.profile_picture ? 'Yes' : 'No' },
+                { label: 'Preferred Language', value: user.preferred_language || 'Norwegian' }
+            ];
+            
+            // Generate HTML for user details
+            let detailsHtml = '';
+            userDetails.forEach(detail => {
+                detailsHtml += `
+                    <div class="user-detail-row">
+                        <span class="user-detail-label">${detail.label}:</span>
+                        <span class="user-detail-value">${detail.value}</span>
+                    </div>
+                `;
+            });
+            
+            // Update modal body
+            document.getElementById('userModalBody').innerHTML = detailsHtml;
+            
+            // Show modal
+            document.getElementById('userModal').style.display = 'block';
+            
+        } catch (error) {
+            console.error('Error opening user modal:', error);
+            alert(`Error loading user details: ${error.message}`);
+        } finally {
+            showUsersLoading(false);
+        }
+    }
+
+    function closeUserModal() {
+        document.getElementById('userModal').style.display = 'none';
+    }
+
+    // Close modal when clicking outside of it
+    window.addEventListener('click', function(event) {
+        const modal = document.getElementById('userModal');
+        if (event.target === modal) {
+            closeUserModal();
+        }
+    });
+
+    // ============================================================================
+    // PROPER FUNCTION IMPLEMENTATIONS
+    // ============================================================================
+
+    function performUsersSearch() {
+        console.log('Performing users search with filters:', usersCurrentFilters);
+        
+        // Show loading
+        showUsersLoading(true);
+        
+        // Apply client-side filtering for now (could be replaced with server-side later)
+        const table = document.getElementById('users-table-enhanced');
+        if (!table) {
+            showUsersLoading(false);
+            return;
+        }
+        
+        const rows = table.querySelectorAll('tbody tr');
+        let visibleCount = 0;
+        
+        // Convert NodeList to Array for sorting
+        const rowsArray = Array.from(rows);
+        
+        // Apply filters
+        const filteredRows = rowsArray.filter(row => {
+            let shouldShow = true;
+            
+            // Apply search filter
+            if (usersCurrentFilters.search) {
+                const searchText = usersCurrentFilters.search.toLowerCase();
+                const rowText = row.textContent.toLowerCase();
+                
+                if (usersCurrentFilters.search_column && usersCurrentFilters.search_column !== 'all') {
+                    const specificCell = row.querySelector(`[data-column="${usersCurrentFilters.search_column}"]`);
+                    shouldShow = shouldShow && specificCell && specificCell.textContent.toLowerCase().includes(searchText);
+                } else {
+                    shouldShow = shouldShow && rowText.includes(searchText);
+                }
+            }
+            
+            // Apply admin status filter
+            if (usersCurrentFilters.admin_status) {
+                const adminCell = row.querySelector('[data-column="admin"]');
+                if (adminCell) {
+                    const isAdmin = adminCell.textContent.includes('Admin');
+                    if (usersCurrentFilters.admin_status === 'admin' && !isAdmin) {
+                        shouldShow = false;
+                    } else if (usersCurrentFilters.admin_status === 'user' && isAdmin) {
+                        shouldShow = false;
+                    }
+                }
+            }
+            
+            // Apply status filter
+            if (usersCurrentFilters.status) {
+                const statusCell = row.querySelector('[data-column="status"]');
+                if (statusCell) {
+                    const statusText = statusCell.textContent.toLowerCase();
+                    if (usersCurrentFilters.status === 'active' && !statusText.includes('active')) {
+                        shouldShow = false;
+                    } else if (usersCurrentFilters.status === 'inactive' && !statusText.includes('inactive')) {
+                        shouldShow = false;
+                    } else if (usersCurrentFilters.status === 'verified' && !statusText.includes('verified')) {
+                        shouldShow = false;
+                    } else if (usersCurrentFilters.status === 'unverified' && statusText.includes('verified')) {
+                        shouldShow = false;
+                    }
+                }
+            }
+            
+            return shouldShow;
+        });
+        
+        // Apply sorting
+        if (usersCurrentSort.field) {
+            filteredRows.sort((a, b) => {
+                const aCell = a.querySelector(`[data-column="${usersCurrentSort.field}"]`);
+                const bCell = b.querySelector(`[data-column="${usersCurrentSort.field}"]`);
+                
+                if (!aCell || !bCell) return 0;
+                
+                let aValue = aCell.textContent.trim();
+                let bValue = bCell.textContent.trim();
+                
+                // Handle numeric fields
+                if (usersCurrentSort.field === 'id') {
+                    aValue = parseInt(aValue) || 0;
+                    bValue = parseInt(bValue) || 0;
+                    return usersCurrentSort.order === 'asc' ? aValue - bValue : bValue - aValue;
+                }
+                
+                // Handle date fields
+                if (usersCurrentSort.field === 'created_at' || usersCurrentSort.field === 'last_login') {
+                    const aDate = new Date(aValue);
+                    const bDate = new Date(bValue);
+                    if (aValue === 'Never') return usersCurrentSort.order === 'asc' ? 1 : -1;
+                    if (bValue === 'Never') return usersCurrentSort.order === 'asc' ? -1 : 1;
+                    return usersCurrentSort.order === 'asc' ? aDate - bDate : bDate - aDate;
+                }
+                
+                // Handle text fields
+                return usersCurrentSort.order === 'asc' 
+                    ? aValue.localeCompare(bValue) 
+                    : bValue.localeCompare(aValue);
+            });
+        }
+        
+        // Hide all rows first
+        rowsArray.forEach(row => {
+            row.style.display = 'none';
+        });
+        
+        // Show filtered and sorted rows
+        const tbody = table.querySelector('tbody');
+        filteredRows.forEach((row, index) => {
+            row.style.display = '';
+            tbody.appendChild(row); // Re-append in sorted order
+        });
+        
+        visibleCount = filteredRows.length;
+        
+        // Update results info
+        updateUsersInfo(visibleCount, 1, visibleCount);
+        
+        // Update sort indicators
+        updateUsersSortIndicators();
+        
+        showUsersLoading(false);
+    }
+
+    // ============================================================================
+    // GLOBAL FUNCTION EXPORTS
+    // ============================================================================
 
     window.initializeUsersSection = initializeUsersSection;
     window.initializeActivitySection = initializeActivitySection;
-    window.grantAdminAjax            = grantAdminAjax;
-    window.revokeAdminAjax           = revokeAdminAjax;
+    window.grantAdminAjax = grantAdminAjax;
+    window.revokeAdminAjax = revokeAdminAjax;
+    window.openUserModal = openUserModal;
+    window.closeUserModal = closeUserModal;
+    window.toggleUsersSort = toggleUsersSort;
+    window.toggleActivitySort = toggleActivitySort;
+    window.toggleUsersColumnVisibilityDropdown = toggleUsersColumnVisibilityDropdown;
+    window.changeUsersTableDensity = changeUsersTableDensity;
+    window.clearAllUsersFilters = clearAllUsersFilters;
+    window.changeUsersPerPage = changeUsersPerPage;
+    window.toggleActivityColumnVisibilityDropdown = toggleActivityColumnVisibilityDropdown;
+    window.changeActivityTableDensity = changeActivityTableDensity;
+    window.clearAllActivityFilters = clearAllActivityFilters;
+    window.changeActivityPerPage = changeActivityPerPage;
 })();
