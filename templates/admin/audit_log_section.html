@@ -4,21 +4,21 @@
 <div id="auditLogSection" class="section" style="margin-top: 30px;">
   
   <!-- Statistics Section -->
-  <div class="stats-container">
+  <div class="stats-container" id="audit-stats-cards">
     <div class="stat-card">
-      <h3>{{ logs.total if logs else 0 }}</h3>
+      <h3 id="total-logs">-</h3>
       <p>Total Log Entries</p>
     </div>
     <div class="stat-card">
-      <h3>{{ actions|length if actions else 0 }}</h3>
+      <h3 id="unique-actions">-</h3>
       <p>Unique Actions</p>
     </div>
     <div class="stat-card">
-      <h3>{{ logs.page if logs else 1 }}</h3>
+      <h3 id="current-page">-</h3>
       <p>Current Page</p>
     </div>
     <div class="stat-card">
-      <h3>{{ logs.pages if logs else 1 }}</h3>
+      <h3 id="total-pages">-</h3>
       <p>Total Pages</p>
     </div>
   </div>
@@ -67,102 +67,11 @@
         </tr>
       </thead>
       <tbody>
-        {% if logs %}
-          {% for log in logs %}
-          <tr>
-            <td>{{ log.id }}</td>
-            <td><small>{{ log.created_at.strftime('%Y-%m-%d %H:%M:%S') }}</small></td>
-            <td>
-              {% if log.action == 'grant_admin' %}
-              <span class="btn btn-warning btn-small" style="cursor: default;">🛡️ Admin Granted</span>
-              {% elif log.action == 'revoke_admin' %}
-              <span class="btn btn-danger btn-small" style="cursor: default;">❌ Admin Revoked</span>
-              {% elif log.action == 'admin_login_success' %}
-              <span class="btn btn-success btn-small" style="cursor: default;">✅ Admin Login</span>
-              {% elif log.action == 'admin_login_failure' %}
-              <span class="btn btn-danger btn-small" style="cursor: default;">❌ Login Failed</span>
-              {% elif log.action == 'admin_access_denied' %}
-              <span class="btn btn-danger btn-small" style="cursor: default;">🚫 Access Denied</span>
-              {% elif log.action == 'report_assign' %}
-              <span class="btn btn-secondary btn-small" style="cursor: default;">📋 Report Assigned</span>
-              {% elif log.action == 'report_resolve' %}
-              <span class="btn btn-success btn-small" style="cursor: default;">✅ Report Resolved</span>
-              {% elif log.action == 'report_archive' %}
-              <span class="btn btn-secondary btn-small" style="cursor: default;">📦 Report Archived</span>
-              {% elif log.action == 'report_change_priority' %}
-              <span class="btn btn-warning btn-small" style="cursor: default;">⚡ Priority Changed</span>
-              {% else %}
-              <span class="btn btn-secondary btn-small" style="cursor: default;">{{ log.action|replace('_', ' ')|title }}</span>
-              {% endif %}
-            </td>
-            <td>
-              {% if log.admin_user %}
-                {{ log.admin_user.username }}
-                {% if log.admin_user.id == current_user.id %}
-                <span class="btn btn-secondary btn-small" style="cursor: default; margin-left: 5px;">You</span>
-                {% endif %}
-              {% else %}
-                <em>System</em>
-              {% endif %}
-            </td>
-            <td>
-              {% if log.target_user %}
-                {{ log.target_user.username }}
-              {% else %}
-                -
-              {% endif %}
-            </td>
-            <td>
-              {% if log.ip_address %}
-                <small><code>{{ log.ip_address }}</code></small>
-              {% else %}
-                -
-              {% endif %}
-            </td>
-            <td>
-              {% if log.user_agent %}
-                <small title="{{ log.user_agent }}">
-                  {% if 'Chrome' in log.user_agent %}
-                    🔍 Chrome
-                  {% elif 'Firefox' in log.user_agent %}
-                    🦊 Firefox
-                  {% elif 'Safari' in log.user_agent %}
-                    🧭 Safari
-                  {% elif 'Edge' in log.user_agent %}
-                    🌐 Edge
-                  {% else %}
-                    💻 {{ log.user_agent[:20] }}...
-                  {% endif %}
-                </small>
-              {% else %}
-                -
-              {% endif %}
-            </td>
-            <td>
-              {% if log.additional_info %}
-                <small>
-                  {% if log.additional_info|length > 50 %}
-                    <span title="{{ log.additional_info }}">{{ log.additional_info[:50] }}...</span>
-                  {% else %}
-                    {{ log.additional_info }}
-                  {% endif %}
-                </small>
-              {% else %}
-                -
-              {% endif %}
-            </td>
-          </tr>
-          {% endfor %}
-        {% else %}
-          <tr>
-            <td colspan="8" style="text-align: center; color: #999; font-style: italic;">No audit log entries found</td>
-          </tr>
-        {% endif %}
+        {# Rows will be populated by JavaScript #}
       </tbody>
     </table>
   </div>
 
-  
   <!-- Pagination Controls -->
   <div id="audit-pagination" class="pagination-container"></div>
 
@@ -172,491 +81,119 @@
       ⚙️ Security Actions
     </h3>
     <div style="display: flex; gap: 10px; flex-wrap: wrap;">
-      <a href="{{ url_for('admin.security_audit_log') }}?download=csv" class="btn btn-secondary">
-        📄 Export CSV
-      </a>
+      <div class="btn-group">
+        <button type="button" class="btn btn-secondary dropdown-toggle" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false">
+          📄 Export Log
+        </button>
+        <div class="dropdown-menu">
+          <a class="dropdown-item" href="#" onclick="exportAuditLog('csv')">Export as CSV</a>
+          <a class="dropdown-item" href="#" onclick="exportAuditLog('json')">Export as JSON</a>
+        </div>
+      </div>
       <button onclick="refreshAuditLog()" class="btn">
         🔄 Refresh Log
       </button>
       <button onclick="showSecuritySummary()" class="btn btn-warning">
         📊 Security Summary
       </button>
+      <div id="export-loading" class="loading-indicator" style="display: none; margin-left: 10px;">Exporting...</div>
+    </div>
+  </div>
+</div>
+
+<!-- Security Summary Modal -->
+<div id="securitySummaryModal" class="modal" style="display: none;">
+  <div class="modal-content">
+    <div class="modal-header">
+      <h3>Security Summary</h3>
+      <button class="close-btn" onclick="closeSecuritySummary()">&times;</button>
+    </div>
+    <div class="modal-body" id="securitySummaryBody">
+      <!-- Content will be loaded via JavaScript -->
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-secondary" onclick="closeSecuritySummary()">Close</button>
     </div>
   </div>
 </div>
 
 <style>
-#auditLogSection code {
-    background-color: rgba(0, 0, 0, 0.1);
-    padding: 2px 4px;
-    border-radius: 3px;
-    font-family: 'Courier New', monospace;
-    font-size: 12px;
+/* Add styles for modal and other new elements */
+.btn-group .dropdown-menu {
+    display: none;
+    position: absolute;
+    background-color: #f9f9f9;
+    min-width: 160px;
+    box-shadow: 0px 8px 16px 0px rgba(0,0,0,0.2);
+    z-index: 1;
+}
+.btn-group:hover .dropdown-menu { display: block; }
+.dropdown-item { 
+    color: black; 
+    padding: 12px 16px; 
+    text-decoration: none; 
+    display: block; 
+}
+.dropdown-item:hover { background-color: #f1f1f1; }
+
+.modal {
+  display: none;
+  position: fixed;
+  z-index: 1000;
+  left: 0;
+  top: 0;
+  width: 100%;
+  height: 100%;
+  background-color: rgba(0, 0, 0, 0.5);
+  backdrop-filter: blur(5px);
 }
 
-.pagination {
-    list-style: none;
-    padding: 0;
-    margin: 0;
-}
-
-#auditLogSection small {
-    color: #666;
-}
-
-#auditLogSection td small span[title] {
-    cursor: help;
-    border-bottom: 1px dotted #999;
-}
-
-/* Enhanced CSS for Audit Log Section - Reuse styles from reports */
-.enhanced-filter-form {
-  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-  padding: 20px;
+.modal-content {
+  background-color: white;
+  margin: 5% auto;
+  padding: 0;
   border-radius: 12px;
-  margin-bottom: 20px;
-  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+  width: 90%;
+  max-width: 800px;
+  max-height: 80vh;
+  overflow-y: auto;
+  box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1);
 }
 
-.enhanced-search {
+.modal-header {
+  padding: 20px;
+  border-bottom: 1px solid #e5e7eb;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  color: white;
+  border-radius: 12px 12px 0 0;
+}
+
+.modal-body {
+  padding: 20px;
+}
+
+.modal-footer {
+  padding: 20px;
+  border-top: 1px solid #e5e7eb;
   display: flex;
   gap: 10px;
-  align-items: center;
-  flex-wrap: wrap;
+  justify-content: flex-end;
 }
 
-.search-input {
-  flex: 1;
-  min-width: 300px;
-  padding: 8px 12px;
-  border: 2px solid #e5e7eb;
-  border-radius: 8px;
-  font-size: 14px;
-}
-
-.search-input:focus {
-  border-color: #3b82f6;
-  box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
-}
-
-.sortable {
+.close-btn {
+  background: none;
+  border: none;
+  font-size: 24px;
   cursor: pointer;
-  user-select: none;
-  position: relative;
-}
-
-.sortable:hover {
-  background-color: rgba(59, 130, 246, 0.1);
-}
-
-.sort-indicator {
-  margin-left: 5px;
-  opacity: 0.5;
-}
-
-.sort-indicator.asc::after {
-  content: '↑';
-  color: #10b981;
-}
-
-.sort-indicator.desc::after {
-  content: '↓';
-  color: #ef4444;
-}
-
-.results-info {
-  margin-bottom: 10px;
-  padding: 8px 12px;
-  background: #f3f4f6;
-  border-radius: 6px;
-  font-size: 14px;
-  color: #374151;
-}
-
-.loading-indicator {
   color: white;
-  font-weight: bold;
 }
 
-.pagination-container {
-  margin-top: 20px;
-  text-align: center;
-}
-
-.pagination {
-  display: inline-flex;
-  gap: 5px;
-  align-items: center;
-}
-
-.page-btn {
-  padding: 8px 12px;
-  border: 1px solid #d1d5db;
-  background: white;
-  color: #374151;
-  border-radius: 6px;
-  cursor: pointer;
-  text-decoration: none;
-}
-
-.page-btn:hover {
-  background: #f3f4f6;
-}
-
-.page-btn.active {
-  background: #3b82f6;
-  color: white;
-  border-color: #3b82f6;
-}
-
-.page-btn:disabled {
-  opacity: 0.5;
-  cursor: not-allowed;
-}
-
-@media (max-width: 768px) {
-  .enhanced-search {
-    flex-direction: column;
-    align-items: stretch;
-  }
-  
-  .search-input {
-    min-width: unset;
-  }
+.close-btn:hover {
+  opacity: 0.7;
 }
 </style>
 
-<!-- Include admin-base.js -->
-<script src="{{ url_for('static', filename='js/admin-base.js') }}"></script>
-
-<script>
-// Audit Log Section Enhancement JavaScript
-let currentAuditFilters = {};
-let currentAuditSort = { field: 'created_at', order: 'desc' };
-let currentAuditPage = 1;
-let auditPerPage = 50;
-
-document.addEventListener('DOMContentLoaded', function() {
-    // Only initialize if audit log section exists and is active
-    const auditSection = document.getElementById('auditLogSection');
-    if (auditSection && auditSection.classList.contains('active')) {
-        initializeAuditEnhancements();
-    }
-});
-
-// Global function to initialize audit log when section becomes active
-window.initializeAuditSection = function() {
-    if (!window.auditInitialized) {
-        initializeAuditEnhancements();
-        window.auditInitialized = true;
-    }
-};
-
-function initializeAuditEnhancements() {
-    // Initialize search with debouncing
-    const searchInput = document.getElementById('audit-search');
-    if (searchInput) {
-        let searchTimeout;
-        searchInput.addEventListener('input', function() {
-            clearTimeout(searchTimeout);
-            searchTimeout = setTimeout(() => {
-                currentAuditPage = 1;
-                performAuditSearch();
-            }, 300);
-        });
-    }
-    
-    // Initialize sorting
-    document.querySelectorAll('#audit-table .sortable').forEach(header => {
-        header.addEventListener('click', function() {
-            const field = this.dataset.field;
-            if (currentAuditSort.field === field) {
-                currentAuditSort.order = currentAuditSort.order === 'asc' ? 'desc' : 'asc';
-            } else {
-                currentAuditSort.field = field;
-                currentAuditSort.order = 'asc';
-            }
-            currentAuditPage = 1;
-            updateAuditSortIndicators();
-            performAuditSearch();
-        });
-    });
-    
-    // Initialize per-page selector
-    const perPageSelect = document.getElementById('audit-per-page');
-    if (perPageSelect) {
-        perPageSelect.addEventListener('change', function() {
-            auditPerPage = parseInt(this.value);
-            currentAuditPage = 1;
-            performAuditSearch();
-        });
-    }
-    
-    // Initialize filter selectors
-    document.querySelectorAll('#audit-filter-form select, #audit-filter-form input[name="ip"]').forEach(element => {
-        element.addEventListener('change', function() {
-            currentAuditPage = 1;
-            performAuditSearch();
-        });
-        if (element.tagName === 'INPUT') {
-            let searchTimeout;
-            element.addEventListener('input', function() {
-                clearTimeout(searchTimeout);
-                searchTimeout = setTimeout(() => {
-                    currentAuditPage = 1;
-                    performAuditSearch();
-                }, 500);
-            });
-        }
-    });
-    
-    // Initialize keyboard shortcuts
-    document.addEventListener('keydown', function(e) {
-        if (e.ctrlKey || e.metaKey) {
-            switch(e.key) {
-                case 'l':
-                    e.preventDefault();
-                    document.getElementById('audit-search').focus();
-                    break;
-                case 'r':
-                    e.preventDefault();
-                    refreshAuditLog();
-                    break;
-            }
-        }
-    });
-}
-
-function performAuditSearch() {
-    const form = document.getElementById('audit-filter-form');
-    const formData = new FormData(form);
-    
-    currentAuditFilters = {
-        search: formData.get('search') || '',
-        action: formData.get('action') || '',
-        ip: formData.get('ip') || '',
-        sort_by: currentAuditSort.field,
-        sort_order: currentAuditSort.order,
-        page: currentAuditPage,
-        per_page: auditPerPage
-    };
-    
-    loadAuditData();
-}
-
-async function loadAuditData() {
-    setAuditLoading(true);
-    
-    try {
-        const data = await AdminEnhancements.fetchData('audit-logs', currentAuditFilters);
-        updateAuditTable(data);
-        updateAuditPagination(data.pagination);
-        updateAuditResultsInfo(data.pagination);
-        AdminEnhancements.showToast('Audit log updated', 'success');
-    } catch (error) {
-        AdminEnhancements.showToast('Error loading audit log: ' + error.message, 'error');
-    } finally {
-        setAuditLoading(false);
-    }
-}
-
-function updateAuditTable(data) {
-    const tbody = document.querySelector('#audit-table tbody');
-    if (!tbody) return;
-    
-    tbody.innerHTML = '';
-    
-    if (data.logs && data.logs.length > 0) {
-        data.logs.forEach(log => {
-            const row = createAuditRow(log);
-            tbody.appendChild(row);
-        });
-    } else {
-        const emptyRow = document.createElement('tr');
-        emptyRow.innerHTML = '<td colspan="8" style="text-align: center; color: #999; font-style: italic;">No audit log entries found</td>';
-        tbody.appendChild(emptyRow);
-    }
-}
-
-function createAuditRow(log) {
-    const row = document.createElement('tr');
-    
-    const actionBadge = getActionBadge(log.action);
-    const userAgent = getUserAgentDisplay(log.user_agent);
-    const additionalInfo = log.additional_info ? truncateText(log.additional_info, 50) : '-';
-    
-    row.innerHTML = `
-        <td>${log.id}</td>
-        <td><small>${formatDate(log.created_at)}</small></td>
-        <td>${actionBadge}</td>
-        <td>
-            ${log.admin_user ? log.admin_user.username : '<em>System</em>'}
-            ${log.admin_user && log.admin_user.is_current_user ? '<span class="btn btn-secondary btn-small" style="cursor: default; margin-left: 5px;">You</span>' : ''}
-        </td>
-        <td>${log.target_user ? log.target_user.username : '-'}</td>
-        <td>${log.ip_address ? `<small><code>${log.ip_address}</code></small>` : '-'}</td>
-        <td>${userAgent}</td>
-        <td><small>${additionalInfo}</small></td>
-    `;
-    
-    return row;
-}
-
-function getActionBadge(action) {
-    const badges = {
-        'grant_admin': '<span class="btn btn-warning btn-small" style="cursor: default;">🛡️ Admin Granted</span>',
-        'revoke_admin': '<span class="btn btn-danger btn-small" style="cursor: default;">❌ Admin Revoked</span>',
-        'admin_login_success': '<span class="btn btn-success btn-small" style="cursor: default;">✅ Admin Login</span>',
-        'admin_login_failure': '<span class="btn btn-danger btn-small" style="cursor: default;">❌ Login Failed</span>',
-        'admin_access_denied': '<span class="btn btn-danger btn-small" style="cursor: default;">🚫 Access Denied</span>',
-        'report_assign': '<span class="btn btn-secondary btn-small" style="cursor: default;">📋 Report Assigned</span>',
-        'report_resolve': '<span class="btn btn-success btn-small" style="cursor: default;">✅ Report Resolved</span>',
-        'report_archive': '<span class="btn btn-secondary btn-small" style="cursor: default;">📦 Report Archived</span>',
-        'report_change_priority': '<span class="btn btn-warning btn-small" style="cursor: default;">⚡ Priority Changed</span>'
-    };
-    return badges[action] || `<span class="btn btn-secondary btn-small" style="cursor: default;">${action.replace('_', ' ').replace(/\\b\\w/g, l => l.toUpperCase())}</span>`;
-}
-
-function getUserAgentDisplay(userAgent) {
-    if (!userAgent) return '-';
-    
-    const ua = userAgent.toLowerCase();
-    let icon = '💻';
-    let name = 'Unknown';
-    
-    if (ua.includes('chrome')) { icon = '🔍'; name = 'Chrome'; }
-    else if (ua.includes('firefox')) { icon = '🦊'; name = 'Firefox'; }
-    else if (ua.includes('safari')) { icon = '🧭'; name = 'Safari'; }
-    else if (ua.includes('edge')) { icon = '🌐'; name = 'Edge'; }
-    else { name = userAgent.substring(0, 20) + '...'; }
-    
-    return `<small title="${userAgent}">${icon} ${name}</small>`;
-}
-
-function updateAuditPagination(pagination) {
-    const container = document.getElementById('audit-pagination');
-    if (!container || !pagination) return;
-    
-    let html = '<div class="pagination">';
-    
-    // Previous button
-    if (pagination.has_prev) {
-        html += `<button class="page-btn" onclick="goToAuditPage(${pagination.prev_num})">← Previous</button>`;
-    } else {
-        html += '<button class="page-btn" disabled>← Previous</button>';
-    }
-    
-    // Page numbers
-    const startPage = Math.max(1, pagination.page - 2);
-    const endPage = Math.min(pagination.pages, pagination.page + 2);
-    
-    if (startPage > 1) {
-        html += '<button class="page-btn" onclick="goToAuditPage(1)">1</button>';
-        if (startPage > 2) html += '<span class="page-btn" disabled>...</span>';
-    }
-    
-    for (let i = startPage; i <= endPage; i++) {
-        const activeClass = i === pagination.page ? 'active' : '';
-        html += `<button class="page-btn ${activeClass}" onclick="goToAuditPage(${i})">${i}</button>`;
-    }
-    
-    if (endPage < pagination.pages) {
-        if (endPage < pagination.pages - 1) html += '<span class="page-btn" disabled>...</span>';
-        html += `<button class="page-btn" onclick="goToAuditPage(${pagination.pages})">${pagination.pages}</button>`;
-    }
-    
-    // Next button
-    if (pagination.has_next) {
-        html += `<button class="page-btn" onclick="goToAuditPage(${pagination.next_num})">Next →</button>`;
-    } else {
-        html += '<button class="page-btn" disabled>Next →</button>';
-    }
-    
-    html += '</div>';
-    container.innerHTML = html;
-}
-
-function goToAuditPage(page) {
-    currentAuditPage = page;
-    performAuditSearch();
-}
-
-function updateAuditResultsInfo(pagination) {
-    const infoDiv = document.getElementById('audit-results-info');
-    if (!infoDiv || !pagination) return;
-    
-    const start = (pagination.page - 1) * pagination.per_page + 1;
-    const end = Math.min(pagination.page * pagination.per_page, pagination.total);
-    
-    infoDiv.innerHTML = `Showing ${start}-${end} of ${pagination.total} audit entries`;
-}
-
-function updateAuditSortIndicators() {
-    document.querySelectorAll('#audit-table .sort-indicator').forEach(indicator => {
-        indicator.className = 'sort-indicator';
-    });
-    
-    const activeHeader = document.querySelector(`#audit-table [data-field="${currentAuditSort.field}"] .sort-indicator`);
-    if (activeHeader) {
-        activeHeader.className = `sort-indicator ${currentAuditSort.order}`;
-    }
-}
-
-function clearAuditFilters() {
-    document.getElementById('audit-filter-form').reset();
-    currentAuditFilters = {};
-    currentAuditSort = { field: 'created_at', order: 'desc' };
-    currentAuditPage = 1;
-    auditPerPage = 50;
-    updateAuditSortIndicators();
-    loadAuditData();
-}
-
-function setAuditLoading(loading) {
-    const indicator = document.getElementById('audit-loading');
-    const table = document.getElementById('audit-table');
-    
-    if (indicator) {
-        indicator.style.display = loading ? 'inline' : 'none';
-    }
-    if (table) {
-        table.style.opacity = loading ? '0.6' : '1';
-    }
-}
-
-// Enhanced security actions
-function refreshAuditLog() {
-    loadAuditData();
-}
-
-function showSecuritySummary() {
-    AdminEnhancements.showToast('Security summary feature coming soon', 'info');
-}
-
-// Utility Functions
-function truncateText(text, maxLength) {
-    if (!text || text.length <= maxLength) return text;
-    return text.substring(0, maxLength) + '...';
-}
-
-function formatDate(dateString) {
-    const date = new Date(dateString);
-    return date.toLocaleDateString('en-GB', {
-        day: '2-digit',
-        month: '2-digit', 
-        year: 'numeric',
-        hour: '2-digit',
-        minute: '2-digit',
-        second: '2-digit'
-    });
-}
-
-// Auto-refresh every 30 seconds for real-time monitoring
-setInterval(function() {
-    // Only refresh if no active filters or searches
-    if (Object.keys(currentAuditFilters).length === 0 || 
-        (!currentAuditFilters.search && !currentAuditFilters.action && !currentAuditFilters.ip)) {
-        refreshAuditLog();
-    }
-}, 30000);
-</script>
+<script src="{{ url_for('static', filename='js/admin/admin-audit-log.js') }}"></script>

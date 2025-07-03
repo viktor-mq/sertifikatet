@@ -401,6 +401,20 @@ class AdminAuditLog(db.Model):
     target_user = db.relationship('User', foreign_keys=[target_user_id], backref='admin_logs_target')
     admin_user = db.relationship('User', foreign_keys=[admin_user_id], backref='admin_logs_performed')
 
+    def to_dict(self):
+        return {
+            'id': self.id,
+            'target_user_id': self.target_user_id,
+            'admin_user_id': self.admin_user_id,
+            'action': self.action,
+            'ip_address': self.ip_address,
+            'user_agent': self.user_agent,
+            'additional_info': self.additional_info,
+            'created_at': self.created_at.isoformat(),
+            'target_user': self.target_user.username if self.target_user else None,
+            'admin_user': self.admin_user.username if self.admin_user else None
+        }
+
 
 # Legacy table for image management (keeping for compatibility)
 class QuizImage(db.Model):

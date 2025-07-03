@@ -1079,6 +1079,180 @@ def security_audit_log():
         user_filter=user_filter
     )
 
+@admin_bp.route('/api/audit-log/summary', methods=['GET'])
+@admin_required
+def get_audit_log_summary():
+    """AJAX endpoint for security summary modal."""
+    try:
+        # Recent security actions (last 7 days)
+        seven_days_ago = datetime.utcnow() - timedelta(days=7)
+        recent_actions = AdminAuditLog.query.filter(
+            AdminAuditLog.created_at >= seven_days_ago
+        ).order_by(AdminAuditLog.created_at.desc()).limit(10).all()
+
+        # Most frequent admin actions
+        top_actions = db.session.query(
+            AdminAuditLog.action, db.func.count(AdminAuditLog.action).label('count')
+        ).group_by(AdminAuditLog.action).order_by(db.desc('count')).limit(5).all()
+
+        # Recent login attempts
+        login_attempts = AdminAuditLog.query.filter(
+            AdminAuditLog.action.in_(['admin_login_success', 'admin_login_failure'])
+        ).order_by(AdminAuditLog.created_at.desc()).limit(10).all()
+
+        # Top active admins
+        top_admins = db.session.query(
+            User.username, db.func.count(AdminAuditLog.id).label('action_count')
+        ).join(User, AdminAuditLog.admin_user_id == User.id).group_by(User.username).order_by(db.desc('action_count')).limit(5).all()
+
+        summary_data = {
+            'recent_actions': [log.to_dict() for log in recent_actions],
+            'top_actions': {action: count for action, count in top_actions},
+            'login_attempts': [log.to_dict() for log in login_attempts],
+            'top_admins': {username: count for username, count in top_admins}
+        }
+        return jsonify({'success': True, 'data': summary_data})
+
+    except Exception as e:
+        logger.error(f"Error in get_audit_log_summary: {e}")
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+@admin_bp.route('/api/audit-log/export', methods=['GET'])
+@admin_required
+def export_audit_log():
+    """Export audit log to CSV or JSON with filters."""
+    try:
+        # Get filter parameters from request
+        search = request.args.get('search', '')
+        action = request.args.get('action', '')
+        ip = request.args.get('ip', '')
+        sort_by = request.args.get('sort_by', 'created_at')
+        sort_order = request.args.get('sort_order', 'desc')
+        export_format = request.args.get('format', 'csv').lower()
+
+        # Build query with filters
+        query = AdminAuditLog.query.join(User, User.id == AdminAuditLog.admin_user_id, isouter=True)
+        
+        if search:
+            search_term = f'%{search}%'
+            query = query.filter(db.or_(
+                AdminAuditLog.action.ilike(search_term),
+                User.username.ilike(search_term),
+                AdminAuditLog.ip_address.ilike(search_term),
+                AdminAuditLog.additional_info.ilike(search_term)
+            ))
+        if action:
+            query = query.filter(AdminAuditLog.action == action)
+        if ip:
+            query = query.filter(AdminAuditLog.ip_address == ip)
+
+        # Sorting
+        sort_column = getattr(AdminAuditLog, sort_by, AdminAuditLog.created_at)
+        if sort_order == 'desc':
+            query = query.order_by(sort_column.desc())
+        else:
+            query = query.order_by(sort_column.asc())
+
+        logs = query.all()
+        timestamp = datetime.now().strftime("%Y-%m-%d_%H-%M-%S")
+        filename = f"audit_log_{timestamp}.{export_format}"
+
+        if export_format == 'json':
+            output = jsonify([log.to_dict() for log in logs])
+            output.headers["Content-Disposition"] = f"attachment; filename={filename}"
+            output.headers["Content-Type"] = "application/json"
+            return output
+        else: # CSV
+            def generate():
+                data = StringIO()
+                writer = csv.writer(data)
+                writer.writerow(['ID', 'Timestamp', 'Action', 'Admin User', 'Target User', 'IP Address', 'User Agent', 'Info'])
+                yield data.getvalue()
+                data.seek(0)
+                data.truncate(0)
+                for log in logs:
+                    writer.writerow([
+                        log.id, log.created_at, log.action, 
+                        log.admin_user.username if log.admin_user else 'N/A', 
+                        log.target_user.username if log.target_user else 'N/A', 
+                        log.ip_address, log.user_agent, log.additional_info
+                    ])
+                    yield data.getvalue()
+                    data.seek(0)
+                    data.truncate(0)
+            
+            headers = {"Content-Disposition": f"attachment; filename={filename}"}
+            return current_app.response_class(generate(), mimetype='text/csv', headers=headers)
+
+    except Exception as e:
+        logger.error(f"Error exporting audit log: {e}")
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+@admin_bp.route('/api/audit-logs', methods=['GET'])
+@admin_required
+def api_get_audit_logs():
+    """AJAX endpoint for getting filtered/paginated audit logs."""
+    try:
+        # Get parameters
+        search = request.args.get('search', '').strip()
+        action = request.args.get('action', '').strip()
+        ip = request.args.get('ip', '').strip()
+        page = request.args.get('page', 1, type=int)
+        per_page = request.args.get('per_page', 50, type=int)
+        sort_by = request.args.get('sort_by', 'created_at')
+        sort_order = request.args.get('sort_order', 'desc')
+
+        # Build query
+        query = AdminAuditLog.query.join(User, User.id == AdminAuditLog.admin_user_id, isouter=True)
+
+        if search:
+            search_term = f'%{search}%'
+            query = query.filter(db.or_(
+                AdminAuditLog.action.ilike(search_term),
+                User.username.ilike(search_term),
+                AdminAuditLog.ip_address.ilike(search_term),
+                AdminAuditLog.additional_info.ilike(search_term)
+            ))
+        if action:
+            query = query.filter(AdminAuditLog.action == action)
+        if ip:
+            query = query.filter(AdminAuditLog.ip_address == ip)
+
+        # Sorting
+        sort_column = getattr(AdminAuditLog, sort_by, AdminAuditLog.created_at)
+        if sort_order == 'desc':
+            query = query.order_by(sort_column.desc())
+        else:
+            query = query.order_by(sort_column.asc())
+
+        # Pagination
+        paginated_logs = query.paginate(page=page, per_page=per_page, error_out=False)
+        logs = [log.to_dict() for log in paginated_logs.items]
+
+        # Stats
+        total_logs = paginated_logs.total
+        unique_actions = db.session.query(db.func.count(db.distinct(AdminAuditLog.action))).scalar()
+
+        return jsonify({
+            'success': True,
+            'logs': logs,
+            'pagination': {
+                'page': paginated_logs.page,
+                'per_page': paginated_logs.per_page,
+                'total': total_logs,
+                'pages': paginated_logs.pages,
+                'has_prev': paginated_logs.has_prev,
+                'has_next': paginated_logs.has_next,
+                'prev_num': paginated_logs.prev_num,
+                'next_num': paginated_logs.next_num,
+                'unique_actions': unique_actions
+            }
+        })
+
+    except Exception as e:
+        logger.error(f"Error in api_get_audit_logs: {e}")
+        return jsonify({'success': False, 'error': str(e)}), 500
+
 @admin_bp.route('/reports')
 @admin_required
 def reports():
