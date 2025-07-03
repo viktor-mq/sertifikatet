@@ -26,7 +26,7 @@
   <!-- Enhanced Filters -->
   <div class="table-section">
   <h3 style="color: #374151; margin-bottom: 15px; display: flex; align-items: center; gap: 10px;">
-      📊 Audit Log Filters
+      Audit Log Filters
     </h3>
   <form id="audit-filter-form" class="enhanced-filter-form" onsubmit="event.preventDefault(); performAuditSearch();">
     <div class="search-filter-container enhanced-search">
@@ -114,7 +114,7 @@
         🔄 Refresh Log
       </button>
       <button onclick="showSecuritySummary()" class="btn btn-warning">
-        📊 Security Summary
+       Security Summary
       </button>
       <div id="export-loading" class="loading-indicator" style="display: none; margin-left: 10px;">Exporting...</div>
     </div>
@@ -215,25 +215,40 @@
   opacity: 0.7;
 }
 
+/* Horizontal flex layout for audit log controls to match database section */
 .table-controls {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
+    display: flex !important;
+    flex-direction: row !important;
+    align-items: center !important;
+    gap: 30px !important;
     margin-bottom: 15px;
     padding: 10px;
     background: #f8f9fa;
     border-radius: 8px;
 }
 
-.control-group {
-    display: flex;
-    align-items: center;
-    gap: 10px;
+.table-controls .control-group {
+    display: flex !important;
+    flex-direction: row !important;
+    align-items: center !important;
+    gap: 10px !important;
+    margin: 0 !important;
 }
 
-.control-group label {
+.table-controls .control-group label {
+    display: flex !important;
+    align-items: center !important;
+    margin: 0 !important;
+    line-height: 1 !important;
+    vertical-align: middle !important;
+    font-size: 14px !important;
     font-weight: bold;
     color: #555;
+}
+
+/* Override table icon for Security Actions section */
+#auditLogSection h3:not(.table-section h3)::before {
+    content: none !important;
 }
 
 #column-toggle-menu {
