@@ -59,6 +59,9 @@ def create_app(config_class=None):
     # Register blueprints
     from .admin.routes import admin_bp
     app.register_blueprint(admin_bp, url_prefix='/admin')
+
+    from .admin.ml_api_routes import ml_api_bp
+    app.register_blueprint(ml_api_bp, url_prefix='/admin/api/ml')
     
     from .main.routes import main_bp
     app.register_blueprint(main_bp)

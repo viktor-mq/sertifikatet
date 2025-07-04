@@ -122,7 +122,7 @@
             <a href="#" class="btn" onclick="showSection('reports')" id="reportsTab">🛡️ Reports & Security</a>
             <a href="#" class="btn" onclick="showSection('manageUsers')" id="manageUsersTab">👥 Manage Users</a>
             <a href="#" class="btn" onclick="showSection('auditLog')" id="auditLogTab">📜 Audit Log</a>
-            <a href="{{ url_for('admin.ml_settings') }}" class="btn">🤖 ML Settings</a>
+            <a href="#" class="btn" onclick="showSection('mlSettings2')" id="mlSettings2Tab">🤖 ML Settings</a>
             <a href="{{ url_for('admin.marketing_emails') }}" class="btn">📧 Marketing</a>
         </div>
 
@@ -140,6 +140,10 @@
 
         <!-- Audit Log Section -->
         {% include 'admin/audit_log_section.html' %}
+
+        <!-- ML Settings Section -->
+        {% include 'admin/ml_settings_section.html' %}
+        
     </div>
     
     <!-- Question Modal -->
@@ -230,6 +234,13 @@
                     }
                     break;
                     
+                case 'mlSettings2':
+                    if (typeof initializeMLSettings === 'function') {
+                        initializeMLSettings();
+                        console.log('ML Settings section initialized');
+                    }
+                    break;
+                    
                 case 'database':
                     // Database section uses its own DatabaseFiltering system
                     // Skip AdminEnhancements initialization to avoid conflicts
@@ -240,6 +251,54 @@
                     console.log('No specific initialization for section:', sectionName);
             }
         }
+
+        // New ML Dashboard function - bypasses section management issues
+        function showMLDashboard() {
+            console.log('Opening ML Dashboard...');
+            
+            // Hide all sections
+            document.querySelectorAll('.section').forEach(section => {
+                section.classList.remove('active');
+                section.style.display = 'none';
+            });
+            
+            // Remove active class from all tabs
+            document.querySelectorAll('.section-tabs .btn').forEach(btn => {
+                btn.classList.remove('active');
+            });
+            
+            // Show ML section with forced styling
+            const mlSection = document.getElementById('mlSettings2Section');
+            if (mlSection) {
+                mlSection.style.display = 'block';
+                mlSection.style.width = '100%';
+                mlSection.style.minHeight = '500px';
+                mlSection.style.visibility = 'visible';
+                mlSection.classList.add('active');
+                
+                console.log('ML section shown, dimensions:', {
+                    width: mlSection.offsetWidth,
+                    height: mlSection.offsetHeight
+                });
+                
+                // Initialize ML functionality
+                if (typeof initializeMLSettings === 'function') {
+                    initializeMLSettings();
+                    console.log('ML Settings initialized');
+                }
+                
+                // Make ML Dashboard button active if it exists
+                const mlBtn = document.getElementById('mlDashboardBtn');
+                if (mlBtn) {
+                    mlBtn.classList.add('active');
+                }
+            } else {
+                console.error('ML Settings section not found!');
+            }
+        }
+    </script>
+    
+    <script>
 
         // Initialize on page load
         document.addEventListener('DOMContentLoaded', function() {
@@ -286,5 +345,8 @@
             }
         });
     </script>
+    
+    <!-- Include ML Settings JavaScript -->
+    <script src="{{ url_for('static', filename='js/admin/admin-ml-settings.js') }}"></script>
 </body>
 </html>

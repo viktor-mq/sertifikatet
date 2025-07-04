@@ -1,0 +1,260 @@
+{# templates/admin/ml_settings_section.html #}
+
+<!-- ML Settings Section -->
+<div id="mlSettings2Section" class="section" style="margin-top: 30px;">
+    <!-- Statistics Section -->
+    <div class="stats-container">
+      <div class="stat-card">
+          <h3 id="totalUsers">Loading...</h3>
+        <p>Totale brukere</p>
+      </div>
+      <div class="stat-card">
+        <h3 id="activeProfiles">Loading...</h3>
+        <p>Aktive ML-profiler</p>
+      </div>
+      <div class="stat-card">
+        <h3 id="mlSessions">Loading...</h3>
+        <p>Adaptive økter</p>
+      </div>
+      <div class="stat-card">
+        <h3 id="algorithmVersion">Loading...</h3>
+        <p>Algoritme versjon</p>
+      </div>
+    </div>
+
+  <!-- ML Status Banner -->
+  <div class="ml-status-container" style="margin-bottom: 20px;">
+    <div id="mlStatusBanner" class="alert alert-info" style="display: flex; align-items: center;">
+      <span style="margin-right: 10px;">⏳</span>
+      <div>
+        <strong>Loading ML Status...</strong>
+      </div>
+    </div>
+  </div>
+
+  <!-- Action Buttons -->
+  <div style="margin-bottom: 20px;">
+    <button onclick="refreshMLData()" class="btn">🔄 Refresh ML Data</button>
+    <button onclick="exportMLInsights()" class="btn btn-success">📊 Export Insights</button>
+    <button onclick="resetMLModels()" class="btn btn-warning">⚙️ Reset Models</button>
+    <button onclick="showMLDiagnostics()" class="btn btn-secondary">🔍 Diagnostics</button>
+  </div>
+
+  <!-- ML Dashboard Content -->
+  <div class="ml-dashboard-container">
+    
+    <!-- User Skill Analysis -->
+    <div class="dashboard-section" style="margin-bottom: 30px;">
+      <h3 style="margin-bottom: 15px; color: #333;">👥 User Skill Analysis</h3>
+      
+      <div class="skill-analysis-grid" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 20px;">
+        
+        <!-- Overall Skill Distribution -->
+        <div class="analysis-card" style="background: white; padding: 20px; border-radius: 8px; box-shadow: 0 2px 4px rgba(0,0,0,0.1);">
+          <h4 style="margin-bottom: 15px; color: #555;">Skill Level Distribution</h4>
+          {% if skill_distribution %}
+          <div class="skill-levels">
+            {% for level, count in skill_distribution.items() %}
+            <div style="display: flex; justify-content: space-between; margin-bottom: 8px;">
+              <span>{{ level }}:</span>
+              <strong>{{ count }} users</strong>
+            </div>
+            {% endfor %}
+          </div>
+          {% else %}
+          <p style="color: #666; font-style: italic;">No skill data available yet</p>
+          {% endif %}
+        </div>
+
+        <!-- Top Performing Categories -->
+        <div class="analysis-card" style="background: white; padding: 20px; border-radius: 8px; box-shadow: 0 2px 4px rgba(0,0,0,0.1);">
+          <h4 style="margin-bottom: 15px; color: #555;">Top Performing Categories</h4>
+          {% if top_categories %}
+          <div class="category-list">
+            {% for category in top_categories[:5] %}
+            <div style="display: flex; justify-content: space-between; margin-bottom: 8px; padding: 5px; background: #f8f9fa; border-radius: 4px;">
+              <span>{{ category.name }}</span>
+              <span style="color: #28a745; font-weight: 600;">{{ "%.1f"|format(category.avg_score * 100) }}%</span>
+            </div>
+            {% endfor %}
+          </div>
+          {% else %}
+          <p style="color: #666; font-style: italic;">Building category analytics...</p>
+          {% endif %}
+        </div>
+
+        <!-- Problem Areas -->
+        <div class="analysis-card" style="background: white; padding: 20px; border-radius: 8px; box-shadow: 0 2px 4px rgba(0,0,0,0.1);">
+          <h4 style="margin-bottom: 15px; color: #555;">Common Problem Areas</h4>
+          {% if problem_areas %}
+          <div class="problem-list">
+            {% for area in problem_areas[:5] %}
+            <div style="display: flex; justify-content: space-between; margin-bottom: 8px; padding: 5px; background: #fff3cd; border-radius: 4px;">
+              <span>{{ area.name }}</span>
+              <span style="color: #dc3545; font-weight: 600;">{{ "%.1f"|format(area.avg_score * 100) }}%</span>
+            </div>
+            {% endfor %}
+          </div>
+          {% else %}
+          <p style="color: #666; font-style: italic;">Analyzing problem areas...</p>
+          {% endif %}
+        </div>
+      </div>
+    </div>
+
+    <!-- ML Model Performance -->
+    <div class="dashboard-section" style="margin-bottom: 30px;">
+      <h3 style="margin-bottom: 15px; color: #333;">🤖 ML Model Performance</h3>
+      
+      <div class="model-grid" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 20px;">
+        
+        <!-- Difficulty Prediction Model -->
+        <div class="model-card" style="background: white; padding: 20px; border-radius: 8px; box-shadow: 0 2px 4px rgba(0,0,0,0.1);">
+          <h4 style="margin-bottom: 15px; color: #555;">Difficulty Prediction</h4>
+          <div class="model-metrics">
+            <div style="margin-bottom: 8px;">
+              <span>Accuracy: </span>
+              <span id="difficultyModelAccuracy">Loading...</span>
+            </div>
+            <div style="margin-bottom: 8px;">
+              <span>Predictions: </span>
+              <span id="difficultyModelPredictions">Loading...</span>
+            </div>
+            <div>
+              <span>Last Updated: </span>
+              <span id="difficultyModelLastUpdated">Loading...</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- Adaptive Learning Model -->
+        <div class="model-card" style="background: white; padding: 20px; border-radius: 8px; box-shadow: 0 2px 4px rgba(0,0,0,0.1);">
+          <h4 style="margin-bottom: 15px; color: #555;">Adaptive Learning</h4>
+          <div class="model-metrics">
+            <div style="margin-bottom: 8px;">
+              <span>Personalization Rate: </span>
+              <span id="adaptiveModelPersonalization">Loading...</span>
+            </div>
+            <div style="margin-bottom: 8px;">
+              <span>Active Users: </span>
+              <span id="adaptiveModelActiveUsers">Loading...</span>
+            </div>
+            <div>
+              <span>Avg Improvement: </span>
+              <span id="adaptiveModelImprovement">Loading...</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- Question Analytics Model -->
+        <div class="model-card" style="background: white; padding: 20px; border-radius: 8px; box-shadow: 0 2px 4px rgba(0,0,0,0.1);">
+          <h4 style="margin-bottom: 15px; color: #555;">Question Analytics</h4>
+          <div class="model-metrics">
+            <div style="margin-bottom: 8px;">
+              <span>Questions Analyzed: </span>
+              <span id="questionModelAnalyzed">Loading...</span>
+            </div>
+            <div style="margin-bottom: 8px;">
+              <span>Difficulty Profiles: </span>
+              <span id="questionModelProfiles">Loading...</span>
+            </div>
+            <div>
+              <span>Avg Discrimination: </span>
+              <span id="questionModelDiscrimination">Loading...</span>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Recent ML Activity -->
+    <div class="dashboard-section">
+      <h3 style="margin-bottom: 15px; color: #333;">📈 Recent ML Activity</h3>
+      
+      <div class="activity-container" style="background: white; padding: 20px; border-radius: 8px; box-shadow: 0 2px 4px rgba(0,0,0,0.1);">
+        {% if recent_ml_activity %}
+        <div class="activity-list">
+          {% for activity in recent_ml_activity %}
+          <div class="activity-item" style="display: flex; justify-content: space-between; align-items: center; padding: 10px; margin-bottom: 8px; background: #f8f9fa; border-radius: 4px;">
+            <div>
+              <strong>{{ activity.action }}</strong>
+              <span style="margin-left: 10px; color: #666;">{{ activity.details }}</span>
+            </div>
+            <span style="font-size: 0.9em; color: #999;">{{ activity.timestamp.strftime('%H:%M') if activity.timestamp else '' }}</span>
+          </div>
+          {% endfor %}
+        </div>
+        {% else %}
+        <div style="text-align: center; color: #666; padding: 20px;">
+          <p>No recent ML activity</p>
+          <small>System is ready for adaptive learning</small>
+        </div>
+        {% endif %}
+      </div>
+    </div>
+  </div>
+
+  <!-- Configuration Panel -->
+  <div class="ml-config-panel" style="margin-top: 30px; background: white; padding: 20px; border-radius: 8px; box-shadow: 0 2px 4px rgba(0,0,0,0.1);">
+    <h3 style="margin-bottom: 15px; color: #333;">⚙️ ML Configuration</h3>
+    
+    <div class="config-grid" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 20px;">
+      
+      <!-- Algorithm Settings -->
+      <div class="config-section">
+        <h4 style="margin-bottom: 10px; color: #555;">Algorithm Settings</h4>
+        <div class="config-item" style="margin-bottom: 10px;">
+          <label style="display: block; margin-bottom: 5px;">Learning Rate:</label>
+          <input type="range" min="0.01" max="0.1" step="0.01" id="learningRateSlider" class="config-slider">
+          <span id="learningRateValue" class="config-value">Loading...</span>
+        </div>
+        <div class="config-item" style="margin-bottom: 10px;">
+          <label style="display: block; margin-bottom: 5px;">Adaptation Strength:</label>
+          <input type="range" min="0.1" max="1.0" step="0.1" id="adaptationStrengthSlider" class="config-slider">
+          <span id="adaptationStrengthValue" class="config-value">Loading...</span>
+        </div>
+      </div>
+
+      <!-- Data Collection -->
+      <div class="config-section">
+        <h4 style="margin-bottom: 10px; color: #555;">Data Collection</h4>
+        <div class="config-item" style="margin-bottom: 10px;">
+          <label style="display: flex; align-items: center;">
+            <input type="checkbox" id="collectResponseTimes" style="margin-right: 8px;">
+            Collect Response Times
+          </label>
+        </div>
+        <div class="config-item" style="margin-bottom: 10px;">
+          <label style="display: flex; align-items: center;">
+            <input type="checkbox" id="trackConfidence" style="margin-right: 8px;">
+            Track User Confidence
+          </label>
+        </div>
+        <div class="config-item">
+          <label style="display: flex; align-items: center;">
+            <input type="checkbox" id="analyzePatterns" style="margin-right: 8px;">
+            Analyze Learning Patterns
+          </label>
+        </div>
+      </div>
+
+      <!-- Model Updates -->
+      <div class="config-section">
+        <h4 style="margin-bottom: 10px; color: #555;">Model Updates</h4>
+        <div class="config-item" style="margin-bottom: 10px;">
+          <label style="display: block; margin-bottom: 5px;">Update Frequency:</label>
+          <select id="updateFrequency" class="config-select" style="width: 100%; padding: 5px;">
+            <option value="real-time">Real-time</option>
+            <option value="hourly">Hourly</option>
+            <option value="daily">Daily</option>
+            <option value="weekly">Weekly</option>
+          </select>
+        </div>
+        <div class="config-item">
+          <button class="btn btn-primary" onclick="saveMLConfiguration()">💾 Save Configuration</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+</div>

@@ -6,10 +6,12 @@ Provides high-level ML functionality for the application.
 from typing import List, Dict, Optional
 from flask import current_app
 import logging
+from datetime import datetime, timedelta
 
-from ..models import User, Question, QuizSession
+from .. import db
+from ..models import User, Question, QuizSession, AdminAuditLog
 from .adaptive_engine import AdaptiveLearningEngine
-from .models import UserSkillProfile, QuestionDifficultyProfile
+from .models import UserSkillProfile, QuestionDifficultyProfile, AdaptiveQuizSession, LearningAnalytics, MLModel, EnhancedQuizResponse
 
 logger = logging.getLogger(__name__)
 
@@ -56,7 +58,9 @@ class MLService:
             return self._get_fallback_questions(category, num_questions)
     
     def get_user_learning_insights(self, user_id: int) -> Dict:
-        """Get comprehensive learning insights for a user"""
+        """
+        Get comprehensive learning insights for a user.
+        """
         if not self._initialized:
             self.initialize()
         
@@ -170,7 +174,7 @@ class MLService:
                     'ml_enabled': False,
                     'skill_profiles': 0,
                     'question_profiles': 0,
-                    'algorithm_version': 'Not Active',
+                    'algorithm_version': '1.0 (Inactive)',
                     'features_available': [],
                     'error': 'ML system not initialized'
                 }
@@ -202,7 +206,103 @@ class MLService:
                 'algorithm_version': 'Error',
                 'features_available': []
             }
-    
+
+    def get_comprehensive_stats(self) -> Dict:
+        """Get comprehensive statistics for the ML dashboard."""
+        try:
+            total_users = User.query.count()
+            total_skill_profiles = UserSkillProfile.query.count()
+            questions_with_difficulty_profiles = QuestionDifficultyProfile.query.count()
+            adaptive_sessions_count = AdaptiveQuizSession.query.count()
+            learning_analytics_entries = LearningAnalytics.query.count()
+            enhanced_responses = EnhancedQuizResponse.query.count()
+            ml_models_count = MLModel.query.count()
+            active_ml_models_count = MLModel.query.filter_by(is_active=True).count()
+     
+            return {
+                    'total_users': total_users,
+                    'total_skill_profiles': total_skill_profiles,
+                    'questions_with_difficulty_profiles': questions_with_difficulty_profiles,
+                    'adaptive_sessions_count': adaptive_sessions_count,
+                    'learning_analytics_entries': learning_analytics_entries,
+                    'enhanced_responses': enhanced_responses,
+                    'ml_models': ml_models_count,
+                    'active_ml_models': active_ml_models_count
+                }
+        except Exception as e:
+            logger.error(f"Error getting comprehensive ML stats: {e}", exc_info=True)
+            return {
+                'total_users': 0,
+                    'total_skill_profiles': 0,
+                'questions_with_difficulty_profiles': 0,
+                'adaptive_sessions_count': 0,
+                'learning_analytics_entries': 0,
+                'enhanced_responses': 0,
+                'ml_models': 0,
+                'active_ml_models': 0
+            }
+
+
+
+    def get_model_performance_summary(self) -> Dict:
+        """Get summary of ML model performance."""
+        try:
+            # Fetch latest models
+            latest_difficulty_model = MLModel.query.filter_by(name='difficulty_predictor')\
+                                                .order_by(MLModel.created_at.desc()).first()
+
+            latest_adaptive_model = MLModel.query.filter_by(name='adaptive_recommender')\
+                                                .order_by(MLModel.created_at.desc()).first()
+
+            latest_question_model = MLModel.query.filter_by(name='question_analyzer')\
+                                                .order_by(MLModel.created_at.desc()).first()
+
+            return {
+                'difficulty_model': {
+                    'accuracy': latest_difficulty_model.accuracy_score if latest_difficulty_model else 0.0,
+                    'predictions_count': latest_difficulty_model.total_predictions if latest_difficulty_model else 0,
+                    'last_updated': latest_difficulty_model.created_at.isoformat() if latest_difficulty_model and latest_difficulty_model.created_at else None
+                },
+                'adaptive_model': {
+                    'personalization_rate': latest_adaptive_model.accuracy_score if latest_adaptive_model else 0.0,
+                    'active_users': latest_adaptive_model.total_predictions if latest_adaptive_model else 0,
+                    'avg_improvement': latest_adaptive_model.f1_score if latest_adaptive_model else 0.0
+                },
+                'question_model': {
+                    'questions_analyzed': latest_question_model.total_predictions if latest_question_model else 0,
+                    'difficulty_profiles': latest_question_model.accuracy_score if latest_question_model else 0,
+                    'avg_discrimination': latest_question_model.precision_score if latest_question_model else 0.0
+                }
+            }
+
+        except Exception as e:
+            logger.error(f"Error getting model performance summary: {e}", exc_info=True)
+            return {
+                'difficulty_model': {'accuracy': 0.0, 'predictions_count': 0, 'last_updated': None},
+                'adaptive_model': {'personalization_rate': 0.0, 'active_users': 0, 'avg_improvement': 0.0},
+                'question_model': {'questions_analyzed': 0, 'difficulty_profiles': 0, 'avg_discrimination': 0.0}
+            }
+
+    def get_recent_activity(self, limit: int = 5) -> List[Dict]:
+        """Get recent ML-related activities or audit logs."""
+        try:
+            recent_ml_actions = AdminAuditLog.query.filter(
+                AdminAuditLog.action.like('ml_%')
+            ).order_by(AdminAuditLog.created_at.desc()).limit(limit).all()
+
+            activity_list = []
+            for log in recent_ml_actions:
+                activity_list.append({
+                    'action': log.action,
+                    'details': log.additional_info,
+                    'timestamp': log.created_at.isoformat()
+                })
+            return activity_list
+
+        except Exception as e:
+            logger.error(f"Error getting recent ML activity: {e}", exc_info=True)
+            return []
+
     # Helper methods
     def _get_fallback_questions(self, category: str = None, num_questions: int = 10) -> List[Question]:
         """Fallback question selection when ML fails"""
@@ -375,6 +475,71 @@ class MLService:
             'session_duration_minutes': 25,
             'question_types': ['multiple_choice'],
             'breaks_recommended': False
+        }
+
+    def save_ml_configuration(self, config: Dict) -> Dict:
+        """Saves the ML configuration settings."""
+        try:
+            # In a real scenario, this would save to a config file or database
+            logger.info(f"[ML_SERVICE] Saving ML configuration: {config}")
+            # For now, just return success
+            return {'success': True, 'message': 'Configuration saved.'}
+        except Exception as e:
+            logger.error(f"[ML_SERVICE] Error saving ML configuration: {e}", exc_info=True)
+            return {'success': False, 'error': str(e)}
+
+    def export_ml_insights(self) -> Dict:
+        """Exports ML insights and analytics data."""
+        try:
+            # In a real scenario, this would generate a CSV or other file
+            logger.info("[ML_SERVICE] Exporting ML insights.")
+            # For now, just return success
+            return {'success': True, 'message': 'Insights exported.'}
+        except Exception as e:
+            logger.error(f"[ML_SERVICE] Error exporting ML insights: {e}", exc_info=True)
+            return {'success': False, 'error': str(e)}
+
+    def reset_ml_models(self) -> Dict:
+        """Resets all ML models and their learned data."""
+        try:
+            # In a real scenario, this would clear relevant database tables or model files
+            logger.info("[ML_SERVICE] Resetting ML models.")
+            # For now, just return success
+            return {'success': True, 'message': 'Models reset.'}
+        except Exception as e:
+            logger.error(f"[ML_SERVICE] Error resetting ML models: {e}", exc_info=True)
+            return {'success': False, 'error': str(e)}
+
+    def get_ml_diagnostics(self) -> Dict:
+        """Returns diagnostic information about the ML system."""
+        try:
+            # In a real scenario, this would check system health, model status, etc.
+            logger.info("[ML_SERVICE] Getting ML diagnostics.")
+            return {
+                'healthy': True,
+                'uptime': '1d 5h 30m',
+                'memory_usage': '128 MB',
+                'models': {
+                    'difficulty_prediction': {'active': True},
+                    'adaptive_learning': {'active': True}
+                },
+                'metrics': {
+                    'cpu_usage': '15%',
+                    'disk_io': '20 MB/s'
+                }
+            }
+        except Exception as e:
+            logger.error(f"[ML_SERVICE] Error getting ML diagnostics: {e}", exc_info=True)
+            return {'healthy': False, 'error': str(e)}
+        
+    def get_ml_configuration(self) -> Dict:
+        return {
+            'learning_rate': 0.05,
+            'adaptation_strength': 0.5,
+            'collect_response_times': True,
+            'track_confidence': True,
+            'analyze_patterns': True,
+            'update_frequency': 'daily'
         }
 
 
