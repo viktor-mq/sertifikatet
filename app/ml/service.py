@@ -25,10 +25,29 @@ class MLService:
     def __init__(self):
         self.engine = AdaptiveLearningEngine()
         self._initialized = False
+        self._settings_service = None
+    
+    def _get_settings_service(self):
+        """Get settings service instance"""
+        if self._settings_service is None:
+            try:
+                from ..utils.settings_service import settings_service
+                self._settings_service = settings_service
+            except ImportError:
+                logger.warning("Settings service not available, using defaults")
+                self._settings_service = None
+        return self._settings_service
     
     def initialize(self):
         """Initialize the ML service"""
         try:
+            # Check if ML system is enabled
+            settings = self._get_settings_service()
+            if settings and not settings.is_ml_enabled():
+                logger.info("ML System is disabled via settings")
+                self._initialized = False
+                return
+            
             self.engine.initialize_models()
             self._initialized = True
             logger.info("ML Service initialized successfully")
@@ -36,14 +55,37 @@ class MLService:
             logger.error(f"Failed to initialize ML Service: {e}")
             self._initialized = False
     
+    def is_ml_enabled(self) -> bool:
+        """Check if ML system is enabled"""
+        settings = self._get_settings_service()
+        if settings:
+            return settings.is_ml_enabled()
+        return True  # Default to enabled if no settings
+    
+    def is_feature_enabled(self, feature_name: str) -> bool:
+        """Check if specific ML feature is enabled"""
+        settings = self._get_settings_service()
+        if settings:
+            return settings.is_feature_enabled(feature_name)
+        return True  # Default to enabled if no settings
+    
     def get_adaptive_questions(self, user_id: int, category: str = None, 
                              num_questions: int = 10, session_id: int = None) -> List[Question]:
         """
         Get adaptively selected questions for a user.
         This is the main entry point for personalized question selection.
         """
+        # Check if adaptive learning is enabled
+        if not self.is_feature_enabled('adaptive_learning'):
+            logger.info("Adaptive learning disabled, using fallback")
+            return self._get_fallback_questions(category, num_questions)
+        
         if not self._initialized:
             self.initialize()
+        
+        if not self._initialized:
+            logger.warning("ML not initialized, using fallback")
+            return self._get_fallback_questions(category, num_questions)
         
         try:
             return self.engine.select_adaptive_questions(
@@ -57,10 +99,72 @@ class MLService:
             # Fallback to basic question selection
             return self._get_fallback_questions(category, num_questions)
     
+    def _get_fallback_questions(self, category: str = None, num_questions: int = 10) -> List[Question]:
+        """
+        Get questions using fallback mode when ML is disabled.
+        """
+        try:
+            settings = self._get_settings_service()
+            fallback_mode = 'random'  # Default
+            
+            if settings:
+                fallback_mode = settings.get_setting('ml_fallback_mode', default='random')
+            
+            logger.info(f"Using fallback mode: {fallback_mode}")
+            
+            query = Question.query.filter_by(is_active=True)
+            if category:
+                query = query.filter_by(category=category)
+            
+            if fallback_mode == 'difficulty':
+                # Order by difficulty level
+                return query.order_by(Question.difficulty_level).limit(num_questions).all()
+            elif fallback_mode == 'category':
+                # Distribute across categories
+                return query.order_by(Question.category, Question.id).limit(num_questions).all()
+            elif fallback_mode == 'legacy':
+                # Use legacy system if available
+                return self._get_legacy_questions(category, num_questions)
+            else:  # random
+                return query.order_by(db.func.random()).limit(num_questions).all()
+                
+        except Exception as e:
+            logger.error(f"Error in fallback question selection: {e}")
+            # Ultimate fallback
+            query = Question.query.filter_by(is_active=True)
+            if category:
+                query = query.filter_by(category=category)
+            return query.limit(num_questions).all()
+    
+    def _get_legacy_questions(self, category: str = None, num_questions: int = 10) -> List[Question]:
+        """
+        Use legacy question selection system.
+        """
+        try:
+            # Try to import and use legacy functions
+            # This would integrate with ml_functions_backup.py
+            logger.info("Using legacy question selection system")
+            
+            # For now, fall back to simple selection
+            # TODO: Integrate with actual legacy system from ml_functions_backup.py
+            query = Question.query.filter_by(is_active=True)
+            if category:
+                query = query.filter_by(category=category)
+            return query.order_by(Question.difficulty_level, Question.id).limit(num_questions).all()
+            
+        except Exception as e:
+            logger.error(f"Error in legacy question selection: {e}")
+            return self._get_fallback_questions(category, num_questions)
+    
     def get_user_learning_insights(self, user_id: int) -> Dict:
         """
         Get comprehensive learning insights for a user.
         """
+        # Check if skill tracking is enabled
+        if not self.is_feature_enabled('skill_tracking'):
+            logger.info("Skill tracking disabled, using basic insights")
+            return self._get_basic_insights(user_id)
+        
         if not self._initialized:
             self.initialize()
         
@@ -72,6 +176,11 @@ class MLService:
     
     def update_learning_progress(self, user_id: int, session_id: int, responses: List[Dict]):
         """Update user's learning progress based on quiz responses"""
+        # Check if data collection is enabled
+        if not self.is_feature_enabled('data_collection'):
+            logger.info("Data collection disabled, skipping ML progress update")
+            return
+        
         if not self._initialized:
             self.initialize()
         
@@ -82,6 +191,11 @@ class MLService:
     
     def get_personalized_difficulty(self, user_id: int, category: str = None) -> float:
         """Get recommended difficulty level for a user"""
+        # Check if difficulty prediction is enabled
+        if not self.is_feature_enabled('difficulty_prediction'):
+            logger.info("Difficulty prediction disabled, using default")
+            return 0.5  # Default difficulty
+        
         if not self._initialized:
             self.initialize()
         
@@ -478,12 +592,45 @@ class MLService:
         }
 
     def save_ml_configuration(self, config: Dict) -> Dict:
-        """Saves the ML configuration settings."""
+        """Saves the ML configuration settings using settings service."""
         try:
-            # In a real scenario, this would save to a config file or database
-            logger.info(f"[ML_SERVICE] Saving ML configuration: {config}")
-            # For now, just return success
-            return {'success': True, 'message': 'Configuration saved.'}
+            settings = self._get_settings_service()
+            if not settings:
+                return {'success': False, 'error': 'Settings service not available'}
+            
+            updated_count = 0
+            errors = []
+            
+            # Update each setting
+            for key, value in config.items():
+                if key.startswith('ml_'):
+                    try:
+                        success = settings.set_setting(key, value)
+                        if success:
+                            updated_count += 1
+                        else:
+                            errors.append(f"Failed to update {key}")
+                    except Exception as e:
+                        errors.append(f"Error updating {key}: {str(e)}")
+            
+            # Clear ML service cache if settings changed
+            if updated_count > 0:
+                settings.clear_cache()
+                logger.info(f"Updated {updated_count} ML settings")
+            
+            if errors:
+                return {
+                    'success': False, 
+                    'error': f'Some settings failed to update: {", ".join(errors)}',
+                    'updated_count': updated_count
+                }
+            
+            return {
+                'success': True, 
+                'message': f'Successfully updated {updated_count} ML settings',
+                'updated_count': updated_count
+            }
+            
         except Exception as e:
             logger.error(f"[ML_SERVICE] Error saving ML configuration: {e}", exc_info=True)
             return {'success': False, 'error': str(e)}
@@ -533,14 +680,28 @@ class MLService:
             return {'healthy': False, 'error': str(e)}
         
     def get_ml_configuration(self) -> Dict:
-        return {
-            'learning_rate': 0.05,
-            'adaptation_strength': 0.5,
-            'collect_response_times': True,
-            'track_confidence': True,
-            'analyze_patterns': True,
-            'update_frequency': 'daily'
-        }
+        """Get current ML configuration from settings service."""
+        try:
+            settings = self._get_settings_service()
+            if not settings:
+                # Return hardcoded defaults if settings not available
+                return {
+                    'ml_system_enabled': True,
+                    'ml_adaptive_learning': True,
+                    'ml_skill_tracking': True,
+                    'ml_difficulty_prediction': True,
+                    'ml_data_collection': True,
+                    'ml_model_retraining': True,
+                    'ml_fallback_mode': 'random',
+                    'ml_learning_rate': 0.05,
+                    'ml_adaptation_strength': 0.5
+                }
+            
+            return settings.get_ml_settings()
+            
+        except Exception as e:
+            logger.error(f"Error getting ML configuration: {e}")
+            return {}
 
 
 # Global ML service instance

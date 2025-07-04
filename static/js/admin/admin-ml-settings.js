@@ -19,12 +19,163 @@ function initializeMLSettings() {
         // Load initial ML data
         loadMLData();
     
-    // Load current configuration
-    loadMLConfiguration();
+        // Load current configuration
+        loadMLConfiguration();
         
         console.log('✅ ML Settings section initialized successfully');
     } catch (error) {
         console.error('❌ Error initializing ML Settings:', error);
+    }
+}
+
+// NEW: Update ML Setting (for toggle switches and other controls)
+function updateMLSetting(settingKey, value) {
+    console.log(`Updating ML setting: ${settingKey} = ${value}`);
+    
+    // Show loading state
+    showMLUpdateProgress(settingKey, true);
+    
+    // Prepare the configuration object
+    const config = {};
+    config[settingKey] = value;
+    
+    // Send update to server
+    fetch('/admin/api/ml/config', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+            'X-Requested-With': 'XMLHttpRequest'
+        },
+        body: JSON.stringify(config)
+    })
+    .then(response => response.json())
+    .then(data => {
+        showMLUpdateProgress(settingKey, false);
+        
+        if (data.success) {
+            console.log(`✅ Successfully updated ${settingKey}`);
+            showMLNotification(`${settingKey} updated successfully`, 'success');
+            
+            // Update UI based on the setting
+            handleMLSettingUpdate(settingKey, value);
+            
+            // Refresh ML status
+            loadMLData();
+        } else {
+            console.error('❌ Failed to update ML setting:', data.error);
+            showMLNotification(`Failed to update ${settingKey}: ${data.error}`, 'error');
+            
+            // Revert the UI change
+            revertMLSettingUI(settingKey, value);
+        }
+    })
+    .catch(error => {
+        showMLUpdateProgress(settingKey, false);
+        console.error('❌ Error updating ML setting:', error);
+        showMLNotification(`Error updating ${settingKey}`, 'error');
+        
+        // Revert the UI change
+        revertMLSettingUI(settingKey, value);
+    });
+}
+
+// Handle ML setting updates in the UI
+function handleMLSettingUpdate(settingKey, value) {
+    if (settingKey === 'ml_system_enabled') {
+        const featureControls = document.getElementById('mlFeatureControls');
+        if (featureControls) {
+            if (value) {
+                featureControls.classList.remove('disabled');
+            } else {
+                featureControls.classList.add('disabled');
+                // Disable all individual features when master switch is off
+                document.querySelectorAll('#mlFeatureControls input[type="checkbox"]').forEach(input => {
+                    input.disabled = true;
+                });
+            }
+        }
+        
+        // Update impact indicator
+        updateMLImpactIndicator('mlMasterImpact', value);
+    }
+    
+    // Update slider values if this is a range setting
+    if (settingKey === 'ml_learning_rate') {
+        const valueDisplay = document.getElementById('mlLearningRateValue');
+        if (valueDisplay) {
+            valueDisplay.textContent = value.toFixed(2);
+        }
+    }
+    
+    if (settingKey === 'ml_adaptation_strength') {
+        const valueDisplay = document.getElementById('mlAdaptationStrengthValue');
+        if (valueDisplay) {
+            valueDisplay.textContent = value.toFixed(1);
+        }
+    }
+}
+
+// Update ML impact indicator
+function updateMLImpactIndicator(elementId, enabled) {
+    const indicator = document.getElementById(elementId);
+    if (indicator) {
+        indicator.className = 'ml-impact-indicator ' + (enabled ? 'enabled' : 'disabled');
+        indicator.textContent = enabled ? 'Enabled' : 'Disabled';
+    }
+}
+
+// Show ML update progress
+function showMLUpdateProgress(settingKey, isLoading) {
+    // You could show spinners or loading states here
+    console.log(`${settingKey} update progress: ${isLoading ? 'loading' : 'complete'}`);
+}
+
+// Show ML notification
+function showMLNotification(message, type = 'info') {
+    // Create a simple notification
+    const notification = document.createElement('div');
+    notification.className = `ml-notification ${type}`;
+    notification.textContent = message;
+    notification.style.cssText = `
+        position: fixed;
+        top: 20px;
+        right: 20px;
+        padding: 12px 20px;
+        border-radius: 4px;
+        color: white;
+        z-index: 10000;
+        transition: all 0.3s ease;
+        ${type === 'success' ? 'background-color: #28a745;' : ''}
+        ${type === 'error' ? 'background-color: #dc3545;' : ''}
+        ${type === 'info' ? 'background-color: #007bff;' : ''}
+    `;
+    
+    document.body.appendChild(notification);
+    
+    // Remove after 3 seconds
+    setTimeout(() => {
+        notification.style.opacity = '0';
+        setTimeout(() => {
+            if (notification.parentNode) {
+                notification.parentNode.removeChild(notification);
+            }
+        }, 300);
+    }, 3000);
+}
+
+// Revert ML setting UI if update failed
+function revertMLSettingUI(settingKey, attemptedValue) {
+    // Find the control and revert its value
+    const control = document.getElementById(settingKey);
+    if (control) {
+        if (control.type === 'checkbox') {
+            control.checked = !attemptedValue;
+        } else if (control.type === 'range') {
+            // For sliders, we'd need to get the previous value from somewhere
+            console.log(`Reverting ${settingKey} - would need previous value`);
+        } else {
+            console.log(`Reverting ${settingKey} - ${control.type} not handled`);
+        }
     }
 }
 

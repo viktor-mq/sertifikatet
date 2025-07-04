@@ -8,6 +8,325 @@
           <h3 id="totalUsers">Loading...</h3>
         <p>Totale brukere</p>
       </div>
+
+<style>
+/* Toggle Switch Styles for ML Control Panel */
+.toggle-switch {
+  position: relative;
+  display: inline-block;
+  width: 50px;
+  height: 24px;
+}
+
+.toggle-switch input {
+  opacity: 0;
+  width: 0;
+  height: 0;
+}
+
+.slider {
+  position: absolute;
+  cursor: pointer;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background-color: #ccc;
+  transition: .4s;
+  border-radius: 24px;
+}
+
+.slider:before {
+  position: absolute;
+  content: "";
+  height: 18px;
+  width: 18px;
+  left: 3px;
+  bottom: 3px;
+  background-color: white;
+  transition: .4s;
+  border-radius: 50%;
+}
+
+input:checked + .slider {
+  background-color: #28a745;
+}
+
+input:focus + .slider {
+  box-shadow: 0 0 1px #28a745;
+}
+
+input:checked + .slider:before {
+  transform: translateX(26px);
+}
+
+/* Disabled state */
+input:disabled + .slider {
+  background-color: #e9ecef;
+  cursor: not-allowed;
+}
+
+input:disabled + .slider:before {
+  background-color: #6c757d;
+}
+
+/* Master switch special styling */
+#mlSystemEnabled + .slider {
+  width: 60px;
+  height: 28px;
+}
+
+#mlSystemEnabled + .slider:before {
+  height: 22px;
+  width: 22px;
+  left: 3px;
+  bottom: 3px;
+}
+
+#mlSystemEnabled:checked + .slider:before {
+  transform: translateX(32px);
+}
+
+/* Impact indicators */
+.ml-impact-indicator {
+  transition: all 0.3s ease;
+}
+
+.ml-impact-indicator.enabled {
+  background-color: #d4edda;
+  color: #155724;
+}
+
+.ml-impact-indicator.disabled {
+  background-color: #f8d7da;
+  color: #721c24;
+}
+
+.ml-impact-indicator.warning {
+  background-color: #fff3cd;
+  color: #856404;
+}
+
+/* Feature controls */
+#mlFeatureControls.disabled {
+  opacity: 0.5;
+  pointer-events: none;
+}
+
+/* Config sliders */
+.config-slider {
+  width: 100%;
+  height: 6px;
+  border-radius: 3px;
+  background: #ddd;
+  outline: none;
+  transition: background 0.3s;
+}
+
+.config-slider::-webkit-slider-thumb {
+  appearance: none;
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  background: #007bff;
+  cursor: pointer;
+  transition: background 0.3s;
+}
+
+.config-slider::-webkit-slider-thumb:hover {
+  background: #0056b3;
+}
+
+/* Responsive design */
+@media (max-width: 768px) {
+  .setting-grid {
+    grid-template-columns: 1fr;
+  }
+  
+  .ml-control-panel {
+    padding: 15px;
+  }
+  
+  .switch-label {
+    flex-direction: column;
+    align-items: flex-start !important;
+    gap: 8px !important;
+  }
+}
+</style>
+
+<script src="{{ url_for('static', filename='js/admin/admin-ml-settings.js') }}"></script>
+
+<!-- Toggle Switch Styles -->
+<style>
+/* Toggle Switch Styles */
+.toggle-switch {
+  position: relative;
+  display: inline-block;
+  width: 50px;
+  height: 24px;
+}
+
+.toggle-switch input {
+  opacity: 0;
+  width: 0;
+  height: 0;
+}
+
+.slider {
+  position: absolute;
+  cursor: pointer;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background-color: #ccc;
+  transition: .4s;
+  border-radius: 24px;
+}
+
+.slider:before {
+  position: absolute;
+  content: "";
+  height: 18px;
+  width: 18px;
+  left: 3px;
+  bottom: 3px;
+  background-color: white;
+  transition: .4s;
+  border-radius: 50%;
+}
+
+input:checked + .slider {
+  background-color: #28a745;
+}
+
+input:focus + .slider {
+  box-shadow: 0 0 1px #28a745;
+}
+
+input:checked + .slider:before {
+  transform: translateX(26px);
+}
+
+/* Disabled state */
+input:disabled + .slider {
+  background-color: #e9ecef;
+  cursor: not-allowed;
+}
+
+input:disabled + .slider:before {
+  background-color: #6c757d;
+}
+
+/* Master switch special styling */
+#mlSystemEnabled + .slider {
+  width: 60px;
+  height: 28px;
+}
+
+#mlSystemEnabled + .slider:before {
+  height: 22px;
+  width: 22px;
+  left: 3px;
+  bottom: 3px;
+}
+
+#mlSystemEnabled:checked + .slider:before {
+  transform: translateX(32px);
+}
+
+/* Impact indicators */
+.ml-impact-indicator {
+  transition: all 0.3s ease;
+}
+
+.ml-impact-indicator.enabled {
+  background-color: #d4edda;
+  color: #155724;
+}
+
+.ml-impact-indicator.disabled {
+  background-color: #f8d7da;
+  color: #721c24;
+}
+
+.ml-impact-indicator.warning {
+  background-color: #fff3cd;
+  color: #856404;
+}
+
+/* Setting rows */
+.setting-row {
+  padding: 10px;
+  border-radius: 6px;
+  transition: background-color 0.2s ease;
+}
+
+.setting-row:hover {
+  background-color: #f8f9fa;
+}
+
+/* Feature controls */
+#mlFeatureControls.disabled {
+  opacity: 0.5;
+  pointer-events: none;
+}
+
+#mlFeatureControls.disabled .toggle-switch input {
+  pointer-events: none;
+}
+
+/* Config sliders */
+.config-slider {
+  width: 100%;
+  height: 6px;
+  border-radius: 3px;
+  background: #ddd;
+  outline: none;
+  transition: background 0.3s;
+}
+
+.config-slider::-webkit-slider-thumb {
+  appearance: none;
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  background: #007bff;
+  cursor: pointer;
+  transition: background 0.3s;
+}
+
+.config-slider::-webkit-slider-thumb:hover {
+  background: #0056b3;
+}
+
+.config-slider::-moz-range-thumb {
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  background: #007bff;
+  cursor: pointer;
+  border: none;
+}
+
+/* Responsive design */
+@media (max-width: 768px) {
+  .setting-grid {
+    grid-template-columns: 1fr;
+  }
+  
+  .ml-control-panel {
+    padding: 15px;
+  }
+  
+  .switch-label {
+    flex-direction: column;
+    align-items: flex-start !important;
+    gap: 8px !important;
+  }
+}
+</style>
       <div class="stat-card">
         <h3 id="activeProfiles">Loading...</h3>
         <p>Aktive ML-profiler</p>
@@ -28,6 +347,177 @@
       <span style="margin-right: 10px;">⏳</span>
       <div>
         <strong>Loading ML Status...</strong>
+      </div>
+    </div>
+  </div>
+
+  <!-- ML Control Panel -->
+  <div class="ml-control-panel" style="background: white; padding: 20px; border-radius: 12px; margin-bottom: 20px; box-shadow: 0 2px 4px rgba(0,0,0,0.1);">
+    <h3 style="margin-bottom: 15px; color: #333; display: flex; align-items: center; gap: 10px;">
+      🔧 ML System Control
+    </h3>
+    
+    <!-- Master Switch -->
+    <div class="setting-row" style="margin-bottom: 20px; padding: 15px; background: #f8f9fa; border-radius: 8px;">
+      <div style="display: flex; align-items: center; justify-content: space-between;">
+        <div>
+          <label class="switch-label" style="display: flex; align-items: center; gap: 15px; cursor: pointer;">
+            <div class="toggle-switch">
+              <input type="checkbox" id="mlSystemEnabled" class="setting-switch" onchange="updateMLSetting('ml_system_enabled', this.checked)">
+              <span class="slider"></span>
+            </div>
+            <div>
+              <strong style="font-size: 16px;">Enable ML System</strong>
+              <p style="margin: 0; color: #666; font-size: 14px;">Master switch for all machine learning features</p>
+            </div>
+          </label>
+        </div>
+        <div class="ml-impact-indicator" id="mlMasterImpact" style="padding: 5px 10px; border-radius: 20px; font-size: 12px; font-weight: bold;">
+          Checking...
+        </div>
+      </div>
+    </div>
+    
+    <!-- Individual Features -->
+    <div class="feature-controls" id="mlFeatureControls" style="margin-bottom: 20px;">
+      <h4 style="margin-bottom: 15px; color: #555;">Individual Features</h4>
+      
+      <div class="setting-grid" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 15px;">
+        <!-- Adaptive Learning -->
+        <div class="setting-row">
+          <label class="switch-label" style="display: flex; align-items: center; gap: 10px; cursor: pointer;">
+            <div class="toggle-switch">
+              <input type="checkbox" id="mlAdaptiveLearning" class="setting-switch" onchange="updateMLSetting('ml_adaptive_learning', this.checked)">
+              <span class="slider"></span>
+            </div>
+            <div>
+              <strong>Adaptive Question Selection</strong>
+              <p style="margin: 0; color: #666; font-size: 12px;">Personalized question selection based on skill</p>
+            </div>
+          </label>
+        </div>
+        
+        <!-- Skill Tracking -->
+        <div class="setting-row">
+          <label class="switch-label" style="display: flex; align-items: center; gap: 10px; cursor: pointer;">
+            <div class="toggle-switch">
+              <input type="checkbox" id="mlSkillTracking" class="setting-switch" onchange="updateMLSetting('ml_skill_tracking', this.checked)">
+              <span class="slider"></span>
+            </div>
+            <div>
+              <strong>User Skill Tracking</strong>
+              <p style="margin: 0; color: #666; font-size: 12px;">Track and analyze skill development</p>
+            </div>
+          </label>
+        </div>
+        
+        <!-- Difficulty Prediction -->
+        <div class="setting-row">
+          <label class="switch-label" style="display: flex; align-items: center; gap: 10px; cursor: pointer;">
+            <div class="toggle-switch">
+              <input type="checkbox" id="mlDifficultyPrediction" class="setting-switch" onchange="updateMLSetting('ml_difficulty_prediction', this.checked)">
+              <span class="slider"></span>
+            </div>
+            <div>
+              <strong>Difficulty Prediction</strong>
+              <p style="margin: 0; color: #666; font-size: 12px;">Predict question difficulty using ML</p>
+            </div>
+          </label>
+        </div>
+        
+        <!-- Data Collection -->
+        <div class="setting-row">
+          <label class="switch-label" style="display: flex; align-items: center; gap: 10px; cursor: pointer;">
+            <div class="toggle-switch">
+              <input type="checkbox" id="mlDataCollection" class="setting-switch" onchange="updateMLSetting('ml_data_collection', this.checked)">
+              <span class="slider"></span>
+            </div>
+            <div>
+              <strong>Data Collection</strong>
+              <p style="margin: 0; color: #666; font-size: 12px;">Collect response times and behavior data</p>
+            </div>
+          </label>
+        </div>
+        
+        <!-- Model Retraining -->
+        <div class="setting-row">
+          <label class="switch-label" style="display: flex; align-items: center; gap: 10px; cursor: pointer;">
+            <div class="toggle-switch">
+              <input type="checkbox" id="mlModelRetraining" class="setting-switch" onchange="updateMLSetting('ml_model_retraining', this.checked)">
+              <span class="slider"></span>
+            </div>
+            <div>
+              <strong>Automatic Model Retraining</strong>
+              <p style="margin: 0; color: #666; font-size: 12px;">Automatically retrain models with new data</p>
+            </div>
+          </label>
+        </div>
+      </div>
+    </div>
+    
+    <!-- Fallback Mode Selection -->
+    <div class="setting-row" style="margin-bottom: 20px;">
+      <h4 style="margin-bottom: 10px; color: #555;">Fallback Mode (when ML disabled)</h4>
+      <div style="display: flex; align-items: center; gap: 15px;">
+        <select id="mlFallbackMode" class="setting-select" onchange="updateMLSetting('ml_fallback_mode', this.value)" style="padding: 8px 12px; border: 1px solid #ddd; border-radius: 4px; font-size: 14px;">
+          <option value="random">Random Selection</option>
+          <option value="difficulty">Difficulty-based Selection</option>
+          <option value="category">Category-based Selection</option>
+          <option value="legacy">Legacy System</option>
+        </select>
+        <span style="color: #666; font-size: 12px;">How questions are selected when ML features are disabled</span>
+      </div>
+    </div>
+    
+    <!-- Advanced Settings -->
+    <div class="advanced-settings" style="margin-bottom: 20px;">
+      <h4 style="margin-bottom: 15px; color: #555;">Advanced Configuration</h4>
+      
+      <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap: 15px;">
+        <!-- Learning Rate -->
+        <div class="setting-row">
+          <label style="display: block; margin-bottom: 5px; font-weight: bold;">Learning Rate:</label>
+          <input type="range" min="0.01" max="0.1" step="0.01" id="mlLearningRate" class="config-slider" onchange="updateMLSetting('ml_learning_rate', parseFloat(this.value))" style="width: 100%; margin-bottom: 5px;">
+          <div style="display: flex; justify-content: space-between; font-size: 12px; color: #666;">
+            <span>0.01</span>
+            <span id="mlLearningRateValue">0.05</span>
+            <span>0.1</span>
+          </div>
+        </div>
+        
+        <!-- Adaptation Strength -->
+        <div class="setting-row">
+          <label style="display: block; margin-bottom: 5px; font-weight: bold;">Adaptation Strength:</label>
+          <input type="range" min="0.1" max="1.0" step="0.1" id="mlAdaptationStrength" class="config-slider" onchange="updateMLSetting('ml_adaptation_strength', parseFloat(this.value))" style="width: 100%; margin-bottom: 5px;">
+          <div style="display: flex; justify-content: space-between; font-size: 12px; color: #666;">
+            <span>0.1</span>
+            <span id="mlAdaptationStrengthValue">0.5</span>
+            <span>1.0</span>
+          </div>
+        </div>
+      </div>
+    </div>
+    
+    <!-- Impact Display -->
+    <div class="ml-impact-display" style="background: #f8f9fa; padding: 15px; border-radius: 8px;">
+      <h4 style="margin-bottom: 10px; color: #555;">Current Impact</h4>
+      <div id="mlImpactStats" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 10px;">
+        <div style="text-align: center;">
+          <div style="font-size: 18px; font-weight: bold; color: #007bff;" id="usersAffected">Loading...</div>
+          <div style="font-size: 12px; color: #666;">Users Using ML</div>
+        </div>
+        <div style="text-align: center;">
+          <div style="font-size: 18px; font-weight: bold; color: #28a745;" id="profilesActive">Loading...</div>
+          <div style="font-size: 12px; color: #666;">Active Profiles</div>
+        </div>
+        <div style="text-align: center;">
+          <div style="font-size: 18px; font-weight: bold; color: #ffc107;" id="modelsActive">Loading...</div>
+          <div style="font-size: 12px; color: #666;">ML Models</div>
+        </div>
+        <div style="text-align: center;">
+          <div style="font-size: 18px; font-weight: bold; color: #dc3545;" id="fallbackUsage">Loading...</div>
+          <div style="font-size: 12px; color: #666;">Fallback Usage</div>
+        </div>
       </div>
     </div>
   </div>

@@ -33,6 +33,10 @@ def create_app(config_class=None):
     db.init_app(app)
     migrate.init_app(app, db)
     
+    # Initialize settings service (NEW)
+    from .utils.settings_service import settings_service
+    app.settings_service = settings_service
+    
     # Set up error handling (NEW)
     from .errors import register_error_handlers
     register_error_handlers(app)
