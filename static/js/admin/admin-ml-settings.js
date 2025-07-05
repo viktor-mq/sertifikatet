@@ -110,6 +110,21 @@ function handleMLSettingUpdate(settingKey, value) {
     
     // Update real-time impact statistics
     updateRealTimeImpactStats();
+    
+    // Update slider values if this is a range setting
+    if (settingKey === 'ml_learning_rate') {
+        const valueDisplay = document.getElementById('mlLearningRateValue');
+        if (valueDisplay) {
+            valueDisplay.textContent = value.toFixed(2);
+        }
+    }
+    
+    if (settingKey === 'ml_adaptation_strength') {
+        const valueDisplay = document.getElementById('mlAdaptationStrengthValue');
+        if (valueDisplay) {
+            valueDisplay.textContent = value.toFixed(1);
+        }
+    }
 }
 
 // Update ML impact indicator
@@ -185,31 +200,6 @@ function updateStatElement(elementId, value) {
     const element = document.getElementById(elementId);
     if (element) {
         element.textContent = value;
-    }
-}
-    
-    // Update slider values if this is a range setting
-    if (settingKey === 'ml_learning_rate') {
-        const valueDisplay = document.getElementById('mlLearningRateValue');
-        if (valueDisplay) {
-            valueDisplay.textContent = value.toFixed(2);
-        }
-    }
-    
-    if (settingKey === 'ml_adaptation_strength') {
-        const valueDisplay = document.getElementById('mlAdaptationStrengthValue');
-        if (valueDisplay) {
-            valueDisplay.textContent = value.toFixed(1);
-        }
-    }
-}
-
-// Update ML impact indicator
-function updateMLImpactIndicator(elementId, enabled) {
-    const indicator = document.getElementById(elementId);
-    if (indicator) {
-        indicator.className = 'ml-impact-indicator ' + (enabled ? 'enabled' : 'disabled');
-        indicator.textContent = enabled ? 'Enabled' : 'Disabled';
     }
 }
 

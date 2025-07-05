@@ -1,12 +1,68 @@
 from flask import jsonify, request, session, current_app
 from flask_login import current_user
 import os
+import logging
 from . import api_bp
 from .. import db
 from ..models import Question, User, QuizSession, TrafficSign
 from ..services.progress_service import ProgressService
 from ..services.achievement_service import AchievementService
 from ..services.leaderboard_service import LeaderboardService
+from ..ml.service import ml_service
+
+logger = logging.getLogger(__name__)
+
+
+def add_ml_debug_info(response_data, include_sensitive=False):
+    """
+    Add ML debug information to API responses for internal debugging.
+    Only includes sensitive info for admin users.
+    """
+    if current_user.is_authenticated and current_user.is_admin and include_sensitive:
+        response_data['_ml_debug'] = {
+            'ml_enabled': ml_service.is_ml_enabled(),
+            'features': {
+                'adaptive_learning': ml_service.is_feature_enabled('ml_adaptive_learning'),
+                'skill_tracking': ml_service.is_feature_enabled('ml_skill_tracking'),
+                'difficulty_prediction': ml_service.is_feature_enabled('ml_difficulty_prediction'),
+                'data_collection': ml_service.is_feature_enabled('ml_data_collection'),
+            }
+        }
+    return response_data
+
+
+@api_bp.route('/system/status', methods=['GET'])
+def get_system_status():
+    """
+    Internal system status endpoint (admin only).
+    """
+    if not (current_user.is_authenticated and current_user.is_admin):
+        return jsonify({'error': 'Unauthorized'}), 403
+    
+    try:
+        status = {
+            'ml_system': {
+                'enabled': ml_service.is_ml_enabled(),
+                'features': {
+                    'adaptive_learning': ml_service.is_feature_enabled('ml_adaptive_learning'),
+                    'skill_tracking': ml_service.is_feature_enabled('ml_skill_tracking'),
+                    'difficulty_prediction': ml_service.is_feature_enabled('ml_difficulty_prediction'),
+                    'data_collection': ml_service.is_feature_enabled('ml_data_collection'),
+                    'model_retraining': ml_service.is_feature_enabled('ml_model_retraining'),
+                }
+            },
+            'database': {
+                'connected': True,  # If we got here, DB is working
+                'total_users': User.query.count(),
+                'total_questions': Question.query.count(),
+            }
+        }
+        
+        return jsonify(status)
+        
+    except Exception as e:
+        logger.error(f"Error getting system status: {e}")
+        return jsonify({'error': 'System status unavailable'}), 500
 
 
 @api_bp.route('/questions', methods=['GET'])

@@ -128,6 +128,16 @@ def create_app(config_class=None):
     from .ml import ml_bp
     app.register_blueprint(ml_bp, url_prefix='/ml')
     
+    # Initialize ML service with settings awareness
+    from .ml.service import ml_service
+    with app.app_context():
+        try:
+            ml_service.initialize()
+            app.logger.info("ML Service initialized successfully")
+        except Exception as e:
+            app.logger.error(f"Failed to initialize ML Service: {e}")
+            # Continue without ML - graceful degradation
+    
     # Register advertising blueprint
     from .advertising import advertising
     app.register_blueprint(advertising, url_prefix='/api/advertising')
