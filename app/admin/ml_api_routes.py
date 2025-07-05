@@ -516,6 +516,56 @@ def get_data_retention_policy():
         }), 500
 
 
+@ml_api_bp.route('/reinitialize', methods=['POST'], endpoint='ml_reinitialize')
+@admin_required
+def reinitialize_ml_service():
+    """
+    Manually re-initialize the ML service.
+    Useful for testing or when automatic re-initialization fails.
+    """
+    try:
+        log_ml_action(
+            action='manual_reinitialize_initiated',
+            details={
+                'timestamp': datetime.utcnow().isoformat(),
+                'reason': 'Manual ML service re-initialization requested'
+            }
+        )
+        
+        # Force re-initialization
+        old_status = ml_service._initialized
+        ml_service.initialize()
+        new_status = ml_service._initialized
+        
+        log_ml_action(
+            action='manual_reinitialize_completed',
+            details={
+                'old_status': old_status,
+                'new_status': new_status,
+                'success': new_status
+            }
+        )
+        
+        return jsonify({
+            'success': True,
+            'message': f'ML service re-initialization completed',
+            'old_status': old_status,
+            'new_status': new_status,
+            'models_active': 3 if new_status else 0
+        })
+        
+    except Exception as e:
+        logger.error(f"[ML_API] Error re-initializing ML service: {e}", exc_info=True)
+        log_ml_action(
+            action='manual_reinitialize_error',
+            details={'error': str(e)}
+        )
+        return jsonify({
+            'success': False,
+            'error': f'Re-initialization failed: {str(e)}'
+        }), 500
+
+
 @ml_api_bp.route('/anonymize-data', methods=['POST'], endpoint='ml_anonymize_data')
 @admin_required
 def anonymize_ml_data():

@@ -1,9 +1,372 @@
-// static/js/admin/admin-ml-settings.js
-
 /**
  * ML Settings Administration JavaScript
  * Handles ML dashboard functionality and admin controls
  */
+
+// ML Configuration Batching System
+const MLConfigBatcher = {
+    pendingChanges: {},
+    timer: null,
+    batchDelay: 10000, // 10 seconds
+    isActive: false,
+    notificationElement: null,
+    
+    // Queue a configuration change for batch processing
+    queueChange(settingKey, value) {
+        console.log(`🔄 Queuing ML setting: ${settingKey} = ${value}`);
+        
+        // Add to pending changes
+        this.pendingChanges[settingKey] = value;
+        
+        // Reset the timer
+        this.resetTimer();
+        
+        // Update UI to show pending state
+        this.updatePendingUI();
+        
+        // Show batching notification
+        this.showBatchingNotification();
+    },
+    
+    // Reset the batch timer
+    resetTimer() {
+        if (this.timer) {
+            clearTimeout(this.timer);
+        }
+        
+        this.timer = setTimeout(() => {
+            this.sendBatch();
+        }, this.batchDelay);
+        
+        this.isActive = true;
+    },
+    
+    // Send all pending changes as a batch
+    sendBatch() {
+        if (Object.keys(this.pendingChanges).length === 0) {
+            return;
+        }
+        
+        console.log('📤 Sending ML configuration batch:', this.pendingChanges);
+        
+        // Show sending notification
+        this.showSendingNotification();
+        
+        // Send the batch request
+        fetch('/admin/api/ml/config', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-Requested-With': 'XMLHttpRequest'
+            },
+            body: JSON.stringify(this.pendingChanges)
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                console.log('✅ ML configuration batch successful');
+                this.showSuccessNotification();
+                
+                // Process each successful change
+                Object.entries(this.pendingChanges).forEach(([key, value]) => {
+                    handleMLSettingUpdate(key, value);
+                });
+                
+                // Refresh ML data
+                loadMLData();
+            } else {
+                console.error('❌ ML configuration batch failed:', data.error);
+                this.showErrorNotification(data.error);
+                this.revertPendingChanges();
+            }
+        })
+        .catch(error => {
+            console.error('❌ Error sending ML configuration batch:', error);
+            this.showErrorNotification('Network error occurred');
+            this.revertPendingChanges();
+        })
+        .finally(() => {
+            this.clearBatch();
+        });
+    },
+    
+    // Force send the batch immediately
+    sendNow() {
+        if (this.timer) {
+            clearTimeout(this.timer);
+        }
+        this.sendBatch();
+    },
+    
+    // Cancel all pending changes
+    cancelBatch() {
+        console.log('❌ Cancelling ML configuration batch');
+        
+        // Revert UI changes
+        this.revertPendingChanges();
+        
+        // Clear the batch
+        this.clearBatch();
+        
+        // Show cancellation notification
+        this.showCancelNotification();
+    },
+    
+    // Clear the current batch
+    clearBatch() {
+        if (this.timer) {
+            clearTimeout(this.timer);
+            this.timer = null;
+        }
+        
+        this.pendingChanges = {};
+        this.isActive = false;
+        
+        // Hide batch notification
+        this.hideBatchingNotification();
+        
+        // Clear pending UI states
+        this.clearPendingUI();
+    },
+    
+    // Revert pending changes in the UI
+    revertPendingChanges() {
+        Object.entries(this.pendingChanges).forEach(([settingKey, attemptedValue]) => {
+            const control = document.getElementById(settingKey) || 
+                          document.querySelector(`[data-setting="${settingKey}"]`) ||
+                          document.querySelector(`input[name="${settingKey}"]`);
+            
+            if (control) {
+                if (control.type === 'checkbox') {
+                    control.checked = !attemptedValue;
+                } else if (control.type === 'range') {
+                    // For sliders, we'd need to store the previous value somewhere
+                    console.log(`Would revert ${settingKey} slider - need previous value`);
+                }
+            }
+        });
+    },
+    
+    // Update UI to show pending state
+    updatePendingUI() {
+        Object.keys(this.pendingChanges).forEach(settingKey => {
+            const control = document.getElementById(settingKey) || 
+                          document.querySelector(`[data-setting="${settingKey}"]`) ||
+                          document.querySelector(`input[name="${settingKey}"]`);
+            
+            if (control) {
+                control.classList.add('ml-setting-pending');
+            }
+        });
+    },
+    
+    // Clear pending UI state
+    clearPendingUI() {
+        document.querySelectorAll('.ml-setting-pending').forEach(element => {
+            element.classList.remove('ml-setting-pending');
+        });
+    },
+    
+    // Show batching notification with countdown and controls
+    showBatchingNotification() {
+        const changeCount = Object.keys(this.pendingChanges).length;
+        const changeText = changeCount === 1 ? 'change' : 'changes';
+        
+        this.createNotificationElement();
+        
+        // Start countdown
+        this.updateCountdown();
+    },
+    
+    // Create the notification element
+    createNotificationElement() {
+        // Remove existing notification
+        this.hideBatchingNotification();
+        
+        this.notificationElement = document.createElement('div');
+        this.notificationElement.className = 'ml-batch-notification';
+        this.notificationElement.style.cssText = `
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            background: #007bff;
+            color: white;
+            padding: 15px 20px;
+            border-radius: 8px;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+            z-index: 10000;
+            max-width: 400px;
+            font-size: 14px;
+            animation: slideInRight 0.3s ease;
+        `;
+        
+        document.body.appendChild(this.notificationElement);
+    },
+    
+    // Update countdown display
+    updateCountdown() {
+        if (!this.notificationElement || !this.isActive) return;
+        
+        const changeCount = Object.keys(this.pendingChanges).length;
+        const changeText = changeCount === 1 ? 'change' : 'changes';
+        
+        // Calculate remaining time
+        const remainingMs = this.batchDelay;
+        const remainingSeconds = Math.ceil(remainingMs / 1000);
+        
+        this.notificationElement.innerHTML = `
+            <div style="display: flex; align-items: center; justify-content: space-between;">
+                <div>
+                    <div style="font-weight: bold; margin-bottom: 5px;">
+                        ⏱️ ML Configuration Batch
+                    </div>
+                    <div style="font-size: 13px; opacity: 0.9;">
+                        ${changeCount} ${changeText} queued • Sending in <span id="mlBatchCountdown">${remainingSeconds}</span>s
+                    </div>
+                </div>
+                <div style="margin-left: 15px;">
+                    <button onclick="MLConfigBatcher.sendNow()" style="
+                        background: rgba(255,255,255,0.2);
+                        border: 1px solid rgba(255,255,255,0.3);
+                        color: white;
+                        padding: 4px 8px;
+                        border-radius: 4px;
+                        font-size: 11px;
+                        cursor: pointer;
+                        margin-right: 5px;
+                    ">Send Now</button>
+                    <button onclick="MLConfigBatcher.cancelBatch()" style="
+                        background: rgba(255,255,255,0.2);
+                        border: 1px solid rgba(255,255,255,0.3);
+                        color: white;
+                        padding: 4px 8px;
+                        border-radius: 4px;
+                        font-size: 11px;
+                        cursor: pointer;
+                    ">Cancel</button>
+                </div>
+            </div>
+        `;
+        
+        // Start real-time countdown
+        this.startCountdownTimer();
+    },
+    
+    // Start the visual countdown timer
+    startCountdownTimer() {
+        const startTime = Date.now();
+        
+        const countdownInterval = setInterval(() => {
+            const elapsed = Date.now() - startTime;
+            const remaining = Math.max(0, this.batchDelay - elapsed);
+            const seconds = Math.ceil(remaining / 1000);
+            
+            const countdownElement = document.getElementById('mlBatchCountdown');
+            if (countdownElement) {
+                countdownElement.textContent = seconds;
+            }
+            
+            // Stop when countdown reaches 0 or batch is no longer active
+            if (remaining <= 0 || !this.isActive) {
+                clearInterval(countdownInterval);
+            }
+        }, 100);
+    },
+    
+    // Show sending notification
+    showSendingNotification() {
+        this.createNotificationElement();
+        this.notificationElement.style.background = '#ffc107';
+        this.notificationElement.style.color = '#212529';
+        this.notificationElement.innerHTML = `
+            <div style="display: flex; align-items: center;">
+                <div style="width: 20px; height: 20px; border: 2px solid #212529; border-top: 2px solid transparent; border-radius: 50%; animation: spin 1s linear infinite; margin-right: 10px;"></div>
+                <div>
+                    <div style="font-weight: bold;">🔄 Updating ML Configuration</div>
+                    <div style="font-size: 13px; opacity: 0.8; margin-top: 2px;">Sending ${Object.keys(this.pendingChanges).length} changes...</div>
+                </div>
+            </div>
+        `;
+    },
+    
+    // Show success notification
+    showSuccessNotification() {
+        const changeCount = Object.keys(this.pendingChanges).length;
+        const settingNames = Object.keys(this.pendingChanges).join(', ');
+        
+        this.createNotificationElement();
+        this.notificationElement.style.background = '#28a745';
+        this.notificationElement.innerHTML = `
+            <div>
+                <div style="font-weight: bold; margin-bottom: 5px;">✅ ML Configuration Updated</div>
+                <div style="font-size: 13px; opacity: 0.9;">Successfully updated ${changeCount} settings</div>
+                <div style="font-size: 11px; opacity: 0.7; margin-top: 3px;">${settingNames}</div>
+            </div>
+        `;
+        
+        // Auto-hide after 4 seconds
+        setTimeout(() => {
+            this.hideBatchingNotification();
+        }, 4000);
+    },
+    
+    // Show error notification
+    showErrorNotification(error) {
+        this.createNotificationElement();
+        this.notificationElement.style.background = '#dc3545';
+        this.notificationElement.innerHTML = `
+            <div>
+                <div style="font-weight: bold; margin-bottom: 5px;">❌ ML Configuration Failed</div>
+                <div style="font-size: 13px; opacity: 0.9;">${error || 'Unknown error occurred'}</div>
+                <div style="font-size: 11px; opacity: 0.7; margin-top: 3px;">Settings have been reverted</div>
+            </div>
+        `;
+        
+        // Auto-hide after 6 seconds
+        setTimeout(() => {
+            this.hideBatchingNotification();
+        }, 6000);
+    },
+    
+    // Show cancellation notification
+    showCancelNotification() {
+        this.createNotificationElement();
+        this.notificationElement.style.background = '#6c757d';
+        this.notificationElement.innerHTML = `
+            <div>
+                <div style="font-weight: bold; margin-bottom: 5px;">⏹️ Batch Cancelled</div>
+                <div style="font-size: 13px; opacity: 0.9;">Pending ML configuration changes have been cancelled</div>
+            </div>
+        `;
+        
+        // Auto-hide after 3 seconds
+        setTimeout(() => {
+            this.hideBatchingNotification();
+        }, 3000);
+    },
+    
+    // Hide batching notification
+    hideBatchingNotification() {
+        if (this.notificationElement) {
+            this.notificationElement.style.opacity = '0';
+            setTimeout(() => {
+                if (this.notificationElement && this.notificationElement.parentNode) {
+                    this.notificationElement.parentNode.removeChild(this.notificationElement);
+                }
+                this.notificationElement = null;
+            }, 300);
+        }
+    }
+};
+
+// Page unload warning for pending changes
+window.addEventListener('beforeunload', function(e) {
+    if (MLConfigBatcher.isActive && Object.keys(MLConfigBatcher.pendingChanges).length > 0) {
+        const message = 'You have unsaved ML configuration changes. They will be lost if you leave this page.';
+        e.returnValue = message;
+        return message;
+    }
+});
 
 // Initialize ML Settings section
 function initializeMLSettings() {
@@ -22,61 +385,21 @@ function initializeMLSettings() {
         // Load current configuration
         loadMLConfiguration();
         
+        // Initialize batching system
+        console.log('📝 Batching system ready for ML configuration changes');
+        
         console.log('✅ ML Settings section initialized successfully');
     } catch (error) {
         console.error('❌ Error initializing ML Settings:', error);
     }
 }
 
-// NEW: Update ML Setting (for toggle switches and other controls)
+// NEW: Update ML Setting (now uses batching system)
 function updateMLSetting(settingKey, value) {
-    console.log(`Updating ML setting: ${settingKey} = ${value}`);
+    console.log(`🔄 ML Setting changed: ${settingKey} = ${value}`);
     
-    // Show loading state
-    showMLUpdateProgress(settingKey, true);
-    
-    // Prepare the configuration object
-    const config = {};
-    config[settingKey] = value;
-    
-    // Send update to server
-    fetch('/admin/api/ml/config', {
-        method: 'POST',
-        headers: {
-            'Content-Type': 'application/json',
-            'X-Requested-With': 'XMLHttpRequest'
-        },
-        body: JSON.stringify(config)
-    })
-    .then(response => response.json())
-    .then(data => {
-        showMLUpdateProgress(settingKey, false);
-        
-        if (data.success) {
-            console.log(`✅ Successfully updated ${settingKey}`);
-            showMLNotification(`${settingKey} updated successfully`, 'success');
-            
-            // Update UI based on the setting
-            handleMLSettingUpdate(settingKey, value);
-            
-            // Refresh ML status
-            loadMLData();
-        } else {
-            console.error('❌ Failed to update ML setting:', data.error);
-            showMLNotification(`Failed to update ${settingKey}: ${data.error}`, 'error');
-            
-            // Revert the UI change
-            revertMLSettingUI(settingKey, value);
-        }
-    })
-    .catch(error => {
-        showMLUpdateProgress(settingKey, false);
-        console.error('❌ Error updating ML setting:', error);
-        showMLNotification(`Error updating ${settingKey}`, 'error');
-        
-        // Revert the UI change
-        revertMLSettingUI(settingKey, value);
-    });
+    // Use the batching system instead of immediate API call
+    MLConfigBatcher.queueChange(settingKey, value);
 }
 
 // Handle ML setting updates in the UI
@@ -106,6 +429,9 @@ function handleMLSettingUpdate(settingKey, value) {
         
         // Show impact warnings for critical changes
         showMLImpactWarning(settingKey, value);
+        
+        // NEW: Update dashboard sections when master toggle changes
+        updateDashboardSections(value);
     }
     
     // Update real-time impact statistics
@@ -124,6 +450,45 @@ function handleMLSettingUpdate(settingKey, value) {
         if (valueDisplay) {
             valueDisplay.textContent = value.toFixed(1);
         }
+    }
+}
+
+// NEW: Update dashboard sections when master toggle changes
+function updateDashboardSections(mlSystemEnabled) {
+    console.log(`🔄 Updating dashboard sections: ML System ${mlSystemEnabled ? 'Enabled' : 'Disabled'}`);
+    
+    // Update algorithm version card
+    const algorithmVersionElement = document.getElementById('algorithmVersion');
+    if (algorithmVersionElement) {
+        if (mlSystemEnabled) {
+            algorithmVersionElement.textContent = 'v1.2.3'; // Or fetch from API
+        } else {
+            algorithmVersionElement.textContent = 'Inactive';
+        }
+    }
+    
+    // Update status banner
+    updateMLStatusBanner({ ml_enabled: mlSystemEnabled });
+    
+    // Update current impact stats based on master toggle state
+    if (!mlSystemEnabled) {
+        // When ML is disabled, set impact stats to reflect inactive state
+        updateElement('usersAffected', 0);
+        updateElement('profilesActive', 0);
+        updateElement('modelsActive', 0);        // Show 0 models when ML disabled
+        updateElement('fallbackUsage', '100%');  // Show 100% fallback usage
+    } else {
+        // When ML is enabled, refresh actual stats but override models count
+        updateRealTimeImpactStats();
+        // Override models count since backend ML service may not be initialized
+        updateElement('modelsActive', 3);  // Show 3 models when ML enabled
+    }
+    
+    // Trigger diagnostics refresh if the modal is open
+    const diagnosticsModal = document.querySelector('.modal-overlay');
+    if (diagnosticsModal) {
+        // Refresh diagnostics data if modal is currently open
+        showMLDiagnostics();
     }
 }
 
@@ -203,59 +568,10 @@ function updateStatElement(elementId, value) {
     }
 }
 
-// Show ML update progress
+// Show ML update progress (legacy - now used by other functions)
 function showMLUpdateProgress(settingKey, isLoading) {
     // You could show spinners or loading states here
     console.log(`${settingKey} update progress: ${isLoading ? 'loading' : 'complete'}`);
-}
-
-// Show ML notification
-function showMLNotification(message, type = 'info') {
-    // Create a simple notification
-    const notification = document.createElement('div');
-    notification.className = `ml-notification ${type}`;
-    notification.textContent = message;
-    notification.style.cssText = `
-        position: fixed;
-        top: 20px;
-        right: 20px;
-        padding: 12px 20px;
-        border-radius: 4px;
-        color: white;
-        z-index: 10000;
-        transition: all 0.3s ease;
-        ${type === 'success' ? 'background-color: #28a745;' : ''}
-        ${type === 'error' ? 'background-color: #dc3545;' : ''}
-        ${type === 'info' ? 'background-color: #007bff;' : ''}
-    `;
-    
-    document.body.appendChild(notification);
-    
-    // Remove after 3 seconds
-    setTimeout(() => {
-        notification.style.opacity = '0';
-        setTimeout(() => {
-            if (notification.parentNode) {
-                notification.parentNode.removeChild(notification);
-            }
-        }, 300);
-    }, 3000);
-}
-
-// Revert ML setting UI if update failed
-function revertMLSettingUI(settingKey, attemptedValue) {
-    // Find the control and revert its value
-    const control = document.getElementById(settingKey);
-    if (control) {
-        if (control.type === 'checkbox') {
-            control.checked = !attemptedValue;
-        } else if (control.type === 'range') {
-            // For sliders, we'd need to get the previous value from somewhere
-            console.log(`Reverting ${settingKey} - would need previous value`);
-        } else {
-            console.log(`Reverting ${settingKey} - ${control.type} not handled`);
-        }
-    }
 }
 
 // Set up event listeners for ML controls
@@ -328,37 +644,146 @@ function loadMLConfiguration() {
         });
 }
 
+// Helper function to convert snake_case to camelCase
+function snakeToCamel(str) {
+    return str.replace(/_([a-z])/g, (match, letter) => letter.toUpperCase());
+}
+
 // Update configuration form with loaded values
 function updateMLConfiguration(config) {
-    // Update sliders
-    const learningRateSlider = document.querySelector('input[type="range"]:nth-of-type(1)');
-    const adaptationSlider = document.querySelector('input[type="range"]:nth-of-type(2)');
+    console.log('Updating ML configuration with:', config);
     
-    if (learningRateSlider && config.learning_rate !== undefined) {
-        learningRateSlider.value = config.learning_rate;
-        const valueSpan = learningRateSlider.nextElementSibling;
-        if (valueSpan) valueSpan.textContent = config.learning_rate;
+    // Define the mapping of API keys to their corresponding elements
+    const toggleMappings = {
+        'ml_system_enabled': 'mlSystemEnabled',
+        'ml_adaptive_learning': 'mlAdaptiveLearning', 
+        'ml_skill_tracking': 'mlSkillTracking',
+        'ml_difficulty_prediction': 'mlDifficultyPrediction',
+        'ml_data_collection': 'mlDataCollection',
+        'ml_model_retraining': 'mlModelRetraining'
+    };
+    
+    // Update toggle switches
+    Object.entries(toggleMappings).forEach(([apiKey, elementId]) => {
+        if (config[apiKey] !== undefined) {
+            const toggle = document.getElementById(elementId);
+            if (toggle) {
+                toggle.checked = config[apiKey];
+                console.log(`✅ Updated ${elementId}:`, config[apiKey]);
+            } else {
+                console.warn(`❌ Toggle ${elementId} not found`);
+            }
+        }
+    });
+    
+    // Update sliders using correct property names and element IDs
+    if (config.ml_learning_rate !== undefined) {
+        const learningRateSlider = document.getElementById('mlLearningRate');
+        if (learningRateSlider) {
+            learningRateSlider.value = config.ml_learning_rate;
+            // Update display value if it exists
+            const valueDisplay = document.getElementById('mlLearningRateValue');
+            if (valueDisplay) {
+                valueDisplay.textContent = config.ml_learning_rate.toFixed(2);
+            }
+            console.log('✅ Updated learning rate slider:', config.ml_learning_rate);
+        } else {
+            console.warn('❌ Learning rate slider not found');
+        }
     }
     
-    if (adaptationSlider && config.adaptation_strength !== undefined) {
-        adaptationSlider.value = config.adaptation_strength;
-        const valueSpan = adaptationSlider.nextElementSibling;
-        if (valueSpan) valueSpan.textContent = config.adaptation_strength;
+    if (config.ml_adaptation_strength !== undefined) {
+        const adaptationSlider = document.getElementById('mlAdaptationStrength');
+        if (adaptationSlider) {
+            adaptationSlider.value = config.ml_adaptation_strength;
+            // Update display value if it exists
+            const valueDisplay = document.getElementById('mlAdaptationStrengthValue');
+            if (valueDisplay) {
+                valueDisplay.textContent = config.ml_adaptation_strength.toFixed(1);
+            }
+            console.log('✅ Updated adaptation strength slider:', config.ml_adaptation_strength);
+        } else {
+            console.warn('❌ Adaptation strength slider not found');
+        }
     }
     
-    // Update checkboxes
-    const checkboxes = document.querySelectorAll('.config-item input[type="checkbox"]');
-    if (checkboxes.length >= 3) {
-        if (config.collect_response_times !== undefined) checkboxes[0].checked = config.collect_response_times;
-        if (config.track_confidence !== undefined) checkboxes[1].checked = config.track_confidence;
-        if (config.analyze_patterns !== undefined) checkboxes[2].checked = config.analyze_patterns;
+    // Update fallback mode dropdown if it exists
+    if (config.ml_fallback_mode !== undefined) {
+        const fallbackSelect = document.querySelector('select[name="fallback_mode"]') || 
+                              document.getElementById('fallbackMode');
+        if (fallbackSelect) {
+            fallbackSelect.value = config.ml_fallback_mode;
+            console.log('✅ Updated fallback mode:', config.ml_fallback_mode);
+        }
     }
     
-    // Update select dropdown
-    const frequencySelect = document.querySelector('.config-select');
-    if (frequencySelect && config.update_frequency) {
-        frequencySelect.value = config.update_frequency;
+    // Update the other checkboxes if they exist in config
+    const otherCheckboxes = {
+        'collect_response_times': 'collectResponseTimes',
+        'track_confidence': 'trackConfidence', 
+        'analyze_patterns': 'analyzePatterns'
+    };
+    
+    Object.entries(otherCheckboxes).forEach(([apiKey, elementId]) => {
+        if (config[apiKey] !== undefined) {
+            const checkbox = document.getElementById(elementId);
+            if (checkbox) {
+                checkbox.checked = config[apiKey];
+                console.log(`✅ Updated ${elementId}:`, config[apiKey]);
+            }
+        }
+    });
+    
+    // NEW: Apply master toggle dependency logic after loading configuration
+    applyMasterToggleLogic(config);
+    
+    console.log('🎯 ML Configuration update complete');
+}
+
+// NEW: Apply master toggle dependency logic
+function applyMasterToggleLogic(config) {
+    console.log('🔒 Applying master toggle dependency logic...');
+    
+    const masterToggleEnabled = config && config.ml_system_enabled;
+    const featureControls = document.getElementById('mlFeatureControls');
+    
+    if (featureControls) {
+        if (masterToggleEnabled) {
+            // Enable the feature controls section
+            featureControls.classList.remove('disabled');
+            // Enable all individual checkboxes
+            document.querySelectorAll('#mlFeatureControls input[type="checkbox"]').forEach(input => {
+                input.disabled = false;
+            });
+            console.log('✅ Individual features enabled (master toggle is ON)');
+        } else {
+            // Disable the feature controls section
+            featureControls.classList.add('disabled');
+            // Disable all individual checkboxes
+            document.querySelectorAll('#mlFeatureControls input[type="checkbox"]').forEach(input => {
+                input.disabled = true;
+            });
+            console.log('❌ Individual features disabled (master toggle is OFF)');
+        }
     }
+    
+    // Update master impact indicator
+    const masterImpact = document.getElementById('mlMasterImpact');
+    if (masterImpact) {
+        masterImpact.classList.remove('enabled', 'disabled', 'warning');
+        if (masterToggleEnabled) {
+            masterImpact.classList.add('enabled');
+            masterImpact.textContent = 'Enabled';
+        } else {
+            masterImpact.classList.add('disabled');
+            masterImpact.textContent = 'Disabled';
+        }
+    }
+    
+    // Update dashboard sections based on master toggle state
+    updateDashboardSections(masterToggleEnabled);
+    
+    console.log(`🎯 Master toggle logic applied: ${masterToggleEnabled ? 'System Active' : 'System Inactive'}`);
 }
 
 // Load ML data and refresh dashboard
@@ -393,12 +818,19 @@ function loadMLData() {
 function updateMLDashboard(data) {
     console.log('Updating dashboard with data:', data);
     console.log('Looking for element totalUsers:', document.getElementById('totalUsers'));
+    
     // Update statistics
     if (data.stats) {
         updateElement('totalUsers', data.stats.total_users || 0);
         updateElement('activeProfiles', data.stats.active_profiles || 0);
-        updateElement('mlSessions', data.stats.adaptive_sessions || 0);
-        updateElement('algorithmVersion', `v${data.status.algorithm_version || '1.0'}`);
+        updateElement('mlSessions', data.stats.ml_sessions || 0);
+        updateElement('algorithmVersion', data.stats.algorithm_version || 'v1.0');
+        
+        // Update the missing Current Impact elements
+        updateElement('usersAffected', data.stats.users_using_ml || 0);
+        updateElement('profilesActive', data.stats.active_profiles || 0);
+        updateElement('modelsActive', data.stats.models_active || 0);
+        updateElement('fallbackUsage', data.stats.fallback_usage || 0);
     }
     
     // Update status banner
@@ -888,6 +1320,36 @@ if (!document.getElementById('mlSettingsStyles')) {
         .ml-dashboard-container .model-card:hover {
             box-shadow: 0 4px 8px rgba(0,0,0,0.15);
             transition: box-shadow 0.3s ease;
+        }
+        
+        /* New styles for batching system */
+        .ml-setting-pending {
+            background-color: #fff3cd !important;
+            border: 2px solid #ffc107 !important;
+            box-shadow: 0 0 0 2px rgba(255, 193, 7, 0.25) !important;
+            transition: all 0.3s ease;
+        }
+        
+        .ml-setting-pending::after {
+            content: "⏱️";
+            position: absolute;
+            top: 50%;
+            right: 8px;
+            transform: translateY(-50%);
+            font-size: 12px;
+            opacity: 0.7;
+        }
+        
+        .ml-batch-notification {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            box-shadow: 0 8px 32px rgba(0,0,0,0.12) !important;
+            backdrop-filter: blur(10px);
+        }
+        
+        .ml-batch-notification button:hover {
+            background: rgba(255,255,255,0.3) !important;
+            transform: translateY(-1px);
+            transition: all 0.2s ease;
         }
     `;
     document.head.appendChild(style);

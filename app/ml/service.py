@@ -43,10 +43,15 @@ class MLService:
         try:
             # Check if ML system is enabled
             settings = self._get_settings_service()
-            if settings and not settings.is_ml_enabled():
-                logger.info("ML System is disabled via settings")
-                self._initialized = False
-                return
+            if settings:
+                ml_enabled = settings.is_ml_enabled()
+                logger.info(f"ML system enabled setting: {ml_enabled}")
+                if not ml_enabled:
+                    logger.info("ML System is disabled via settings")
+                    self._initialized = False
+                    return
+            else:
+                logger.warning("Settings service not available, defaulting to ML enabled")
             
             self.engine.initialize_models()
             self._initialized = True
@@ -598,6 +603,15 @@ class MLService:
             if not settings:
                 return {'success': False, 'error': 'Settings service not available'}
             
+            # Check if ml_system_enabled is being changed
+            ml_system_enabled_changed = False
+            old_ml_enabled = settings.is_ml_enabled()
+            new_ml_enabled = config.get('ml_system_enabled')
+            
+            if new_ml_enabled is not None and old_ml_enabled != new_ml_enabled:
+                ml_system_enabled_changed = True
+                logger.info(f"ML system enabled changing from {old_ml_enabled} to {new_ml_enabled}")
+            
             updated_count = 0
             errors = []
             
@@ -617,6 +631,16 @@ class MLService:
             if updated_count > 0:
                 settings.clear_cache()
                 logger.info(f"Updated {updated_count} ML settings")
+                
+                # Re-initialize ML service if ml_system_enabled changed
+                if ml_system_enabled_changed:
+                    logger.info("ML system enabled setting changed, re-initializing ML service...")
+                    try:
+                        self.initialize()
+                        logger.info(f"ML service re-initialized successfully. New status: {self._initialized}")
+                    except Exception as init_error:
+                        logger.error(f"Failed to re-initialize ML service: {init_error}")
+                        errors.append(f"Failed to re-initialize ML service: {str(init_error)}")
             
             if errors:
                 return {
@@ -628,7 +652,8 @@ class MLService:
             return {
                 'success': True, 
                 'message': f'Successfully updated {updated_count} ML settings',
-                'updated_count': updated_count
+                'updated_count': updated_count,
+                'ml_reinitialized': ml_system_enabled_changed
             }
             
         except Exception as e:
