@@ -779,10 +779,20 @@ function updateMLConfiguration(config) {
     // Update fallback mode dropdown if it exists
     if (config.ml_fallback_mode !== undefined) {
         const fallbackSelect = document.querySelector('select[name="fallback_mode"]') || 
-                              document.getElementById('fallbackMode');
+                              document.getElementById('fallbackMode') ||
+                              document.getElementById('mlFallbackMode');
         if (fallbackSelect) {
             fallbackSelect.value = config.ml_fallback_mode;
             console.log('✅ Updated fallback mode:', config.ml_fallback_mode);
+        }
+    }
+    
+    // Update model update frequency dropdown if it exists
+    if (config.ml_update_frequency !== undefined) {
+        const updateFrequencySelect = document.getElementById('mlUpdateFrequency');
+        if (updateFrequencySelect) {
+            updateFrequencySelect.value = config.ml_update_frequency;
+            console.log('✅ Updated update frequency:', config.ml_update_frequency);
         }
     }
     
@@ -1472,4 +1482,3 @@ window.refreshMLData = refreshMLData;
 window.exportMLInsights = exportMLInsights;
 window.resetMLModels = resetMLModels;
 window.showMLDiagnostics = showMLDiagnostics;
-window.saveMLConfiguration = saveMLConfiguration;

@@ -76,6 +76,12 @@ class SettingsService:
                 'type': 'float',
                 'description': 'How aggressively to adapt difficulty (0.1-1.0)',
                 'category': 'ml'
+            },
+            'ml_update_frequency': {
+                'value': 'real-time',
+                'type': 'string',
+                'description': 'How often ML models are retrained: real-time, hourly, daily, weekly',
+                'category': 'ml'
             }
         }
     
@@ -307,6 +313,8 @@ class SettingsService:
                 return isinstance(value, (int, float)) and 0.1 <= value <= 1.0
             elif key == 'ml_fallback_mode':
                 return value in ['random', 'difficulty', 'category', 'legacy']
+            elif key == 'ml_update_frequency':
+                return value in ['real-time', 'hourly', 'daily', 'weekly']
             elif key.startswith('ml_') and key.endswith(('_enabled', '_tracking', '_prediction', '_collection', '_retraining')):
                 return isinstance(value, bool)
             else:

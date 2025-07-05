@@ -803,7 +803,8 @@ class MLService:
                     'ml_model_retraining': True,
                     'ml_fallback_mode': 'random',
                     'ml_learning_rate': 0.05,
-                    'ml_adaptation_strength': 0.5
+                    'ml_adaptation_strength': 0.5,
+                    'ml_update_frequency': 'real-time'
                 }
             
             return settings.get_ml_settings()
