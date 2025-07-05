@@ -123,7 +123,7 @@
             <a href="#" class="btn" onclick="showSection('manageUsers')" id="manageUsersTab">👥 Manage Users</a>
             <a href="#" class="btn" onclick="showSection('auditLog')" id="auditLogTab">📜 Audit Log</a>
             <a href="#" class="btn" onclick="showSection('mlSettings2')" id="mlSettings2Tab">🤖 ML Settings</a>
-            <a href="{{ url_for('admin.marketing_emails') }}" class="btn">📧 Marketing</a>
+            <a href="#" class="btn" onclick="showSection('marketing')" id="marketingTab">📧 Marketing</a>
         </div>
 
         <!-- Questions Section -->
@@ -143,6 +143,9 @@
 
         <!-- ML Settings Section -->
         {% include 'admin/ml_settings_section.html' %}
+        
+        <!-- Marketing Section -->
+        {% include 'admin/marketing_section.html' %}
         
     </div>
     
@@ -238,6 +241,13 @@
                     if (typeof initializeMLSettings === 'function') {
                         initializeMLSettings();
                         console.log('ML Settings section initialized');
+                    }
+                    break;
+                    
+                case 'marketing':
+                    if (typeof initializeMarketing === 'function') {
+                        initializeMarketing();
+                        console.log('Marketing section initialized');
                     }
                     break;
                     
@@ -348,5 +358,8 @@
     
     <!-- Include ML Settings JavaScript -->
     <script src="{{ url_for('static', filename='js/admin/admin-ml-settings.js') }}"></script>
+    
+    <!-- Include Marketing JavaScript -->
+    <script src="{{ url_for('static', filename='js/admin/admin-marketing.js') }}"></script>
 </body>
 </html>

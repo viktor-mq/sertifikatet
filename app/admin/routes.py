@@ -476,6 +476,21 @@ def admin_dashboard():
         print(f"[ADMIN] Error fetching audit log data: {e}")
         audit_logs = []
         audit_actions = []
+    
+    # Get data for Marketing section
+    try:
+        marketing_stats = MarketingEmailService.get_marketing_statistics()
+        # Get marketing emails with pagination (limited for dashboard)
+        marketing_emails = MarketingEmail.query.order_by(MarketingEmail.created_at.desc()).limit(20).all()
+    except Exception as e:
+        print(f"[ADMIN] Error fetching marketing data: {e}")
+        marketing_stats = {
+            'total_campaigns': 0,
+            'opted_in_users': 0,
+            'sent_this_month': 0,
+            'success_rate': 0
+        }
+        marketing_emails = []
 
     return render_template(
         'admin/admin_dashboard.html',
@@ -512,7 +527,10 @@ def admin_dashboard():
         logs=audit_logs,
         actions=audit_actions,
         action_filter='',
-        user_filter='')
+        user_filter='',
+        # Marketing data
+        marketing_stats=marketing_stats,
+        marketing_emails=marketing_emails)
         
 @admin_bp.route('/bulk_delete', methods=['POST'])
 @admin_required

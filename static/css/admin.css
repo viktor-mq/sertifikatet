@@ -1137,6 +1137,48 @@ header.admin-header {
     padding: 14px 16px !important;
 }
 
+/* Section Management Styles */
+.section {
+    display: none;
+    width: 100%;
+    min-height: 400px;
+}
+
+.section.active {
+    display: block !important;
+}
+
+/* Section tabs styling */
+.section-tabs {
+    display: flex;
+    gap: 10px;
+    margin-bottom: 20px;
+    flex-wrap: wrap;
+}
+
+.section-tabs .btn {
+    padding: 10px 16px;
+    border: 2px solid #e5e7eb;
+    border-radius: 8px;
+    background: white;
+    color: #374151;
+    text-decoration: none;
+    font-weight: 500;
+    transition: all 0.2s ease;
+    cursor: pointer;
+}
+
+.section-tabs .btn:hover {
+    background: #f3f4f6;
+    border-color: #9ca3af;
+}
+
+.section-tabs .btn.active {
+    background: #667eea;
+    color: white;
+    border-color: #667eea;
+}
+
 /* Responsive adjustments for control container */
 @media (max-width: 768px) {
     .database-control-container {
@@ -1154,5 +1196,15 @@ header.admin-header {
     
     .multiselect-options {
         max-height: 200px;
+    }
+    
+    .section-tabs {
+        flex-direction: column;
+        gap: 8px;
+    }
+    
+    .section-tabs .btn {
+        width: 100%;
+        text-align: center;
     }
 }
