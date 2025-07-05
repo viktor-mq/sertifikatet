@@ -376,9 +376,6 @@ function initializeMLSettings() {
         // Set up event listeners for ML controls
         setupMLEventListeners();
         
-        // Initialize configuration sliders
-        initializeConfigSliders();
-        
         // Load initial ML data
         loadMLData();
     
@@ -602,48 +599,97 @@ function setupMLEventListeners() {
     // Configuration checkboxes
     document.querySelectorAll('.config-item input[type="checkbox"]').forEach(checkbox => {
         checkbox.addEventListener('change', function() {
-            console.log(`Config changed: ${this.name || 'unknown'} = ${this.checked}`);
-            // Auto-save configuration changes
-            debouncedSaveConfig();
+            console.log(`Config changed: ${this.name || this.id || 'unknown'} = ${this.checked}`);
+            
+            // Use the batching system for checkbox changes
+            const settingKey = this.id || this.name;
+            if (settingKey) {
+                updateMLSetting(settingKey, this.checked);
+            }
         });
     });
     
     // Configuration select dropdowns
     document.querySelectorAll('.config-select').forEach(select => {
         select.addEventListener('change', function() {
-            console.log(`Config changed: ${this.name || 'unknown'} = ${this.value}`);
-            // Auto-save configuration changes
-            debouncedSaveConfig();
+            console.log(`Config changed: ${this.name || this.id || 'unknown'} = ${this.value}`);
+            
+            // Use the batching system for select changes
+            const settingKey = this.id || this.name;
+            if (settingKey) {
+                updateMLSetting(settingKey, this.value);
+            }
         });
     });
+    
+    // ML-specific sliders with proper IDs
+    setupMLSliders();
 }
 
-// Initialize configuration sliders
-function initializeConfigSliders() {
-    document.querySelectorAll('.config-slider').forEach(slider => {
-        // Update displayed value when slider changes
-        slider.addEventListener('input', function() {
-            const valueSpan = this.nextElementSibling;
-            if (valueSpan && valueSpan.classList.contains('config-value')) {
-                valueSpan.textContent = this.value;
+// Initialize ML-specific sliders
+function setupMLSliders() {
+    // Learning Rate slider
+    const learningRateSlider = document.getElementById('mlLearningRate');
+    if (learningRateSlider) {
+        // Update display value on input
+        learningRateSlider.addEventListener('input', function() {
+            const valueDisplay = document.getElementById('mlLearningRateValue');
+            if (valueDisplay) {
+                valueDisplay.textContent = parseFloat(this.value).toFixed(2);
             }
         });
         
-        // Save configuration when slider changes
+        // Save to backend on change (when user releases slider)
+        learningRateSlider.addEventListener('change', function() {
+            const value = parseFloat(this.value);
+            console.log(`Learning rate changed: ${value}`);
+            updateMLSetting('ml_learning_rate', value);
+        });
+    }
+    
+    // Adaptation Strength slider
+    const adaptationSlider = document.getElementById('mlAdaptationStrength');
+    if (adaptationSlider) {
+        // Update display value on input
+        adaptationSlider.addEventListener('input', function() {
+            const valueDisplay = document.getElementById('mlAdaptationStrengthValue');
+            if (valueDisplay) {
+                valueDisplay.textContent = parseFloat(this.value).toFixed(1);
+            }
+        });
+        
+        // Save to backend on change (when user releases slider)
+        adaptationSlider.addEventListener('change', function() {
+            const value = parseFloat(this.value);
+            console.log(`Adaptation strength changed: ${value}`);
+            updateMLSetting('ml_adaptation_strength', value);
+        });
+    }
+    
+    // Generic slider handler for any additional sliders
+    document.querySelectorAll('input[type="range"][data-ml-setting]').forEach(slider => {
+        const settingKey = slider.getAttribute('data-ml-setting');
+        const valueDisplayId = slider.getAttribute('data-value-display');
+        
+        // Update display value on input
+        slider.addEventListener('input', function() {
+            if (valueDisplayId) {
+                const valueDisplay = document.getElementById(valueDisplayId);
+                if (valueDisplay) {
+                    const precision = slider.step && slider.step.includes('.') ? 
+                        slider.step.split('.')[1].length : 0;
+                    valueDisplay.textContent = parseFloat(this.value).toFixed(precision);
+                }
+            }
+        });
+        
+        // Save to backend on change
         slider.addEventListener('change', function() {
-            console.log(`Slider changed: ${this.name || 'unknown'} = ${this.value}`);
-            debouncedSaveConfig();
+            const value = parseFloat(this.value);
+            console.log(`ML slider changed: ${settingKey} = ${value}`);
+            updateMLSetting(settingKey, value);
         });
     });
-}
-
-// Debounced save configuration function
-let saveConfigTimeout;
-function debouncedSaveConfig() {
-    clearTimeout(saveConfigTimeout);
-    saveConfigTimeout = setTimeout(() => {
-        saveMLConfiguration();
-    }, 1000); // Save after 1 second of no changes
 }
 
 // Load ML configuration settings
