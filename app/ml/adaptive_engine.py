@@ -64,58 +64,73 @@ class AdaptiveLearningEngine:
         try:
             from .models import MLModel
             
-            # First, clean up any old models to ensure clean state
-            try:
-                MLModel.query.delete()
+            # Check if models already exist to avoid duplicates
+            existing_skill_model = MLModel.query.filter_by(
+                name='skill_estimator', is_active=True
+            ).first()
+            existing_diff_model = MLModel.query.filter_by(
+                name='difficulty_predictor', is_active=True
+            ).first()
+            
+            # Only create models if they don't exist
+            models_created = 0
+            
+            # Register Skill Estimator (only if it doesn't exist)
+            if not existing_skill_model:
+                skill_model = MLModel(
+                    name='skill_estimator',
+                    version='v1.0',
+                    description='Gradient Boosting model for estimating user skill levels',
+                    hyperparameters=json.dumps({
+                        'n_estimators': 100,
+                        'learning_rate': 0.1,
+                        'max_depth': 6,
+                        'random_state': 42
+                    }),
+                    created_by=1,  # System user
+                    is_active=True,
+                    accuracy_score=None,  # Will be calculated during retraining
+                    precision_score=None,
+                    recall_score=None,
+                    f1_score=None,
+                    total_predictions=0
+                )
+                db.session.add(skill_model)
+                models_created += 1
+                logger.info("Created new skill_estimator model")
+            else:
+                logger.info("Skill estimator model already exists, preserving existing data")
+            
+            # Register Difficulty Predictor (only if it doesn't exist)
+            if not existing_diff_model:
+                diff_model = MLModel(
+                    name='difficulty_predictor',
+                    version='v1.0',
+                    description='Random Forest model for predicting question difficulty',
+                    hyperparameters=json.dumps({
+                        'n_estimators': 50,
+                        'max_depth': 8,
+                        'random_state': 42
+                    }),
+                    created_by=1,  # System user
+                    is_active=True,
+                    accuracy_score=None,  # Will be calculated during retraining
+                    precision_score=None,
+                    recall_score=None,
+                    f1_score=None,
+                    total_predictions=0
+                )
+                db.session.add(diff_model)
+                models_created += 1
+                logger.info("Created new difficulty_predictor model")
+            else:
+                logger.info("Difficulty predictor model already exists, preserving existing data")
+            
+            if models_created > 0:
                 db.session.commit()
-                logger.info("Cleaned up existing ML model records")
-            except Exception as cleanup_error:
-                logger.warning(f"Error cleaning up old models: {cleanup_error}")
-                db.session.rollback()
-            
-            # Register Skill Estimator
-            skill_model = MLModel(
-                name='skill_estimator',
-                version='v1.0',
-                description='Gradient Boosting model for estimating user skill levels',
-                hyperparameters=json.dumps({
-                    'n_estimators': 100,
-                    'learning_rate': 0.1,
-                    'max_depth': 6,
-                    'random_state': 42
-                }),
-                created_by=1,  # System user
-                is_active=True,
-                accuracy_score=None,  # Will be calculated during retraining
-                precision_score=None,
-                recall_score=None,
-                f1_score=None,
-                total_predictions=0
-            )
-            db.session.add(skill_model)
-            
-            # Register Difficulty Predictor
-            diff_model = MLModel(
-                name='difficulty_predictor',
-                version='v1.0',
-                description='Random Forest model for predicting question difficulty',
-                hyperparameters=json.dumps({
-                    'n_estimators': 50,
-                    'max_depth': 8,
-                    'random_state': 42
-                }),
-                created_by=1,  # System user
-                is_active=True,
-                accuracy_score=None,  # Will be calculated during retraining
-                precision_score=None,
-                recall_score=None,
-                f1_score=None,
-                total_predictions=0
-            )
-            db.session.add(diff_model)
-            
-            db.session.commit()
-            logger.info("Successfully registered 2 ML models in database")
+                logger.info(f"Successfully registered {models_created} new ML models in database")
+            else:
+                logger.info("All ML models already exist, no new models created")
             
         except Exception as e:
             logger.error(f"Error registering ML models: {e}")
