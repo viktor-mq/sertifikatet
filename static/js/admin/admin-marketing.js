@@ -476,6 +476,24 @@
         });
     }
     
+    // Table density control
+    function changeMarketingTableDensity() {
+        const densitySelector = document.getElementById('marketingTableDensitySelector');
+        const tableContainer = document.querySelector('.marketing-table');
+        
+        if (!densitySelector || !tableContainer) return;
+        
+        const density = densitySelector.value;
+        
+        // Remove existing density classes
+        tableContainer.classList.remove('compact', 'comfortable', 'spacious');
+        
+        // Add new density class
+        tableContainer.classList.add(density);
+        
+        console.log(`Marketing table density changed to: ${density}`);
+    }
+
     // Main initialization function
     function initializeMarketing() {
         console.log('Marketing section initialized');
@@ -590,5 +608,6 @@
     window.viewEmailLogs = viewEmailLogs;
     window.useTemplate = useTemplate;
     window.previewTemplate = previewTemplate;
+    window.changeMarketingTableDensity = changeMarketingTableDensity;
     
 })();
