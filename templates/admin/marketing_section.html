@@ -16,7 +16,7 @@
                 ">
                     <i class="fas fa-file-alt"></i> Templates
                 </button>
-                <a href="{{ url_for('admin.create_marketing_email') }}" class="btn" style="
+                <button onclick="window.open('/admin/marketing-emails/create', '_blank')" class="btn" style="
                     background: #007bff; 
                     color: white; 
                     padding: 8px 16px; 
@@ -26,7 +26,7 @@
                     cursor: pointer;
                 ">
                     <i class="fas fa-plus"></i> Create Campaign
-                </a>
+                </button>
             </div>
         </div>
 
@@ -37,7 +37,7 @@
                     <div>
                         <div style="font-size: 0.8rem; font-weight: bold; color: #007bff; text-transform: uppercase; margin-bottom: 5px;">
                             Total Campaigns</div>
-                        <div style="font-size: 1.5rem; font-weight: bold; color: #333;">{{ marketing_stats.total_campaigns if marketing_stats else 0 }}</div>
+                        <div style="font-size: 1.5rem; font-weight: bold; color: #333;" data-stat="total_campaigns">0</div>
                     </div>
                     <div>
                         <i class="fas fa-envelope" style="font-size: 2rem; color: #ccc;"></i>
@@ -50,7 +50,7 @@
                     <div>
                         <div style="font-size: 0.8rem; font-weight: bold; color: #28a745; text-transform: uppercase; margin-bottom: 5px;">
                             Opted-in Users</div>
-                        <div style="font-size: 1.5rem; font-weight: bold; color: #333;">{{ marketing_stats.opted_in_users if marketing_stats else 0 }}</div>
+                        <div style="font-size: 1.5rem; font-weight: bold; color: #333;" data-stat="opted_in_users">0</div>
                     </div>
                     <div>
                         <i class="fas fa-users" style="font-size: 2rem; color: #ccc;"></i>
@@ -63,7 +63,7 @@
                     <div>
                         <div style="font-size: 0.8rem; font-weight: bold; color: #17a2b8; text-transform: uppercase; margin-bottom: 5px;">
                             This Month</div>
-                        <div style="font-size: 1.5rem; font-weight: bold; color: #333;">{{ marketing_stats.sent_this_month if marketing_stats else 0 }}</div>
+                        <div style="font-size: 1.5rem; font-weight: bold; color: #333;" data-stat="sent_this_month">0</div>
                     </div>
                     <div>
                         <i class="fas fa-calendar" style="font-size: 2rem; color: #ccc;"></i>
@@ -76,13 +76,19 @@
                     <div>
                         <div style="font-size: 0.8rem; font-weight: bold; color: #ffc107; text-transform: uppercase; margin-bottom: 5px;">
                             Success Rate</div>
-                        <div style="font-size: 1.5rem; font-weight: bold; color: #333;">{{ "%.1f"|format(marketing_stats.success_rate) if marketing_stats else 0 }}%</div>
+                        <div style="font-size: 1.5rem; font-weight: bold; color: #333;" data-stat="success_rate">0%</div>
                     </div>
                     <div>
                         <i class="fas fa-chart-line" style="font-size: 2rem; color: #ccc;"></i>
                     </div>
                 </div>
             </div>
+        </div>
+
+        <!-- Loading Indicator -->
+        <div id="marketing-loading" style="display: none; text-align: center; padding: 20px;">
+            <i class="fas fa-spinner fa-spin fa-2x text-muted"></i>
+            <p class="text-muted mt-2">Loading marketing data...</p>
         </div>
 
         <!-- Filters -->
@@ -97,46 +103,44 @@
                             <option value="">All Statuses</option>
                             <option value="draft" {{ 'selected' if request.args.get('status') == 'draft' }}>Draft</option>
                             <option value="scheduled" {{ 'selected' if request.args.get('status') == 'scheduled' }}>Scheduled</option>
-                            <option value="sent" {{ 'selected' if request.args.get('status') == 'sent' }}>Sent</option>
-                            <option value="failed" {{ 'selected' if request.args.get('status') == 'failed' }}>Failed</option>
+                            <option value="failed">Failed</option>
                         </select>
                     </div>
                     <div>
-                        <input type="text" name="search" placeholder="Search title..." 
-                               value="{{ request.args.get('search', '') }}" 
+                        <label for="marketing-search" style="font-weight: bold; margin-bottom: 5px; display: block;">Search</label>
+                        <input type="text" id="marketing-search" placeholder="Search campaigns..." 
                                style="width: 100%; padding: 8px; border: 1px solid #ccc; border-radius: 4px;">
                     </div>
                     <div>
-                        <button type="submit" style="
+                        <button type="button" onclick="applyMarketingFilters()" style="
                             background: #007bff; 
                             color: white; 
                             padding: 8px 16px; 
                             border: none; 
                             border-radius: 4px; 
                             cursor: pointer;
-                            margin-right: 8px;
                         ">Filter</button>
-                        <a href="{{ url_for('admin.marketing_emails') }}" style="
+                    </div>
+                    <div>
+                        <button type="button" onclick="clearMarketingFilters()" style="
                             background: #6c757d; 
                             color: white; 
                             padding: 8px 16px; 
                             border: none; 
                             border-radius: 4px; 
-                            text-decoration: none;
                             cursor: pointer;
-                        ">Clear</a>
+                        ">Clear</button>
                     </div>
-                </form>
+                </div>
             </div>
         </div>
 
         <!-- Campaigns Table -->
-        <div style="border: 1px solid #e0e0e0; border-radius: 8px; background: white; box-shadow: 0 2px 4px rgba(0,0,0,0.05);">
+        <div style="border: 1px solid #e0e0e0; border-radius: 8px; background: white; box-shadow: 0 2px 4px rgba(0,0,0,0.05);" id="marketing-table">
             <div style="background: #f8f9fa; padding: 15px; border-bottom: 1px solid #e0e0e0; border-radius: 8px 8px 0 0;">
                 <h6 style="margin: 0; font-weight: bold; color: #007bff;">Email Campaigns</h6>
             </div>
             <div style="padding: 20px;">
-                {% if marketing_emails %}
                 <div style="overflow-x: auto;">
                     <table style="width: 100%; border-collapse: collapse;">
                         <thead>
@@ -150,140 +154,25 @@
                                 <th style="padding: 12px; text-align: left; border-bottom: 2px solid #e0e0e0; font-weight: bold;">Actions</th>
                             </tr>
                         </thead>
-                        <tbody>
-                            {% for email in marketing_emails %}
-                            <tr style="border-bottom: 1px solid #e0e0e0;">
-                                <td style="padding: 12px;">
-                                    <strong>{{ email.title }}</strong>
-                                    <br><small style="color: #666;">by {{ email.created_by.username }}</small>
-                                </td>
-                                <td style="padding: 12px;">{{ email.subject }}</td>
-                                <td style="padding: 12px;">
-                                    {% if email.status == 'draft' %}
-                                        <span style="background: #6c757d; color: white; padding: 4px 8px; border-radius: 4px; font-size: 0.8rem;">Draft</span>
-                                    {% elif email.status == 'scheduled' %}
-                                        <span style="background: #ffc107; color: white; padding: 4px 8px; border-radius: 4px; font-size: 0.8rem;">Scheduled</span>
-                                    {% elif email.status == 'sending' %}
-                                        <span style="background: #17a2b8; color: white; padding: 4px 8px; border-radius: 4px; font-size: 0.8rem;">Sending</span>
-                                    {% elif email.status == 'sent' %}
-                                        <span style="background: #28a745; color: white; padding: 4px 8px; border-radius: 4px; font-size: 0.8rem;">Sent</span>
-                                    {% elif email.status == 'failed' %}
-                                        <span style="background: #dc3545; color: white; padding: 4px 8px; border-radius: 4px; font-size: 0.8rem;">Failed</span>
-                                    {% endif %}
-                                </td>
-                                <td style="padding: 12px;">
-                                    {{ email.sent_count }} / {{ email.recipients_count }}
-                                    {% if email.failed_count > 0 %}
-                                        <br><small style="color: #dc3545;">{{ email.failed_count }} failed</small>
-                                    {% endif %}
-                                </td>
-                                <td style="padding: 12px;">
-                                    {% if email.recipients_count > 0 %}
-                                        {{ "%.1f"|format((email.sent_count / email.recipients_count) * 100) }}%
-                                    {% else %}
-                                        N/A
-                                    {% endif %}
-                                </td>
-                                <td style="padding: 12px;">
-                                    {{ email.created_at.strftime('%d.%m.%Y %H:%M') }}
-                                    {% if email.sent_at %}
-                                        <br><small style="color: #666;">Sent: {{ email.sent_at.strftime('%d.%m.%Y %H:%M') }}</small>
-                                    {% endif %}
-                                </td>
-                                <td style="padding: 12px;">
-                                    <div style="display: flex; gap: 5px;">
-                                        <a href="{{ url_for('admin.view_marketing_email', id=email.id) }}" 
-                                           style="
-                                               background: #007bff; 
-                                               color: white; 
-                                               padding: 6px 8px; 
-                                               border-radius: 4px; 
-                                               text-decoration: none; 
-                                               font-size: 0.8rem;
-                                           " title="View">
-                                            <i class="fas fa-eye"></i>
-                                        </a>
-                                        {% if email.status == 'draft' %}
-                                        <a href="{{ url_for('admin.edit_marketing_email', id=email.id) }}" 
-                                           style="
-                                               background: #ffc107; 
-                                               color: white; 
-                                               padding: 6px 8px; 
-                                               border-radius: 4px; 
-                                               text-decoration: none; 
-                                               font-size: 0.8rem;
-                                           " title="Edit">
-                                            <i class="fas fa-edit"></i>
-                                        </a>
-                                        <button onclick="sendEmail({{ email.id }})" 
-                                                style="
-                                                    background: #28a745; 
-                                                    color: white; 
-                                                    padding: 6px 8px; 
-                                                    border: none; 
-                                                    border-radius: 4px; 
-                                                    cursor: pointer; 
-                                                    font-size: 0.8rem;
-                                                " title="Send Now">
-                                            <i class="fas fa-paper-plane"></i>
-                                        </button>
-                                        {% endif %}
-                                        {% if email.status in ['sent', 'failed'] %}
-                                        <a href="{{ url_for('admin.marketing_email_logs', id=email.id) }}" 
-                                           style="
-                                               background: #17a2b8; 
-                                               color: white; 
-                                               padding: 6px 8px; 
-                                               border-radius: 4px; 
-                                               text-decoration: none; 
-                                               font-size: 0.8rem;
-                                           " title="View Logs">
-                                            <i class="fas fa-list"></i>
-                                        </a>
-                                        {% endif %}
-                                    </div>
-                                </td>
-                            </tr>
-                            {% endfor %}
+                        <tbody id="marketing-emails-tbody">
+                            <!-- Dynamic content loaded via AJAX -->
                         </tbody>
                     </table>
                 </div>
-
-                <!-- Show limited campaigns in dashboard - link to full view -->
-                {% if marketing_emails|length >= 20 %}
-                <div style="text-align: center; margin-top: 20px;">
-                    <a href="{{ url_for('admin.marketing_emails') }}" style="
-                        background: #007bff; 
-                        color: white; 
-                        padding: 10px 20px; 
-                        border-radius: 4px; 
-                        text-decoration: none;
-                    ">View All Marketing Campaigns</a>
+                
+                <!-- Pagination -->
+                <div style="margin-top: 20px; display: flex; justify-content: space-between; align-items: center;">
+                    <div id="marketing-pagination-info" class="text-muted"></div>
+                    <nav>
+                        <ul class="pagination pagination-sm" id="marketing-pagination">
+                            <!-- Dynamic pagination loaded via AJAX -->
+                        </ul>
+                    </nav>
                 </div>
-                {% endif %}
-
-                {% else %}
-                <div style="text-align: center; padding: 40px 0;">
-                    <i class="fas fa-envelope" style="font-size: 3rem; color: #ccc; margin-bottom: 15px;"></i>
-                    <h5 style="color: #666; margin-bottom: 10px;">No marketing campaigns yet</h5>
-                    <p style="color: #999; margin-bottom: 20px;">Create your first marketing email campaign to get started.</p>
-                    <a href="{{ url_for('admin.create_marketing_email') }}" style="
-                        background: #007bff; 
-                        color: white; 
-                        padding: 10px 20px; 
-                        border-radius: 4px; 
-                        text-decoration: none;
-                    ">
-                        <i class="fas fa-plus"></i> Create Campaign
-                    </a>
-                </div>
-                {% endif %}
             </div>
         </div>
     </div>
-</div>
-
-<!-- Templates Modal -->
+</div><!-- Templates Modal -->
 <div id="templatesModal" style="
     display: none;
     position: fixed;

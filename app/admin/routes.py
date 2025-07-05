@@ -477,20 +477,10 @@ def admin_dashboard():
         audit_logs = []
         audit_actions = []
     
-    # Get data for Marketing section
-    try:
-        marketing_stats = MarketingEmailService.get_marketing_statistics()
-        # Get marketing emails with pagination (limited for dashboard)
-        marketing_emails = MarketingEmail.query.order_by(MarketingEmail.created_at.desc()).limit(20).all()
-    except Exception as e:
-        print(f"[ADMIN] Error fetching marketing data: {e}")
-        marketing_stats = {
-            'total_campaigns': 0,
-            'opted_in_users': 0,
-            'sent_this_month': 0,
-            'success_rate': 0
-        }
-        marketing_emails = []
+    # Marketing data is now loaded via AJAX
+    # marketing_stats and marketing_emails will be loaded dynamically
+    marketing_stats = None
+    marketing_emails = []
 
     return render_template(
         'admin/admin_dashboard.html',
@@ -1954,6 +1944,39 @@ def edit_marketing_email(id):
                          email=email, 
                          templates=templates, user=current_user)
 
+@admin_bp.route('/api/marketing-templates', methods=['GET'])
+@admin_required
+def api_marketing_templates():
+    """API endpoint for marketing templates"""
+    try:
+        templates = MarketingTemplate.query.filter_by(is_active=True).order_by(
+            MarketingTemplate.created_at.desc()
+        ).all()
+        
+        templates_data = []
+        for template in templates:
+            templates_data.append({
+                'id': template.id,
+                'name': template.name,
+                'description': template.description,
+                'category': template.category,
+                'html_content': template.html_content,
+                'created_at': template.created_at.strftime('%d.%m.%Y %H:%M') if template.created_at else '',
+                'created_by': {
+                    'id': template.created_by.id,
+                    'username': template.created_by.username
+                } if template.created_by else None
+            })
+        
+        return jsonify({
+            'success': True,
+            'templates': templates_data
+        })
+        
+    except Exception as e:
+        logger.error(f'Error in api_marketing_templates: {e}')
+        return jsonify({'success': False, 'error': str(e)}), 500
+
 @admin_bp.route('/api/marketing-recipients', methods=['GET', 'POST'])
 @admin_required
 def get_marketing_recipients():
@@ -2222,6 +2245,201 @@ def api_reports():
         
     except Exception as e:
         return jsonify({'error': str(e)}), 500
+
+# ========================================
+# MARKETING AJAX API ENDPOINTS
+# ========================================
+
+@admin_bp.route('/api/marketing-emails', methods=['GET'])
+@admin_required
+def api_marketing_emails():
+    """API endpoint for marketing emails with filtering, sorting, and pagination"""
+    try:
+        page = int(request.args.get('page', 1))
+        per_page = int(request.args.get('per_page', 20))
+        search = request.args.get('search', '')
+        status = request.args.get('status', '')
+        sort_by = request.args.get('sort_by', 'created_at')
+        sort_order = request.args.get('sort_order', 'desc')
+        
+        # Validate per_page options
+        if per_page not in [10, 20, 50, 100] and per_page != -1:
+            per_page = 20
+        
+        # Build query
+        query = MarketingEmail.query
+        
+        # Apply search filter
+        if search:
+            query = query.filter(
+                MarketingEmail.title.contains(search) |
+                MarketingEmail.subject.contains(search)
+            )
+        
+        # Apply status filter
+        if status:
+            query = query.filter(MarketingEmail.status == status)
+        
+        # Apply sorting
+        valid_sort_columns = ['id', 'title', 'subject', 'status', 'created_at', 'sent_at']
+        if sort_by in valid_sort_columns:
+            sort_column = getattr(MarketingEmail, sort_by)
+            if sort_order == 'desc':
+                query = query.order_by(sort_column.desc())
+            else:
+                query = query.order_by(sort_column.asc())
+        else:
+            query = query.order_by(MarketingEmail.created_at.desc())
+        
+        # Get total count for stats
+        total_count = query.count()
+        
+        # Apply pagination
+        if per_page == -1:  # Show all
+            emails = query.all()
+            pages = 1
+            has_prev = False
+            has_next = False
+            prev_num = None
+            next_num = None
+        else:
+            paginated = query.paginate(page=page, per_page=per_page, error_out=False)
+            emails = paginated.items
+            pages = paginated.pages
+            has_prev = paginated.has_prev
+            has_next = paginated.has_next
+            prev_num = paginated.prev_num
+            next_num = paginated.next_num
+        
+        # Format emails data
+        emails_data = []
+        for email in emails:
+            emails_data.append({
+                'id': email.id,
+                'title': email.title,
+                'subject': email.subject,
+                'status': email.status,
+                'recipients_count': email.recipients_count,
+                'sent_count': email.sent_count,
+                'failed_count': email.failed_count,
+                'success_rate': (email.sent_count / email.recipients_count * 100) if email.recipients_count > 0 else 0,
+                'created_at': email.created_at.strftime('%d.%m.%Y %H:%M') if email.created_at else '',
+                'sent_at': email.sent_at.strftime('%d.%m.%Y %H:%M') if email.sent_at else None,
+                'created_by': {
+                    'id': email.created_by.id,
+                    'username': email.created_by.username
+                } if email.created_by else None
+            })
+        
+        return jsonify({
+            'success': True,
+            'emails': emails_data,
+            'pagination': {
+                'page': page,
+                'pages': pages,
+                'per_page': per_page,
+                'total': total_count,
+                'has_next': has_next,
+                'has_prev': has_prev,
+                'next_num': next_num,
+                'prev_num': prev_num
+            }
+        })
+        
+    except Exception as e:
+        logger.error(f'Error in api_marketing_emails: {e}')
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+@admin_bp.route('/api/marketing-stats', methods=['GET'])
+@admin_required
+def api_marketing_stats():
+    """API endpoint for marketing statistics"""
+    try:
+        stats = MarketingEmailService.get_marketing_statistics()
+        return jsonify({
+            'success': True,
+            'stats': stats
+        })
+        
+    except Exception as e:
+        logger.error(f'Error in api_marketing_stats: {e}')
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+@admin_bp.route('/api/marketing-email/<int:email_id>', methods=['GET'])
+@admin_required
+def api_marketing_email_details(email_id):
+    """Get detailed marketing email information"""
+    try:
+        email = MarketingEmail.query.get_or_404(email_id)
+        
+        return jsonify({
+            'success': True,
+            'email': {
+                'id': email.id,
+                'title': email.title,
+                'subject': email.subject,
+                'html_content': email.html_content,
+                'status': email.status,
+                'recipients_count': email.recipients_count,
+                'sent_count': email.sent_count,
+                'failed_count': email.failed_count,
+                'target_free_users': email.target_free_users,
+                'target_premium_users': email.target_premium_users,
+                'target_pro_users': email.target_pro_users,
+                'target_active_only': email.target_active_only,
+                'created_at': email.created_at.isoformat() if email.created_at else None,
+                'sent_at': email.sent_at.isoformat() if email.sent_at else None,
+                'created_by': {
+                    'id': email.created_by.id,
+                    'username': email.created_by.username
+                } if email.created_by else None
+            }
+        })
+        
+    except Exception as e:
+        logger.error(f'Error in api_marketing_email_details: {e}')
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+@admin_bp.route('/api/marketing-email/<int:email_id>/delete', methods=['DELETE'])
+@admin_required
+def api_delete_marketing_email(email_id):
+    """Delete a marketing email campaign"""
+    try:
+        email = MarketingEmail.query.get_or_404(email_id)
+        
+        # Only allow deletion of drafts and failed campaigns
+        if email.status not in ['draft', 'failed']:
+            return jsonify({
+                'success': False,
+                'error': 'Only draft and failed campaigns can be deleted'
+            }), 400
+        
+        # Delete associated logs first
+        MarketingEmailLog.query.filter_by(marketing_email_id=email_id).delete()
+        
+        # Delete the email
+        db.session.delete(email)
+        db.session.commit()
+        
+        # Log the action
+        AdminSecurityService.log_admin_action(
+            admin_user=current_user,
+            action='marketing_email_delete',
+            additional_info=json.dumps({
+                'email_id': email_id,
+                'title': email.title
+            })
+        )
+        
+        return jsonify({
+            'success': True,
+            'message': 'Marketing email deleted successfully'
+        })
+        
+    except Exception as e:
+        db.session.rollback()
+        logger.error(f'Error in api_delete_marketing_email: {e}')
+        return jsonify({'success': False, 'error': str(e)}), 500
 
 
 @admin_bp.route('/api/reports/<int:report_id>')
