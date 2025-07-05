@@ -457,6 +457,27 @@ function handleMLSettingUpdate(settingKey, value) {
 function updateDashboardSections(mlSystemEnabled) {
     console.log(`🔄 Updating dashboard sections: ML System ${mlSystemEnabled ? 'Enabled' : 'Disabled'}`);
     
+    // Calculate ML models count dynamically based on system state
+    function calculateModelsActiveFromToggle(systemEnabled) {
+        if (!systemEnabled) {
+            return 0; // No models active when system disabled
+        }
+        
+        // When system is enabled, check individual feature toggles to count active models
+        let activeCount = 0;
+        
+        // Check if individual ML features are enabled (these control the models)
+        const difficultyEnabled = document.getElementById('mlDifficultyPrediction')?.checked !== false;
+        const adaptiveEnabled = document.getElementById('mlAdaptiveLearning')?.checked !== false;
+        const skillTrackingEnabled = document.getElementById('mlSkillTracking')?.checked !== false;
+        
+        if (difficultyEnabled) activeCount++;
+        if (adaptiveEnabled) activeCount++;
+        if (skillTrackingEnabled) activeCount++; // This represents question_analyzer
+        
+        return activeCount;
+    }
+    
     // Update algorithm version card
     const algorithmVersionElement = document.getElementById('algorithmVersion');
     if (algorithmVersionElement) {
@@ -478,10 +499,12 @@ function updateDashboardSections(mlSystemEnabled) {
         updateElement('modelsActive', 0);        // Show 0 models when ML disabled
         updateElement('fallbackUsage', '100%');  // Show 100% fallback usage
     } else {
-        // When ML is enabled, refresh actual stats but override models count
+        // When ML is enabled, refresh actual stats with dynamic models count
         updateRealTimeImpactStats();
-        // Override models count since backend ML service may not be initialized
-        updateElement('modelsActive', 3);  // Show 3 models when ML enabled
+        
+        // Override models count with dynamic calculation
+        const dynamicModelsCount = calculateModelsActiveFromToggle(true);
+        updateElement('modelsActive', dynamicModelsCount);
     }
     
     // Trigger diagnostics refresh if the modal is open
@@ -819,6 +842,27 @@ function updateMLDashboard(data) {
     console.log('Updating dashboard with data:', data);
     console.log('Looking for element totalUsers:', document.getElementById('totalUsers'));
     
+    // Calculate ML models active count dynamically from model status
+    function calculateMLModelsActive(status) {
+        if (!status || !status.models) {
+            // Fallback: check if ML is initialized from other status indicators
+            if (status && status.ml_initialized) {
+                return 3; // Default when ML is active but no detailed model info
+            }
+            return 0;
+        }
+        
+        let activeCount = 0;
+        const models = status.models;
+        
+        // Count individual active models (same logic as diagnostics)
+        if (models.difficulty_prediction && models.difficulty_prediction.active) activeCount++;
+        if (models.adaptive_learning && models.adaptive_learning.active) activeCount++;
+        if (models.question_analyzer && models.question_analyzer.active) activeCount++;
+        
+        return activeCount;
+    }
+    
     // Update statistics
     if (data.stats) {
         updateElement('totalUsers', data.stats.total_users || 0);
@@ -826,10 +870,14 @@ function updateMLDashboard(data) {
         updateElement('mlSessions', data.stats.ml_sessions || 0);
         updateElement('algorithmVersion', data.stats.algorithm_version || 'v1.0');
         
-        // Update the missing Current Impact elements
+        // Update the Current Impact elements with dynamic ML models count
         updateElement('usersAffected', data.stats.users_using_ml || 0);
         updateElement('profilesActive', data.stats.active_profiles || 0);
-        updateElement('modelsActive', data.stats.models_active || 0);
+        
+        // Use dynamic calculation for ML models count instead of static backend value
+        const dynamicModelsActive = calculateMLModelsActive(data.status);
+        updateElement('modelsActive', dynamicModelsActive);
+        
         updateElement('fallbackUsage', data.stats.fallback_usage || 0);
     }
     
@@ -1146,6 +1194,20 @@ function saveMLConfiguration() {
 
 // Show ML diagnostics modal
 function showMLDiagnosticsModal(diagnostics) {
+    // Calculate total active models dynamically
+    function calculateTotalActive(models) {
+        if (!models) return 'No Data';
+        
+        let activeCount = 0;
+        
+        // Count individual active models
+        if (models.difficulty_prediction && models.difficulty_prediction.active) activeCount++;
+        if (models.adaptive_learning && models.adaptive_learning.active) activeCount++;
+        if (models.question_analyzer && models.question_analyzer.active) activeCount++;
+        
+        return activeCount > 0 ? activeCount : 'Inactive';
+    }
+    
     // Create modal overlay
     const overlay = document.createElement('div');
     overlay.style.cssText = `
@@ -1173,6 +1235,9 @@ function showMLDiagnosticsModal(diagnostics) {
         box-shadow: 0 4px 20px rgba(0,0,0,0.3);
     `;
     
+    // Calculate the dynamic total
+    const totalActive = calculateTotalActive(diagnostics.models);
+    
     modal.innerHTML = `
         <h3 style="margin-top: 0; color: #333;">🔍 ML Diagnostics</h3>
         <div class="diagnostics-content">
@@ -1188,9 +1253,10 @@ function showMLDiagnosticsModal(diagnostics) {
             <div style="margin-bottom: 20px;">
                 <h4>Model Status</h4>
                 <div style="background: #f8f9fa; padding: 15px; border-radius: 4px;">
-                    ${Object.entries(diagnostics.models || {}).map(([name, status]) => `
+                    ${Object.entries(diagnostics.models || {}).filter(([name]) => name !== 'total_active').map(([name, status]) => `
                         <div>${name}: <strong style="color: ${status.active ? '#28a745' : '#dc3545'};">${status.active ? 'Active' : 'Inactive'}</strong></div>
                     `).join('')}
+                    <div>total_active: <strong style="color: ${totalActive === 'Inactive' ? '#dc3545' : '#28a745'};">${totalActive}</strong></div>
                 </div>
             </div>
             

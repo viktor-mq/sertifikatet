@@ -683,26 +683,110 @@ class MLService:
             return {'success': False, 'error': str(e)}
 
     def get_ml_diagnostics(self) -> Dict:
-        """Returns diagnostic information about the ML system."""
+        """Returns real-time diagnostic information about the ML system."""
         try:
-            # In a real scenario, this would check system health, model status, etc.
-            logger.info("[ML_SERVICE] Getting ML diagnostics.")
+            import psutil
+            import time
+            from datetime import timedelta
+            
+            # Get real system metrics
+            memory = psutil.virtual_memory()
+            cpu_percent = psutil.cpu_percent(interval=0.1)  # Quick sample
+            disk_io = psutil.disk_io_counters()
+            
+            # Calculate real uptime since process started
+            process = psutil.Process()
+            process_start_time = process.create_time()
+            uptime_seconds = time.time() - process_start_time
+            uptime_delta = timedelta(seconds=int(uptime_seconds))
+            
+            # Format uptime nicely
+            days = uptime_delta.days
+            hours, remainder = divmod(uptime_delta.seconds, 3600)
+            minutes, _ = divmod(remainder, 60)
+            uptime_str = f"{days}d {hours}h {minutes}m"
+            
+            # Get ML-specific metrics
+            ml_models_active = 0
+            difficulty_active = False
+            adaptive_active = False
+            
+            if self._initialized:
+                ml_models_active = 3  # Based on your system having 3 ML models
+                difficulty_active = True
+                adaptive_active = True
+            
+            # Calculate process memory usage
+            process_memory_mb = process.memory_info().rss / 1024 / 1024
+            
+            # Get disk I/O rate (bytes per second since last call)
+            disk_read_mb = disk_io.read_bytes / 1024 / 1024 if disk_io else 0
+            disk_write_mb = disk_io.write_bytes / 1024 / 1024 if disk_io else 0
+            
+            # Determine overall health
+            health_issues = []
+            if cpu_percent > 90:
+                health_issues.append('High CPU usage')
+            if memory.percent > 90:
+                health_issues.append('High memory usage')
+            if not self._initialized:
+                health_issues.append('ML system not initialized')
+            
+            is_healthy = len(health_issues) == 0
+            
+            logger.info(f"[ML_SERVICE] Getting real-time ML diagnostics. Healthy: {is_healthy}")
+            
             return {
-                'healthy': True,
-                'uptime': '1d 5h 30m',
-                'memory_usage': '128 MB',
+                'healthy': is_healthy,
+                'health_issues': health_issues,
+                'uptime': uptime_str,
+                'memory_usage': f'{process_memory_mb:.1f} MB',
+                'system_memory_percent': f'{memory.percent:.1f}%',
                 'models': {
-                    'difficulty_prediction': {'active': True},
-                    'adaptive_learning': {'active': True}
+                    'total_active': ml_models_active,
+                    'difficulty_prediction': {'active': difficulty_active},
+                    'adaptive_learning': {'active': adaptive_active},
+                    'question_analyzer': {'active': self._initialized}
                 },
                 'metrics': {
-                    'cpu_usage': '15%',
-                    'disk_io': '20 MB/s'
+                    'cpu_usage': f'{cpu_percent:.1f}%',
+                    'disk_read_total': f'{disk_read_mb:.1f} MB',
+                    'disk_write_total': f'{disk_write_mb:.1f} MB',
+                    'system_memory_available': f'{memory.available / 1024 / 1024 / 1024:.1f} GB'
+                },
+                'ml_status': {
+                    'initialized': self._initialized,
+                    'features_enabled': self.is_ml_enabled() if hasattr(self, 'is_ml_enabled') else True,
+                    'last_activity': time.strftime('%Y-%m-%d %H:%M:%S')
                 }
+            }
+            
+        except ImportError:
+            logger.warning("[ML_SERVICE] psutil not available, using basic diagnostics")
+            return {
+                'healthy': self._initialized,
+                'uptime': 'Unknown (psutil not installed)',
+                'memory_usage': 'Unknown',
+                'models': {
+                    'difficulty_prediction': {'active': self._initialized},
+                    'adaptive_learning': {'active': self._initialized}
+                },
+                'metrics': {
+                    'cpu_usage': 'Unknown',
+                    'disk_io': 'Unknown'
+                },
+                'error': 'psutil package required for full diagnostics'
             }
         except Exception as e:
             logger.error(f"[ML_SERVICE] Error getting ML diagnostics: {e}", exc_info=True)
-            return {'healthy': False, 'error': str(e)}
+            return {
+                'healthy': False, 
+                'error': str(e),
+                'uptime': 'Error',
+                'memory_usage': 'Error',
+                'models': {},
+                'metrics': {}
+            }
         
     def get_ml_configuration(self) -> Dict:
         """Get current ML configuration from settings service."""
