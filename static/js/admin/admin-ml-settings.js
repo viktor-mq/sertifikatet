@@ -85,10 +85,16 @@ function handleMLSettingUpdate(settingKey, value) {
         const featureControls = document.getElementById('mlFeatureControls');
         if (featureControls) {
             if (value) {
+                // Enable the feature controls section
                 featureControls.classList.remove('disabled');
+                // Re-enable all individual checkboxes
+                document.querySelectorAll('#mlFeatureControls input[type="checkbox"]').forEach(input => {
+                    input.disabled = false;
+                });
             } else {
+                // Disable the feature controls section
                 featureControls.classList.add('disabled');
-                // Disable all individual features when master switch is off
+                // Disable all individual checkboxes
                 document.querySelectorAll('#mlFeatureControls input[type="checkbox"]').forEach(input => {
                     input.disabled = true;
                 });
@@ -97,7 +103,90 @@ function handleMLSettingUpdate(settingKey, value) {
         
         // Update impact indicator
         updateMLImpactIndicator('mlMasterImpact', value);
+        
+        // Show impact warnings for critical changes
+        showMLImpactWarning(settingKey, value);
     }
+    
+    // Update real-time impact statistics
+    updateRealTimeImpactStats();
+}
+
+// Update ML impact indicator
+function updateMLImpactIndicator(elementId, enabled) {
+    const indicator = document.getElementById(elementId);
+    if (indicator) {
+        indicator.classList.remove('enabled', 'disabled', 'warning');
+        if (enabled) {
+            indicator.classList.add('enabled');
+            indicator.textContent = 'Enabled';
+        } else {
+            indicator.classList.add('disabled');
+            indicator.textContent = 'Disabled';
+        }
+    }
+}
+
+// Show impact warning for critical ML changes
+function showMLImpactWarning(settingKey, value) {
+    const warningsContainer = document.getElementById('mlImpactWarnings');
+    if (!warningsContainer) return;
+    
+    let warningHtml = '';
+    
+    if (settingKey === 'ml_system_enabled' && !value) {
+        warningHtml = `
+            <div class="alert alert-warning" style="margin: 10px 0; padding: 12px; border-radius: 6px; border-left: 4px solid #ffc107;">
+                <strong>⚠️ Impact Warning:</strong> Disabling the ML system will affect all users. 
+                Questions will be selected using the fallback mode instead of personalized recommendations.
+            </div>`;
+    } else if (settingKey === 'ml_adaptive_learning' && !value) {
+        warningHtml = `
+            <div class="alert alert-info" style="margin: 10px 0; padding: 12px; border-radius: 6px; border-left: 4px solid #007bff;">
+                <strong>ℹ️ Note:</strong> Adaptive question selection is now disabled. 
+                Users will receive questions based on the fallback mode.
+            </div>`;
+    }
+    
+    warningsContainer.innerHTML = warningHtml;
+    
+    // Auto-hide warning after 10 seconds
+    if (warningHtml) {
+        setTimeout(() => {
+            warningsContainer.innerHTML = '';
+        }, 10000);
+    }
+}
+
+// Update real-time impact statistics
+function updateRealTimeImpactStats() {
+    // This would normally fetch from an API endpoint
+    // For now, we'll simulate the update
+    setTimeout(() => {
+        fetch('/admin/api/ml/status')
+            .then(response => response.json())
+            .then(data => {
+                if (data.stats) {
+                    const stats = data.stats;
+                    updateStatElement('usersAffected', stats.users_using_ml || 0);
+                    updateStatElement('profilesActive', stats.active_profiles || 0);
+                    updateStatElement('modelsActive', stats.models_active || 0);
+                    updateStatElement('fallbackUsage', stats.fallback_usage || 0);
+                }
+            })
+            .catch(error => {
+                console.warn('Could not update impact stats:', error);
+            });
+    }, 1000);
+}
+
+// Helper function to update stat elements
+function updateStatElement(elementId, value) {
+    const element = document.getElementById(elementId);
+    if (element) {
+        element.textContent = value;
+    }
+}
     
     // Update slider values if this is a range setting
     if (settingKey === 'ml_learning_rate') {
