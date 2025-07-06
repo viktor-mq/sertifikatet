@@ -9,6 +9,9 @@
     let marketingPerPage = 20;
     let marketingSearchTimeout;
     
+    // Template preview state
+    let currentPreviewTemplate = null;
+
     // Modal management
     function openTemplatesModal() {
         document.getElementById('templatesModal').style.display = 'flex';
@@ -17,6 +20,40 @@
     
     function closeTemplatesModal() {
         document.getElementById('templatesModal').style.display = 'none';
+    }
+    
+    function openTemplatePreviewModal(template) {
+        currentPreviewTemplate = template;
+        document.getElementById('previewTemplateTitle').textContent = template.name;
+        document.getElementById('previewTemplateDescription').textContent = template.description || 'No description available';
+        
+        // Create preview HTML with sample data
+        const previewHtml = template.html_content
+            .replace(/\{\{user\.full_name\}\}/g, 'Ola Nordmann')
+            .replace(/\{\{user\.username\}\}/g, 'olanordmann')
+            .replace(/\{\{user\.email\}\}/g, 'ola@example.com')
+            .replace(/\{\{user\.current_plan\}\}/g, 'Premium')
+            .replace(/\{\{unsubscribe_url\}\}/g, '#unsubscribe')
+            .replace(/\{\{settings_url\}\}/g, '#settings');
+        
+        // Load content into iframe
+        const iframe = document.getElementById('templatePreviewFrame');
+        iframe.srcdoc = previewHtml;
+        
+        document.getElementById('templatePreviewModal').style.display = 'flex';
+    }
+    
+    function closeTemplatePreviewModal() {
+        document.getElementById('templatePreviewModal').style.display = 'none';
+        currentPreviewTemplate = null;
+    }
+    
+    function useTemplateFromPreview() {
+        if (currentPreviewTemplate) {
+            window.open(`/admin/marketing-emails/create?template_id=${currentPreviewTemplate.id}`, '_blank');
+            closeTemplatePreviewModal();
+            closeTemplatesModal();
+        }
     }
     
     function loadTemplatesInModal() {
@@ -49,32 +86,119 @@
     function renderTemplatesModal(templates) {
         const templatesContent = document.getElementById('templatesContent');
         
-        if (templates.length === 0) {
-            templatesContent.innerHTML = '<div class="alert alert-info">No templates found.</div>';
-            return;
-        }
+        let html = `
+            <div style="margin-bottom: 30px; text-align: center;">
+                <button onclick="window.open('/admin/marketing-templates/create', '_blank'); closeTemplatesModal();" style="
+                    background: #007bff;
+                    color: white;
+                    border: none;
+                    padding: 12px 24px;
+                    border-radius: 5px;
+                    cursor: pointer;
+                    font-size: 16px;
+                    font-weight: bold;
+                ">
+                    <i class="fas fa-plus"></i> Create New Template
+                </button>
+            </div>
+        `;
         
-        let html = '<div class="row">';
-        templates.forEach(template => {
+        if (templates.length === 0) {
             html += `
-                <div class="col-md-6 col-lg-4 mb-3">
-                    <div class="card h-100">
-                        <div class="card-header">
-                            <h6 class="mb-0">${escapeHtml(template.name)}</h6>
-                        </div>
-                        <div class="card-body">
-                            <p class="text-muted small">${escapeHtml(template.description || 'No description')}</p>
-                            <small class="text-muted">Created: ${template.created_at}</small>
-                        </div>
-                        <div class="card-footer">
-                            <button class="btn btn-primary btn-sm" onclick="useTemplate(${template.id})">Use Template</button>
-                            <button class="btn btn-outline-secondary btn-sm" onclick="previewTemplate(${template.id})">Preview</button>
-                        </div>
-                    </div>
+                <div style="text-align: center; padding: 40px; color: #666;">
+                    <i class="fas fa-file-alt fa-3x" style="margin-bottom: 20px; opacity: 0.5;"></i>
+                    <h4>No saved templates yet</h4>
+                    <p>Create your first marketing email template to get started.</p>
                 </div>
             `;
-        });
-        html += '</div>';
+        } else {
+            html += '<div style="display: grid; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); gap: 20px;">';
+            
+            templates.forEach(template => {
+                const categoryIcon = getCategoryIcon(template.category);
+                const categoryColor = getCategoryColor(template.category);
+                
+                html += `
+                    <div style="
+                        border: 1px solid #e0e0e0;
+                        border-radius: 8px;
+                        padding: 20px;
+                        background: white;
+                        box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+                        transition: all 0.2s ease;
+                        cursor: pointer;
+                        position: relative;
+                    " 
+                    onmouseover="this.style.boxShadow='0 4px 8px rgba(0,0,0,0.1)'; this.style.transform='translateY(-2px)'"
+                    onmouseout="this.style.boxShadow='0 2px 4px rgba(0,0,0,0.05)'; this.style.transform='translateY(0)'"
+                    onclick="openTemplatePreviewModal(${escapeJson(template)})">
+                        
+                        <div style="display: flex; align-items: center; margin-bottom: 15px;">
+                            <div style="
+                                background: ${categoryColor};
+                                color: white;
+                                width: 40px;
+                                height: 40px;
+                                border-radius: 50%;
+                                display: flex;
+                                align-items: center;
+                                justify-content: center;
+                                margin-right: 15px;
+                                font-size: 18px;
+                            ">
+                                ${categoryIcon}
+                            </div>
+                            <div>
+                                <h5 style="margin: 0; color: #333; font-size: 16px;">${escapeHtml(template.name)}</h5>
+                                <small style="color: #666; text-transform: capitalize;">${template.category || 'General'}</small>
+                            </div>
+                        </div>
+                        
+                        <p style="
+                            color: #666;
+                            font-size: 14px;
+                            line-height: 1.4;
+                            margin-bottom: 15px;
+                            display: -webkit-box;
+                            -webkit-line-clamp: 3;
+                            -webkit-box-orient: vertical;
+                            overflow: hidden;
+                        ">
+                            ${escapeHtml(template.description || 'No description available')}
+                        </p>
+                        
+                        <div style="
+                            display: flex;
+                            justify-content: space-between;
+                            align-items: center;
+                            font-size: 12px;
+                            color: #999;
+                        ">
+                            <span>Created: ${formatDate(template.created_at)}</span>
+                            <span>Used ${template.times_used || 0} times</span>
+                        </div>
+                        
+                        <div style="
+                            position: absolute;
+                            top: 15px;
+                            right: 15px;
+                            background: #f8f9fa;
+                            border: 1px solid #e0e0e0;
+                            border-radius: 4px;
+                            padding: 5px 8px;
+                            font-size: 10px;
+                            color: #666;
+                            text-transform: uppercase;
+                            font-weight: bold;
+                        ">
+                            Preview
+                        </div>
+                    </div>
+                `;
+            });
+            
+            html += '</div>';
+        }
         
         templatesContent.innerHTML = html;
     }
@@ -383,6 +507,43 @@
     }
     
     // Utility functions
+    function getCategoryIcon(category) {
+        const icons = {
+            'newsletter': '📰',
+            'promotion': '🎁',
+            'announcement': '📢',
+            'welcome': '👋',
+            'reminder': '⏰',
+            'seasonal': '🎭'
+        };
+        return icons[category] || '📄';
+    }
+    
+    function getCategoryColor(category) {
+        const colors = {
+            'newsletter': '#007bff',
+            'promotion': '#28a745',
+            'announcement': '#6c757d',
+            'welcome': '#17a2b8',
+            'reminder': '#ffc107',
+            'seasonal': '#6f42c1'
+        };
+        return colors[category] || '#6c757d';
+    }
+    
+    function formatDate(dateString) {
+        const date = new Date(dateString);
+        return date.toLocaleDateString('no-NO', {
+            year: 'numeric',
+            month: 'short',
+            day: 'numeric'
+        });
+    }
+    
+    function escapeJson(obj) {
+        return JSON.stringify(obj).replace(/'/g, "&#39;");
+    }
+    
     function getStatusClass(status) {
         const statusClasses = {
             'draft': 'badge-secondary',
@@ -575,6 +736,9 @@
             if (event.target === document.getElementById('templatesModal')) {
                 closeTemplatesModal();
             }
+            if (event.target === document.getElementById('templatePreviewModal')) {
+                closeTemplatePreviewModal();
+            }
             if (event.target === document.getElementById('sendEmailModal')) {
                 closeSendEmailModal();
             }
@@ -595,6 +759,9 @@
     // Expose functions globally
     window.openTemplatesModal = openTemplatesModal;
     window.closeTemplatesModal = closeTemplatesModal;
+    window.openTemplatePreviewModal = openTemplatePreviewModal;
+    window.closeTemplatePreviewModal = closeTemplatePreviewModal;
+    window.useTemplateFromPreview = useTemplateFromPreview;
     window.sendEmail = sendEmail;
     window.closeSendEmailModal = closeSendEmailModal;
     window.initializeMarketing = initializeMarketing;
