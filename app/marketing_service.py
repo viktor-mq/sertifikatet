@@ -38,14 +38,14 @@ class MarketingEmailService:
             UserNotificationPreferences.marketing_emails == True
         )
         
-        # Filter by subscription tiers
+        # Filter by subscription tiers using current_plan_id
         plan_filters = []
         if target_free:
-            plan_filters.append(User.subscription_tier == 'free')
+            plan_filters.append(User.current_plan_id == 1)  # Free plan
         if target_premium:
-            plan_filters.append(User.subscription_tier == 'premium')
+            plan_filters.append(User.current_plan_id == 2)  # Premium plan
         if target_pro:
-            plan_filters.append(User.subscription_tier == 'pro')
+            plan_filters.append(User.current_plan_id == 3)  # Pro plan
         
         if plan_filters:
             from sqlalchemy import or_

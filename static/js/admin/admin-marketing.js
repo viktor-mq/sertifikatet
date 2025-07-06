@@ -260,13 +260,35 @@
                 'X-Requested-With': 'XMLHttpRequest'
             }
         })
-        .then(response => response.json())
+        .then(response => {
+            if (!response.ok) {
+                throw new Error(`HTTP error! status: ${response.status}`);
+            }
+            return response.json();
+        })
         .then(data => {
             if (data.success) {
                 updateMarketingStats(data.stats);
             } else {
                 console.error('Error loading stats:', data.error);
+                // Set default stats on error
+                updateMarketingStats({
+                    total_campaigns: 0,
+                    opted_in_users: 0,
+                    sent_this_month: 0,
+                    success_rate: 0
+                });
             }
+        })
+        .catch(error => {
+            console.error('Failed to load marketing stats:', error);
+            // Set default stats on network error
+            updateMarketingStats({
+                total_campaigns: 0,
+                opted_in_users: 0,
+                sent_this_month: 0,
+                success_rate: 0
+            });
         });
     }
     
@@ -307,10 +329,32 @@
             successRate: document.querySelector('[data-stat="success_rate"]')
         };
         
-        if (elements.totalCampaigns) elements.totalCampaigns.textContent = stats.total_campaigns || 0;
-        if (elements.optedInUsers) elements.optedInUsers.textContent = stats.opted_in_users || 0;
-        if (elements.sentThisMonth) elements.sentThisMonth.textContent = stats.sent_this_month || 0;
-        if (elements.successRate) elements.successRate.textContent = (stats.success_rate || 0).toFixed(1) + '%';
+        // Ensure stats object exists and has the required properties
+        if (!stats || typeof stats !== 'object') {
+            console.warn('Invalid stats object received:', stats);
+            stats = {
+                total_campaigns: 0,
+                opted_in_users: 0,
+                sent_this_month: 0,
+                success_rate: 0
+            };
+        }
+        
+        if (elements.totalCampaigns) {
+            elements.totalCampaigns.textContent = stats.total_campaigns || 0;
+        }
+        if (elements.optedInUsers) {
+            elements.optedInUsers.textContent = stats.opted_in_users || 0;
+        }
+        if (elements.sentThisMonth) {
+            elements.sentThisMonth.textContent = stats.sent_this_month || 0;
+        }
+        if (elements.successRate) {
+            const successRate = stats.success_rate || 0;
+            // Ensure success_rate is a number before calling toFixed
+            const formattedRate = typeof successRate === 'number' ? successRate.toFixed(1) : '0.0';
+            elements.successRate.textContent = formattedRate + '%';
+        }
     }
     
     function updateMarketingTable(emails, pagination) {
@@ -351,10 +395,16 @@
                         </span>
                     </td>
                     <td>
-                        ${email.sent_count} / ${email.recipients_count}
+                        <button class="btn btn-link p-0 recipient-count-btn" 
+                                onclick="showRecipientModal(${email.id})" 
+                                title="View recipients">
+                            ${email.sent_count} / ${email.recipients_count}
+                        </button>
                         ${email.failed_count > 0 ? `<br><small class="text-danger">${email.failed_count} failed</small>` : ''}
                     </td>
-                    <td>${email.success_rate.toFixed(1)}%</td>
+                    <td>
+                        ${email.recipients_count > 0 ? `${((email.sent_count / email.recipients_count) * 100).toFixed(1)}%` : 'N/A'}
+                    </td>
                     <td>
                         ${email.created_at}
                         ${email.sent_at ? `<br><small class="text-muted">Sent: ${email.sent_at}</small>` : ''}
@@ -752,6 +802,20 @@
             }
         });
     }
+
+    // Recipient Modal Functions
+function showRecipientModal(emailId) {
+    currentEmailId = emailId;
+    
+    // Show modal
+    const modal = new bootstrap.Modal(document.getElementById('recipientsModal'));
+    modal.show();
+    
+    // Reset filters and load data
+    clearRecipientFilters();
+    loadRecipientData(emailId);
+}
+
     
     // Initialize modal events
     setupModalEvents();
@@ -776,5 +840,9 @@
     window.useTemplate = useTemplate;
     window.previewTemplate = previewTemplate;
     window.changeMarketingTableDensity = changeMarketingTableDensity;
+    window.loadMarketingEmails = loadMarketingEmails;
+    window.showRecipientModal = showRecipientModal;
+    window.updateMarketingTable = updateMarketingTable;
+    window.updateMarketingStats = updateMarketingStats;
     
 })();

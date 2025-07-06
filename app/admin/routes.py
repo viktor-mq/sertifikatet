@@ -477,9 +477,18 @@ def admin_dashboard():
         audit_logs = []
         audit_actions = []
     
-    # Marketing data is now loaded via AJAX
-    # marketing_stats and marketing_emails will be loaded dynamically
-    marketing_stats = None
+    # Marketing data
+    try:
+        marketing_stats = MarketingEmailService.get_marketing_statistics()
+    except Exception as e:
+        logger.error(f'Error loading marketing stats in admin dashboard: {e}')
+        marketing_stats = {
+            'total_campaigns': 0,
+            'opted_in_users': 0,
+            'sent_this_month': 0,
+            'success_rate': 0
+        }
+    
     marketing_emails = []
 
     return render_template(
@@ -1909,40 +1918,46 @@ def view_marketing_email(id):
 @admin_required
 def edit_marketing_email(id):
     """Edit marketing email campaign (only drafts)"""
-    email = MarketingEmail.query.get_or_404(id)
-    
-    if email.status != 'draft':
-        flash('Only draft campaigns can be edited', 'error')
-        return redirect(url_for('admin.view_marketing_email', id=id))
-    
-    if request.method == 'POST':
-        email.title = request.form.get('title')
-        email.subject = request.form.get('subject')
-        email.html_content = request.form.get('html_content')
+    try:
+        email = MarketingEmail.query.get_or_404(id)
         
-        # Update targeting
-        email.target_free_users = bool(request.form.get('target_free_users'))
-        email.target_premium_users = bool(request.form.get('target_premium_users'))
-        email.target_pro_users = bool(request.form.get('target_pro_users'))
-        email.target_active_only = bool(request.form.get('target_active_only'))
+        if email.status != 'draft':
+            flash('Only draft campaigns can be edited', 'error')
+            return redirect(url_for('admin.view_marketing_email', id=id))
         
-        # Recalculate recipient count
-        recipients = MarketingEmailService.get_eligible_recipients(
-            email.target_free_users,
-            email.target_premium_users,
-            email.target_pro_users,
-            email.target_active_only
-        )
-        email.recipients_count = len(recipients)
+        if request.method == 'POST':
+            email.title = request.form.get('title')
+            email.subject = request.form.get('subject')
+            email.html_content = request.form.get('html_content')
+            
+            # Update targeting
+            email.target_free_users = bool(request.form.get('target_free_users'))
+            email.target_premium_users = bool(request.form.get('target_premium_users'))
+            email.target_pro_users = bool(request.form.get('target_pro_users'))
+            email.target_active_only = bool(request.form.get('target_active_only'))
+            
+            # Recalculate recipient count
+            recipients = MarketingEmailService.get_eligible_recipients(
+                email.target_free_users,
+                email.target_premium_users,
+                email.target_pro_users,
+                email.target_active_only
+            )
+            email.recipients_count = len(recipients)
+            
+            db.session.commit()
+            flash('Marketing email campaign updated', 'success')
+            return redirect(url_for('admin.view_marketing_email', id=id))
         
-        db.session.commit()
-        flash('Marketing email campaign updated', 'success')
-        return redirect(url_for('admin.view_marketing_email', id=id))
-    
-    templates = MarketingTemplate.query.filter_by(is_active=True).all()
-    return render_template('admin/edit_marketing_email.html', 
-                         email=email, 
-                         templates=templates, user=current_user)
+        templates = MarketingTemplate.query.filter_by(is_active=True).all()
+        return render_template('admin/edit_marketing_email.html', 
+                             email=email, 
+                             templates=templates, user=current_user)
+                             
+    except Exception as e:
+        current_app.logger.error(f'Error in edit_marketing_email: {str(e)}')
+        flash('Error updating marketing email campaign', 'error')
+        return redirect(url_for('admin.marketing_emails'))
 
 @admin_bp.route('/api/marketing-templates', methods=['GET'])
 @admin_required
@@ -1979,7 +1994,7 @@ def api_marketing_templates():
 
 @admin_bp.route('/api/marketing-recipients', methods=['GET', 'POST'])
 @admin_required
-def get_marketing_recipients():
+def get_marketing_recipients_count():
     """Get count of marketing email recipients"""
     try:
         print(f"[DEBUG] Request method: {request.method}")
@@ -2053,29 +2068,6 @@ def get_marketing_recipients():
         traceback.print_exc()
         return jsonify({'success': False, 'error': str(e), 'count': 0})
 
-@admin_bp.route('/api/marketing-send', methods=['POST'])
-@admin_required
-def send_marketing_email():
-    """Send marketing email campaign"""
-    data = request.get_json()
-    email_id = data.get('email_id')
-    is_resend = data.get('resend', False)
-    
-    if not email_id:
-        return jsonify({'success': False, 'error': 'Email ID required'})
-    
-    # If it's a resend, reset the email status to draft first
-    if is_resend:
-        email = MarketingEmail.query.get(email_id)
-        if email and email.status in ['sent', 'failed', 'partially_sent']:
-            email.status = 'draft'
-            email.sent_count = 0
-            email.failed_count = 0
-            email.sent_at = None
-            db.session.commit()
-    
-    result = MarketingEmailService.send_marketing_email(email_id)
-    return jsonify(result)
 
 @admin_bp.route('/marketing-emails/<int:id>/logs')
 @admin_required
@@ -2246,6 +2238,260 @@ def api_reports():
     except Exception as e:
         return jsonify({'error': str(e)}), 500
 
+# Marketing Email API Endpoints
+
+@admin_bp.route('/api/marketing-recipients')
+@admin_required
+def get_marketing_recipients():
+    """Get detailed recipient list for marketing email modal"""
+    try:
+        email_id = request.args.get('email_id')
+        search = request.args.get('search', '').strip()
+        subscription_filter = request.args.get('subscription', '')
+        admin_filter = request.args.get('admin_filter', '')
+        page = request.args.get('page', 1, type=int)
+        per_page = request.args.get('per_page', 20, type=int)
+        
+        if email_id:
+            # Get recipients for specific email campaign
+            email = MarketingEmail.query.get_or_404(email_id)
+            recipients = MarketingEmailService.get_eligible_recipients(
+                email.target_free_users,
+                email.target_premium_users,
+                email.target_pro_users,
+                email.target_active_only
+            )
+        else:
+            # Get all marketing-eligible recipients with basic targeting
+            recipients = MarketingEmailService.get_eligible_recipients(
+                target_free=True,
+                target_premium=True,
+                target_pro=True,
+                target_active_only=False
+            )
+        
+        # Apply additional filters
+        filtered_recipients = []
+        for user in recipients:
+            # Search filter
+            if search:
+                search_match = (
+                    search.lower() in (user.full_name or '').lower() or
+                    search.lower() in user.email.lower()
+                )
+                if not search_match:
+                    continue
+            
+            # Subscription filter
+            if subscription_filter:
+                user_subscription_tier = {
+                    1: 'free',
+                    2: 'premium',
+                    3: 'pro'
+                }.get(user.current_plan_id, 'free')
+                
+                if user_subscription_tier != subscription_filter:
+                    continue
+            
+            # Admin filter
+            if admin_filter:
+                if admin_filter == 'admin' and not user.is_admin:
+                    continue
+                elif admin_filter == 'user' and user.is_admin:
+                    continue
+            
+            filtered_recipients.append({
+                'id': user.id,
+                'full_name': user.full_name,
+                'email': user.email,
+                'subscription': {
+                    1: 'free',
+                    2: 'premium',
+                    3: 'pro'
+                }.get(user.current_plan_id, 'free'),
+                'is_admin': user.is_admin
+            })
+        
+        # If this is for the modal (no pagination requested), return all
+        if 'page' not in request.args:
+            return jsonify({
+                'recipients': filtered_recipients,
+                'count': len(filtered_recipients),
+                'total_count': len(filtered_recipients)
+            })
+        
+        # Pagination for API calls
+        total_count = len(filtered_recipients)
+        start_idx = (page - 1) * per_page
+        end_idx = start_idx + per_page
+        paginated_recipients = filtered_recipients[start_idx:end_idx]
+        
+        return jsonify({
+            'recipients': paginated_recipients,
+            'pagination': {
+                'page': page,
+                'per_page': per_page,
+                'total': total_count,
+                'pages': (total_count + per_page - 1) // per_page,
+                'has_next': end_idx < total_count,
+                'has_prev': page > 1
+            },
+            'total_count': total_count
+        })
+        
+    except Exception as e:
+        current_app.logger.error(f'Error in get_marketing_recipients: {str(e)}')
+        return jsonify({'error': str(e)}), 500
+
+@admin_bp.route('/api/marketing-recipients/export')
+@admin_required
+def export_marketing_recipients():
+    """Export marketing recipients as CSV or JSON"""
+    try:
+        email_id = request.args.get('email_id')
+        format_type = request.args.get('format', 'csv').lower()
+        search = request.args.get('search', '').strip()
+        subscription_filter = request.args.get('subscription', '')
+        admin_filter = request.args.get('admin_filter', '')
+        
+        if not email_id:
+            return jsonify({'error': 'Email ID required'}), 400
+        
+        # Get recipients using the same logic as the modal
+        email = MarketingEmail.query.get_or_404(email_id)
+        recipients = MarketingEmailService.get_eligible_recipients(
+            email.target_free_users,
+            email.target_premium_users,
+            email.target_pro_users,
+            email.target_active_only
+        )
+        
+        # Apply filters same as modal
+        filtered_recipients = []
+        for user in recipients:
+            # Search filter
+            if search:
+                search_match = (
+                    search.lower() in (user.full_name or '').lower() or
+                    search.lower() in user.email.lower()
+                )
+                if not search_match:
+                    continue
+            
+            # Subscription filter
+            if subscription_filter and user.subscription_tier != subscription_filter:
+                continue
+            
+            # Admin filter
+            if admin_filter:
+                if admin_filter == 'admin' and not user.is_admin:
+                    continue
+                elif admin_filter == 'user' and user.is_admin:
+                    continue
+            
+            filtered_recipients.append({
+                'full_name': user.full_name or 'N/A',
+                'email': user.email,
+                'subscription': user.subscription_tier or 'free',
+                'account_type': 'Admin' if user.is_admin else 'User'
+            })
+        
+        if format_type == 'csv':
+            # Generate CSV
+            output = StringIO()
+            writer = csv.DictWriter(output, fieldnames=['full_name', 'email', 'subscription', 'account_type'])
+            writer.writeheader()
+            for recipient in filtered_recipients:
+                writer.writerow(recipient)
+            
+            # Create response
+            csv_data = output.getvalue()
+            output.close()
+            
+            response = current_app.response_class(
+                csv_data,
+                mimetype='text/csv',
+                headers={
+                    'Content-Disposition': f'attachment; filename=marketing_recipients_{datetime.now().strftime("%Y%m%d_%H%M%S")}.csv'
+                }
+            )
+            return response
+            
+        elif format_type == 'json':
+            # Generate JSON
+            json_data = {
+                'export_date': datetime.now().isoformat(),
+                'email_campaign_id': email_id,
+                'total_recipients': len(filtered_recipients),
+                'filters_applied': {
+                    'search': search,
+                    'subscription': subscription_filter,
+                    'admin_filter': admin_filter
+                },
+                'recipients': filtered_recipients
+            }
+            
+            response = current_app.response_class(
+                json.dumps(json_data, indent=2),
+                mimetype='application/json',
+                headers={
+                    'Content-Disposition': f'attachment; filename=marketing_recipients_{datetime.now().strftime("%Y%m%d_%H%M%S")}.json'
+                }
+            )
+            return response
+        
+        else:
+            return jsonify({'error': 'Invalid format. Use csv or json'}), 400
+            
+    except Exception as e:
+        current_app.logger.error(f'Error in export_marketing_recipients: {str(e)}')
+        return jsonify({'error': str(e)}), 500
+
+@admin_bp.route('/api/marketing-stats', methods=['GET'])
+@admin_required
+def api_marketing_stats():
+    """API endpoint for marketing statistics"""
+    try:
+        stats = MarketingEmailService.get_marketing_statistics()
+        return jsonify({
+            'success': True,
+            'stats': stats
+        })
+    except Exception as e:
+        logger.error(f'Error in api_marketing_stats: {e}')
+        return jsonify({
+            'success': False,
+            'error': str(e)
+        }), 500
+
+@admin_bp.route('/api/marketing-send', methods=['POST'])
+@admin_required
+def send_marketing_email():
+    """Send marketing email campaign"""
+    try:
+        data = request.get_json()
+        email_id = data.get('email_id')
+        is_resend = data.get('resend', False)
+        
+        if not email_id:
+            return jsonify({'success': False, 'error': 'Email ID required'}), 400
+        
+        # If it's a resend, reset the email status to draft first
+        if is_resend:
+            email = MarketingEmail.query.get(email_id)
+            if email and email.status in ['sent', 'failed', 'partially_sent']:
+                email.status = 'draft'
+                email.sent_count = 0
+                email.failed_count = 0
+                email.sent_at = None
+                db.session.commit()
+        
+        result = MarketingEmailService.send_marketing_email(email_id)
+        return jsonify(result)
+        
+    except Exception as e:
+        current_app.logger.error(f'Error in send_marketing_email: {str(e)}')
+        return jsonify({'success': False, 'error': str(e)}), 500
 # ========================================
 # MARKETING AJAX API ENDPOINTS
 # ========================================
@@ -2348,21 +2594,6 @@ def api_marketing_emails():
         
     except Exception as e:
         logger.error(f'Error in api_marketing_emails: {e}')
-        return jsonify({'success': False, 'error': str(e)}), 500
-
-@admin_bp.route('/api/marketing-stats', methods=['GET'])
-@admin_required
-def api_marketing_stats():
-    """API endpoint for marketing statistics"""
-    try:
-        stats = MarketingEmailService.get_marketing_statistics()
-        return jsonify({
-            'success': True,
-            'stats': stats
-        })
-        
-    except Exception as e:
-        logger.error(f'Error in api_marketing_stats: {e}')
         return jsonify({'success': False, 'error': str(e)}), 500
 
 @admin_bp.route('/api/marketing-email/<int:email_id>', methods=['GET'])
