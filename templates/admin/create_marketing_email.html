@@ -206,6 +206,32 @@
 </div>
 
 <script>
+// Initialize page based on URL parameters
+document.addEventListener('DOMContentLoaded', function() {
+    // Check if template_id is in URL parameters
+    const urlParams = new URLSearchParams(window.location.search);
+    const templateId = urlParams.get('template_id');
+    
+    if (templateId) {
+        console.log('Auto-loading template ID:', templateId);
+        
+        // Select "Use Saved Template" radio button
+        document.getElementById('content_template').checked = true;
+        
+        // Show template section
+        document.getElementById('template_section').style.display = 'block';
+        document.getElementById('editor_section').style.display = 'block';
+        document.getElementById('upload_section').style.display = 'none';
+        
+        // Select the template in dropdown
+        const templateSelect = document.getElementById('template_id');
+        templateSelect.value = templateId;
+        
+        // Trigger template loading automatically
+        templateSelect.dispatchEvent(new Event('change'));
+    }
+});
+
 // Content method switching
 document.querySelectorAll('input[name="content_method"]').forEach(radio => {
     radio.addEventListener('change', function() {

@@ -16,7 +16,7 @@
     <form method="POST" enctype="multipart/form-data">
         <div class="row">
             <!-- Main Content -->
-            <div class="col-lg-8">
+            <div class="col-md-8">
                 <!-- Template Information -->
                 <div class="card shadow mb-4">
                     <div class="card-header py-3">
@@ -55,7 +55,7 @@
                                 <label class="form-check-label" for="content_editor">
                                     Use Built-in Editor
                                 </label>
-                            </div>
+                            </div> <!-- close first form-check -->
                             <div class="form-check">
                                 <input class="form-check-input" type="radio" name="content_method" id="content_upload" value="upload">
                                 <label class="form-check-label" for="content_upload">
@@ -104,33 +104,134 @@
             </div>
 
             <!-- Sidebar -->
-            <div class="col-lg-4">
+            <div class="col-md-4">
                 <!-- Template Variables -->
                 <div class="card shadow mb-4">
                     <div class="card-header py-3">
                         <h6 class="m-0 font-weight-bold text-primary">Available Variables</h6>
                     </div>
                     <div class="card-body">
-                        <p><small class="text-muted">You can use these variables in your template:</small></p>
-                        <ul class="list-unstyled small">
-                            <li><code>{{user.full_name}}</code> - User's full name</li>
-                            <li><code>{{user.username}}</code> - Username</li>
-                            <li><code>{{user.email}}</code> - Email address</li>
-                            <li><code>{{user.current_plan}}</code> - Subscription plan</li>
-                            <li><code>{{unsubscribe_url}}</code> - Unsubscribe link</li>
-                            <li><code>{{settings_url}}</code> - Settings page link</li>
-                        </ul>
+                        <p><small class="text-muted">Drag these variables into your template or click to insert:</small></p>
                         
-                        <hr>
-                        <button type="button" class="btn btn-outline-secondary btn-sm w-100 mb-2" onclick="insertVariable('{{user.full_name}}')">
-                            Insert Name
-                        </button>
-                        <button type="button" class="btn btn-outline-secondary btn-sm w-100 mb-2" onclick="insertVariable('{{user.username}}')">
-                            Insert Username
-                        </button>
-                        <button type="button" class="btn btn-outline-secondary btn-sm w-100 mb-2" onclick="insertVariable('{{settings_url}}')">
-                            Insert Settings Link
-                        </button>
+                        <style>
+                        .variable-item {
+                            border: 1px solid #e0e0e0;
+                            border-radius: 6px;
+                            padding: 12px;
+                            margin-bottom: 8px;
+                            cursor: pointer;
+                            transition: all 0.2s ease;
+                            background: #f8f9fa;
+                            user-select: none;
+                        }
+                        .variable-item:hover {
+                            border-color: #007bff;
+                            background: #e7f3ff;
+                            transform: translateY(-1px);
+                            box-shadow: 0 2px 4px rgba(0,123,255,0.2);
+                        }
+                        .variable-item:active {
+                            transform: scale(0.98);
+                        }
+                        .variable-item code {
+                            display: block;
+                            color: #007bff;
+                            font-weight: bold;
+                            margin-bottom: 4px;
+                            pointer-events: none;
+                        }
+                        .variable-item small {
+                            color: #666;
+                            font-size: 11px;
+                            pointer-events: none;
+                        }
+                        .variable-link {
+                            border-left: 4px solid #28a745;
+                        }
+                        
+                        /* Drag feedback styles */
+                        .variable-item.dragging {
+                            opacity: 0.5;
+                            transform: rotate(2deg);
+                        }
+                        
+                        #html_content.drag-over {
+                            border-color: #007bff !important;
+                            background-color: #f8f9ff !important;
+                            box-shadow: 0 0 0 3px rgba(0,123,255,0.1) !important;
+                        }
+                        
+                        /* Add drag cursor indicator */
+                        .variable-item[draggable="true"] {
+                            cursor: grab;
+                        }
+                        .variable-item[draggable="true"]:active {
+                            cursor: grabbing;
+                        }
+                        </style>
+                        
+                        <div class="variable-list">
+
+                            <!-- Full name -->
+                            <div class="variable-item"
+                                 draggable="true"
+                                 data-variable="{{ '{{user.full_name}}' }}"
+                                 onclick="insertVariable(this.dataset.variable)"
+                                 title="Drag to template or click to insert">
+                              <code>{{ '{{user.full_name}}' }}</code>
+                              <small>User’s full name (e.g., “Viktor Hansen”)</small>
+                            </div>
+                          
+                            <!-- Username -->
+                            <div class="variable-item"
+                                 draggable="true"
+                                 data-variable="{{ '{{user.username}}' }}"
+                                 onclick="insertVariable(this.dataset.variable)"
+                                 title="Drag to template or click to insert">
+                              <code>{{ '{{user.username}}' }}</code>
+                              <small>Username (e.g., “viktor”)</small>
+                            </div>
+                          
+                            <!-- Email -->
+                            <div class="variable-item"
+                                 draggable="true"
+                                 data-variable="{{ '{{user.email}}' }}"
+                                 onclick="insertVariable(this.dataset.variable)"
+                                 title="Drag to template or click to insert">
+                              <code>{{ '{{user.email}}' }}</code>
+                              <small>Email address</small>
+                            </div>
+                          
+                            <!-- Current plan -->
+                            <div class="variable-item"
+                                 draggable="true"
+                                 data-variable="{{ '{{user.current_plan}}' }}"
+                                 onclick="insertVariable(this.dataset.variable)"
+                                 title="Drag to template or click to insert">
+                              <code>{{ '{{user.current_plan}}' }}</code>
+                              <small>Subscription plan (e.g., “Premium”)</small>
+                            </div>
+                          
+                            <!-- Unsubscribe URL -->
+                            <div class="variable-item"
+                                 draggable="true"
+                                 data-variable="{{ '{{unsubscribe_url}}' }}"
+                                 onclick="insertVariable(this.dataset.variable)"
+                                 title="Drag to template or click to insert">
+                              <code>{{ '{{unsubscribe_url}}' }}</code>
+                              <small>Unsubscribe URL</small>
+                            </div>
+                          
+                            <!-- Settings URL -->
+                            <div class="variable-item"
+                                 draggable="true"
+                                 data-variable="{{ '{{settings_url}}' }}"
+                                 onclick="insertVariable(this.dataset.variable)"
+                                 title="Drag to template or click to insert">
+                              <code>{{ '{{settings_url}}' }}</code>
+                              <small>Settings URL</small>
+                            </div>
+                        </div>
                     </div>
                 </div>
 
@@ -214,14 +315,26 @@ function previewTemplate() {
     // Replace variables with sample data for preview
     let previewContent = htmlContent
         .replace(/\{\{user\.full_name\}\}/g, 'Ola Nordmann')
+        .replace(/\{\{ "\{" \}\}user\.full_name\{\{ "\}" \}\}/g, 'Ola Nordmann')
         .replace(/\{\{user\.username\}\}/g, 'olanordmann')
+        .replace(/\{\{ "\{" \}\}user\.username\{\{ "\}" \}\}/g, 'olanordmann')
         .replace(/\{\{user\.email\}\}/g, 'ola@example.com')
+        .replace(/\{\{ "\{" \}\}user\.email\{\{ "\}" \}\}/g, 'ola@example.com')
         .replace(/\{\{user\.current_plan\}\}/g, 'Premium')
+        .replace(/\{\{ "\{" \}\}user\.current_plan\{\{ "\}" \}\}/g, 'Premium')
         .replace(/\{\{unsubscribe_url\}\}/g, '#unsubscribe')
-        .replace(/\{\{settings_url\}\}/g, '#settings');
+        .replace(/\{\{ "\{" \}\}unsubscribe_url\{\{ "\}" \}\}/g, '#unsubscribe')
+        .replace(/\{\{settings_url\}\}/g, '#settings')
+        .replace(/\{\{ "\{" \}\}settings_url\{\{ "\}" \}\}/g, '#settings');
     
     document.getElementById('preview_content').innerHTML = previewContent;
     document.getElementById('preview_container').style.display = 'block';
+}
+
+// Better variable insertion function
+function insertVariableByName(variableName) {
+    const variable = '{{' + variableName + '}}';
+    insertVariable(variable);
 }
 
 // Insert variable at cursor position
@@ -231,10 +344,84 @@ function insertVariable(variable) {
     const end = textarea.selectionEnd;
     const text = textarea.value;
     
+    // Insert the variable syntax, not the preview value
     textarea.value = text.substring(0, start) + variable + text.substring(end);
     textarea.focus();
     textarea.setSelectionRange(start + variable.length, start + variable.length);
 }
+
+// Drag and Drop functionality
+function initializeDragAndDrop() {
+    const textarea = document.getElementById('html_content');
+    const variableItems = document.querySelectorAll('.variable-item');
+    
+    // Add drag event listeners to variable items
+    variableItems.forEach(item => {
+        item.addEventListener('dragstart', function(e) {
+            const variableName = this.getAttribute('data-variable');
+            const variable = '{{' + variableName + '}}';
+            e.dataTransfer.setData('text/plain', variable);
+            e.dataTransfer.effectAllowed = 'copy';
+            
+            // Visual feedback
+            this.style.opacity = '0.5';
+        });
+        
+        item.addEventListener('dragend', function(e) {
+            // Reset visual feedback
+            this.style.opacity = '1';
+        });
+    });
+    
+    // Add drop event listeners to textarea
+    textarea.addEventListener('dragover', function(e) {
+        e.preventDefault();
+        e.dataTransfer.dropEffect = 'copy';
+        
+        // Visual feedback for textarea
+        this.style.borderColor = '#007bff';
+        this.style.backgroundColor = '#f8f9ff';
+    });
+    
+    textarea.addEventListener('dragleave', function(e) {
+        // Reset textarea visual feedback
+        this.style.borderColor = '';
+        this.style.backgroundColor = '';
+    });
+    
+    textarea.addEventListener('drop', function(e) {
+        e.preventDefault();
+        
+        // Reset visual feedback
+        this.style.borderColor = '';
+        this.style.backgroundColor = '';
+        
+        // Get the variable syntax
+        const variable = e.dataTransfer.getData('text/plain');
+        
+        // Calculate cursor position from drop coordinates
+        const rect = this.getBoundingClientRect();
+        const x = e.clientX - rect.left;
+        const y = e.clientY - rect.top;
+        
+        // Focus textarea and set cursor position
+        this.focus();
+        
+        // For simplicity, insert at current cursor position
+        // (Getting exact position from coordinates is complex)
+        const start = this.selectionStart;
+        const end = this.selectionEnd;
+        const text = this.value;
+        
+        this.value = text.substring(0, start) + variable + text.substring(end);
+        this.setSelectionRange(start + variable.length, start + variable.length);
+    });
+}
+
+// Initialize drag and drop when page loads
+document.addEventListener('DOMContentLoaded', function() {
+    initializeDragAndDrop();
+});
 
 // Load quick template
 function loadQuickTemplate(type) {
