@@ -219,22 +219,7 @@
     function renderTemplatesModal(templates) {
         const templatesContent = document.getElementById('templatesContent');
         
-        let html = `
-            <div style="margin-bottom: 30px; text-align: center;">
-                <button onclick="window.open('/admin/marketing-emails/create', '_blank'); closeTemplatesModal();" style="
-                    background: #007bff;
-                    color: white;
-                    border: none;
-                    padding: 12px 24px;
-                    border-radius: 5px;
-                    cursor: pointer;
-                    font-size: 16px;
-                    font-weight: bold;
-                ">
-                    <i class="fas fa-plus"></i> Create New Template
-                </button>
-            </div>
-        `;
+        let html = '';
         
         if (templates.length === 0) {
             html += `
@@ -246,6 +231,29 @@
             `;
         } else {
             html += '<div style="display: grid; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); gap: 20px;">';
+            
+            // Add "Create New Template" button as first grid item
+            html += `
+                <div style="
+                    border: 2px dashed #007bff;
+                    border-radius: 8px;
+                    padding: 40px 20px;
+                    background: #f8f9fa;
+                    display: flex;
+                    flex-direction: column;
+                    align-items: center;
+                    justify-content: center;
+                    cursor: pointer;
+                    transition: all 0.2s ease;
+                    min-height: 200px;
+                "
+                onmouseover="this.style.background='#e3f2fd'; this.style.transform='translateY(-2px)'"
+                onmouseout="this.style.background='#f8f9fa'; this.style.transform='translateY(0)'"
+                onclick="window.open('/admin/marketing-emails/create', '_blank'); closeTemplatesModal();">
+                    <i class="fas fa-plus fa-3x" style="color: #007bff; margin-bottom: 15px;"></i>
+                    <h5 style="color: #007bff; margin: 0; font-weight: bold;">Create New Template</h5>
+                </div>
+            `;
             
             templates.forEach(template => {
                 const categoryIcon = getCategoryIcon(template.category);
