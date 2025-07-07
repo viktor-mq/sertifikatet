@@ -30,39 +30,103 @@
             </div>
         `;
         
-        // Fetch campaign data
-        fetch(`/admin/api/marketing-email/${emailId}`, {
+        // Fetch the full campaign page and extract the preview content
+        fetch(`/admin/marketing-emails/${emailId}`, {
             method: 'GET',
             headers: {
-                'Accept': 'application/json',
+                'Accept': 'text/html',
                 'X-Requested-With': 'XMLHttpRequest'
             }
         })
-        .then(response => response.json())
-        .then(data => {
-            if (data.success) {
-                const email = data.email;
-                title.textContent = email.title || 'Campaign Preview';
-                subject.textContent = `Subject: ${email.subject || 'No subject'}`;
-                
-                // Create preview iframe with sample data
-                const previewHtml = (email.html_content || email.content || '<p>No content available</p>')
-                    .replace(/\{\{user\.full_name\}\}/g, 'Ola Nordmann')
-                    .replace(/\{\{user\.username\}\}/g, 'olanordmann')
-                    .replace(/\{\{user\.email\}\}/g, 'ola@example.com')
-                    .replace(/\{\{user\.current_plan\}\}/g, 'Premium')
-                    .replace(/\{\{unsubscribe_url\}\}/g, '#unsubscribe')
-                    .replace(/\{\{settings_url\}\}/g, '#settings');
-                
-                content.innerHTML = `<iframe style="width: 100%; height: 600px; border: none;" srcdoc="${escapeHtml(previewHtml)}"></iframe>`;
-            } else {
-                content.innerHTML = `
-                    <div style="text-align: center; padding: 40px;">
-                        <i class="fas fa-exclamation-triangle fa-2x text-danger mb-3"></i>
-                        <p style="color: #dc3545;">Error loading campaign: ${data.error || 'Unknown error'}</p>
-                    </div>
-                `;
+        .then(response => {
+            if (!response.ok) {
+                throw new Error(`HTTP error! status: ${response.status}`);
             }
+            return response.text();
+        })
+        .then(html => {
+            // Parse the HTML response
+            const parser = new DOMParser();
+            const doc = parser.parseFromString(html, 'text/html');
+            
+            // Extract campaign title from the page
+            const titleElement = doc.querySelector('h1.h3');
+            const campaignTitle = titleElement ? titleElement.textContent.trim() : 'Campaign Preview';
+            title.textContent = campaignTitle;
+            
+            // Extract subject from the page - look in the details section
+            const subjectElement = doc.querySelector('dd');
+            const campaignSubject = subjectElement ? subjectElement.textContent.trim() : 'No subject';
+            subject.textContent = `Subject: ${campaignSubject}`;
+            
+            // Extract the email preview content from the card body
+            const previewCard = doc.querySelector('.card .border');
+            let emailContent = '<p>No content available</p>';
+            
+            if (previewCard) {
+                emailContent = previewCard.innerHTML;
+            } else {
+                // Fallback: look for any element with email content
+                const fallbackContent = doc.querySelector('.card-body .border');
+                if (fallbackContent) {
+                    emailContent = fallbackContent.innerHTML;
+                }
+            }
+            
+            // Clean up the content by removing any fixed width/height constraints
+            // and other styling that might interfere with modal display
+            let cleanedContent = emailContent
+                // Remove any width/height constraints
+                .replace(/width\s*:\s*[^;"']+[;"']/gi, '')
+                .replace(/height\s*:\s*[^;"']+[;"']/gi, '')
+                .replace(/max-width\s*:\s*[^;"']+[;"']/gi, '')
+                .replace(/min-width\s*:\s*[^;"']+[;"']/gi, '')
+                // Remove position constraints that might cause issues
+                .replace(/position\s*:\s*fixed[;"']/gi, '')
+                .replace(/position\s*:\s*absolute[;"']/gi, '')
+                // Ensure tables and content are responsive
+                .replace(/<table([^>]*)>/gi, '<table$1 style="width: 100%; max-width: 100%; table-layout: auto; border-collapse: collapse;">')
+                .replace(/<td([^>]*)>/gi, '<td$1 style="word-wrap: break-word; max-width: 100%;">')
+                .replace(/<img([^>]*?)style="([^"]*?)"([^>]*?)>/gi, function(match, before, style, after) {
+                    // Make images responsive
+                    const newStyle = style.replace(/width\s*:\s*[^;]+;?/gi, '').replace(/height\s*:\s*[^;]+;?/gi, '') + '; max-width: 100%; height: auto;';
+                    return `<img${before}style="${newStyle}"${after}>`;
+                })
+                .replace(/<img([^>]*?)(?!style)([^>]*?)>/gi, '<img$1 style="max-width: 100%; height: auto;"$2>'); // For images without style attribute
+            
+            // Process template variables with sample data
+            const processedContent = cleanedContent
+                .replace(/\{\{user\.full_name\}\}/g, 'Ola Nordmann')
+                .replace(/\{\{user\.username\}\}/g, 'olanordmann')
+                .replace(/\{\{user\.email\}\}/g, 'ola@example.com')
+                .replace(/\{\{user\.current_plan\}\}/g, 'Premium')
+                .replace(/\{\{unsubscribe_url\}\}/g, '#unsubscribe')
+                .replace(/\{\{settings_url\}\}/g, '#settings');
+            
+            // Display the processed content with proper modal styling
+            content.innerHTML = `
+                <div style="
+                    background: white;
+                    border-radius: 4px;
+                    max-height: 600px;
+                    overflow-y: auto;
+                    padding: 0;
+                    font-family: Arial, sans-serif;
+                    line-height: 1.6;
+                    color: #333;
+                    word-wrap: break-word;
+                    overflow-wrap: break-word;
+                ">
+                    <div style="
+                        max-width: 100%;
+                        margin: 0 auto;
+                        padding: 20px;
+                        box-sizing: border-box;
+                    ">
+                        ${processedContent}
+                    </div>
+                </div>
+            `;
         })
         .catch(error => {
             console.error('Error loading campaign preview:', error);
@@ -70,6 +134,7 @@
                 <div style="text-align: center; padding: 40px;">
                     <i class="fas fa-exclamation-triangle fa-2x text-danger mb-3"></i>
                     <p style="color: #dc3545;">Error loading campaign preview</p>
+                    <p style="color: #666; font-size: 14px;">Please check that the campaign exists and try again.</p>
                 </div>
             `;
         });
@@ -156,7 +221,7 @@
         
         let html = `
             <div style="margin-bottom: 30px; text-align: center;">
-                <button onclick="window.open('/admin/marketing-templates/create', '_blank'); closeTemplatesModal();" style="
+                <button onclick="window.open('/admin/marketing-emails/create', '_blank'); closeTemplatesModal();" style="
                     background: #007bff;
                     color: white;
                     border: none;
@@ -436,7 +501,7 @@
                         <i class="fas fa-envelope fa-3x text-muted mb-3"></i>
                         <h5 class="text-muted">No marketing campaigns found</h5>
                         <p class="text-muted">Create your first marketing email campaign to get started.</p>
-                        <button class="btn btn-primary" onclick="window.open('/admin/marketing-templates/create', '_blank')">
+                        <button class="btn btn-primary" onclick="window.open('/admin/marketing-emails/create', '_blank')">
                             <i class="fas fa-plus"></i> Create Campaign
                         </button>
                     </td>
