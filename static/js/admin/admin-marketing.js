@@ -12,6 +12,74 @@
     // Template preview state
     let currentPreviewTemplate = null;
 
+    // Campaign preview functionality
+    function previewCampaign(emailId) {
+        const modal = document.getElementById('campaignPreviewModal');
+        const title = document.getElementById('campaignPreviewTitle');
+        const subject = document.getElementById('campaignPreviewSubject');
+        const content = document.getElementById('campaignPreviewContent');
+        
+        // Show modal
+        modal.style.display = 'flex';
+        
+        // Show loading state
+        content.innerHTML = `
+            <div style="text-align: center; padding: 40px;">
+                <i class="fas fa-spinner fa-spin fa-2x text-muted"></i>
+                <p style="margin-top: 15px; color: #666;">Loading campaign preview...</p>
+            </div>
+        `;
+        
+        // Fetch campaign data
+        fetch(`/admin/api/marketing-email/${emailId}`, {
+            method: 'GET',
+            headers: {
+                'Accept': 'application/json',
+                'X-Requested-With': 'XMLHttpRequest'
+            }
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                const email = data.email;
+                title.textContent = email.title || 'Campaign Preview';
+                subject.textContent = `Subject: ${email.subject || 'No subject'}`;
+                
+                // Create preview iframe with sample data
+                const previewHtml = (email.html_content || email.content || '<p>No content available</p>')
+                    .replace(/\{\{user\.full_name\}\}/g, 'Ola Nordmann')
+                    .replace(/\{\{user\.username\}\}/g, 'olanordmann')
+                    .replace(/\{\{user\.email\}\}/g, 'ola@example.com')
+                    .replace(/\{\{user\.current_plan\}\}/g, 'Premium')
+                    .replace(/\{\{unsubscribe_url\}\}/g, '#unsubscribe')
+                    .replace(/\{\{settings_url\}\}/g, '#settings');
+                
+                content.innerHTML = `<iframe style="width: 100%; height: 600px; border: none;" srcdoc="${escapeHtml(previewHtml)}"></iframe>`;
+            } else {
+                content.innerHTML = `
+                    <div style="text-align: center; padding: 40px;">
+                        <i class="fas fa-exclamation-triangle fa-2x text-danger mb-3"></i>
+                        <p style="color: #dc3545;">Error loading campaign: ${data.error || 'Unknown error'}</p>
+                    </div>
+                `;
+            }
+        })
+        .catch(error => {
+            console.error('Error loading campaign preview:', error);
+            content.innerHTML = `
+                <div style="text-align: center; padding: 40px;">
+                    <i class="fas fa-exclamation-triangle fa-2x text-danger mb-3"></i>
+                    <p style="color: #dc3545;">Error loading campaign preview</p>
+                </div>
+            `;
+        });
+    }
+    
+    function closeCampaignPreview() {
+        const modal = document.getElementById('campaignPreviewModal');
+        modal.style.display = 'none';
+    }
+
     // Modal management
     function openTemplatesModal() {
         document.getElementById('templatesModal').style.display = 'flex';
@@ -368,7 +436,7 @@
                         <i class="fas fa-envelope fa-3x text-muted mb-3"></i>
                         <h5 class="text-muted">No marketing campaigns found</h5>
                         <p class="text-muted">Create your first marketing email campaign to get started.</p>
-                        <button class="btn btn-primary" onclick="window.open('/admin/marketing-emails/create', '_blank')">
+                        <button class="btn btn-primary" onclick="window.open('/admin/marketing-templates/create', '_blank')">
                             <i class="fas fa-plus"></i> Create Campaign
                         </button>
                     </td>
@@ -412,7 +480,7 @@
                     </td>
                     <td>
                         <div class="btn-group btn-group-sm">
-                            <button class="btn btn-info btn-small" onclick="viewEmailDetails(${email.id})" title="View" style="margin-right: 5px;">
+                            <button class="btn btn-info btn-small" onclick="previewCampaign(${email.id})" title="Preview" style="margin-right: 5px;">
                                 👁️ View
                             </button>
                             ${email.status === 'draft' ? `
@@ -422,15 +490,10 @@
                                 <button class="btn btn-success btn-small" onclick="sendEmail(${email.id})" title="Send Now" style="margin-right: 5px;">
                                     <i class="fas fa-paper-plane"></i>
                                 </button>
-                                <button class="btn btn-danger btn-small" onclick="deleteEmail(${email.id})" title="Delete">
-                                    <i class="fas fa-trash"></i>
-                                </button>
                             ` : ''}
-                            ${email.status === 'sent' || email.status === 'failed' ? `
-                                <button class="btn btn-secondary btn-small" onclick="viewEmailLogs(${email.id})" title="View Logs">
-                                    <i class="fas fa-list"></i>
-                                </button>
-                            ` : ''}
+                            <button class="btn btn-danger btn-small" onclick="deleteEmail(${email.id})" title="Delete">
+                                🗑️ Delete
+                            </button>
                         </div>
                     </td>
                 </tr>
@@ -538,16 +601,14 @@
     }
     
     function viewEmailDetails(emailId) {
-        window.open(`/admin/marketing-emails/${emailId}`, '_blank');
+        // Use preview modal instead of opening new tab
+        previewCampaign(emailId);
     }
     
     function editEmail(emailId) {
         window.open(`/admin/marketing-emails/${emailId}/edit`, '_blank');
     }
     
-    function viewEmailLogs(emailId) {
-        window.open(`/admin/marketing-emails/${emailId}/logs`, '_blank');
-    }
     
     // Utility functions
     function getCategoryIcon(category) {
@@ -940,22 +1001,22 @@
                 
                 // Apply styles with maximum specificity
                 thead.style.cssText = `
-                    background: linear-gradient(135deg, #3b82f6 0%, #1d4ed8 100%) !important;
-                    background-color: #3b82f6 !important;
-                    background-image: linear-gradient(135deg, #3b82f6 0%, #1d4ed8 100%) !important;
-                    font-size: 14px !important;
+                    background: linear-gradient(135deg, #3b82f6 0%, #1d4ed8 100%);
+                    background-color: #3b82f6 ;
+                    background-image: linear-gradient(135deg, #3b82f6 0%, #1d4ed8 100%);
+                    font-size: 14px ;
                 `;
                 
                 ths.forEach(th => {
                     th.style.cssText = `
-                        background: linear-gradient(135deg, #3b82f6 0%, #1d4ed8 100%) !important;
-                        background-color: #3b82f6 !important;
-                        background-image: linear-gradient(135deg, #3b82f6 0%, #1d4ed8 100%) !important;
-                        color: white !important;
-                        font-weight: 600 !important;
-                        padding: 12px 16px !important;
-                        border-bottom: 2px solid #1e40af !important;
-                        text-align: left !important;
+                        background: linear-gradient(135deg, #3b82f6 0%, #1d4ed8 100%) ;
+                        background-color: #3b82f6 ;
+                        background-image: linear-gradient(135deg, #3b82f6 0%, #1d4ed8 100%) ;
+                        color: white ;
+                        font-weight: 600 ;
+                        padding: 12px 16px ;
+                        border-bottom: 2px solid #1e40af ;
+                        text-align: left ;
                     `;
                 });
                 
@@ -1169,7 +1230,7 @@
         switch (subscription) {
             case 'free': return 'secondary';
             case 'premium': return 'primary';
-            case 'pro': return 'success';
+            case 'pro': return 'dark';
             default: return 'secondary';
         }
     }
@@ -1402,19 +1463,7 @@
             confirmSendBtn.disabled = false;
         });
     }
-    
-    // Recipient Modal Functions
-    function showRecipientModal(emailId) {
-        currentEmailId = emailId;
-        
-        // Show modal
-        const modal = new bootstrap.Modal(document.getElementById('recipientsModal'));
-        modal.show();
-        
-        // Reset filters and load data
-        clearRecipientFilters();
-        loadRecipientData(emailId);
-    }
+
     
     // Additional functions for email actions
     function deleteEmail(emailId) {
@@ -1445,16 +1494,14 @@
     }
     
     function viewEmailDetails(emailId) {
-        window.open(`/admin/marketing-emails/${emailId}`, '_blank');
+        // Use preview modal instead of opening new tab
+        previewCampaign(emailId);
     }
     
     function editEmail(emailId) {
         window.open(`/admin/marketing-emails/${emailId}/edit`, '_blank');
     }
     
-    function viewEmailLogs(emailId) {
-        window.open(`/admin/marketing-emails/${emailId}/logs`, '_blank');
-    }
     
     function useTemplate(templateId) {
         window.open(`/admin/marketing-emails/create?template_id=${templateId}`, '_blank');
@@ -1504,7 +1551,6 @@
     window.deleteEmail = deleteEmail;
     window.viewEmailDetails = viewEmailDetails;
     window.editEmail = editEmail;
-    window.viewEmailLogs = viewEmailLogs;
     window.useTemplate = useTemplate;
     window.previewTemplate = previewTemplate;
     window.changeMarketingTableDensity = changeMarketingTableDensity;
@@ -1523,6 +1569,11 @@
     window.renderRecipientTable = renderRecipientTable;
     window.renderPagination = renderPagination;
     window.getSubscriptionBadgeClass = getSubscriptionBadgeClass;
+    window.getStatusBadgeClass = getStatusBadgeClass;
+    window.escapeHtml = escapeHtml;
+    window.escapeJson = escapeJson;
+    window.previewCampaign = previewCampaign;
+    window.closeCampaignPreview = closeCampaignPreview;
     
     // Set up recipient modal event listeners when DOM is ready
     document.addEventListener('DOMContentLoaded', function() {

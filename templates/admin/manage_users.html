@@ -16,9 +16,6 @@
         <h1 style="font-size: 1.5rem; margin: 0; color: rgb(251, 191, 36)">🛡️ Admin User Management</h1>
       </div>
       <div>
-        <a href="{{ url_for('admin.security_audit_log') }}" class="btn btn-secondary" style="margin-right: 10px;">
-          🛡️ Security Audit Log
-        </a>
         <a href="{{ url_for('admin.admin_dashboard') }}" class="btn">
           ← Back to Dashboard
         </a>
@@ -183,11 +180,6 @@
                         {% endfor %}
                     </tbody>
                 </table>
-            </div>
-            <div style="text-align: center; margin-top: 15px;">
-                <a href="{{ url_for('admin.security_audit_log') }}" class="btn">
-                    🛡️ View Full Security Audit Log
-                </a>
             </div>
         </div>
         {% endif %}

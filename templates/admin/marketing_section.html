@@ -26,18 +26,7 @@
         <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 30px;">
             <h2 style="margin: 0; color: #333; font-size: 1.8rem;">📧 Marketing Email Campaigns</h2>
             <div>
-                <button onclick="openTemplatesModal()" class="btn" style="
-                    background: #6c757d; 
-                    color: white; 
-                    padding: 8px 16px; 
-                    border: none; 
-                    border-radius: 4px; 
-                    margin-right: 10px;
-                    cursor: pointer;
-                ">
-                    <i class="fas fa-file-alt"></i> Templates
-                </button>
-                <button onclick="window.open('/admin/marketing-emails/create', '_blank')" class="btn" style="
+                <button onclick="window.open('/admin/marketing-templates/create', '_blank')" class="btn" style="
                     background: #007bff; 
                     color: white; 
                     padding: 8px 16px; 
@@ -162,141 +151,10 @@
                 </div>
             </div>
         </div>
-
-        <!-- Recipients Modal -->
-        <div class="modal fade" id="recipientsModal" tabindex="-1">
-            <div class="modal-dialog modal-xl" style="max-width: 95vw;">
-                <div class="modal-content">
-                    <div class="modal-header">
-                        <h5 class="modal-title">Email Recipients</h5>
-                        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
-                    </div>
-                    <div class="modal-body p-2">
-                        <!-- Enhanced style override with higher specificity to override Bootstrap -->
-                        <style>
-                        /* Target the specific table in the recipients modal with higher specificity */
-                        #recipientsModal .table.table-bordered thead.table-light,
-                        #recipientsModal .table.table-hover thead.table-light,
-                        #recipientsModal .table.table-bordered.table-hover thead.table-light,
-                        #recipientsModal .table thead {
-                            background: linear-gradient(135deg, #3b82f6 0%, #1d4ed8 100%) !important;
-                            font-size: 14px !important;
-                        }
-                        
-                        #recipientsModal .table.table-bordered thead.table-light th,
-                        #recipientsModal .table.table-hover thead.table-light th,
-                        #recipientsModal .table.table-bordered.table-hover thead.table-light th,
-                        #recipientsModal .table thead th {
-                            color: white !important;
-                            font-weight: 600 !important;
-                            text-align: left !important;
-                            padding: 12px 16px !important;
-                            border-bottom: 2px solid #1e40af !important;
-                            background: linear-gradient(135deg, #3b82f6 0%, #1d4ed8 100%) !important;
-                        }
-                        
-                        /* Extra override for Bootstrap's default table-light styling */
-                        #recipientsModal .table-light > th {
-                            background-color: transparent !important;
-                        }
-                        </style>
-                        <!-- Section 1: Search/Filtering -->
-                        <div class="card mb-3">
-                            <div class="card-header py-3">
-                                <h6 class="m-0 fw-bold text-primary">Search & Filter</h6>
-                            </div>
-                            <div class="card-body">
-                                <div class="row g-3">
-                                    <div class="col-md-4">
-                                        <input type="text" id="recipientSearch" class="form-control" placeholder="Search name or email...">
-                                    </div>
-                                    <div class="col-md-3">
-                                        <select id="subscriptionFilter" class="form-select">
-                                            <option value="">All Subscriptions</option>
-                                            <option value="free">Free</option>
-                                            <option value="premium">Premium</option>
-                                            <option value="pro">Pro</option>
-                                        </select>
-                                    </div>
-                                    <div class="col-md-3">
-                                        <select id="adminFilter" class="form-select">
-                                            <option value="">All Users</option>
-                                            <option value="admin">Admins Only</option>
-                                            <option value="user">Regular Users</option>
-                                        </select>
-                                    </div>
-                                    <div class="col-md-2">
-                                        <button type="button" class="btn btn-outline-secondary" onclick="clearRecipientFilters()">Clear</button>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-
-                        <!-- Section 2: Recipients List -->
-                        <div class="card mb-3">
-                            <div class="card-header py-3">
-                                <h6 class="m-0 fw-bold text-primary">Recipients (<span id="recipientCount">0</span>)</h6>
-                            </div>
-                            <div class="card-body p-0">
-                                <!-- Search Info -->
-                                <div id="recipientPagination" class="d-none mb-3 px-3 pt-2">
-                                    <small class="text-muted">Showing <span id="showingRange"></span> of <span id="totalCount"></span></small>
-                                </div>
-                                <div id="recipientTableContainer">
-                                    <div class="text-center py-4">
-                                        <i class="fas fa-spinner fa-spin fa-2x text-gray-300 mb-3"></i>
-                                        <p class="text-gray-500">Loading recipients...</p>
-                                    </div>
-                                </div>
-                                
-                                <!-- Pagination -->
-                                <nav id="recipientPaginationNav" class="d-none mt-3 px-3 pb-2">
-                                    <ul class="pagination justify-content-center mb-0" id="recipientPaginationList">
-                                        <!-- Pagination will be inserted here -->
-                                    </ul>
-                                </nav>
-                            </div>
-                        </div>
-
-                        <!-- Section 3: Export Options -->
-                        <div class="card">
-                            <div class="card-header py-3">
-                                <h6 class="m-0 fw-bold text-primary">Export Options</h6>
-                            </div>
-                            <div class="card-body">
-                                <div class="row">
-                                    <div class="col-md-6">
-                                        <button type="button" class="btn btn-outline-success w-100" onclick="exportRecipients('csv')">
-                                            <i class="fas fa-file-csv"></i> Export CSV
-                                        </button>
-                                    </div>
-                                    <div class="col-md-6">
-                                        <button type="button" class="btn btn-outline-info w-100" onclick="exportRecipients('json')">
-                                            <i class="fas fa-file-code"></i> Export JSON
-                                        </button>
-                                    </div>
-                                </div>
-                                <small class="text-muted mt-2 d-block">Export will include current search and filter settings.</small>
-                            </div>
-                        </div>
-                    </div>
-                    <div class="modal-footer">
-                        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
-                    </div>
-                </div>
-            </div>
-        </div>
-        
-        <!-- Send Email Modal -->
-        <div class="modal fade" id="sendEmailModal" tabindex="-1">
-            <!-- Send modal content -->
-        </div>
-
-    </div>
 </div>
 <!-- End of Marketing Section -->
 
-<!-- Marketing Modals - Placed outside the main section div -->
+<!-- Marketing Modals - Placed ovutside the main section div -->
 <!-- Templates Modal -->
 <div id="templatesModal" style="
     display: none;
@@ -475,4 +333,182 @@
         </div>
     </div>
 </div>
+
+<!-- Campaign Preview Modal -->
+<div id="campaignPreviewModal" style="
+    display: none;
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: rgba(0,0,0,0.5);
+    z-index: 10001;
+    justify-content: center;
+    align-items: center;
+">
+    <div style="
+        background: white;
+        border-radius: 8px;
+        width: 95%;
+        max-width: 1200px;
+        max-height: 95%;
+        overflow: auto;
+        position: relative;
+    ">
+        <div style="
+            background: #f8f9fa;
+            padding: 20px;
+            border-bottom: 1px solid #e0e0e0;
+            border-radius: 8px 8px 0 0;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        ">
+            <div>
+                <h3 id="campaignPreviewTitle" style="margin: 0; color: #333;">Campaign Preview</h3>
+                <p id="campaignPreviewSubject" style="margin: 5px 0 0 0; color: #666; font-size: 14px;"></p>
+            </div>
+            <button onclick="closeCampaignPreview()" style="
+                background: none;
+                border: none;
+                font-size: 1.5rem;
+                cursor: pointer;
+                color: #666;
+            ">&times;</button>
+        </div>
+        <div style="padding: 20px;">
+            <div id="campaignPreviewContent" style="border: 1px solid #e0e0e0; border-radius: 4px; min-height: 400px; background: #fff;">
+                <div style="text-align: center; padding: 40px;">
+                    <i class="fas fa-spinner fa-spin fa-2x text-muted"></i>
+                    <p style="margin-top: 15px; color: #666;">Loading campaign preview...</p>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+<!-- Recipients Modal -->
+<div class="modal fade" id="recipientsModal" tabindex="-1" style="z-index: 1050 !important;">
+    <div class="modal-dialog" style="max-width: 95vw !important;">
+        <div class="modal-content" style="border: none !important; border-radius: 0.5rem !important;">
+            <div class="modal-header" style="border-bottom: 1px solid #dee2e6 !important; padding: 1rem 1.5rem !important;">
+                <h5 class="modal-title" style="margin: 0 !important; font-weight: 500 !important; line-height: 1.2 !important; color: #212529 !important;">Email Recipients</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" style="box-sizing: content-box !important; width: 1em !important; height: 1em !important; padding: 0.25em 0.25em !important; color: #000 !important; background: transparent url('data:image/svg+xml,%3csvg xmlns=\'http://www.w3.org/2000/svg\' viewBox=\'0 0 16 16\' fill=\'%23000\'%3e%3cpath d=\'M.293.293a1 1 0 011.414 0L8 6.586 14.293.293a1 1 0 111.414 1.414L9.414 8l6.293 6.293a1 1 0 01-1.414 1.414L8 9.414l-6.293 6.293a1 1 0 01-1.414-1.414L6.586 8 .293 1.707a1 1 0 010-1.414z\'/%3e%3c/svg%3e') center/1em auto no-repeat !important; border: 0 !important; border-radius: 0.25rem !important; opacity: 0.5 !important; cursor: pointer !important;"></button>
+            </div>
+            <div class="modal-body" style="position: relative !important; flex: 1 1 auto !important; padding: 1rem !important;">
+                <!-- Section 1: Search/Filtering -->
+                <div class="card mb-3" style="position: relative !important; display: flex !important; flex-direction: column !important; min-width: 0 !important; word-wrap: break-word !important; background-color: #fff !important; background-clip: border-box !important; border: 1px solid rgba(0,0,0,.125) !important; border-radius: 0.25rem !important; margin-bottom: 1rem !important;">
+                    <div class="card-header" style="padding: 0.5rem 1rem !important; margin-bottom: 0 !important; background-color: rgba(0,0,0,.03) !important; border-bottom: 1px solid rgba(0,0,0,.125) !important; border-top-left-radius: calc(0.25rem - 1px) !important; border-top-right-radius: calc(0.25rem - 1px) !important;">
+                        <h6 class="m-0 font-weight-bold text-primary" style="margin-top: 0 !important; margin-bottom: 0 !important; font-weight: 700 !important; color: #007bff !important; font-size: 1rem !important; line-height: 1.2 !important;">Search & Filter</h6>
+                    </div>
+                    <div class="card-body" style="flex: 1 1 auto !important; padding: 1rem !important;">
+                        <div class="row g-3" style="--bs-gutter-x: 1.5rem !important; --bs-gutter-y: 0 !important; display: flex !important; flex-wrap: wrap !important; margin-top: calc(-1 * var(--bs-gutter-y)) !important; margin-right: calc(-0.5 * var(--bs-gutter-x)) !important; margin-left: calc(-0.5 * var(--bs-gutter-x)) !important;">
+                            <div class="col-md-4" style="flex: 0 0 auto !important; width: 33.33333333% !important; padding-right: calc(var(--bs-gutter-x) * 0.5) !important; padding-left: calc(var(--bs-gutter-x) * 0.5) !important; margin-top: var(--bs-gutter-y) !important;">
+                                <input type="text" id="recipientSearch" class="form-control" placeholder="Search name or email..." style="display: block !important; width: 100% !important; padding: 0.375rem 0.75rem !important; font-size: 1rem !important; font-weight: 400 !important; line-height: 1.5 !important; color: #212529 !important; background-color: #fff !important; background-image: none !important; border: 1px solid #ced4da !important; border-radius: 0.25rem !important; transition: border-color .15s ease-in-out,box-shadow .15s ease-in-out !important;">
+                            </div>
+                            <div class="col-md-3" style="flex: 0 0 auto !important; width: 25% !important; padding-right: calc(var(--bs-gutter-x) * 0.5) !important; padding-left: calc(var(--bs-gutter-x) * 0.5) !important; margin-top: var(--bs-gutter-y) !important;">
+                                <select id="subscriptionFilter" class="form-select" style="display: block !important; width: 100% !important; padding: 0.375rem 2.25rem 0.375rem 0.75rem !important; -moz-padding-start: calc(0.75rem - 3px) !important; font-size: 1rem !important; font-weight: 400 !important; line-height: 1.5 !important; color: #212529 !important; background-color: #fff !important; background-image: url('data:image/svg+xml,%3csvg xmlns=\'http://www.w3.org/2000/svg\' viewBox=\'0 0 16 16\'%3e%3cpath fill=\'none\' stroke=\'%23343a40\' stroke-linecap=\'round\' stroke-linejoin=\'round\' stroke-width=\'2\' d=\'M2 5l6 6 6-6\'/%3e%3c/svg%3e') !important; background-repeat: no-repeat !important; background-position: right 0.75rem center !important; background-size: 16px 12px !important; border: 1px solid #ced4da !important; border-radius: 0.25rem !important; transition: border-color .15s ease-in-out,box-shadow .15s ease-in-out !important; -webkit-appearance: none !important; -moz-appearance: none !important; appearance: none !important;">
+                                    <option value="">All Subscriptions</option>
+                                    <option value="free">Free</option>
+                                    <option value="premium">Premium</option>
+                                    <option value="pro">Pro</option>
+                                </select>
+                            </div>
+                            <div class="col-md-3" style="flex: 0 0 auto !important; width: 25% !important; padding-right: calc(var(--bs-gutter-x) * 0.5) !important; padding-left: calc(var(--bs-gutter-x) * 0.5) !important; margin-top: var(--bs-gutter-y) !important;">
+                                <select id="adminFilter" class="form-select" style="display: block !important; width: 100% !important; padding: 0.375rem 2.25rem 0.375rem 0.75rem !important; -moz-padding-start: calc(0.75rem - 3px) !important; font-size: 1rem !important; font-weight: 400 !important; line-height: 1.5 !important; color: #212529 !important; background-color: #fff !important; background-image: url('data:image/svg+xml,%3csvg xmlns=\'http://www.w3.org/2000/svg\' viewBox=\'0 0 16 16\'%3e%3cpath fill=\'none\' stroke=\'%23343a40\' stroke-linecap=\'round\' stroke-linejoin=\'round\' stroke-width=\'2\' d=\'M2 5l6 6 6-6\'/%3e%3c/svg%3e') !important; background-repeat: no-repeat !important; background-position: right 0.75rem center !important; background-size: 16px 12px !important; border: 1px solid #ced4da !important; border-radius: 0.25rem !important; transition: border-color .15s ease-in-out,box-shadow .15s ease-in-out !important; -webkit-appearance: none !important; -moz-appearance: none !important; appearance: none !important;">
+                                    <option value="">All Users</option>
+                                    <option value="admin">Admins Only</option>
+                                    <option value="user">Regular Users</option>
+                                </select>
+                            </div>
+                            <div class="col-md-2" style="flex: 0 0 auto !important; width: 16.66666667% !important; padding-right: calc(var(--bs-gutter-x) * 0.5) !important; padding-left: calc(var(--bs-gutter-x) * 0.5) !important; margin-top: var(--bs-gutter-y) !important;">
+                                <button type="button" class="btn btn-outline-secondary" onclick="clearRecipientFilters()" style="display: inline-block !important; font-weight: 400 !important; line-height: 1.5 !important; color: #6c757d !important; text-align: center !important; text-decoration: none !important; vertical-align: middle !important; cursor: pointer !important; -webkit-user-select: none !important; -moz-user-select: none !important; user-select: none !important; background-color: transparent !important; border: 1px solid #6c757d !important; padding: 0.375rem 0.75rem !important; font-size: 1rem !important; border-radius: 0.25rem !important; transition: color .15s ease-in-out,background-color .15s ease-in-out,border-color .15s ease-in-out,box-shadow .15s ease-in-out !important;">Clear</button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Section 2: Recipients List -->
+                <div class="card mb-3" style="position: relative !important; display: flex !important; flex-direction: column !important; min-width: 0 !important; word-wrap: break-word !important; background-color: #fff !important; background-clip: border-box !important; border: 1px solid rgba(0,0,0,.125) !important; border-radius: 0.25rem !important; margin-bottom: 1rem !important;">
+                    <div class="card-header d-flex justify-content-between align-items-center" style="padding: 0.5rem 1rem !important; margin-bottom: 0 !important; background-color: rgba(0,0,0,.03) !important; border-bottom: 1px solid rgba(0,0,0,.125) !important; border-top-left-radius: calc(0.25rem - 1px) !important; border-top-right-radius: calc(0.25rem - 1px) !important; display: flex !important; justify-content: space-between !important; align-items: center !important;">
+                        <h6 class="m-0 font-weight-bold text-primary" style="margin-top: 0 !important; margin-bottom: 0 !important; font-weight: 700 !important; color: #007bff !important; font-size: 1rem !important; line-height: 1.2 !important;">Recipients (<span id="recipientCount" style="font-weight: inherit !important;">0</span>)</h6>
+                        <div id="recipientPagination" class="d-none" style="display: none !important;">
+                            <small class="text-muted" style="font-size: 0.875em !important; color: #6c757d !important;">Showing <span id="showingRange" style="font-weight: inherit !important;"></span> of <span id="totalCount" style="font-weight: inherit !important;"></span></small>
+                        </div>
+                    </div>
+                    <div class="card-body" style="flex: 1 1 auto !important; padding: 1rem !important;">
+                        <div id="recipientTableContainer" style="position: relative !important; width: 100% !important;">
+                            <div class="text-center py-4" style="text-align: center !important; padding-top: 1.5rem !important; padding-bottom: 1.5rem !important;">
+                                <i class="fas fa-spinner fa-spin fa-2x text-gray-300 mb-3" style="font-family: 'Font Awesome 5 Free' !important; font-weight: 900 !important; font-size: 2em !important; animation: fa-spin 2s infinite linear !important; color: #dee2e6 !important; margin-bottom: 1rem !important;"></i>
+                                <p class="text-gray-500" style="margin-top: 0 !important; margin-bottom: 1rem !important; color: #6c757d !important;">Loading recipients...</p>
+                            </div>
+                        </div>
+                        
+                        <!-- Pagination -->
+                        <nav id="recipientPaginationNav" class="d-none mt-3" style="display: none !important; margin-top: 1rem !important;">
+                            <ul class="pagination justify-content-center mb-0" id="recipientPaginationList" style="display: flex !important; padding-left: 0 !important; list-style: none !important; justify-content: center !important; margin-top: 0 !important; margin-bottom: 0 !important;">
+                                <!-- Pagination will be inserted here -->
+                            </ul>
+                        </nav>
+                    </div>
+                </div>
+
+                <!-- Section 3: Export Options -->
+                <div class="card" style="position: relative !important; display: flex !important; flex-direction: column !important; min-width: 0 !important; word-wrap: break-word !important; background-color: #fff !important; background-clip: border-box !important; border: 1px solid rgba(0,0,0,.125) !important; border-radius: 0.25rem !important;">
+                    <div class="card-header" style="padding: 0.5rem 1rem !important; margin-bottom: 0 !important; background-color: rgba(0,0,0,.03) !important; border-bottom: 1px solid rgba(0,0,0,.125) !important; border-top-left-radius: calc(0.25rem - 1px) !important; border-top-right-radius: calc(0.25rem - 1px) !important;">
+                        <h6 class="m-0 font-weight-bold text-primary" style="margin-top: 0 !important; margin-bottom: 0 !important; font-weight: 700 !important; color: #007bff !important; font-size: 1rem !important; line-height: 1.2 !important;">Export Options</h6>
+                    </div>
+                    <div class="card-body" style="flex: 1 1 auto !important; padding: 1rem !important;">
+                        <div class="row" style="--bs-gutter-x: 1.5rem !important; --bs-gutter-y: 0 !important; display: flex !important; flex-wrap: wrap !important; margin-top: calc(-1 * var(--bs-gutter-y)) !important; margin-right: calc(-0.5 * var(--bs-gutter-x)) !important; margin-left: calc(-0.5 * var(--bs-gutter-x)) !important;">
+                            <div class="col-md-6" style="flex: 0 0 auto !important; width: 50% !important; padding-right: calc(var(--bs-gutter-x) * 0.5) !important; padding-left: calc(var(--bs-gutter-x) * 0.5) !important; margin-top: var(--bs-gutter-y) !important;">
+                                <button type="button" class="btn btn-outline-success w-100" onclick="exportRecipients('csv')" style="display: inline-block !important; font-weight: 400 !important; line-height: 1.5 !important; color: #198754 !important; text-align: center !important; text-decoration: none !important; vertical-align: middle !important; cursor: pointer !important; -webkit-user-select: none !important; -moz-user-select: none !important; user-select: none !important; background-color: transparent !important; border: 1px solid #198754 !important; padding: 0.375rem 0.75rem !important; font-size: 1rem !important; border-radius: 0.25rem !important; transition: color .15s ease-in-out,background-color .15s ease-in-out,border-color .15s ease-in-out,box-shadow .15s ease-in-out !important; width: 100% !important;">
+                                    <i class="fas fa-file-csv" style="font-family: 'Font Awesome 5 Free' !important; font-weight: 900 !important; margin-right: 0.25rem !important;"></i> Export CSV
+                                </button>
+                            </div>
+                            <div class="col-md-6" style="flex: 0 0 auto !important; width: 50% !important; padding-right: calc(var(--bs-gutter-x) * 0.5) !important; padding-left: calc(var(--bs-gutter-x) * 0.5) !important; margin-top: var(--bs-gutter-y) !important;">
+                                <button type="button" class="btn btn-outline-info w-100" onclick="exportRecipients('json')" style="display: inline-block !important; font-weight: 400 !important; line-height: 1.5 !important; color: #0dcaf0 !important; text-align: center !important; text-decoration: none !important; vertical-align: middle !important; cursor: pointer !important; -webkit-user-select: none !important; -moz-user-select: none !important; user-select: none !important; background-color: transparent !important; border: 1px solid #0dcaf0 !important; padding: 0.375rem 0.75rem !important; font-size: 1rem !important; border-radius: 0.25rem !important; transition: color .15s ease-in-out,background-color .15s ease-in-out,border-color .15s ease-in-out,box-shadow .15s ease-in-out !important; width: 100% !important;">
+                                    <i class="fas fa-file-code" style="font-family: 'Font Awesome 5 Free' !important; font-weight: 900 !important; margin-right: 0.25rem !important;"></i> Export JSON
+                                </button>
+                            </div>
+                        </div>
+                        <small class="text-muted mt-2 d-block" style="font-size: 0.875em !important; color: #6c757d !important; margin-top: 0.5rem !important; display: block !important;">Export will include current search and filter settings.</small>
+                    </div>
+                </div>
+            </div>
+            <div class="modal-footer" style="display: flex !important; flex-wrap: wrap !important; flex-shrink: 0 !important; align-items: center !important; justify-content: flex-end !important; padding: 0.75rem !important; border-top: 1px solid #dee2e6 !important; border-bottom-right-radius: calc(0.5rem - 1px) !important; border-bottom-left-radius: calc(0.5rem - 1px) !important;">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal" style="display: inline-block !important; font-weight: 400 !important; line-height: 1.5 !important; color: #fff !important; text-align: center !important; text-decoration: none !important; vertical-align: middle !important; cursor: pointer !important; -webkit-user-select: none !important; -moz-user-select: none !important; user-select: none !important; background-color: #6c757d !important; border: 1px solid #6c757d !important; padding: 0.375rem 0.75rem !important; font-size: 1rem !important; border-radius: 0.25rem !important; transition: color .15s ease-in-out,background-color .15s ease-in-out,border-color .15s ease-in-out,box-shadow .15s ease-in-out !important;">Close</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+// Utility functions
+function escapeHtml(text) {
+    const div = document.createElement('div');
+    div.textContent = text;
+    return div.innerHTML;
+}
+
+function getSubscriptionBadgeClass(subscription) {
+    switch (subscription) {
+        case 'free': return 'secondary';
+        case 'premium': return 'primary';
+        case 'pro': return 'success';
+        default: return 'secondary';
+    }
+}
+
+function getStatusBadgeClass(status) {
+    switch (status) {
+        case 'sent': return 'success';
+        case 'failed': return 'danger';
+        case 'bounced': return 'warning';
+        case 'pending': return 'info';
+        default: return 'success';
+    }
+}
+
+</script>
+
 <script src="{{ url_for('static', filename='js/admin/admin-marketing.js') }}"></script>

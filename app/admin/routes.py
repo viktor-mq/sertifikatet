@@ -1055,46 +1055,6 @@ def revoke_admin_privileges(user_id):
     
     return redirect(url_for('admin.manage_users'))
 
-@admin_bp.route('/security/audit-log')
-@admin_required
-def security_audit_log():
-    """View detailed security audit log"""
-    
-    # Get pagination parameters
-    page = request.args.get('page', 1, type=int)
-    per_page = 50
-    
-    # Filter parameters
-    action_filter = request.args.get('action', '')
-    user_filter = request.args.get('user', '')
-    
-    # Build query
-    query = AdminAuditLog.query
-    
-    if action_filter:
-        query = query.filter(AdminAuditLog.action == action_filter)
-    
-    if user_filter:
-        query = query.join(User, AdminAuditLog.target_user_id == User.id)
-        query = query.filter(User.username.ilike(f'%{user_filter}%'))
-    
-    # Paginate results
-    logs = query.order_by(AdminAuditLog.created_at.desc()).paginate(
-        page=page, per_page=per_page, error_out=False
-    )
-    
-    # Get unique actions for filter dropdown
-    actions = db.session.query(AdminAuditLog.action).distinct().all()
-    actions = [action[0] for action in actions]
-    
-    return render_template(
-        'admin/security_audit_log.html',
-        logs=logs,
-        actions=actions,
-        action_filter=action_filter,
-        user_filter=user_filter
-    )
-
 @admin_bp.route('/api/audit-log/summary', methods=['GET'])
 @admin_required
 def get_audit_log_summary():
