@@ -2471,6 +2471,55 @@ def send_marketing_email():
     except Exception as e:
         current_app.logger.error(f'Error in send_marketing_email: {str(e)}')
         return jsonify({'success': False, 'error': str(e)}), 500
+
+@admin_bp.route('/api/marketing-email/<int:email_id>/delete', methods=['DELETE'])
+@admin_required
+def delete_marketing_email(email_id):
+    """Delete marketing email campaign"""
+    try:
+        email = MarketingEmail.query.get_or_404(email_id)
+        
+        # Store email info for logging
+        email_title = email.title
+        email_status = email.status
+        
+        # Check if email can be deleted
+        if email.status == 'sending':
+            return jsonify({
+                'success': False, 
+                'error': 'Cannot delete email that is currently being sent'
+            }), 400
+        
+        # Delete related email logs first (foreign key constraint)
+        MarketingEmailLog.query.filter_by(marketing_email_id=email_id).delete()
+        
+        # Delete the email
+        db.session.delete(email)
+        db.session.commit()
+        
+        # Log the deletion action
+        AdminSecurityService.log_admin_action(
+            admin_user=current_user,
+            action='marketing_email_delete',
+            additional_info=json.dumps({
+                'email_id': email_id,
+                'email_title': email_title,
+                'email_status': email_status
+            })
+        )
+        
+        return jsonify({
+            'success': True, 
+            'message': f'Marketing email "{email_title}" deleted successfully'
+        })
+        
+    except Exception as e:
+        db.session.rollback()
+        current_app.logger.error(f'Error deleting marketing email {email_id}: {str(e)}')
+        return jsonify({
+            'success': False, 
+            'error': 'Failed to delete marketing email'
+        }), 500
 # ========================================
 # MARKETING AJAX API ENDPOINTS
 # ========================================
