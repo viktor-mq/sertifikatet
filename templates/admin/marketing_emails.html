@@ -139,9 +139,14 @@
             <a href="{{ url_for('admin.marketing_templates') }}" class="btn btn-secondary me-2">
                 <i class="fas fa-file-alt"></i> Templates
             </a>
-            <a href="{{ url_for('admin.create_marketing_email') }}" class="btn btn-primary">
+            <a href="{{ url_for('admin.create_marketing_email') }}" class="btn btn-primary me-2">
                 <i class="fas fa-plus"></i> Create Campaign
             </a>
+            {% if emails and emails.items %}
+            <button onclick="confirmDeleteCampaign()" class="btn btn-danger btn-small">
+                🗑️ Delete Campaign
+            </button>
+            {% endif %}
         </div>
     </div>
 
@@ -321,10 +326,10 @@
                                 </a>
                                 {% endif %}
                                 {% if email.status in ['sent', 'failed'] %}
-                                <a href="{{ url_for('admin.marketing_email_logs', id=email.id) }}" 
-                                   class="btn btn-secondary btn-small" title="View Logs">
-                                    <i class="fas fa-list"></i>
-                                </a>
+                                <button onclick="showRecipientModal({{ email.id }})" 
+                                   class="btn btn-secondary btn-small" title="View Recipients">
+                                    <i class="fas fa-list"></i> View Recipients
+                                </button>
                                 {% endif %}
                             </td>
                         </tr>
@@ -413,7 +418,7 @@
 
 <!-- Recipients Modal -->
 <div class="modal fade" id="recipientsModal" tabindex="-1">
-    <div class="modal-dialog modal-xl">
+    <div class="modal-dialog" tyle="max-width: 95vw;">
         <div class="modal-content">
             <div class="modal-header">
                 <h5 class="modal-title">Email Recipients</h5>

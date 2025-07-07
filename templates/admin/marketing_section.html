@@ -163,19 +163,19 @@
             </div>
         </div>
 
-            <!-- Recipients Modal - Proper Bootstrap 5 -->
-        <div class="modal fade" id="recipientsModal" tabindex="-1" aria-labelledby="recipientsModalLabel" aria-hidden="true">
-            <div class="modal-dialog modal-xl">
-                <div class="modal-content">
+                <!-- Recipients Modal -->
+        <div class="modal fade" id="recipientsModal" tabindex="-1">
+            <div class="modal-dialog modal-xxl" style="max-width: 98vw;" >
+                <div class="modal-content modal-xl">
                     <div class="modal-header">
-                        <h5 class="modal-title" id="recipientsModalLabel">Email Recipients</h5>
-                        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                        <h5 class="modal-title">Email Recipients</h5>
+                        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
                     </div>
-                    <div class="modal-body">
-                        <!-- Search & Filter Section -->
+                    <div class="modal-body p-1">
+                        <!-- Section 1: Search/Filtering -->
                         <div class="card mb-3">
-                            <div class="card-header">
-                                <h6 class="mb-0 fw-bold text-primary">Search & Filter</h6>
+                            <div class="card-header py-3">
+                                <h6 class="m-0 fw-bold text-primary">Search & Filter</h6>
                             </div>
                             <div class="card-body">
                                 <div class="row g-3">
@@ -198,27 +198,26 @@
                                         </select>
                                     </div>
                                     <div class="col-md-2">
-                                        <button type="button" class="btn btn-outline-secondary w-100" onclick="clearRecipientFilters()">Clear</button>
+                                        <button type="button" class="btn btn-outline-secondary" onclick="clearRecipientFilters()">Clear</button>
                                     </div>
                                 </div>
                             </div>
                         </div>
 
-                        <!-- Recipients List Section -->
+                        <!-- Section 2: Recipients List -->
                         <div class="card mb-3">
-                            <div class="card-header d-flex justify-content-between align-items-center">
-                                <h6 class="mb-0 fw-bold text-primary">Recipients (<span id="recipientCount">0</span>)</h6>
-                                <div id="recipientPagination" class="d-none">
-                                    <small class="text-muted">Showing <span id="showingRange">0</span> of <span id="totalCount">0</span></small>
-                                </div>
+                            <div class="card-header py-3">
+                                <h6 class="m-0 fw-bold text-primary">Recipients (<span id="recipientsModalCount">0</span>)</h6>
                             </div>
                             <div class="card-body">
+                                <!-- Search Info -->
+                                <div id="recipientPagination" class="d-none mb-3">
+                                    <small class="text-muted">Showing <span id="showingRange"></span> of <span id="totalCount"></span></small>
+                                </div>
                                 <div id="recipientTableContainer">
                                     <div class="text-center py-4">
-                                        <div class="spinner-border text-primary" role="status">
-                                            <span class="visually-hidden">Loading...</span>
-                                        </div>
-                                        <p class="text-muted mt-2">Loading recipients...</p>
+                                        <i class="fas fa-spinner fa-spin fa-2x text-gray-300 mb-3"></i>
+                                        <p class="text-gray-500">Loading recipients...</p>
                                     </div>
                                 </div>
                                 
@@ -231,13 +230,13 @@
                             </div>
                         </div>
 
-                        <!-- Export Options Section -->
+                        <!-- Section 3: Export Options -->
                         <div class="card">
-                            <div class="card-header">
-                                <h6 class="mb-0 fw-bold text-primary">Export Options</h6>
+                            <div class="card-header py-3">
+                                <h6 class="m-0 fw-bold text-primary">Export Options</h6>
                             </div>
                             <div class="card-body">
-                                <div class="row g-2">
+                                <div class="row">
                                     <div class="col-md-6">
                                         <button type="button" class="btn btn-outline-success w-100" onclick="exportRecipients('csv')">
                                             <i class="fas fa-file-csv"></i> Export CSV

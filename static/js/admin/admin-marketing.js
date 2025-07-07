@@ -413,7 +413,7 @@
                     <td>
                         <div class="btn-group btn-group-sm">
                             <button class="btn btn-info btn-small" onclick="viewEmailDetails(${email.id})" title="View" style="margin-right: 5px;">
-                                <i class="fas fa-eye"></i>
+                                👁️ View
                             </button>
                             ${email.status === 'draft' ? `
                                 <button class="btn btn-warning btn-small" onclick="editEmail(${email.id})" title="Edit" style="margin-right: 5px;">
@@ -896,6 +896,7 @@
                             <th>Email</th>
                             <th>Subscription</th>
                             <th>Account Type</th>
+                            <th>Status</th>
                         </tr>
                     </thead>
                     <tbody>
@@ -911,6 +912,11 @@
                                 <td>
                                     <span class="badge bg-${recipient.is_admin ? 'warning' : 'secondary'}">
                                         ${recipient.is_admin ? 'Admin' : 'User'}
+                                    </span>
+                                </td>
+                                <td>
+                                    <span class="badge bg-${getStatusBadgeClass(recipient.status || 'sent')}">
+                                        ${(recipient.status || 'sent').charAt(0).toUpperCase() + (recipient.status || 'sent').slice(1)}
                                     </span>
                                 </td>
                             </tr>
@@ -1129,6 +1135,16 @@
             case 'premium': return 'primary';
             case 'pro': return 'success';
             default: return 'secondary';
+        }
+    }
+    
+    function getStatusBadgeClass(status) {
+        switch (status) {
+            case 'sent': return 'success';
+            case 'failed': return 'danger';
+            case 'bounced': return 'warning';
+            case 'pending': return 'info';
+            default: return 'success';
         }
     }
     
