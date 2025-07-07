@@ -491,9 +491,8 @@
             elements.sentThisMonth.textContent = stats.sent_this_month || 0;
         }
         if (elements.successRate) {
-            const successRate = stats.success_rate || 0;
-            // Ensure success_rate is a number before calling toFixed
-            const formattedRate = typeof successRate === 'number' ? successRate.toFixed(1) : '0.0';
+            const successRate = parseFloat(stats.success_rate) || 0;
+            const formattedRate = successRate.toFixed(1);
             elements.successRate.textContent = formattedRate + '%';
         }
     }
