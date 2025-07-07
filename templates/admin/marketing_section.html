@@ -163,15 +163,43 @@
             </div>
         </div>
 
-                <!-- Recipients Modal -->
+        <!-- Recipients Modal -->
         <div class="modal fade" id="recipientsModal" tabindex="-1">
-            <div class="modal-dialog modal-xxl" style="max-width: 98vw;" >
-                <div class="modal-content modal-xl">
+            <div class="modal-dialog modal-xl" style="max-width: 95vw;">
+                <div class="modal-content">
                     <div class="modal-header">
                         <h5 class="modal-title">Email Recipients</h5>
                         <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
                     </div>
-                    <div class="modal-body p-1">
+                    <div class="modal-body p-2">
+                        <!-- Enhanced style override with higher specificity to override Bootstrap -->
+                        <style>
+                        /* Target the specific table in the recipients modal with higher specificity */
+                        #recipientsModal .table.table-bordered thead.table-light,
+                        #recipientsModal .table.table-hover thead.table-light,
+                        #recipientsModal .table.table-bordered.table-hover thead.table-light,
+                        #recipientsModal .table thead {
+                            background: linear-gradient(135deg, #3b82f6 0%, #1d4ed8 100%) !important;
+                            font-size: 14px !important;
+                        }
+                        
+                        #recipientsModal .table.table-bordered thead.table-light th,
+                        #recipientsModal .table.table-hover thead.table-light th,
+                        #recipientsModal .table.table-bordered.table-hover thead.table-light th,
+                        #recipientsModal .table thead th {
+                            color: white !important;
+                            font-weight: 600 !important;
+                            text-align: left !important;
+                            padding: 12px 16px !important;
+                            border-bottom: 2px solid #1e40af !important;
+                            background: linear-gradient(135deg, #3b82f6 0%, #1d4ed8 100%) !important;
+                        }
+                        
+                        /* Extra override for Bootstrap's default table-light styling */
+                        #recipientsModal .table-light > th {
+                            background-color: transparent !important;
+                        }
+                        </style>
                         <!-- Section 1: Search/Filtering -->
                         <div class="card mb-3">
                             <div class="card-header py-3">
@@ -207,11 +235,11 @@
                         <!-- Section 2: Recipients List -->
                         <div class="card mb-3">
                             <div class="card-header py-3">
-                                <h6 class="m-0 fw-bold text-primary">Recipients (<span id="recipientsModalCount">0</span>)</h6>
+                                <h6 class="m-0 fw-bold text-primary">Recipients (<span id="recipientCount">0</span>)</h6>
                             </div>
-                            <div class="card-body">
+                            <div class="card-body p-0">
                                 <!-- Search Info -->
-                                <div id="recipientPagination" class="d-none mb-3">
+                                <div id="recipientPagination" class="d-none mb-3 px-3 pt-2">
                                     <small class="text-muted">Showing <span id="showingRange"></span> of <span id="totalCount"></span></small>
                                 </div>
                                 <div id="recipientTableContainer">
@@ -222,7 +250,7 @@
                                 </div>
                                 
                                 <!-- Pagination -->
-                                <nav id="recipientPaginationNav" class="d-none mt-3">
+                                <nav id="recipientPaginationNav" class="d-none mt-3 px-3 pb-2">
                                     <ul class="pagination justify-content-center mb-0" id="recipientPaginationList">
                                         <!-- Pagination will be inserted here -->
                                     </ul>
@@ -258,16 +286,18 @@
                 </div>
             </div>
         </div>
-        <!-- Send Email Modal - ADD HERE TOO -->
+        
+        <!-- Send Email Modal -->
         <div class="modal fade" id="sendEmailModal" tabindex="-1">
             <!-- Send modal content -->
         </div>
-</div>
 
-
-        </div>
     </div>
-</div><!-- Templates Modal -->
+</div>
+<!-- End of Marketing Section -->
+
+<!-- Marketing Modals - Placed outside the main section div -->
+<!-- Templates Modal -->
 <div id="templatesModal" style="
     display: none;
     position: fixed;

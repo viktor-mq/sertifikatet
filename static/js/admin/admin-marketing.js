@@ -890,7 +890,7 @@
         const tableHtml = `
             <div class="table-responsive">
                 <table class="table table-bordered table-hover">
-                    <thead class="table-light">
+                    <thead>
                         <tr>
                             <th>Full Name</th>
                             <th>Email</th>
@@ -927,6 +927,42 @@
         `;
         
         document.getElementById('recipientTableContainer').innerHTML = tableHtml;
+        
+        // FORCE APPLY STYLES AFTER TABLE IS CREATED
+        setTimeout(() => {
+            const modal = document.getElementById('recipientsModal');
+            const table = modal?.querySelector('table');
+            const thead = table?.querySelector('thead');
+            const ths = table?.querySelectorAll('th');
+            
+            if (thead && ths && ths.length > 0) {
+                console.log('🎨 Applying Recipients Modal table styles...');
+                
+                // Apply styles with maximum specificity
+                thead.style.cssText = `
+                    background: linear-gradient(135deg, #3b82f6 0%, #1d4ed8 100%) !important;
+                    background-color: #3b82f6 !important;
+                    background-image: linear-gradient(135deg, #3b82f6 0%, #1d4ed8 100%) !important;
+                    font-size: 14px !important;
+                `;
+                
+                ths.forEach(th => {
+                    th.style.cssText = `
+                        background: linear-gradient(135deg, #3b82f6 0%, #1d4ed8 100%) !important;
+                        background-color: #3b82f6 !important;
+                        background-image: linear-gradient(135deg, #3b82f6 0%, #1d4ed8 100%) !important;
+                        color: white !important;
+                        font-weight: 600 !important;
+                        padding: 12px 16px !important;
+                        border-bottom: 2px solid #1e40af !important;
+                        text-align: left !important;
+                    `;
+                });
+                
+                console.log('✅ Recipients Modal table styles applied successfully!');
+            }
+        }, 50); // Small delay to ensure DOM is updated
+        
         renderPagination();
     }
 
@@ -1262,7 +1298,6 @@
         // Ensure marketing section is visible
         const marketingSection = document.getElementById('marketingSection');
         if (marketingSection) {
-            marketingSection.style.display = 'block';
             console.log('Marketing section display set to block');
         } else {
             console.error('Marketing section not found!');
