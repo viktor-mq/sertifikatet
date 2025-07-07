@@ -1995,78 +1995,97 @@ def api_marketing_templates():
 @admin_bp.route('/api/marketing-recipients', methods=['GET', 'POST'])
 @admin_required
 def get_marketing_recipients_count():
-    """Get count of marketing email recipients"""
-    try:
-        print(f"[DEBUG] Request method: {request.method}")
-        print(f"[DEBUG] Request form data: {dict(request.form)}")
-        print(f"[DEBUG] Request args: {dict(request.args)}")
-        
-        if request.method == 'POST':
-            # Check if form data exists
-            print(f"[DEBUG] Form keys: {list(request.form.keys())}")
-            
-            # Proper boolean parsing - handle 'true'/'false' strings from JavaScript
-            target_free = request.form.get('target_free_users', '').lower() in ['true', 'on', '1']
-            target_premium = request.form.get('target_premium_users', '').lower() in ['true', 'on', '1']
-            target_pro = request.form.get('target_pro_users', '').lower() in ['true', 'on', '1']
-            target_active = request.form.get('target_active_only', '').lower() in ['true', 'on', '1']
-            
-            print(f"[DEBUG] Parsed form data: free={target_free}, premium={target_premium}, pro={target_pro}, active={target_active}")
-        else:
-            email_id = request.args.get('email_id')
-            if email_id:
-                email = MarketingEmail.query.get(email_id)
-                if email:
-                    target_free = email.target_free_users
-                    target_premium = email.target_premium_users
-                    target_pro = email.target_pro_users
-                    target_active = email.target_active_only
-                else:
-                    return jsonify({'success': False, 'error': 'Email not found', 'count': 0})
-            else:
-                target_free = target_premium = target_pro = True
-                target_active = False
-        
-        # Debug logging
-        print(f"[DEBUG] Final recipient query params: free={target_free}, premium={target_premium}, pro={target_pro}, active={target_active}")
-        
-        # Quick test: get all users first
-        all_users = User.query.filter(
-            User.is_active == True,
-            User.is_verified == True
-        ).all()
-        print(f"[DEBUG] Total active/verified users: {len(all_users)}")
-        
-        # Test notification preferences
-        from ..notification_models import UserNotificationPreferences
-        marketing_users = db.session.query(User).join(
-            UserNotificationPreferences, 
-            User.id == UserNotificationPreferences.user_id
-        ).filter(
-            User.is_active == True,
-            User.is_verified == True,
-            UserNotificationPreferences.marketing_emails == True
-        ).all()
-        print(f"[DEBUG] Users with marketing enabled: {len(marketing_users)}")
-        for u in marketing_users:
-            print(f"[DEBUG]   - {u.username} ({u.subscription_tier})")
-        
-        recipients = MarketingEmailService.get_eligible_recipients(
-            target_free, target_premium, target_pro, target_active
-        )
-        
-        count = len(recipients)
-        print(f"[DEBUG] Found {count} eligible recipients")
-        for r in recipients:
-            print(f"[DEBUG]   - {r.username} ({r.subscription_tier})")
-        
-        return jsonify({'success': True, 'count': count})
-        
-    except Exception as e:
-        print(f"[ERROR] get_marketing_recipients failed: {str(e)}")
-        import traceback
-        traceback.print_exc()
-        return jsonify({'success': False, 'error': str(e), 'count': 0})
+   """Get count of marketing email recipients"""
+   try:
+       print(f"[DEBUG] Request method: {request.method}")
+       print(f"[DEBUG] Request form data: {dict(request.form)}")
+       print(f"[DEBUG] Request args: {dict(request.args)}")
+       
+       # Check for details parameter
+       details = request.args.get('details', '').lower() == 'true'
+       
+       if request.method == 'POST':
+           # Check if form data exists
+           print(f"[DEBUG] Form keys: {list(request.form.keys())}")
+           
+           # Proper boolean parsing - handle 'true'/'false' strings from JavaScript
+           target_free = request.form.get('target_free_users', '').lower() in ['true', 'on', '1']
+           target_premium = request.form.get('target_premium_users', '').lower() in ['true', 'on', '1']
+           target_pro = request.form.get('target_pro_users', '').lower() in ['true', 'on', '1']
+           target_active = request.form.get('target_active_only', '').lower() in ['true', 'on', '1']
+           
+           print(f"[DEBUG] Parsed form data: free={target_free}, premium={target_premium}, pro={target_pro}, active={target_active}")
+       else:
+           email_id = request.args.get('email_id')
+           if email_id:
+               email = MarketingEmail.query.get(email_id)
+               if email:
+                   target_free = email.target_free_users
+                   target_premium = email.target_premium_users
+                   target_pro = email.target_pro_users
+                   target_active = email.target_active_only
+               else:
+                   return jsonify({'success': False, 'error': 'Email not found', 'count': 0})
+           else:
+               target_free = target_premium = target_pro = True
+               target_active = False
+       
+       # Debug logging
+       print(f"[DEBUG] Final recipient query params: free={target_free}, premium={target_premium}, pro={target_pro}, active={target_active}")
+       
+       # Quick test: get all users first
+       all_users = User.query.filter(
+           User.is_active == True,
+           User.is_verified == True
+       ).all()
+       print(f"[DEBUG] Total active/verified users: {len(all_users)}")
+       
+       # Test notification preferences
+       from ..notification_models import UserNotificationPreferences
+       marketing_users = db.session.query(User).join(
+           UserNotificationPreferences, 
+           User.id == UserNotificationPreferences.user_id
+       ).filter(
+           User.is_active == True,
+           User.is_verified == True,
+           UserNotificationPreferences.marketing_emails == True
+       ).all()
+       print(f"[DEBUG] Users with marketing enabled: {len(marketing_users)}")
+       for u in marketing_users:
+           print(f"[DEBUG]   - {u.username} ({u.subscription_tier})")
+       
+       recipients = MarketingEmailService.get_eligible_recipients(
+           target_free, target_premium, target_pro, target_active
+       )
+       
+       count = len(recipients)
+       print(f"[DEBUG] Found {count} eligible recipients")
+       for r in recipients:
+           print(f"[DEBUG]   - {r.username} ({r.subscription_tier})")
+       
+       # Return detailed data if requested
+       if details:
+           return jsonify({
+               'success': True,
+               'recipients': [
+                   {
+                       'full_name': user.full_name,
+                       'email': user.email,
+                       'subscription': user.subscription_tier or 'free',
+                       'is_admin': user.is_admin
+                   }
+                   for user in recipients
+               ],
+               'count': count
+           })
+       
+       return jsonify({'success': True, 'count': count})
+       
+   except Exception as e:
+       print(f"[ERROR] get_marketing_recipients failed: {str(e)}")
+       import traceback
+       traceback.print_exc()
+       return jsonify({'success': False, 'error': str(e), 'count': 0})
 
 
 @admin_bp.route('/marketing-emails/<int:id>/logs')

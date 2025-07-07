@@ -804,23 +804,328 @@
     }
 
     // Recipient Modal Functions
-function showRecipientModal(emailId) {
-    currentEmailId = emailId;
-    
-    // Show modal
-    const modal = new bootstrap.Modal(document.getElementById('recipientsModal'));
-    modal.show();
-    
-    // Reset filters and load data
-    clearRecipientFilters();
-    loadRecipientData(emailId);
-}
+    function showRecipientModal(emailId) {
+        currentEmailId = emailId;
+        
+        // Show modal
+        const modal = new bootstrap.Modal(document.getElementById('recipientsModal'));
+        modal.show();
+        
+        // Reset filters and load data
+        clearRecipientFilters();
+        loadRecipientData(emailId);
+    }
+
+    // Recipient modal variables
+    let recipientData = [];
+    let filteredRecipients = [];
+    let currentPage = 1;
+    const itemsPerPage = 20;
+
+    function loadRecipientData(emailId) {
+        // Show loading state
+        document.getElementById('recipientTableContainer').innerHTML = `
+            <div class="text-center py-4">
+                <div class="spinner-border text-primary" role="status">
+                    <span class="visually-hidden">Loading...</span>
+                </div>
+                <p class="text-muted mt-2">Loading recipients...</p>
+            </div>
+        `;
+        
+        // Fetch recipient data
+        fetch(`/admin/api/marketing-recipients?email_id=${emailId}&details=true`, {
+            method: 'GET',
+            headers: {
+                'Accept': 'application/json',
+                'X-Requested-With': 'XMLHttpRequest'
+            }
+        })
+        .then(response => {
+            if (!response.ok) {
+                throw new Error('Failed to load recipients');
+            }
+            return response.json();
+        })
+        .then(data => {
+            recipientData = data.recipients || [];
+            filteredRecipients = [...recipientData];
+            currentPage = 1;
+            renderRecipientTable();
+            updateRecipientCount();
+        })
+        .catch(error => {
+            console.error('Error loading recipients:', error);
+            document.getElementById('recipientTableContainer').innerHTML = `
+                <div class="text-center py-4">
+                    <i class="fas fa-exclamation-triangle fa-2x text-muted mb-3"></i>
+                    <p class="text-muted">Error loading recipients: ${error.message}</p>
+                    <button class="btn btn-outline-primary" onclick="loadRecipientData(${emailId})">Retry</button>
+                </div>
+            `;
+        });
+    }
+
+    function renderRecipientTable() {
+        const startIndex = (currentPage - 1) * itemsPerPage;
+        const endIndex = startIndex + itemsPerPage;
+        const pageData = filteredRecipients.slice(startIndex, endIndex);
+        
+        if (pageData.length === 0) {
+            document.getElementById('recipientTableContainer').innerHTML = `
+                <div class="text-center py-4">
+                    <i class="fas fa-users fa-2x text-muted mb-3"></i>
+                    <p class="text-muted">No recipients found with current filters.</p>
+                </div>
+            `;
+            document.getElementById('recipientPaginationNav').classList.add('d-none');
+            return;
+        }
+        
+        const tableHtml = `
+            <div class="table-responsive">
+                <table class="table table-bordered table-hover">
+                    <thead class="table-light">
+                        <tr>
+                            <th>Full Name</th>
+                            <th>Email</th>
+                            <th>Subscription</th>
+                            <th>Account Type</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        ${pageData.map(recipient => `
+                            <tr>
+                                <td>${escapeHtml(recipient.full_name || 'N/A')}</td>
+                                <td>${escapeHtml(recipient.email)}</td>
+                                <td>
+                                    <span class="badge bg-${getSubscriptionBadgeClass(recipient.subscription)}">
+                                        ${recipient.subscription.charAt(0).toUpperCase() + recipient.subscription.slice(1)}
+                                    </span>
+                                </td>
+                                <td>
+                                    <span class="badge bg-${recipient.is_admin ? 'warning' : 'secondary'}">
+                                        ${recipient.is_admin ? 'Admin' : 'User'}
+                                    </span>
+                                </td>
+                            </tr>
+                        `).join('')}
+                    </tbody>
+                </table>
+            </div>
+        `;
+        
+        document.getElementById('recipientTableContainer').innerHTML = tableHtml;
+        renderPagination();
+    }
+
+    function renderPagination() {
+        // Always update the showing range, even for single page
+        const startIndex = (currentPage - 1) * itemsPerPage + 1;
+        const endIndex = Math.min(currentPage * itemsPerPage, filteredRecipients.length);
+        
+        // Update showing range regardless of pagination visibility
+        const showingRangeEl = document.getElementById('showingRange');
+        const totalCountEl = document.getElementById('totalCount');
+        
+        if (showingRangeEl) {
+            showingRangeEl.textContent = `${startIndex}-${endIndex}`;
+        }
+        if (totalCountEl) {
+            totalCountEl.textContent = filteredRecipients.length;
+        }
+        
+        const totalPages = Math.ceil(filteredRecipients.length / itemsPerPage);
+        
+        if (totalPages <= 1) {
+            document.getElementById('recipientPaginationNav').classList.add('d-none');
+            document.getElementById('recipientPagination').classList.remove('d-none'); // Keep pagination info visible
+            return; // Exit after updating the text
+        }
+        
+        document.getElementById('recipientPaginationNav').classList.remove('d-none');
+        document.getElementById('recipientPagination').classList.remove('d-none');
+        
+        // Generate pagination HTML
+        let paginationHtml = '';
+        
+        // Previous button
+        if (currentPage > 1) {
+            paginationHtml += `<li class="page-item"><a class="page-link" href="#" onclick="goToPage(${currentPage - 1})">Previous</a></li>`;
+        } else {
+            paginationHtml += `<li class="page-item disabled"><span class="page-link">Previous</span></li>`;
+        }
+        
+        // Page numbers
+        const startPage = Math.max(1, currentPage - 2);
+        const endPage = Math.min(totalPages, currentPage + 2);
+        
+        if (startPage > 1) {
+            paginationHtml += `<li class="page-item"><a class="page-link" href="#" onclick="goToPage(1)">1</a></li>`;
+            if (startPage > 2) {
+                paginationHtml += `<li class="page-item disabled"><span class="page-link">...</span></li>`;
+            }
+        }
+        
+        for (let i = startPage; i <= endPage; i++) {
+            if (i === currentPage) {
+                paginationHtml += `<li class="page-item active"><span class="page-link">${i}</span></li>`;
+            } else {
+                paginationHtml += `<li class="page-item"><a class="page-link" href="#" onclick="goToPage(${i})">${i}</a></li>`;
+            }
+        }
+        
+        if (endPage < totalPages) {
+            if (endPage < totalPages - 1) {
+                paginationHtml += `<li class="page-item disabled"><span class="page-link">...</span></li>`;
+            }
+            paginationHtml += `<li class="page-item"><a class="page-link" href="#" onclick="goToPage(${totalPages})">${totalPages}</a></li>`;
+        }
+        
+        // Next button
+        if (currentPage < totalPages) {
+            paginationHtml += `<li class="page-item"><a class="page-link" href="#" onclick="goToPage(${currentPage + 1})">Next</a></li>`;
+        } else {
+            paginationHtml += `<li class="page-item disabled"><span class="page-link">Next</span></li>`;
+        }
+        
+        document.getElementById('recipientPaginationList').innerHTML = paginationHtml;
+     }
+
+    function goToPage(page) {
+        currentPage = page;
+        renderRecipientTable();
+    }
+
+    function filterRecipients() {
+        const searchTerm = document.getElementById('recipientSearch').value.toLowerCase();
+        const subscriptionFilter = document.getElementById('subscriptionFilter').value;
+        const adminFilter = document.getElementById('adminFilter').value;
+        
+        filteredRecipients = recipientData.filter(recipient => {
+            // Search filter
+            const searchMatch = !searchTerm || 
+                (recipient.full_name && recipient.full_name.toLowerCase().includes(searchTerm)) ||
+                recipient.email.toLowerCase().includes(searchTerm);
+            
+            // Subscription filter
+            const subscriptionMatch = !subscriptionFilter || recipient.subscription === subscriptionFilter;
+            
+            // Admin filter
+            let adminMatch = true;
+            if (adminFilter === 'admin') {
+                adminMatch = recipient.is_admin;
+            } else if (adminFilter === 'user') {
+                adminMatch = !recipient.is_admin;
+            }
+            
+            return searchMatch && subscriptionMatch && adminMatch;
+        });
+        
+        currentPage = 1;
+        renderRecipientTable();
+        updateRecipientCount();
+    }
+
+    function clearRecipientFilters() {
+        document.getElementById('recipientSearch').value = '';
+        document.getElementById('subscriptionFilter').value = '';
+        document.getElementById('adminFilter').value = '';
+        
+        if (recipientData.length > 0) {
+            filteredRecipients = [...recipientData];
+            currentPage = 1;
+            renderRecipientTable();
+            updateRecipientCount();
+        }
+    }
+
+    function updateRecipientCount() {
+        document.getElementById('recipientCount').textContent = filteredRecipients.length;
+    }
+
+    function exportRecipients(format) {
+        if (!currentEmailId) {
+            alert('No email selected for export');
+            return;
+        }
+        
+        // Get current filter parameters
+        const searchTerm = document.getElementById('recipientSearch').value;
+        const subscriptionFilter = document.getElementById('subscriptionFilter').value;
+        const adminFilter = document.getElementById('adminFilter').value;
+        
+        // Build export URL with filters
+        const params = new URLSearchParams({
+            email_id: currentEmailId,
+            format: format,
+            search: searchTerm,
+            subscription: subscriptionFilter,
+            admin_filter: adminFilter
+        });
+        
+        // Remove empty parameters
+        for (let [key, value] of params.entries()) {
+            if (!value) {
+                params.delete(key);
+            }
+        }
+        
+        const exportUrl = `/admin/api/marketing-recipients/export?${params.toString()}`;
+        
+        // Create temporary link and click it to trigger download
+        const link = document.createElement('a');
+        link.href = exportUrl;
+        link.download = `recipients_${format}_${new Date().toISOString().split('T')[0]}.${format}`;
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+    }
+
+    function getSubscriptionBadgeClass(subscription) {
+        switch (subscription) {
+            case 'free': return 'secondary';
+            case 'premium': return 'primary';
+            case 'pro': return 'success';
+            default: return 'secondary';
+        }
+    }
+
+    // Debounce function for search input
+    function debounce(func, wait) {
+        let timeout;
+        return function executedFunction(...args) {
+            const later = () => {
+                clearTimeout(timeout);
+                func(...args);
+            };
+            clearTimeout(timeout);
+            timeout = setTimeout(later, wait);
+        };
+    }
+
+    // Set up event listeners for recipient modal
+    function setupRecipientEventListeners() {
+        const searchInput = document.getElementById('recipientSearch');
+        const subscriptionSelect = document.getElementById('subscriptionFilter');
+        const adminSelect = document.getElementById('adminFilter');
+        
+        if (searchInput) {
+            searchInput.addEventListener('input', debounce(filterRecipients, 300));
+        }
+        if (subscriptionSelect) {
+            subscriptionSelect.addEventListener('change', filterRecipients);
+        }
+        if (adminSelect) {
+            adminSelect.addEventListener('change', filterRecipients);
+        }
+    }
 
     
     // Initialize modal events
     setupModalEvents();
     
-    // Expose functions globally
+    // Expose all functions globally
     window.openTemplatesModal = openTemplatesModal;
     window.closeTemplatesModal = closeTemplatesModal;
     window.openTemplatePreviewModal = openTemplatePreviewModal;
@@ -841,8 +1146,24 @@ function showRecipientModal(emailId) {
     window.previewTemplate = previewTemplate;
     window.changeMarketingTableDensity = changeMarketingTableDensity;
     window.loadMarketingEmails = loadMarketingEmails;
-    window.showRecipientModal = showRecipientModal;
     window.updateMarketingTable = updateMarketingTable;
     window.updateMarketingStats = updateMarketingStats;
+    
+    // Recipient modal functions
+    window.showRecipientModal = showRecipientModal;
+    window.clearRecipientFilters = clearRecipientFilters;
+    window.loadRecipientData = loadRecipientData;
+    window.exportRecipients = exportRecipients;
+    window.goToPage = goToPage;
+    window.filterRecipients = filterRecipients;
+    window.updateRecipientCount = updateRecipientCount;
+    window.renderRecipientTable = renderRecipientTable;
+    window.renderPagination = renderPagination;
+    window.getSubscriptionBadgeClass = getSubscriptionBadgeClass;
+    
+    // Set up recipient modal event listeners when DOM is ready
+    document.addEventListener('DOMContentLoaded', function() {
+        setupRecipientEventListeners();
+    });
     
 })();
