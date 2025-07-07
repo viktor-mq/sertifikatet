@@ -5,24 +5,130 @@
 
 {% block content %}
 <style>
-.recipient-count-btn {
-    color: #5a5c69;
-    text-decoration: none;
-    font-weight: 500;
-    border: none;
-    background: none;
-    padding: 0;
+/* Marketing Table Styling - Following users section pattern exactly */
+#marketing-table-enhanced {
+    width: 100%;
+    border-collapse: collapse;
+    background: white;
+    border-radius: 8px;
+    overflow: hidden;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+}
+
+#marketing-table-enhanced th {
+    background: linear-gradient(135deg, #3b82f6 0%, #1d4ed8 100%) !important;
+    color: white !important;
+    font-weight: 600;
+    text-align: left;
+    padding: 12px 16px !important;
+    border-bottom: 2px solid #1e40af !important;
+}
+
+#marketing-table-enhanced td {
+    padding: 12px 16px !important;
+    border-bottom: 1px solid #e5e7eb;
+    vertical-align: middle;
+    background-color: rgba(255, 255, 255, 0.9) !important;
+}
+
+#marketing-table-enhanced tbody tr:hover {
+    background-color: #f8fafc !important;
+}
+
+#marketing-table-enhanced tbody tr:last-child td {
+    border-bottom: none;
+}
+
+/* Pagination styling to match users table exactly */
+.pagination-controls {
+    margin-top: 20px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 15px;
+}
+
+.pagination-info {
+    color: #374151;
+    font-size: 14px;
+}
+
+.pagination-center {
+    display: flex;
+    justify-content: center;
+    flex: 1;
+}
+
+.pagination-buttons {
+    display: inline-flex;
+    gap: 5px;
+    align-items: center;
+}
+
+.page-btn {
+    padding: 8px 12px;
+    border: 1px solid #d1d5db;
+    background: white;
+    color: #374151;
+    border-radius: 6px;
     cursor: pointer;
+    text-decoration: none;
+    font-size: 14px;
+    transition: all 0.2s ease;
 }
 
-.recipient-count-btn:hover {
-    color: #3a3b45;
-    text-decoration: underline;
+.page-btn:hover {
+    background: #f3f4f6;
+    border-color: #9ca3af;
+    text-decoration: none;
+    color: #374151;
 }
 
-.recipient-count-btn:focus {
-    box-shadow: none;
-    outline: none;
+.page-btn.active {
+    background: #3b82f6 !important;
+    color: white !important;
+    border-color: #3b82f6 !important;
+}
+
+.page-btn.disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+}
+
+.pagination-per-page {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    color: #374151;
+    font-size: 14px;
+}
+
+.pagination-per-page select {
+    padding: 6px 10px;
+    border: 1px solid #d1d5db;
+    border-radius: 4px;
+    background: white;
+    font-size: 14px;
+}
+
+@media (max-width: 768px) {
+    .pagination-controls {
+        flex-direction: column;
+        text-align: center;
+    }
+    
+    .pagination-center {
+        order: 2;
+    }
+    
+    .pagination-info {
+        order: 1;
+    }
+    
+    .pagination-per-page {
+        order: 3;
+    }
 }
 </style>
 <div class="container-fluid">
@@ -42,16 +148,16 @@
     <!-- Statistics Cards -->
     <div class="row mb-4">
         <div class="col-xl-3 col-md-6 mb-4">
-            <div class="card border-left-primary shadow h-100 py-2">
+            <div class="card border-start border-primary border-4 shadow h-100">
                 <div class="card-body">
-                    <div class="row no-gutters align-items-center">
-                        <div class="col mr-2">
-                            <div class="text-xs font-weight-bold text-primary text-uppercase mb-1">
+                    <div class="row g-0 align-items-center">
+                        <div class="col me-2">
+                            <div class="text-xs fw-bold text-primary text-uppercase mb-1">
                                 Total Campaigns</div>
-                            <div class="h5 mb-0 font-weight-bold text-gray-800" data-stat="total_campaigns">{{ stats.total_campaigns if stats else 0 }}</div>
+                            <div class="h5 mb-0 fw-bold text-dark" data-stat="total_campaigns">{{ stats.total_campaigns if stats else 0 }}</div>
                         </div>
                         <div class="col-auto">
-                            <i class="fas fa-envelope fa-2x text-gray-300"></i>
+                            <i class="fas fa-envelope fa-2x text-muted"></i>
                         </div>
                     </div>
                 </div>
@@ -59,16 +165,16 @@
         </div>
 
         <div class="col-xl-3 col-md-6 mb-4">
-            <div class="card border-left-success shadow h-100 py-2">
+            <div class="card border-start border-success border-4 shadow h-100">
                 <div class="card-body">
-                    <div class="row no-gutters align-items-center">
-                        <div class="col mr-2">
-                            <div class="text-xs font-weight-bold text-success text-uppercase mb-1">
+                    <div class="row g-0 align-items-center">
+                        <div class="col me-2">
+                            <div class="text-xs fw-bold text-success text-uppercase mb-1">
                                 Opted-in Users</div>
-                            <div class="h5 mb-0 font-weight-bold text-gray-800" data-stat="opted_in_users">{{ stats.opted_in_users if stats else 0 }}</div>
+                            <div class="h5 mb-0 fw-bold text-dark" data-stat="opted_in_users">{{ stats.opted_in_users if stats else 0 }}</div>
                         </div>
                         <div class="col-auto">
-                            <i class="fas fa-users fa-2x text-gray-300"></i>
+                            <i class="fas fa-users fa-2x text-muted"></i>
                         </div>
                     </div>
                 </div>
@@ -76,16 +182,16 @@
         </div>
 
         <div class="col-xl-3 col-md-6 mb-4">
-            <div class="card border-left-info shadow h-100 py-2">
+            <div class="card border-start border-info border-4 shadow h-100">
                 <div class="card-body">
-                    <div class="row no-gutters align-items-center">
-                        <div class="col mr-2">
-                            <div class="text-xs font-weight-bold text-info text-uppercase mb-1">
+                    <div class="row g-0 align-items-center">
+                        <div class="col me-2">
+                            <div class="text-xs fw-bold text-info text-uppercase mb-1">
                                 This Month</div>
-                            <div class="h5 mb-0 font-weight-bold text-gray-800" data-stat="sent_this_month">{{ stats.sent_this_month if stats else 0 }}</div>
+                            <div class="h5 mb-0 fw-bold text-dark" data-stat="sent_this_month">{{ stats.sent_this_month if stats else 0 }}</div>
                         </div>
                         <div class="col-auto">
-                            <i class="fas fa-calendar fa-2x text-gray-300"></i>
+                            <i class="fas fa-calendar fa-2x text-muted"></i>
                         </div>
                     </div>
                 </div>
@@ -93,16 +199,16 @@
         </div>
 
         <div class="col-xl-3 col-md-6 mb-4">
-            <div class="card border-left-warning shadow h-100 py-2">
+            <div class="card border-start border-warning border-4 shadow h-100">
                 <div class="card-body">
-                    <div class="row no-gutters align-items-center">
-                        <div class="col mr-2">
-                            <div class="text-xs font-weight-bold text-warning text-uppercase mb-1">
+                    <div class="row g-0 align-items-center">
+                        <div class="col me-2">
+                            <div class="text-xs fw-bold text-warning text-uppercase mb-1">
                                 Success Rate</div>
-                            <div class="h5 mb-0 font-weight-bold text-gray-800" data-stat="success_rate">{{ "%.1f"|format(stats.success_rate) if stats else "0.0" }}%</div>
+                            <div class="h5 mb-0 fw-bold text-dark" data-stat="success_rate">{{ "%.1f"|format(stats.success_rate) if stats else "0.0" }}%</div>
                         </div>
                         <div class="col-auto">
-                            <i class="fas fa-chart-line fa-2x text-gray-300"></i>
+                            <i class="fas fa-chart-line fa-2x text-muted"></i>
                         </div>
                     </div>
                 </div>
@@ -113,12 +219,12 @@
     <!-- Filters -->
     <div class="card shadow mb-4">
         <div class="card-header py-3">
-            <h6 class="m-0 font-weight-bold text-primary">Filters</h6>
+            <h6 class="m-0 fw-bold text-primary">Filters</h6>
         </div>
         <div class="card-body">
             <form method="GET" class="row g-3">
                 <div class="col-md-3">
-                    <select name="status" class="form-control">
+                    <select name="status" class="form-select">
                         <option value="">All Statuses</option>
                         <option value="draft" {{ 'selected' if request.args.get('status') == 'draft' }}>Draft</option>
                         <option value="scheduled" {{ 'selected' if request.args.get('status') == 'scheduled' }}>Scheduled</option>
@@ -141,12 +247,12 @@
     <!-- Campaigns Table -->
     <div class="card shadow mb-4">
         <div class="card-header py-3">
-            <h6 class="m-0 font-weight-bold text-primary">Email Campaigns</h6>
+            <h6 class="m-0 fw-bold text-primary">Email Campaigns</h6>
         </div>
         <div class="card-body">
             {% if emails %}
-            <div class="table-responsive">
-                <table class="table table-bordered" width="100%" cellspacing="0">
+            <div class="table-container">
+                <table id="marketing-table-enhanced">
                     <thead>
                         <tr>
                             <th>Title</th>
@@ -168,25 +274,26 @@
                             <td>{{ email.subject }}</td>
                             <td>
                                 {% if email.status == 'draft' %}
-                                    <span class="badge badge-secondary">Draft</span>
+                                    <span class="btn btn-secondary btn-small" style="cursor: default;">Draft</span>
                                 {% elif email.status == 'scheduled' %}
-                                    <span class="badge badge-warning">Scheduled</span>
+                                    <span class="btn btn-warning btn-small" style="cursor: default;">Scheduled</span>
                                 {% elif email.status == 'sending' %}
-                                    <span class="badge badge-info">Sending</span>
+                                    <span class="btn btn-info btn-small" style="cursor: default;">Sending</span>
                                 {% elif email.status == 'sent' %}
-                                    <span class="badge badge-success">Sent</span>
+                                    <span class="btn btn-success btn-small" style="cursor: default;">Sent</span>
                                 {% elif email.status == 'failed' %}
-                                    <span class="badge badge-danger">Failed</span>
+                                    <span class="btn btn-danger btn-small" style="cursor: default;">Failed</span>
                                 {% endif %}
                             </td>
                             <td>
-                                <button class="btn btn-link p-0 recipient-count-btn" 
+                                <button class="btn btn-info btn-small" 
                                         onclick="showRecipientModal({{ email.id }})" 
-                                        title="View recipients">
+                                        title="View recipients"
+                                        style="cursor: default;">
                                     {{ email.sent_count }} / {{ email.recipients_count }}
                                 </button>
                                 {% if email.failed_count > 0 %}
-                                    <br><small class="text-danger">{{ email.failed_count }} failed</small>
+                                    <br><small style="color: #dc3545; font-weight: bold;">{{ email.failed_count }} failed</small>
                                 {% endif %}
                             </td>
                             <td>
@@ -203,28 +310,22 @@
                                 {% endif %}
                             </td>
                             <td>
-                                <div class="btn-group" role="group">
-                                    <a href="{{ url_for('admin.view_marketing_email', id=email.id) }}" 
-                                       class="btn btn-sm btn-outline-primary" title="View">
-                                        <i class="fas fa-eye"></i>
-                                    </a>
-                                    {% if email.status == 'draft' %}
-                                    <a href="{{ url_for('admin.edit_marketing_email', id=email.id) }}" 
-                                       class="btn btn-sm btn-outline-warning" title="Edit">
-                                        <i class="fas fa-edit"></i>
-                                    </a>
-                                    <button class="btn btn-sm btn-outline-success" 
-                                            onclick="sendEmail({{ email.id }})" title="Send Now">
-                                        <i class="fas fa-paper-plane"></i>
-                                    </button>
-                                    {% endif %}
-                                    {% if email.status in ['sent', 'failed'] %}
-                                    <a href="{{ url_for('admin.marketing_email_logs', id=email.id) }}" 
-                                       class="btn btn-sm btn-outline-info" title="View Logs">
-                                        <i class="fas fa-list"></i>
-                                    </a>
-                                    {% endif %}
-                                </div>
+                                <a href="{{ url_for('admin.view_marketing_email', id=email.id) }}" 
+                                   class="btn btn-info btn-small" title="View" style="margin-right: 5px;">
+                                    <i class="fas fa-eye"></i>
+                                </a>
+                                {% if email.status == 'draft' %}
+                                <a href="{{ url_for('admin.edit_marketing_email', id=email.id) }}" 
+                                   class="btn btn-warning btn-small" title="Edit" style="margin-right: 5px;">
+                                    <i class="fas fa-edit"></i>
+                                </a>
+                                {% endif %}
+                                {% if email.status in ['sent', 'failed'] %}
+                                <a href="{{ url_for('admin.marketing_email_logs', id=email.id) }}" 
+                                   class="btn btn-secondary btn-small" title="View Logs">
+                                    <i class="fas fa-list"></i>
+                                </a>
+                                {% endif %}
                             </td>
                         </tr>
                         {% endfor %}
@@ -234,46 +335,49 @@
 
             <!-- Pagination -->
             {% if emails.pages > 1 %}
-            <nav aria-label="Page navigation">
-                <ul class="pagination justify-content-center">
-                    {% if emails.has_prev %}
-                    <li class="page-item">
-                        <a class="page-link" href="{{ url_for('admin.marketing_emails', page=emails.prev_num, **request.args) }}">Previous</a>
-                    </li>
-                    {% endif %}
-                    
-                    {% for page_num in emails.iter_pages() %}
-                        {% if page_num %}
-                            {% if page_num != emails.page %}
-                            <li class="page-item">
-                                <a class="page-link" href="{{ url_for('admin.marketing_emails', page=page_num, **request.args) }}">{{ page_num }}</a>
-                            </li>
-                            {% else %}
-                            <li class="page-item active">
-                                <span class="page-link">{{ page_num }}</span>
-                            </li>
-                            {% endif %}
-                        {% else %}
-                        <li class="page-item disabled">
-                            <span class="page-link">...</span>
-                        </li>
+            <div class="pagination-controls">
+                <div class="pagination-info">
+                    <span>Showing {{ ((emails.page - 1) * emails.per_page) + 1 }}-{{ emails.page * emails.per_page if emails.page * emails.per_page < emails.total else emails.total }} of {{ emails.total }} campaigns</span>
+                </div>
+                <div class="pagination-center">
+                    <div class="pagination-buttons">
+                        {% if emails.has_prev %}
+                        <a class="page-btn" href="{{ url_for('admin.marketing_emails', page=emails.prev_num, **request.args) }}">Previous</a>
                         {% endif %}
-                    {% endfor %}
-                    
-                    {% if emails.has_next %}
-                    <li class="page-item">
-                        <a class="page-link" href="{{ url_for('admin.marketing_emails', page=emails.next_num, **request.args) }}">Next</a>
-                    </li>
-                    {% endif %}
-                </ul>
-            </nav>
+                        
+                        {% for page_num in emails.iter_pages() %}
+                            {% if page_num %}
+                                {% if page_num != emails.page %}
+                                <a class="page-btn" href="{{ url_for('admin.marketing_emails', page=page_num, **request.args) }}">{{ page_num }}</a>
+                                {% else %}
+                                <span class="page-btn active">{{ page_num }}</span>
+                                {% endif %}
+                            {% else %}
+                            <span class="page-btn disabled">...</span>
+                            {% endif %}
+                        {% endfor %}
+                        
+                        {% if emails.has_next %}
+                        <a class="page-btn" href="{{ url_for('admin.marketing_emails', page=emails.next_num, **request.args) }}">Next</a>
+                        {% endif %}
+                    </div>
+                </div>
+                <div class="pagination-per-page">
+                    <label for="perPageSelect">Show per page:</label>
+                    <select id="perPageSelect" onchange="changePerPage(this.value)">
+                        <option value="10" {{ 'selected' if request.args.get('per_page', '10') == '10' }}>10</option>
+                        <option value="20" {{ 'selected' if request.args.get('per_page', '10') == '20' }}>20</option>
+                        <option value="50" {{ 'selected' if request.args.get('per_page', '10') == '50' }}>50</option>
+                    </select>
+                </div>
+            </div>
             {% endif %}
 
             {% else %}
             <div class="text-center py-5">
-                <i class="fas fa-envelope fa-3x text-gray-300 mb-3"></i>
-                <h5 class="text-gray-500">No marketing campaigns yet</h5>
-                <p class="text-gray-400">Create your first marketing email campaign to get started.</p>
+                <i class="fas fa-envelope fa-3x text-muted mb-3"></i>
+                <h5 class="text-muted">No marketing campaigns yet</h5>
+                <p class="text-muted">Create your first marketing email campaign to get started.</p>
                 <a href="{{ url_for('admin.create_marketing_email') }}" class="btn btn-primary">
                     <i class="fas fa-plus"></i> Create Campaign
                 </a>
@@ -327,7 +431,7 @@
                                 <input type="text" id="recipientSearch" class="form-control" placeholder="Search name or email...">
                             </div>
                             <div class="col-md-3">
-                                <select id="subscriptionFilter" class="form-control">
+                                <select id="subscriptionFilter" class="form-select">
                                     <option value="">All Subscriptions</option>
                                     <option value="free">Free</option>
                                     <option value="premium">Premium</option>
@@ -335,7 +439,7 @@
                                 </select>
                             </div>
                             <div class="col-md-3">
-                                <select id="adminFilter" class="form-control">
+                                <select id="adminFilter" class="form-select">
                                     <option value="">All Users</option>
                                     <option value="admin">Admins Only</option>
                                     <option value="user">Regular Users</option>
@@ -491,12 +595,12 @@ function renderRecipientTable() {
                             <td>${escapeHtml(recipient.full_name || 'N/A')}</td>
                             <td>${escapeHtml(recipient.email)}</td>
                             <td>
-                                <span class="badge badge-${getSubscriptionBadgeClass(recipient.subscription)}">
+                                <span class="badge bg-${getSubscriptionBadgeClass(recipient.subscription)}">
                                     ${recipient.subscription.charAt(0).toUpperCase() + recipient.subscription.slice(1)}
                                 </span>
                             </td>
                             <td>
-                                <span class="badge badge-${recipient.is_admin ? 'warning' : 'secondary'}">
+                                <span class="badge bg-${recipient.is_admin ? 'warning' : 'secondary'}">
                                     ${recipient.is_admin ? 'Admin' : 'User'}
                                 </span>
                             </td>
@@ -758,5 +862,13 @@ document.getElementById('confirmSend').addEventListener('click', function() {
         });
     }
 });
+
+// Per-page selector function
+function changePerPage(perPage) {
+    const currentUrl = new URL(window.location);
+    currentUrl.searchParams.set('per_page', perPage);
+    currentUrl.searchParams.set('page', '1'); // Reset to first page
+    window.location.href = currentUrl.toString();
+}
 </script>
 {% endblock %}

@@ -123,16 +123,16 @@
             </div>
             <div style="padding: 20px;">
                 <div style="overflow-x: auto;" class="table-container marketing-table comfortable">
-                    <table style="width: 100%; border-collapse: collapse;">
+                    <table id="marketing-table-enhanced" style="width: 100%; border-collapse: collapse; background: white; border-radius: 8px; overflow: hidden; box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);">
                         <thead>
-                            <tr style="background: #f8f9fa;">
-                                <th style="padding: 12px; text-align: left; border-bottom: 2px solid #e0e0e0; font-weight: bold;">Title</th>
-                                <th style="padding: 12px; text-align: left; border-bottom: 2px solid #e0e0e0; font-weight: bold;">Subject</th>
-                                <th style="padding: 12px; text-align: left; border-bottom: 2px solid #e0e0e0; font-weight: bold;">Status</th>
-                                <th style="padding: 12px; text-align: left; border-bottom: 2px solid #e0e0e0; font-weight: bold;">Recipients</th>
-                                <th style="padding: 12px; text-align: left; border-bottom: 2px solid #e0e0e0; font-weight: bold;">Success Rate</th>
-                                <th style="padding: 12px; text-align: left; border-bottom: 2px solid #e0e0e0; font-weight: bold;">Created</th>
-                                <th style="padding: 12px; text-align: left; border-bottom: 2px solid #e0e0e0; font-weight: bold;">Actions</th>
+                            <tr>
+                                <th style="background: linear-gradient(135deg, #3b82f6 0%, #1d4ed8 100%) !important; color: white !important; font-weight: 600; text-align: left; padding: 12px 16px !important; border-bottom: 2px solid #1e40af !important;">Title</th>
+                                <th style="background: linear-gradient(135deg, #3b82f6 0%, #1d4ed8 100%) !important; color: white !important; font-weight: 600; text-align: left; padding: 12px 16px !important; border-bottom: 2px solid #1e40af !important;">Subject</th>
+                                <th style="background: linear-gradient(135deg, #3b82f6 0%, #1d4ed8 100%) !important; color: white !important; font-weight: 600; text-align: left; padding: 12px 16px !important; border-bottom: 2px solid #1e40af !important;">Status</th>
+                                <th style="background: linear-gradient(135deg, #3b82f6 0%, #1d4ed8 100%) !important; color: white !important; font-weight: 600; text-align: left; padding: 12px 16px !important; border-bottom: 2px solid #1e40af !important;">Recipients</th>
+                                <th style="background: linear-gradient(135deg, #3b82f6 0%, #1d4ed8 100%) !important; color: white !important; font-weight: 600; text-align: left; padding: 12px 16px !important; border-bottom: 2px solid #1e40af !important;">Success Rate</th>
+                                <th style="background: linear-gradient(135deg, #3b82f6 0%, #1d4ed8 100%) !important; color: white !important; font-weight: 600; text-align: left; padding: 12px 16px !important; border-bottom: 2px solid #1e40af !important;">Created</th>
+                                <th style="background: linear-gradient(135deg, #3b82f6 0%, #1d4ed8 100%) !important; color: white !important; font-weight: 600; text-align: left; padding: 12px 16px !important; border-bottom: 2px solid #1e40af !important;">Actions</th>
                             </tr>
                         </thead>
                         <tbody id="marketing-emails-tbody">
@@ -142,13 +142,23 @@
                 </div>
                 
                 <!-- Pagination -->
-                <div style="margin-top: 20px; display: flex; justify-content: space-between; align-items: center;">
-                    <div id="marketing-pagination-info" class="text-muted"></div>
-                    <nav>
-                        <ul class="pagination pagination-sm" id="marketing-pagination">
+                <div class="pagination-controls" style="margin-top: 20px; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 15px;">
+                    <div class="pagination-info" style="color: #374151; font-size: 14px;">
+                        <span id="marketing-pagination-info">Showing campaigns</span>
+                    </div>
+                    <div class="pagination-center" style="display: flex; justify-content: center; flex: 1;">
+                        <div class="pagination-buttons" id="marketing-pagination" style="display: inline-flex; gap: 5px; align-items: center;">
                             <!-- Dynamic pagination loaded via AJAX -->
-                        </ul>
-                    </nav>
+                        </div>
+                    </div>
+                    <div class="pagination-per-page" style="display: flex; align-items: center; gap: 8px; color: #374151; font-size: 14px;">
+                        <label>Show per page:</label>
+                        <select style="padding: 6px 10px; border: 1px solid #d1d5db; border-radius: 4px; background: white; font-size: 14px;">
+                            <option value="20">20</option>
+                            <option value="50" selected>50</option>
+                            <option value="100">100</option>
+                        </select>
+                    </div>
                 </div>
             </div>
         </div>

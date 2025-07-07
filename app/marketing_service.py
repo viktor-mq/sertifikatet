@@ -249,7 +249,10 @@ class MarketingEmailService:
         Returns:
             str: Personalized HTML content
         """
-        # Simple template variable replacement
+        # Generate URLs using the same method as the footer
+        notification_settings_url = get_notification_settings_url()
+        
+        # Replace user variables
         personalized = html_content.replace(
             '{{user.full_name or user.username}}', 
             user.full_name or user.username
@@ -261,6 +264,16 @@ class MarketingEmailService:
         personalized = personalized.replace(
             '{{user.full_name}}', 
             user.full_name or user.username
+        )
+        
+        # Replace URL variables using the same URL generation as footer
+        personalized = personalized.replace(
+            '{{settings_url}}', 
+            notification_settings_url
+        )
+        personalized = personalized.replace(
+            '{{unsubscribe_url}}', 
+            notification_settings_url  # Same URL as footer - points to notification settings
         )
         
         return personalized

@@ -390,14 +390,15 @@
                     </td>
                     <td>${escapeHtml(email.subject)}</td>
                     <td>
-                        <span class="badge ${statusClass}">
-                            <i class="${statusIcon}"></i> ${email.status.charAt(0).toUpperCase() + email.status.slice(1)}
+                        <span class="btn btn-${getStatusBtnClass(email.status)} btn-small" style="cursor: default;">
+                            ${email.status.charAt(0).toUpperCase() + email.status.slice(1)}
                         </span>
                     </td>
                     <td>
-                        <button class="btn btn-link p-0 recipient-count-btn" 
+                        <button class="btn btn-info btn-small" 
                                 onclick="showRecipientModal(${email.id})" 
-                                title="View recipients">
+                                title="View recipients"
+                                style="cursor: default;">
                             ${email.sent_count} / ${email.recipients_count}
                         </button>
                         ${email.failed_count > 0 ? `<br><small class="text-danger">${email.failed_count} failed</small>` : ''}
@@ -411,22 +412,22 @@
                     </td>
                     <td>
                         <div class="btn-group btn-group-sm">
-                            <button class="btn btn-outline-primary" onclick="viewEmailDetails(${email.id})" title="View">
+                            <button class="btn btn-info btn-small" onclick="viewEmailDetails(${email.id})" title="View" style="margin-right: 5px;">
                                 <i class="fas fa-eye"></i>
                             </button>
                             ${email.status === 'draft' ? `
-                                <button class="btn btn-outline-warning" onclick="editEmail(${email.id})" title="Edit">
+                                <button class="btn btn-warning btn-small" onclick="editEmail(${email.id})" title="Edit" style="margin-right: 5px;">
                                     <i class="fas fa-edit"></i>
                                 </button>
-                                <button class="btn btn-outline-success" onclick="sendEmail(${email.id})" title="Send Now">
+                                <button class="btn btn-success btn-small" onclick="sendEmail(${email.id})" title="Send Now" style="margin-right: 5px;">
                                     <i class="fas fa-paper-plane"></i>
                                 </button>
-                                <button class="btn btn-outline-danger" onclick="deleteEmail(${email.id})" title="Delete">
+                                <button class="btn btn-danger btn-small" onclick="deleteEmail(${email.id})" title="Delete">
                                     <i class="fas fa-trash"></i>
                                 </button>
                             ` : ''}
                             ${email.status === 'sent' || email.status === 'failed' ? `
-                                <button class="btn btn-outline-info" onclick="viewEmailLogs(${email.id})" title="View Logs">
+                                <button class="btn btn-secondary btn-small" onclick="viewEmailLogs(${email.id})" title="View Logs">
                                     <i class="fas fa-list"></i>
                                 </button>
                             ` : ''}
@@ -447,34 +448,26 @@
         let html = '';
         
         // Previous button
-        html += `
-            <li class="page-item ${!pagination.has_prev ? 'disabled' : ''}">
-                <button class="page-link" onclick="goToMarketingPage(${pagination.prev_num || 1})" ${!pagination.has_prev ? 'disabled' : ''}>
-                    <i class="fas fa-chevron-left"></i> Previous
-                </button>
-            </li>
-        `;
+        if (pagination.has_prev) {
+            html += `<a class="page-btn" href="#" onclick="goToMarketingPage(${pagination.prev_num || 1}); return false;">Previous</a>`;
+        }
         
         // Page numbers
         const startPage = Math.max(1, pagination.page - 2);
         const endPage = Math.min(pagination.pages, pagination.page + 2);
         
         for (let i = startPage; i <= endPage; i++) {
-            html += `
-                <li class="page-item ${i === pagination.page ? 'active' : ''}">
-                    <button class="page-link" onclick="goToMarketingPage(${i})">${i}</button>
-                </li>
-            `;
+            if (i === pagination.page) {
+                html += `<span class="page-btn active">${i}</span>`;
+            } else {
+                html += `<a class="page-btn" href="#" onclick="goToMarketingPage(${i}); return false;">${i}</a>`;
+            }
         }
         
         // Next button
-        html += `
-            <li class="page-item ${!pagination.has_next ? 'disabled' : ''}">
-                <button class="page-link" onclick="goToMarketingPage(${pagination.next_num || pagination.pages})" ${!pagination.has_next ? 'disabled' : ''}>
-                    Next <i class="fas fa-chevron-right"></i>
-                </button>
-            </li>
-        `;
+        if (pagination.has_next) {
+            html += `<a class="page-btn" href="#" onclick="goToMarketingPage(${pagination.next_num || pagination.pages}); return false;">Next</a>`;
+        }
         
         paginationContainer.innerHTML = html;
         
@@ -592,6 +585,18 @@
     
     function escapeJson(obj) {
         return JSON.stringify(obj).replace(/'/g, "&#39;");
+    }
+    
+    function getStatusBtnClass(status) {
+        const statusBtnClasses = {
+            'draft': 'secondary',
+            'scheduled': 'warning',
+            'sending': 'info',
+            'sent': 'success',
+            'failed': 'danger',
+            'partially_sent': 'warning'
+        };
+        return statusBtnClasses[status] || 'secondary';
     }
     
     function getStatusClass(status) {
@@ -1082,6 +1087,42 @@
         document.body.removeChild(link);
     }
 
+    function getStatusBtnClass(status) {
+        const statusBtnClasses = {
+            'draft': 'secondary',
+            'scheduled': 'warning',
+            'sending': 'info',
+            'sent': 'success',
+            'failed': 'danger',
+            'partially_sent': 'warning'
+        };
+        return statusBtnClasses[status] || 'secondary';
+    }
+    
+    function getStatusClass(status) {
+        const statusClasses = {
+            'draft': 'badge-secondary',
+            'scheduled': 'badge-warning',
+            'sending': 'badge-info',
+            'sent': 'badge-success',
+            'failed': 'badge-danger',
+            'partially_sent': 'badge-warning'
+        };
+        return statusClasses[status] || 'badge-secondary';
+    }
+    
+    function getStatusIcon(status) {
+        const statusIcons = {
+            'draft': 'fas fa-file-alt',
+            'scheduled': 'fas fa-clock',
+            'sending': 'fas fa-spinner fa-spin',
+            'sent': 'fas fa-check',
+            'failed': 'fas fa-times',
+            'partially_sent': 'fas fa-exclamation-triangle'
+        };
+        return statusIcons[status] || 'fas fa-file-alt';
+    }
+
     function getSubscriptionBadgeClass(subscription) {
         switch (subscription) {
             case 'free': return 'secondary';
@@ -1089,6 +1130,50 @@
             case 'pro': return 'success';
             default: return 'secondary';
         }
+    }
+    
+    function escapeHtml(text) {
+        if (!text) return '';
+        const div = document.createElement('div');
+        div.textContent = text;
+        return div.innerHTML;
+    }
+    
+    function escapeJson(obj) {
+        return JSON.stringify(obj).replace(/'/g, "&#39;");
+    }
+    
+    function formatDate(dateString) {
+        const date = new Date(dateString);
+        return date.toLocaleDateString('no-NO', {
+            year: 'numeric',
+            month: 'short',
+            day: 'numeric'
+        });
+    }
+    
+    function getCategoryIcon(category) {
+        const icons = {
+            'newsletter': '📰',
+            'promotion': '🎁',
+            'announcement': '📢',
+            'welcome': '👋',
+            'reminder': '⏰',
+            'seasonal': '🎭'
+        };
+        return icons[category] || '📄';
+    }
+    
+    function getCategoryColor(category) {
+        const colors = {
+            'newsletter': '#007bff',
+            'promotion': '#28a745',
+            'announcement': '#6c757d',
+            'welcome': '#17a2b8',
+            'reminder': '#ffc107',
+            'seasonal': '#6f42c1'
+        };
+        return colors[category] || '#6c757d';
     }
 
     // Debounce function for search input
@@ -1119,6 +1204,233 @@
         if (adminSelect) {
             adminSelect.addEventListener('change', filterRecipients);
         }
+    }
+    
+    // Missing functions needed by the marketing system
+    function showMarketingLoading(show) {
+        const loadingEl = document.getElementById('marketing-loading');
+        const tableEl = document.getElementById('marketing-table');
+        
+        if (show) {
+            if (loadingEl) loadingEl.style.display = 'block';
+            if (tableEl) tableEl.style.opacity = '0.5';
+        } else {
+            if (loadingEl) loadingEl.style.display = 'none';
+            if (tableEl) tableEl.style.opacity = '1';
+        }
+    }
+    
+    function showNotification(message, type = 'info') {
+        // Create notification element
+        const notification = document.createElement('div');
+        notification.className = `alert alert-${type} alert-dismissible fade show position-fixed`;
+        notification.style.cssText = 'top: 20px; right: 20px; z-index: 9999; min-width: 300px;';
+        notification.innerHTML = `
+            ${message}
+            <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+        `;
+        
+        document.body.appendChild(notification);
+        
+        // Auto-remove after 5 seconds
+        setTimeout(() => {
+            if (notification.parentNode) {
+                notification.remove();
+            }
+        }, 5000);
+    }
+    
+    function initializeMarketing() {
+        console.log('Marketing section initialized');
+        
+        // Ensure marketing section is visible
+        const marketingSection = document.getElementById('marketingSection');
+        if (marketingSection) {
+            marketingSection.style.display = 'block';
+            console.log('Marketing section display set to block');
+        } else {
+            console.error('Marketing section not found!');
+            return;
+        }
+        
+        // Initialize search with debouncing
+        const searchInput = document.getElementById('marketing-search');
+        if (searchInput) {
+            searchInput.addEventListener('input', function() {
+                clearTimeout(marketingSearchTimeout);
+                marketingSearchTimeout = setTimeout(() => {
+                    applyMarketingFilters();
+                }, 300);
+            });
+        }
+        
+        // Initialize status filter
+        const statusFilter = document.getElementById('marketing-status-filter');
+        if (statusFilter) {
+            statusFilter.addEventListener('change', applyMarketingFilters);
+        }
+        
+        // Load initial data
+        loadMarketingData();
+    }
+    
+    function changeMarketingTableDensity() {
+        const densitySelector = document.getElementById('marketingTableDensitySelector');
+        const tableContainer = document.querySelector('.marketing-table');
+        
+        if (!densitySelector || !tableContainer) return;
+        
+        const density = densitySelector.value;
+        
+        // Remove existing density classes
+        tableContainer.classList.remove('compact', 'comfortable', 'spacious');
+        
+        // Add new density class
+        tableContainer.classList.add(density);
+        
+        console.log(`Marketing table density changed to: ${density}`);
+    }
+    
+    function setupModalEvents() {
+        // Close modals when clicking outside
+        window.addEventListener('click', function(event) {
+            if (event.target === document.getElementById('templatesModal')) {
+                closeTemplatesModal();
+            }
+            if (event.target === document.getElementById('templatePreviewModal')) {
+                closeTemplatePreviewModal();
+            }
+            if (event.target === document.getElementById('sendEmailModal')) {
+                closeSendEmailModal();
+            }
+        });
+        
+        // Set up confirm send button event listener
+        document.addEventListener('DOMContentLoaded', function() {
+            const confirmSendBtn = document.getElementById('confirmSend');
+            if (confirmSendBtn) {
+                confirmSendBtn.addEventListener('click', handleEmailSend);
+            }
+        });
+    }
+    
+    function handleEmailSend() {
+        const confirmSendBtn = document.getElementById('confirmSend');
+        if (!confirmSendBtn || !currentEmailId) return;
+        
+        // Show loading state
+        const originalText = confirmSendBtn.innerHTML;
+        confirmSendBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Sending...';
+        confirmSendBtn.disabled = true;
+        
+        // Send the email
+        fetch('/admin/api/marketing-send', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-Requested-With': 'XMLHttpRequest'
+            },
+            body: JSON.stringify({email_id: currentEmailId})
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                showNotification('Email campaign sent successfully!', 'success');
+                closeSendEmailModal();
+                loadMarketingEmails(); // Refresh the table
+            } else {
+                showNotification('Error sending email: ' + data.error, 'error');
+                confirmSendBtn.innerHTML = originalText;
+                confirmSendBtn.disabled = false;
+            }
+        })
+        .catch(error => {
+            console.error('Error sending email:', error);
+            showNotification('Error sending email', 'error');
+            confirmSendBtn.innerHTML = originalText;
+            confirmSendBtn.disabled = false;
+        });
+    }
+    
+    // Recipient Modal Functions
+    function showRecipientModal(emailId) {
+        currentEmailId = emailId;
+        
+        // Show modal
+        const modal = new bootstrap.Modal(document.getElementById('recipientsModal'));
+        modal.show();
+        
+        // Reset filters and load data
+        clearRecipientFilters();
+        loadRecipientData(emailId);
+    }
+    
+    // Additional functions for email actions
+    function deleteEmail(emailId) {
+        if (!confirm('Are you sure you want to delete this email campaign? This action cannot be undone.')) {
+            return;
+        }
+        
+        fetch(`/admin/api/marketing-email/${emailId}/delete`, {
+            method: 'DELETE',
+            headers: {
+                'Accept': 'application/json',
+                'X-Requested-With': 'XMLHttpRequest'
+            }
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                showNotification(data.message, 'success');
+                loadMarketingEmails(); // Refresh the table
+            } else {
+                showNotification('Error deleting email: ' + data.error, 'error');
+            }
+        })
+        .catch(error => {
+            console.error('Error deleting email:', error);
+            showNotification('Error deleting email', 'error');
+        });
+    }
+    
+    function viewEmailDetails(emailId) {
+        window.open(`/admin/marketing-emails/${emailId}`, '_blank');
+    }
+    
+    function editEmail(emailId) {
+        window.open(`/admin/marketing-emails/${emailId}/edit`, '_blank');
+    }
+    
+    function viewEmailLogs(emailId) {
+        window.open(`/admin/marketing-emails/${emailId}/logs`, '_blank');
+    }
+    
+    function useTemplate(templateId) {
+        window.open(`/admin/marketing-emails/create?template_id=${templateId}`, '_blank');
+        closeTemplatesModal();
+    }
+    
+    function previewTemplate(templateId) {
+        fetch(`/admin/api/marketing-template?id=${templateId}`, {
+            method: 'GET',
+            headers: {
+                'Accept': 'application/json',
+                'X-Requested-With': 'XMLHttpRequest'
+            }
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.html_content) {
+                // Open preview in new window
+                const previewWindow = window.open('', '_blank', 'width=800,height=600');
+                previewWindow.document.write(data.html_content);
+                previewWindow.document.close();
+            }
+        })
+        .catch(error => {
+            console.error('Error previewing template:', error);
+            showNotification('Error previewing template', 'error');
+        });
     }
 
     
