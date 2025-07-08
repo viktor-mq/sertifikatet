@@ -26,6 +26,10 @@ celery==5.3.4
 gunicorn==21.2.0
 psutil==5.9.6
 
+# NEW: TikTok Learning System Dependencies
+markdown==3.5.1
+PyYAML==6.0.1
+
 # Development and testing dependencies moved to requirements-dev.txt
 # Run: pip install -r requirements-dev.txt for development
 

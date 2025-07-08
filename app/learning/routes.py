@@ -12,6 +12,13 @@ logger = logging.getLogger(__name__)
 
 @learning_bp.route('/')
 @login_required
+def index():
+    """Main learning index route - redirects to dashboard"""
+    return redirect(url_for('learning.dashboard'))
+
+
+@learning_bp.route('/dashboard')
+@login_required
 def dashboard():
     """Main learning dashboard - shows all modules with progress"""
     try:
@@ -24,8 +31,8 @@ def dashboard():
         # Get recommended next steps
         recommendations = LearningService.get_recommendations(current_user)
         
-        return render_template('learning/dashboard.html',
-                             modules=modules_data,
+        return render_template('learning/index.html',
+                             paths=modules_data,
                              stats=learning_stats,
                              recommendations=recommendations)
     except Exception as e:
@@ -70,8 +77,15 @@ def submodule_content(submodule_id):
             flash('Undermodulen ble ikke funnet', 'error')
             return redirect(url_for('learning.dashboard'))
         
-        # Load content from files
+        # Load content from files (if available)
         content_data = ContentManager.get_submodule_content(submodule_id)
+        if not content_data:
+            content_data = {
+                'content': {'html_content': '<p>Innhold kommer snart...</p>'},
+                'summary': {'html_content': '<p>Sammendrag kommer snart...</p>'},
+                'shorts_available': False,
+                'shorts_count': 0
+            }
         
         # Start or update progress
         LearningService.start_submodule_content(current_user, submodule_id)
@@ -387,3 +401,48 @@ def theory_shorts_player(submodule_id):
         logger.error(f"Error loading theory shorts for {submodule_id}: {str(e)}")
         flash('Det oppstod en feil ved lasting av videoene', 'error')
         return redirect(url_for('learning.theory_dashboard'))
+
+
+# Additional routes required by the template
+@learning_bp.route('/path/<int:path_id>')
+@login_required
+def view_path(path_id):
+    """View a specific learning path"""
+    try:
+        # For now, redirect to module overview
+        return redirect(url_for('learning.module_overview', module_id=path_id))
+    except Exception as e:
+        logger.error(f"Error viewing path {path_id}: {str(e)}")
+        flash('Læringsveien ble ikke funnet', 'error')
+        return redirect(url_for('learning.index'))
+
+
+@learning_bp.route('/my-paths')
+@login_required
+def my_paths():
+    """Show user's enrolled learning paths"""
+    try:
+        # For now, show empty state
+        return render_template('learning/my_paths.html', paths=[])
+    except Exception as e:
+        logger.error(f"Error loading my paths: {str(e)}")
+        flash('Kunne ikke laste dine læringsveier', 'error')
+        return redirect(url_for('learning.index'))
+
+
+@learning_bp.route('/api/recommendations')
+@login_required
+def get_recommendations():
+    """Get personalized recommendations (AJAX)"""
+    try:
+        recommendations = LearningService.get_recommendations(current_user)
+        return jsonify({
+            'success': True,
+            'recommendations': recommendations
+        })
+    except Exception as e:
+        logger.error(f"Error getting recommendations: {str(e)}")
+        return jsonify({
+            'success': False,
+            'error': 'Kunne ikke hente anbefalinger'
+        }), 400

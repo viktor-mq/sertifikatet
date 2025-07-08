@@ -112,10 +112,10 @@
 - [x] Register learning blueprint in main `app/__init__.py`
 - [x] **INTEGRATION UPDATE**: Learning models created as separate system within existing `/learning` blueprint
 - [x] **NEW**: Add theory mode routes to existing learning blueprint
-- [ ] **NEW**: Create progress integration service for cross-system completion tracking
+- [x] **NEW**: Create progress integration service for cross-system completion tracking
 
 #### Database Migration
-- [x] Create migration for new learning tables
+- [x] Create migration for new learning tables (SIMPLIFIED: extends existing tables)
 - [ ] Test migration on development database
 - [ ] Verify all relationships and constraints work
 - [ ] Create sample data for testing

@@ -343,6 +343,11 @@ database:
       - created_at
       - is_active
       - view_count
+      # NEW: TikTok-style theory learning system fields
+      - aspect_ratio              # VARCHAR(10) - '9:16' for TikTok-style, '16:9' for traditional
+      - content_type              # VARCHAR(20) - 'video', 'theory_short'
+      - theory_module_ref         # VARCHAR(10) - '1.1', '1.2', etc. for theory shorts
+      - sequence_order            # INT - Order within theory module (0, 1, 2, etc.)
     video_checkpoints:
       - id
       - video_id
@@ -360,6 +365,10 @@ database:
       - started_at
       - completed_at
       - updated_at
+      # NEW: TikTok-style theory learning system fields
+      - content_type              # VARCHAR(20) - 'video', 'theory_short'
+      - watch_percentage          # FLOAT - 0.0 to 1.0, more granular than completed boolean
+      - interaction_quality       # FLOAT - Engagement quality score for TikTok-style videos
     learning_paths:
       - id
       - name
@@ -368,6 +377,11 @@ database:
       - difficulty_level
       - icon_filename
       - is_recommended
+      # NEW: TikTok-style theory learning system fields
+      - path_type                 # VARCHAR(20) - 'traditional', 'theory' for theory modules
+      - module_number             # FLOAT - 1.0, 1.1, 1.2, 2.0, 2.1, etc. for theory modules
+      - content_file_path         # VARCHAR(500) - Path to content.md for theory modules
+      - summary_file_path         # VARCHAR(500) - Path to summary.md for theory modules
     learning_path_items:
       - id
       - path_id
@@ -382,6 +396,11 @@ database:
       - progress_percentage
       - started_at
       - completed_at
+      # NEW: TikTok-style theory learning system fields
+      - content_viewed            # BOOLEAN - Has viewed long-form content (content.md)
+      - summary_viewed            # BOOLEAN - Has viewed summary (summary.md)
+      - videos_watched            # INT - Number of theory shorts watched
+      - time_spent_minutes        # INT - Total time spent on theory content
     video_categories:
       - id
       - name

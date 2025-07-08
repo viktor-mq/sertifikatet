@@ -167,7 +167,7 @@ def create_app(config_class=None):
     with app.app_context():
         # Import all models to ensure they're registered
         from . import models, gamification_models, video_models, payment_models, notification_models, marketing_models, ad_models
-        from .learning import models as learning_models
+        # NOTE: learning models now use existing tables via services, no separate import needed
         from .ml import models as ml_models
         db.create_all()
         
