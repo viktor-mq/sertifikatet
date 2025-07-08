@@ -1,0 +1,27 @@
+id: {{MODULE_ID}}
+module_number: {{MODULE_NUMBER}}
+title: "{{MODULE_TITLE}}"
+description: "{{MODULE_DESCRIPTION}}"
+estimated_hours: {{ESTIMATED_HOURS}}
+prerequisites: {{PREREQUISITES_ARRAY}}
+learning_objectives:
+  - "{{OBJECTIVE_1}}"
+  - "{{OBJECTIVE_2}}"
+  - "{{OBJECTIVE_3}}"
+content_directory: "{{DIRECTORY_NAME}}"
+is_active: true
+ai_generated: {{AI_GENERATED_BOOLEAN}}
+submodules:
+  - id: {{MODULE_NUMBER}}.1
+    title: "{{SUBMODULE_1_TITLE}}"
+    description: "{{SUBMODULE_1_DESCRIPTION}}"
+    estimated_minutes: {{SUBMODULE_1_MINUTES}}
+    has_quiz: true
+    has_video_shorts: true
+  - id: {{MODULE_NUMBER}}.2
+    title: "{{SUBMODULE_2_TITLE}}"
+    description: "{{SUBMODULE_2_DESCRIPTION}}"
+    estimated_minutes: {{SUBMODULE_2_MINUTES}}
+    has_quiz: true
+    has_video_shorts: true
+  # Add more submodules as needed

@@ -1,0 +1,202 @@
+{% extends "base.html" %}
+
+{% block title %}{{ submodule.title }} - Teoristudie - Sertifikatet{% endblock %}
+
+{% block content %}
+<div class="min-h-screen bg-gradient-to-br from-purple-900 via-blue-900 to-indigo-900">
+    <div class="container mx-auto px-4 py-8">
+        <!-- Breadcrumb Navigation -->
+        <nav aria-label="breadcrumb" class="mb-6">
+            <ol class="flex items-center space-x-2 text-sm text-blue-200">
+                <li>
+                    <a href="{{ url_for('learning.index') }}" class="text-blue-200 hover:text-white">
+                        <i class="fas fa-arrow-left mr-1"></i>Læringsveier
+                    </a>
+                </li>
+                <li class="text-blue-300">/</li>
+                <li>
+                    <a href="{{ url_for('learning.theory_dashboard') }}" class="text-blue-200 hover:text-white">
+                        Teoristudie
+                    </a>
+                </li>
+                <li class="text-blue-300">/</li>
+                <li>
+                    <a href="{{ url_for('learning.theory_module_overview', module_id=module.id) }}" class="text-blue-200 hover:text-white">
+                        {{ module.title }}
+                    </a>
+                </li>
+                <li class="text-blue-300">/</li>
+                <li class="text-white" aria-current="page">
+                    {{ submodule.submodule_number }} {{ submodule.title }}
+                </li>
+            </ol>
+        </nav>
+
+        <!-- Content Header -->
+        <div class="bg-white/10 backdrop-blur-lg rounded-xl p-6 border border-white/20 mb-8">
+            <div class="flex items-center justify-between mb-4">
+                <div class="flex items-center">
+                    <div class="w-14 h-14 bg-blue-600 rounded-xl flex items-center justify-center mr-4">
+                        <span class="text-lg font-bold text-white">{{ submodule.submodule_number }}</span>
+                    </div>
+                    <div>
+                        <h1 class="text-2xl font-bold text-white mb-1">{{ submodule.title }}</h1>
+                        <p class="text-blue-200 text-sm">
+                            {% if submodule.estimated_minutes %}
+                            <i class="fas fa-clock mr-1"></i>{{ submodule.estimated_minutes }} min
+                            {% endif %}
+                            {% if submodule.difficulty_level %}
+                            • Nivå {{ submodule.difficulty_level }}/5
+                            {% endif %}
+                        </p>
+                    </div>
+                </div>
+                
+                <!-- Action Buttons -->
+                <div class="flex space-x-2">
+                    {% if submodule.has_video_shorts %}
+                    <a href="{{ url_for('learning.theory_shorts_player', submodule_id=submodule.submodule_number) }}" 
+                       class="px-4 py-2 bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white font-semibold rounded-lg transition-all duration-300">
+                        <i class="fas fa-play mr-1"></i>Videoer
+                    </a>
+                    {% endif %}
+                    {% if submodule.has_quiz %}
+                    <a href="#" class="px-4 py-2 bg-gradient-to-r from-green-600 to-blue-600 hover:from-green-700 hover:to-blue-700 text-white font-semibold rounded-lg transition-all duration-300">
+                        <i class="fas fa-question-circle mr-1"></i>Quiz
+                    </a>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+
+        <!-- Content Tabs -->
+        <div class="mb-8">
+            <div class="border-b border-blue-700">
+                <nav class="-mb-px flex space-x-8">
+                    <button id="content-tab" class="tab-btn active py-2 px-1 border-b-2 border-blue-400 text-blue-400 font-medium text-sm" onclick="showTab('content')">
+                        <i class="fas fa-book mr-1"></i>Innhold
+                    </button>
+                    <button id="summary-tab" class="tab-btn py-2 px-1 border-b-2 border-transparent text-blue-200 hover:text-blue-400 hover:border-blue-300 font-medium text-sm" onclick="showTab('summary')">
+                        <i class="fas fa-list mr-1"></i>Sammendrag
+                    </button>
+                </nav>
+            </div>
+        </div>
+
+        <!-- Content Tab -->
+        <div id="content-panel" class="tab-panel">
+            <div class="bg-white/10 backdrop-blur-lg rounded-xl p-8 border border-white/20">
+                {% if content and content.html_content %}
+                <div class="prose prose-invert max-w-none text-blue-50">
+                    {{ content.html_content | safe }}
+                </div>
+                {% else %}
+                <div class="text-center py-12">
+                    <div class="mb-4">
+                        <i class="fas fa-file-alt fa-3x text-blue-300"></i>
+                    </div>
+                    <h3 class="text-xl font-bold text-white mb-2">Innhold ikke tilgjengelig</h3>
+                    <p class="text-blue-200">Innholdet for dette emnet er under utvikling.</p>
+                </div>
+                {% endif %}
+            </div>
+        </div>
+
+        <!-- Summary Tab -->
+        <div id="summary-panel" class="tab-panel hidden">
+            <div class="bg-white/10 backdrop-blur-lg rounded-xl p-8 border border-white/20">
+                {% if summary and summary.html_content %}
+                <div class="prose prose-invert max-w-none text-blue-50">
+                    <div class="bg-yellow-500/20 border border-yellow-500/30 rounded-lg p-4 mb-6">
+                        <h3 class="text-lg font-bold text-yellow-100 mb-2">
+                            <i class="fas fa-lightbulb mr-2"></i>Kort sammendrag
+                        </h3>
+                        <p class="text-yellow-200 text-sm">Dette er en rask oppsummering av de viktigste punktene.</p>
+                    </div>
+                    {{ summary.html_content | safe }}
+                </div>
+                {% else %}
+                <div class="text-center py-12">
+                    <div class="mb-4">
+                        <i class="fas fa-list fa-3x text-blue-300"></i>
+                    </div>
+                    <h3 class="text-xl font-bold text-white mb-2">Sammendrag ikke tilgjengelig</h3>
+                    <p class="text-blue-200">Sammendrag for dette emnet er under utvikling.</p>
+                </div>
+                {% endif %}
+            </div>
+        </div>
+
+        <!-- Navigation -->
+        <div class="flex justify-between items-center mt-8">
+            <a href="{{ url_for('learning.theory_module_overview', module_id=module.id) }}" 
+               class="inline-flex items-center px-6 py-3 bg-white/10 backdrop-blur-lg rounded-lg text-white hover:bg-white/20 transition-all duration-300">
+                <i class="fas fa-arrow-left mr-2"></i>
+                Tilbake til modul
+            </a>
+            
+            <div class="flex space-x-4">
+                {% if submodule.has_video_shorts %}
+                <a href="{{ url_for('learning.theory_shorts_player', submodule_id=submodule.submodule_number) }}" 
+                   class="inline-flex items-center px-6 py-3 bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white rounded-lg transition-all duration-300">
+                    <i class="fas fa-play mr-2"></i>
+                    Se videoer
+                </a>
+                {% endif %}
+                
+                <button class="inline-flex items-center px-6 py-3 bg-gradient-to-r from-green-600 to-blue-600 hover:from-green-700 hover:to-blue-700 text-white rounded-lg transition-all duration-300" onclick="markAsComplete()">
+                    <i class="fas fa-check mr-2"></i>
+                    Marker som fullført
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+// Tab functionality
+function showTab(tabName) {
+    // Hide all panels
+    document.querySelectorAll('.tab-panel').forEach(panel => {
+        panel.classList.add('hidden');
+    });
+    
+    // Remove active class from all tabs
+    document.querySelectorAll('.tab-btn').forEach(btn => {
+        btn.classList.remove('active', 'border-blue-400', 'text-blue-400');
+        btn.classList.add('border-transparent', 'text-blue-200');
+    });
+    
+    // Show selected panel
+    document.getElementById(tabName + '-panel').classList.remove('hidden');
+    
+    // Activate selected tab
+    const activeTab = document.getElementById(tabName + '-tab');
+    activeTab.classList.add('active', 'border-blue-400', 'text-blue-400');
+    activeTab.classList.remove('border-transparent', 'text-blue-200');
+}
+
+// Mark as complete functionality
+function markAsComplete() {
+    if (confirm('Marker dette emnet som fullført?')) {
+        // TODO: Implement AJAX call to mark as complete
+        alert('Emnet er markert som fullført!');
+        // You would typically reload the page or update the UI here
+    }
+}
+
+// Track reading time
+let startTime = Date.now();
+window.addEventListener('beforeunload', function() {
+    const timeSpent = Math.floor((Date.now() - startTime) / 1000 / 60); // minutes
+    if (timeSpent > 0) {
+        // TODO: Send time tracking data to server
+        navigator.sendBeacon('/api/learning/track-time', JSON.stringify({
+            submodule_id: {{ submodule.submodule_number }},
+            time_spent: timeSpent,
+            content_type: 'content'
+        }));
+    }
+});
+</script>
+{% endblock %}

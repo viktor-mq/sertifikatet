@@ -1,0 +1,57 @@
+submodule_id: 1.1
+title: "Hva er trafikkreglene?"
+module_id: 1
+content_version: "1.0"
+last_updated: "2025-01-08"
+ai_generated: false
+difficulty_level: 1
+estimated_minutes: 25
+tags:
+  - "trafikkregler"
+  - "grunnleggende"
+  - "sikkerhet"
+  - "hensynsprinsippet"
+  - "vikeplikt"
+  - "fart"
+  - "plassering"
+learning_objectives:
+  - "Forstå formålet med trafikkregler"
+  - "Kjenne de fire grunnprinsippene"
+  - "Vite konsekvensene av regelbrudd"
+  - "Huske de viktigste kjørereglene"
+prerequisites: []
+linked_questions:
+  - "Spørsmål om hensynsprinsippet"
+  - "Vikeplikt grunnleggende"
+  - "Fartsgrenser og tilpasning"
+quiz_topics:
+  - "Hensynsprinsippet"
+  - "Vikepliktregler grunnleggende"
+  - "Fartstilpasning"
+  - "Konsekvenser ved brudd"
+video_shorts_planned:
+  - sequence: 1
+    title: "Hva er trafikkregler?"
+    duration: "20s"
+    topics: ["introduksjon", "formål"]
+  - sequence: 2  
+    title: "Fire grunnprinsipper"
+    duration: "45s"
+    topics: ["hensyn", "vikeplikt", "fart", "plassering"]
+  - sequence: 3
+    title: "Konsekvenser av brudd"
+    duration: "30s"
+    topics: ["bøter", "prikker", "inndragning"]
+  - sequence: 4
+    title: "Viktigste regler"
+    duration: "35s"
+    topics: ["fartsgrenser", "rødt lys", "bilbelte"]
+engagement_metrics:
+  target_completion_rate: 85
+  target_time_minutes: 25
+  difficulty_rating: "Lett"
+content_structure:
+  word_count_content: 1247
+  word_count_summary: 187
+  sections: 8
+  subsections: 15
