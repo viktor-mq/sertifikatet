@@ -1,0 +1,48 @@
+submodule_id: 1.3
+title: "Tegn fra politi og trafikklys"
+module_id: 1
+content_version: "1.0"
+last_updated: "2025-07-08"
+ai_generated: true
+difficulty_level: 2
+estimated_minutes: 30
+tags:
+  - "politisignaler"
+  - "trafikklys"
+  - "stopp"
+  - "trafikkregulering"
+learning_objectives:
+  - "Forstå og tolke politiets signaler riktig"
+  - "Kjenne betydningen av trafikklysenes ulike farger"
+  - "Mestre prioriteringsrekkefølgen mellom politi, trafikklys og skilt"
+prerequisites: ["1.2"]
+linked_questions:
+  - "Politiets tegn og signaler"
+  - "Trafikklys betydning"
+  - "Prioritet mellom skilt og politi"
+quiz_topics:
+  - "Politisignaler og deres betydning"
+  - "Hvordan reagere på trafikklys"
+  - "Prioritering av politiets tegn"
+video_shorts_planned:
+  - sequence: 1
+    title: "Hva betyr politiets tegn?"
+    duration: "30s"
+    topics: ["politisignal", "trafikkstyring"]
+  - sequence: 2  
+    title: "Forstå trafikklysene raskt"
+    duration: "25s"
+    topics: ["trafikklys", "lys-farger"]
+  - sequence: 3
+    title: "Hvem bestemmer i trafikken?"
+    duration: "40s"
+    topics: ["prioritet", "politi-over-skilt"]
+engagement_metrics:
+  target_completion_rate: 85
+  target_time_minutes: 30
+  difficulty_rating: "Middels"
+content_structure:
+  word_count_content: 1024
+  word_count_summary: 264
+  sections: 6
+  subsections: 7

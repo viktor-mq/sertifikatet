@@ -18,30 +18,30 @@ class LearningService:
             # Return mock data for now to get the system working
             modules_data = [
                 {
-                    'path': {
-                        'id': 1,
-                        'name': 'Grunnleggende Trafikklære',
-                        'description': 'Lær grunnleggende trafikkskilt og regler',
-                        'estimated_hours': 3,
-                        'difficulty_level': 1,
-                        'is_recommended': True
-                    },
+                    'id': 1,
+                    'title': 'Grunnleggende Trafikklære',
+                    'description': 'Lær grunnleggende trafikkskilt og regler',
+                    'estimated_hours': 3,
+                    'difficulty_level': 1,
+                    'is_recommended': True,
+                    'completion_percentage': 0,
+                    'progress': 0,
+                    'status': 'not_started',
                     'total_items': 5,
-                    'is_enrolled': False,
-                    'progress': 0
+                    'is_enrolled': False
                 },
                 {
-                    'path': {
-                        'id': 2,
-                        'name': 'Skilt og Oppmerking',
-                        'description': 'Gjenkjenn og forstå trafikkskilt',
-                        'estimated_hours': 2,
-                        'difficulty_level': 2,
-                        'is_recommended': False
-                    },
+                    'id': 2,
+                    'title': 'Skilt og Oppmerking',
+                    'description': 'Gjenkjenn og forstå trafikkskilt',
+                    'estimated_hours': 2,
+                    'difficulty_level': 2,
+                    'is_recommended': False,
+                    'completion_percentage': 0,
+                    'progress': 0,
+                    'status': 'not_started',
                     'total_items': 3,
-                    'is_enrolled': False,
-                    'progress': 0
+                    'is_enrolled': False
                 }
             ]
             
@@ -84,22 +84,34 @@ class LearningService:
             if module_id == 1:
                 return {
                     'id': 1,
+                    'module_number': 1,
                     'title': 'Grunnleggende Trafikklære',
                     'description': 'Lær grunnleggende trafikkskilt og regler',
                     'estimated_hours': 3,
                     'completion_percentage': 0,
                     'status': 'not_started',
-                    'time_spent': 0
+                    'time_spent': 0,
+                    'learning_objectives': [
+                        'Forstå grunnleggende trafikkregler',
+                        'Mestre vikepliktregler',
+                        'Gjenkjenne politisignaler'
+                    ]
                 }
             elif module_id == 2:
                 return {
                     'id': 2,
+                    'module_number': 2,
                     'title': 'Skilt og Oppmerking',
                     'description': 'Gjenkjenn og forstå trafikkskilt',
                     'estimated_hours': 2,
                     'completion_percentage': 0,
                     'status': 'not_started',
-                    'time_spent': 0
+                    'time_spent': 0,
+                    'learning_objectives': [
+                        'Gjenkjenne fareskilt',
+                        'Forstå forbudsskilt',
+                        'Lese vegoppmerking'
+                    ]
                 }
             else:
                 return None
@@ -130,10 +142,46 @@ class LearningService:
                         'submodule_number': 1.2,
                         'title': 'Vikeplikt',
                         'description': 'Forstå vikeplikt i ulike trafikksituasjoner',
-                        'estimated_minutes': 20,
+                        'estimated_minutes': 35,
                         'difficulty_level': 2,
                         'completion_percentage': 65,
                         'status': 'in_progress',
+                        'has_video_shorts': True,
+                        'shorts_count': 2,
+                        'has_quiz': True
+                    },
+                    {
+                        'submodule_number': 1.3,
+                        'title': 'Politi og trafikklys',
+                        'description': 'Signaler fra politi og trafikklys',
+                        'estimated_minutes': 20,
+                        'difficulty_level': 1,
+                        'completion_percentage': 0,
+                        'status': 'not_started',
+                        'has_video_shorts': True,
+                        'shorts_count': 2,
+                        'has_quiz': True
+                    },
+                    {
+                        'submodule_number': 1.4,
+                        'title': 'Plassering og feltskifte',
+                        'description': 'Riktig plassering på veien og feltskifte',
+                        'estimated_minutes': 30,
+                        'difficulty_level': 2,
+                        'completion_percentage': 0,
+                        'status': 'not_started',
+                        'has_video_shorts': True,
+                        'shorts_count': 3,
+                        'has_quiz': True
+                    },
+                    {
+                        'submodule_number': 1.5,
+                        'title': 'Rundkjøring',
+                        'description': 'Navigering gjennom rundkjøringer',
+                        'estimated_minutes': 25,
+                        'difficulty_level': 2,
+                        'completion_percentage': 0,
+                        'status': 'not_started',
                         'has_video_shorts': True,
                         'shorts_count': 2,
                         'has_quiz': True
@@ -277,8 +325,49 @@ class LearningService:
     # Add missing methods that are called by routes
     @staticmethod
     def get_submodule_details(submodule_id, user):
-        """Get submodule details - simplified for now"""
-        return None
+        """Get submodule details with content from ContentManager"""
+        try:
+            from app.learning.content_manager import ContentManager
+            
+            # Get content from files
+            content_data = ContentManager.get_submodule_content(submodule_id)
+            
+            if not content_data:
+                return None
+            
+            # Build submodule details
+            submodule_details = {
+                'submodule_number': submodule_id,
+                'title': content_data.get('metadata', {}).get('title', f'Modul {submodule_id}'),
+                'description': content_data.get('metadata', {}).get('description', ''),
+                'estimated_minutes': content_data.get('metadata', {}).get('estimated_minutes', 30),
+                'difficulty_level': content_data.get('metadata', {}).get('difficulty_level', 1),
+                'has_video_shorts': content_data.get('shorts_available', False),
+                'shorts_count': content_data.get('shorts_count', 0),
+                'has_quiz': content_data.get('metadata', {}).get('has_quiz', True),
+                'content_available': {
+                    'detailed': 'detailed' in content_data,
+                    'kort': 'kort' in content_data
+                },
+                'learning_objectives': content_data.get('metadata', {}).get('learning_objectives', []),
+                'tags': content_data.get('metadata', {}).get('tags', []),
+                'progress': {
+                    'status': 'not_started',  # TODO: Get from database
+                    'completion_percentage': 0,
+                    'time_spent': 0
+                },
+                'module': {
+                    'id': int(submodule_id),
+                    'title': f'Modul {int(submodule_id)}',
+                    'number': int(submodule_id)
+                }
+            }
+            
+            return submodule_details
+            
+        except Exception as e:
+            logger.error(f"Error getting submodule details for {submodule_id}: {str(e)}")
+            return None
     
     @staticmethod
     def start_submodule_content(user, submodule_id):

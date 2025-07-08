@@ -1,0 +1,65 @@
+submodule_id: 1.2
+title: "Vikeplikt og vikepliktregler"
+module_id: 1
+content_version: "1.0"
+last_updated: "2025-01-08"
+ai_generated: false
+difficulty_level: 2
+estimated_minutes: 35
+tags:
+  - "vikeplikt"
+  - "forkjørsrett"
+  - "høyre-før-venstre"
+  - "vikepliktskilt"
+  - "stoppskilt"
+  - "rundkjøring"
+  - "fotgjengere"
+  - "svingning"
+learning_objectives:
+  - "Forstå grunnprinsippet for vikeplikt"
+  - "Kjenne ulike vikepliktskilt og deres betydning"
+  - "Mestre vikeplikt i kryss og rundkjøringer"
+  - "Vite spesielle regler for fotgjengere og utrykningskjøretøy"
+prerequisites: ["1.1"]
+linked_questions:
+  - "Vikeplikt i kryss"
+  - "Høyre før venstre regel"
+  - "Vikepliktskilt og stoppskilt"
+  - "Fotgjengere på gangfelt"
+  - "Rundkjøringskjøring"
+quiz_topics:
+  - "Høyre før venstre prinsipp"
+  - "Vikepliktskilt gjenkjennelse"
+  - "Spesielle vikepliktssituasjoner"
+  - "Kollektivtrafikk og utrykningskjøretøy"
+  - "Svingning og vikeplikt"
+video_shorts_planned:
+  - sequence: 1
+    title: "Hva er vikeplikt?"
+    duration: "25s"
+    topics: ["grunnprinsipp", "hvem-viker"]
+  - sequence: 2  
+    title: "Høyre før venstre"
+    duration: "30s"
+    topics: ["likeverdige-kryss", "forkjørsrett"]
+  - sequence: 3
+    title: "Vikepliktskilt"
+    duration: "40s"
+    topics: ["trekant", "stoppskilt", "hovedvei"]
+  - sequence: 4
+    title: "Fotgjengere og gangfelt"
+    duration: "25s"
+    topics: ["gangfelt", "forkjørsrett-fotgjengere"]
+  - sequence: 5
+    title: "Rundkjøringskjøring"
+    duration: "35s"
+    topics: ["rundkjøring", "inn-og-ut"]
+engagement_metrics:
+  target_completion_rate: 80
+  target_time_minutes: 35
+  difficulty_rating: "Middels"
+content_structure:
+  word_count_content: 1456
+  word_count_summary: 245
+  sections: 10
+  subsections: 18

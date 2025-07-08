@@ -1,0 +1,55 @@
+submodule_id: 1.5
+title: "Kjøring i rundkjøring"
+module_id: 1
+content_version: "1.0"
+last_updated: "2025-07-08"
+ai_generated: true
+difficulty_level: 2
+estimated_minutes: 35
+tags:
+  - "rundkjøring"
+  - "plassering"
+  - "vikeplikt"
+  - "blinklys"
+  - "trafikksikkerhet"
+learning_objectives:
+  - "Forstå regler og prinsipper for kjøring i rundkjøring"
+  - "Mestre riktig plassering og feltvalg før og i rundkjøring"
+  - "Bruke blinklys korrekt ved inn- og utkjøring"
+  - "Vis hensyn til myke trafikanter og følg vikeplikt"
+prerequisites: ["1.4"]
+linked_questions:
+  - "Når har du vikeplikt i rundkjøring?"
+  - "Hvordan skal blinklys brukes i rundkjøring?"
+  - "Hva er riktig plassering før og i rundkjøring?"
+quiz_topics:
+  - "Plassering før og i rundkjøring"
+  - "Bruk av blinklys"
+  - "Vikeplikt for rundkjøringstrafikk"
+  - "Hensyn til fotgjengere og syklister"
+video_shorts_planned:
+  - sequence: 1
+    title: "Slik plasserer du deg riktig før rundkjøring"
+    duration: "30s"
+    topics: ["plassering", "feltvalg"]
+  - sequence: 2
+    title: "Vikeplikt – hvem skal vente i rundkjøringen?"
+    duration: "25s"
+    topics: ["vikeplikt", "trafikkflyt"]
+  - sequence: 3
+    title: "Blinklys i rundkjøring – gjør det riktig!"
+    duration: "20s"
+    topics: ["blinklys", "tegn"]
+  - sequence: 4
+    title: "Myke trafikanter ved rundkjøring"
+    duration: "25s"
+    topics: ["fotgjenger", "syklist", "sikkerhet"]
+engagement_metrics:
+  target_completion_rate: 85
+  target_time_minutes: 35
+  difficulty_rating: "Middels"
+content_structure:
+  word_count_content: 1165
+  word_count_summary: 243
+  sections: 7
+  subsections: 11

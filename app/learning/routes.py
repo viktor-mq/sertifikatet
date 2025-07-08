@@ -68,21 +68,21 @@ def module_overview(module_id):
 @learning_bp.route('/module/<float:submodule_id>')
 @login_required
 def submodule_content(submodule_id):
-    """Submodule content page - shows detailed theory content"""
+    """Submodule content page - shows detailed theory content with toggle"""
     try:
-        # Get submodule details
+        # Get submodule details with content
         submodule_data = LearningService.get_submodule_details(submodule_id, current_user)
         
         if not submodule_data:
             flash('Undermodulen ble ikke funnet', 'error')
             return redirect(url_for('learning.dashboard'))
         
-        # Load content from files (if available)
+        # Load content from files
         content_data = ContentManager.get_submodule_content(submodule_id)
         if not content_data:
             content_data = {
-                'content': {'html_content': '<p>Innhold kommer snart...</p>'},
-                'summary': {'html_content': '<p>Sammendrag kommer snart...</p>'},
+                'detailed': {'html_content': '<p>Detaljert innhold kommer snart...</p>'},
+                'kort': {'html_content': '<p>Kort sammendrag kommer snart...</p>'},
                 'shorts_available': False,
                 'shorts_count': 0
             }
@@ -361,11 +361,21 @@ def theory_submodule_content(submodule_id):
     """Theory submodule content page - shows content and summary"""
     try:
         # Get submodule details with content
-        submodule_data = LearningService.get_submodule_content(submodule_id, current_user)
+        submodule_data = LearningService.get_submodule_details(submodule_id, current_user)
         
         if not submodule_data:
             flash('Delmodulen ble ikke funnet', 'error')
             return redirect(url_for('learning.theory_dashboard'))
+        
+        # Load content from files
+        content_data = ContentManager.get_submodule_content(submodule_id)
+        if not content_data:
+            content_data = {
+                'detailed': {'html_content': '<p>Detaljert innhold kommer snart...</p>'},
+                'kort': {'html_content': '<p>Kort sammendrag kommer snart...</p>'},
+                'shorts_available': False,
+                'shorts_count': 0
+            }
         
         # Track that user accessed this content
         LearningService.track_content_access(
@@ -375,7 +385,8 @@ def theory_submodule_content(submodule_id):
         )
         
         return render_template('learning/submodule_content.html',
-                             submodule=submodule_data)
+                             submodule=submodule_data,
+                             content=content_data)
     except Exception as e:
         logger.error(f"Error loading theory submodule {submodule_id}: {str(e)}")
         flash('Det oppstod en feil ved lasting av innholdet', 'error')

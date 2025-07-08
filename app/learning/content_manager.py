@@ -12,19 +12,19 @@ logger = logging.getLogger(__name__)
 class ContentManager:
     """Manages file-based learning content (markdown files, YAML configs)"""
     
-    BASE_CONTENT_DIR = "content"
-    MODULES_DIR = "modules"
+    BASE_CONTENT_DIR = "learning"
+    MODULES_DIR = ""
     TEMPLATES_DIR = "templates"
     
     @classmethod
     def load_module_config(cls, module_id: int) -> Optional[Dict]:
         """Load module configuration from YAML file"""
         try:
-            # Find module directory by ID
-            modules_path = Path(cls.BASE_CONTENT_DIR) / cls.MODULES_DIR
+            # Find module directory by ID using your naming convention
+            modules_path = Path(cls.BASE_CONTENT_DIR)
             
             for module_dir in modules_path.iterdir():
-                if module_dir.is_dir() and module_dir.name.startswith(f"{module_id}-"):
+                if module_dir.is_dir() and module_dir.name.startswith(f"{module_id}."):
                     config_file = module_dir / "module.yaml"
                     
                     if config_file.exists():
@@ -39,7 +39,7 @@ class ContentManager:
     
     @classmethod
     def get_submodule_content(cls, submodule_id: float) -> Optional[Dict]:
-        """Get all content for a submodule (content.md, summary.md, metadata.yaml)"""
+        """Get all content for a submodule (long.md, short.md, metadata.yaml)"""
         try:
             # Parse submodule_id to get module and submodule numbers
             module_id = int(submodule_id)
@@ -53,15 +53,27 @@ class ContentManager:
             
             content_data = {}
             
-            # Load content.md
-            content_file = submodule_path / "content.md"
-            if content_file.exists():
-                content_data['content'] = cls._load_markdown_file(content_file)
+            # Load long.md (detailed content)
+            long_file = submodule_path / "long.md"
+            content_file = submodule_path / "content.md"  # Fallback to old naming
             
-            # Load summary.md
-            summary_file = submodule_path / "summary.md"
-            if summary_file.exists():
-                content_data['summary'] = cls._load_markdown_file(summary_file)
+            if long_file.exists():
+                content_data['detailed'] = cls._load_markdown_file(long_file)
+                content_data['content'] = content_data['detailed']  # Backward compatibility
+            elif content_file.exists():
+                content_data['detailed'] = cls._load_markdown_file(content_file)
+                content_data['content'] = content_data['detailed']  # Backward compatibility
+            
+            # Load short.md (summary content)
+            short_file = submodule_path / "short.md"
+            summary_file = submodule_path / "summary.md"  # Fallback to old naming
+            
+            if short_file.exists():
+                content_data['kort'] = cls._load_markdown_file(short_file)
+                content_data['summary'] = content_data['kort']  # Backward compatibility
+            elif summary_file.exists():
+                content_data['kort'] = cls._load_markdown_file(summary_file)
+                content_data['summary'] = content_data['kort']  # Backward compatibility
             
             # Load metadata.yaml
             metadata_file = submodule_path / "metadata.yaml"
@@ -69,11 +81,11 @@ class ContentManager:
                 with open(metadata_file, 'r', encoding='utf-8') as file:
                     content_data['metadata'] = yaml.safe_load(file)
             
-            # Get video shorts info
-            shorts_dir = submodule_path / "shorts"
-            if shorts_dir.exists():
-                content_data['shorts_available'] = True
-                content_data['shorts_count'] = len([f for f in shorts_dir.iterdir() if f.suffix in ['.mp4', '.webm', '.mov']])
+            # Get video shorts info (videos are directly in submodule folder)
+            if submodule_path:
+                video_files = [f for f in submodule_path.iterdir() if f.suffix.lower() in ['.mp4', '.webm', '.mov', '.avi']]
+                content_data['shorts_available'] = len(video_files) > 0
+                content_data['shorts_count'] = len(video_files)
             else:
                 content_data['shorts_available'] = False
                 content_data['shorts_count'] = 0
@@ -85,25 +97,25 @@ class ContentManager:
     
     @classmethod
     def _find_submodule_path(cls, submodule_id: float) -> Optional[Path]:
-        """Find the filesystem path for a submodule"""
+        """Find the filesystem path for a submodule using your naming convention"""
         try:
             module_id = int(submodule_id)
-            modules_path = Path(cls.BASE_CONTENT_DIR) / cls.MODULES_DIR
+            modules_path = Path(cls.BASE_CONTENT_DIR)
             
-            # Find module directory
+            # Find module directory (e.g., "1.basic_traffic_theory")
             module_dir = None
             for dir_path in modules_path.iterdir():
-                if dir_path.is_dir() and dir_path.name.startswith(f"{module_id}-"):
+                if dir_path.is_dir() and dir_path.name.startswith(f"{module_id}."):
                     module_dir = dir_path
                     break
             
             if not module_dir:
                 return None
             
-            # Find submodule directory
+            # Find submodule directory (e.g., "1.2_right_of_way_rules")
             submodule_str = f"{submodule_id:.1f}"
             for subdir in module_dir.iterdir():
-                if subdir.is_dir() and subdir.name.startswith(f"{submodule_str}-"):
+                if subdir.is_dir() and subdir.name.startswith(f"{submodule_str}_"):
                     return subdir
             
             return None

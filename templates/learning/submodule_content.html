@@ -2,6 +2,10 @@
 
 {% block title %}{{ submodule.title }} - Teoristudie - Sertifikatet{% endblock %}
 
+{% block extra_css %}
+<link rel="stylesheet" href="{{ url_for('static', filename='css/learning-content.css') }}">
+{% endblock %}
+
 {% block content %}
 <div class="min-h-screen bg-gradient-to-br from-purple-900 via-blue-900 to-indigo-900">
     <div class="container mx-auto px-4 py-8">
@@ -69,61 +73,104 @@
             </div>
         </div>
 
-        <!-- Content Tabs -->
+        <!-- Content Control Bar -->
         <div class="mb-8">
-            <div class="border-b border-blue-700">
-                <nav class="-mb-px flex space-x-8">
-                    <button id="content-tab" class="tab-btn active py-2 px-1 border-b-2 border-blue-400 text-blue-400 font-medium text-sm" onclick="showTab('content')">
-                        <i class="fas fa-book mr-1"></i>Innhold
-                    </button>
-                    <button id="summary-tab" class="tab-btn py-2 px-1 border-b-2 border-transparent text-blue-200 hover:text-blue-400 hover:border-blue-300 font-medium text-sm" onclick="showTab('summary')">
-                        <i class="fas fa-list mr-1"></i>Sammendrag
-                    </button>
-                </nav>
+            <div class="bg-white/10 backdrop-blur-lg rounded-xl p-4 border border-white/20">
+                <div class="flex items-center justify-between">
+                    <!-- Content Type Toggle -->
+                    <div class="flex items-center space-x-4">
+                        <span class="text-blue-200 text-sm font-medium">Innholdstype:</span>
+                        <div class="flex items-center space-x-3">
+                            <label class="flex items-center cursor-pointer">
+                                <input type="radio" name="content-type" value="kort" class="sr-only" onchange="toggleContent('kort')">
+                                <div class="content-toggle kort-toggle flex items-center px-4 py-2 rounded-lg border border-blue-400 bg-blue-600/50 text-white transition-all duration-300">
+                                    <i class="fas fa-bolt mr-2"></i>
+                                    <span class="font-medium">Kort</span>
+                                    <span class="ml-2 text-xs opacity-75">5 min</span>
+                                </div>
+                            </label>
+                            
+                            <label class="flex items-center cursor-pointer">
+                                <input type="radio" name="content-type" value="detailed" class="sr-only" checked onchange="toggleContent('detailed')">
+                                <div class="content-toggle detailed-toggle flex items-center px-4 py-2 rounded-lg border border-purple-400 bg-purple-600/50 text-white transition-all duration-300">
+                                    <i class="fas fa-book-open mr-2"></i>
+                                    <span class="font-medium">Detaljert</span>
+                                    <span class="ml-2 text-xs opacity-75">{{ submodule.estimated_minutes or 25 }} min</span>
+                                </div>
+                            </label>
+                        </div>
+                    </div>
+                    
+                    <!-- Content Actions -->
+                    <div class="flex items-center space-x-3">
+                        <button onclick="adjustFontSize(-1)" class="p-2 text-blue-200 hover:text-white transition-colors" title="Mindre tekst">
+                            <i class="fas fa-minus"></i>
+                        </button>
+                        <button onclick="adjustFontSize(1)" class="p-2 text-blue-200 hover:text-white transition-colors" title="Større tekst">
+                            <i class="fas fa-plus"></i>
+                        </button>
+                        <button onclick="toggleDarkMode()" class="p-2 text-blue-200 hover:text-white transition-colors" title="Mørk/lys modus">
+                            <i class="fas fa-adjust"></i>
+                        </button>
+                    </div>
+                </div>
             </div>
         </div>
 
-        <!-- Content Tab -->
-        <div id="content-panel" class="tab-panel">
-            <div class="bg-white/10 backdrop-blur-lg rounded-xl p-8 border border-white/20">
-                {% if content and content.html_content %}
-                <div class="prose prose-invert max-w-none text-blue-50">
-                    {{ content.html_content | safe }}
-                </div>
-                {% else %}
-                <div class="text-center py-12">
+        <!-- Content Display -->
+        <div id="content-container">
+            <!-- Kort (Short) Content -->
+            <div id="kort-panel" class="content-panel hidden">
+                <div class="bg-white/10 backdrop-blur-lg rounded-xl p-6 md:p-8 border border-white/20">
+                    {% if content and content.kort and content.kort.html_content %}
                     <div class="mb-4">
-                        <i class="fas fa-file-alt fa-3x text-blue-300"></i>
+                        <div class="bg-blue-500/20 border border-blue-500/30 rounded-lg p-4">
+                            <h3 class="text-lg font-bold text-blue-100 mb-2">
+                                <i class="fas fa-bolt mr-2"></i>Kort sammendrag
+                            </h3>
+                            <p class="text-blue-200 text-sm">Raskt gjennomgang av de viktigste punktene. Perfect for repetisjon!</p>
+                        </div>
                     </div>
-                    <h3 class="text-xl font-bold text-white mb-2">Innhold ikke tilgjengelig</h3>
-                    <p class="text-blue-200">Innholdet for dette emnet er under utvikling.</p>
+                    <div class="prose prose-invert max-w-none text-blue-50 content-text" id="kort-content">
+                        {{ content.kort.html_content | safe }}
+                    </div>
+                    {% else %}
+                    <div class="text-center py-12">
+                        <div class="mb-4">
+                            <i class="fas fa-bolt fa-3x text-blue-300"></i>
+                        </div>
+                        <h3 class="text-xl font-bold text-white mb-2">Kort innhold ikke tilgjengelig</h3>
+                        <p class="text-blue-200">Det korte sammendraget for dette emnet er under utvikling.</p>
+                    </div>
+                    {% endif %}
                 </div>
-                {% endif %}
             </div>
-        </div>
 
-        <!-- Summary Tab -->
-        <div id="summary-panel" class="tab-panel hidden">
-            <div class="bg-white/10 backdrop-blur-lg rounded-xl p-8 border border-white/20">
-                {% if summary and summary.html_content %}
-                <div class="prose prose-invert max-w-none text-blue-50">
-                    <div class="bg-yellow-500/20 border border-yellow-500/30 rounded-lg p-4 mb-6">
-                        <h3 class="text-lg font-bold text-yellow-100 mb-2">
-                            <i class="fas fa-lightbulb mr-2"></i>Kort sammendrag
-                        </h3>
-                        <p class="text-yellow-200 text-sm">Dette er en rask oppsummering av de viktigste punktene.</p>
-                    </div>
-                    {{ summary.html_content | safe }}
-                </div>
-                {% else %}
-                <div class="text-center py-12">
+            <!-- Detaljert (Detailed) Content -->
+            <div id="detailed-panel" class="content-panel">
+                <div class="bg-white/10 backdrop-blur-lg rounded-xl p-6 md:p-8 border border-white/20">
+                    {% if content and content.detailed and content.detailed.html_content %}
                     <div class="mb-4">
-                        <i class="fas fa-list fa-3x text-blue-300"></i>
+                        <div class="bg-purple-500/20 border border-purple-500/30 rounded-lg p-4">
+                            <h3 class="text-lg font-bold text-purple-100 mb-2">
+                                <i class="fas fa-book-open mr-2"></i>Detaljert innhold
+                            </h3>
+                            <p class="text-purple-200 text-sm">Grundig gjennomgang med eksempler, forklaringer og praktiske tips.</p>
+                        </div>
                     </div>
-                    <h3 class="text-xl font-bold text-white mb-2">Sammendrag ikke tilgjengelig</h3>
-                    <p class="text-blue-200">Sammendrag for dette emnet er under utvikling.</p>
+                    <div class="prose prose-invert max-w-none text-blue-50 content-text" id="detailed-content">
+                        {{ content.detailed.html_content | safe }}
+                    </div>
+                    {% else %}
+                    <div class="text-center py-12">
+                        <div class="mb-4">
+                            <i class="fas fa-book-open fa-3x text-blue-300"></i>
+                        </div>
+                        <h3 class="text-xl font-bold text-white mb-2">Detaljert innhold ikke tilgjengelig</h3>
+                        <p class="text-blue-200">Det detaljerte innholdet for dette emnet er under utvikling.</p>
+                    </div>
+                    {% endif %}
                 </div>
-                {% endif %}
             </div>
         </div>
 
@@ -154,34 +201,130 @@
 </div>
 
 <script>
-// Tab functionality
-function showTab(tabName) {
-    // Hide all panels
-    document.querySelectorAll('.tab-panel').forEach(panel => {
+// Content type toggle functionality
+function toggleContent(contentType) {
+    // Hide all content panels
+    document.querySelectorAll('.content-panel').forEach(panel => {
         panel.classList.add('hidden');
     });
     
-    // Remove active class from all tabs
-    document.querySelectorAll('.tab-btn').forEach(btn => {
-        btn.classList.remove('active', 'border-blue-400', 'text-blue-400');
-        btn.classList.add('border-transparent', 'text-blue-200');
+    // Reset all toggle buttons
+    document.querySelectorAll('.content-toggle').forEach(toggle => {
+        toggle.classList.remove('bg-blue-600', 'bg-purple-600', 'border-blue-400', 'border-purple-400');
+        toggle.classList.add('bg-white/10', 'border-white/30', 'text-blue-200');
     });
     
-    // Show selected panel
-    document.getElementById(tabName + '-panel').classList.remove('hidden');
+    // Show selected content panel
+    document.getElementById(contentType + '-panel').classList.remove('hidden');
     
-    // Activate selected tab
-    const activeTab = document.getElementById(tabName + '-tab');
-    activeTab.classList.add('active', 'border-blue-400', 'text-blue-400');
-    activeTab.classList.remove('border-transparent', 'text-blue-200');
+    // Activate selected toggle
+    if (contentType === 'kort') {
+        document.querySelector('.kort-toggle').classList.remove('bg-white/10', 'border-white/30', 'text-blue-200');
+        document.querySelector('.kort-toggle').classList.add('bg-blue-600', 'border-blue-400', 'text-white');
+    } else {
+        document.querySelector('.detailed-toggle').classList.remove('bg-white/10', 'border-white/30', 'text-blue-200');
+        document.querySelector('.detailed-toggle').classList.add('bg-purple-600', 'border-purple-400', 'text-white');
+    }
+    
+    // Track content type selection
+    if (window.gtag) {
+        gtag('event', 'content_type_toggle', {
+            'event_category': 'learning',
+            'event_label': contentType,
+            'value': 1
+        });
+    }
+    
+    // Save preference
+    localStorage.setItem('preferred_content_type', contentType);
 }
+
+// Font size adjustment
+let currentFontSize = 1;
+function adjustFontSize(delta) {
+    currentFontSize += delta * 0.1;
+    currentFontSize = Math.max(0.8, Math.min(1.4, currentFontSize)); // Clamp between 0.8 and 1.4
+    
+    document.querySelectorAll('.content-text').forEach(element => {
+        element.style.fontSize = currentFontSize + 'rem';
+    });
+    
+    localStorage.setItem('content_font_size', currentFontSize);
+}
+
+// Dark mode toggle (for content area)
+function toggleDarkMode() {
+    const contentContainer = document.getElementById('content-container');
+    contentContainer.classList.toggle('dark-mode');
+    
+    const isDark = contentContainer.classList.contains('dark-mode');
+    localStorage.setItem('content_dark_mode', isDark);
+}
+
+// Initialize preferences on page load
+document.addEventListener('DOMContentLoaded', function() {
+    // Restore content type preference
+    const preferredType = localStorage.getItem('preferred_content_type') || 'detailed';
+    document.querySelector(`input[value="${preferredType}"]`).checked = true;
+    toggleContent(preferredType);
+    
+    // Restore font size
+    const savedFontSize = localStorage.getItem('content_font_size');
+    if (savedFontSize) {
+        currentFontSize = parseFloat(savedFontSize);
+        adjustFontSize(0); // Apply saved size
+    }
+    
+    // Restore dark mode
+    const isDarkMode = localStorage.getItem('content_dark_mode') === 'true';
+    if (isDarkMode) {
+        toggleDarkMode();
+    }
+});
 
 // Mark as complete functionality
 function markAsComplete() {
-    if (confirm('Marker dette emnet som fullført?')) {
-        // TODO: Implement AJAX call to mark as complete
-        alert('Emnet er markert som fullført!');
-        // You would typically reload the page or update the UI here
+    const currentContentType = document.querySelector('input[name="content-type"]:checked').value;
+    
+    const confirmMessage = currentContentType === 'kort' 
+        ? 'Marker dette emnet som fullført? (Du har lest den korte versjonen)' 
+        : 'Marker dette emnet som fullført? (Du har lest den detaljerte versjonen)';
+    
+    if (confirm(confirmMessage)) {
+        // Send completion data to server
+        fetch('{{ url_for("learning.api_complete_content") }}', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRFToken': '{{ csrf_token() }}'
+            },
+            body: JSON.stringify({
+                content_type: 'submodule',
+                content_id: {{ submodule.submodule_number }},
+                completion_data: {
+                    content_type_read: currentContentType,
+                    font_size: currentFontSize,
+                    time_spent: Math.floor((Date.now() - startTime) / 1000 / 60)
+                }
+            })
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                alert('Emnet er markert som fullført!');
+                // Update UI to show completion
+                const button = document.querySelector('[onclick="markAsComplete()"]');
+                button.innerHTML = '<i class="fas fa-check mr-2"></i>Fullført';
+                button.classList.remove('from-green-600', 'to-blue-600');
+                button.classList.add('from-green-700', 'to-green-700');
+            } else {
+                alert('Kunne ikke markere som fullført: ' + data.error);
+            }
+        })
+        .catch(error => {
+            console.error('Error:', error);
+            alert('Det oppstod en feil ved markering som fullført.');
+        });
     }
 }
 
