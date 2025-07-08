@@ -109,10 +109,65 @@ class LearningService:
     
     @staticmethod
     def get_submodules_progress(module_id, user):
-        """Get all submodules for a module with user progress - simplified for now"""
+        """Get all submodules for a module with user progress"""
         try:
-            # For now, return empty list - this would be populated with actual submodules
-            return []
+            # Return mock submodule data for testing
+            if module_id == 1:  # Grunnleggende Trafikklære
+                return [
+                    {
+                        'submodule_number': 1.1,
+                        'title': 'Trafikkregler',
+                        'description': 'Grunnleggende trafikkregler og forskrifter',
+                        'estimated_minutes': 25,
+                        'difficulty_level': 1,
+                        'completion_percentage': 100,
+                        'status': 'completed',
+                        'has_video_shorts': True,
+                        'shorts_count': 3,
+                        'has_quiz': True
+                    },
+                    {
+                        'submodule_number': 1.2,
+                        'title': 'Vikeplikt',
+                        'description': 'Forstå vikeplikt i ulike trafikksituasjoner',
+                        'estimated_minutes': 20,
+                        'difficulty_level': 2,
+                        'completion_percentage': 65,
+                        'status': 'in_progress',
+                        'has_video_shorts': True,
+                        'shorts_count': 2,
+                        'has_quiz': True
+                    }
+                ]
+            elif module_id == 2:  # Skilt og Oppmerking
+                return [
+                    {
+                        'submodule_number': 2.1,
+                        'title': 'Trafikkskilt',
+                        'description': 'Gjenkjenn og forstå alle typer trafikkskilt',
+                        'estimated_minutes': 30,
+                        'difficulty_level': 2,
+                        'completion_percentage': 0,
+                        'status': 'not_started',
+                        'has_video_shorts': True,
+                        'shorts_count': 4,
+                        'has_quiz': True
+                    },
+                    {
+                        'submodule_number': 2.2,
+                        'title': 'Veioppmerking',
+                        'description': 'Betydningen av ulike veioppmarkinger',
+                        'estimated_minutes': 15,
+                        'difficulty_level': 1,
+                        'completion_percentage': 0,
+                        'status': 'not_started',
+                        'has_video_shorts': True,
+                        'shorts_count': 2,
+                        'has_quiz': False
+                    }
+                ]
+            else:
+                return []
         except Exception as e:
             logger.error(f"Error getting submodules progress for module {module_id}: {str(e)}")
             return []
@@ -129,10 +184,83 @@ class LearningService:
     
     @staticmethod
     def get_submodule_shorts(submodule_id, user):
-        """Get video shorts for a submodule with user progress - simplified for now"""
+        """Get video shorts for a submodule with user progress"""
         try:
-            # For now, return None - this would load actual shorts
-            return None
+            # Return mock video data for testing the TikTok-style player
+            mock_shorts = [
+                {
+                    'id': 1,
+                    'title': 'Trafikkregler Grunnleggende',
+                    'description': 'Lær de viktigste trafikkreglene på 45 sekunder',
+                    'file_path': 'https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/BigBuckBunny.mp4',  # Test video
+                    'duration_seconds': 45,
+                    'thumbnail_path': '/static/images/thumbnails/traffic-1.jpg',
+                    'view_count': 234,
+                    'like_count': 18,
+                    'sequence_order': 1,
+                    'difficulty_level': 1,
+                    'topic_tags': ['trafikkregler', 'grunnleggende']
+                },
+                {
+                    'id': 2,
+                    'title': 'Vikeplikt Enkelt Forklart',
+                    'description': 'Forstå vikeplikt med praktiske eksempler',
+                    'file_path': 'https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/ElephantsDream.mp4',  # Test video
+                    'duration_seconds': 38,
+                    'thumbnail_path': '/static/images/thumbnails/traffic-2.jpg',
+                    'view_count': 187,
+                    'like_count': 23,
+                    'sequence_order': 2,
+                    'difficulty_level': 2,
+                    'topic_tags': ['vikeplikt', 'praksis']
+                },
+                {
+                    'id': 3,
+                    'title': 'Rundkjøring Tips',
+                    'description': 'Mestre rundkjøring med disse tipsene',
+                    'file_path': 'https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/ForBiggerBlazes.mp4',  # Test video
+                    'duration_seconds': 52,
+                    'thumbnail_path': '/static/images/thumbnails/traffic-3.jpg',
+                    'view_count': 156,
+                    'like_count': 31,
+                    'sequence_order': 3,
+                    'difficulty_level': 2,
+                    'topic_tags': ['rundkjøring', 'avansert']
+                }
+            ]
+            
+            # Add mock progress data for each video
+            shorts_with_progress = []
+            for short in mock_shorts:
+                # Simulate some user progress
+                progress = {
+                    'watch_status': 'not_watched',
+                    'watch_percentage': 0,
+                    'liked': False,
+                    'watch_time_seconds': 0
+                }
+                
+                # Simulate that user has watched first video
+                if short['id'] == 1:
+                    progress.update({
+                        'watch_status': 'completed',
+                        'watch_percentage': 100,
+                        'watch_time_seconds': short['duration_seconds']
+                    })
+                elif short['id'] == 2:
+                    progress.update({
+                        'watch_status': 'started',
+                        'watch_percentage': 65,
+                        'watch_time_seconds': 25
+                    })
+                
+                shorts_with_progress.append({
+                    'short': short,
+                    'progress': progress
+                })
+            
+            return shorts_with_progress
+            
         except Exception as e:
             logger.error(f"Error getting submodule shorts for {submodule_id}: {str(e)}")
             return None
