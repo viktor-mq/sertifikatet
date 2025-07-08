@@ -40,6 +40,97 @@ Sertifikatet is an all-in-one driving theory platform that helps users pass thei
 
 The entire stack auto-starts and auto-deploys for seamless development! 🚀
 
+### Service Runners & System Services
+
+The platform runs on Windows with the following critical services that auto-start on system boot:
+
+#### Core Infrastructure Services
+
+**MySQL80**
+- Service Name: `MySQL80`
+- Description: MySQL database server
+- Status Check: `sc query "MySQL80"`
+- Port: 3306
+- Critical: Database backend for all application data
+
+**Cloudflared**
+- Service Name: `Cloudflared`
+- Description: Cloudflare tunnel service for sertifikatet.no
+- Status Check: `sc query "Cloudflared"`
+- Function: Secure tunnel with automatic SSL and DDoS protection
+- Critical: Required for public website access
+
+**SertifikatetFlask**
+- Service Name: `SertifikatetFlask`
+- Description: Flask application server (managed by NVVM)
+- Status Check: `sc query "SertifikatetFlask"`
+- Port: 8000 (local)
+- Function: Main web application server with auto-restart capabilities
+
+**GitHub Actions Runner**
+- Service Name: `actions.runner.viktor-mq-sertifikatet.VIKTORIOUS-DESK`
+- Description: Self-hosted CI/CD runner for automatic deployments
+- Status Check: `sc query "actions.runner.viktor-mq-sertifikatet.VIKTORIOUS-DESK"`
+- Function: Handles automatic deployment from GitHub to production
+- GitHub Status: Should show "Idle" (green) when ready
+
+#### Service Management Commands
+
+**Check All Services Status:**
+```cmd
+sc query "MySQL80"
+sc query "Cloudflared"
+sc query "SertifikatetFlask"
+sc query "actions.runner.viktor-mq-sertifikatet.VIKTORIOUS-DESK"
+```
+
+**Start Services Manually (if needed):**
+```cmd
+net start MySQL80
+net start Cloudflared
+net start SertifikatetFlask
+net start "actions.runner.viktor-mq-sertifikatet.VIKTORIOUS-DESK"
+```
+
+**Stop Services:**
+```cmd
+net stop MySQL80
+net stop Cloudflared
+net stop SertifikatetFlask
+net stop "actions.runner.viktor-mq-sertifikatet.VIKTORIOUS-DESK"
+```
+
+#### Service Dependencies
+
+1. **MySQL80** - Must start first (database dependency)
+2. **SertifikatetFlask** - Depends on MySQL80
+3. **Cloudflared** - Routes traffic to Flask app
+4. **GitHub Runner** - Independent, handles CI/CD
+
+#### Post-Restart Verification
+
+After system restart, verify all services are operational:
+
+1. **Service Status**: Run status check commands above
+2. **Website Access**: Visit [https://sertifikatet.no](https://sertifikatet.no)
+3. **GitHub Runner**: Check GitHub → Settings → Actions → Runners (should show "Idle")
+4. **Database**: Confirm MySQL is accepting connections on port 3306
+
+#### Troubleshooting
+
+**If services fail to start:**
+- Check Windows Event Viewer for service-specific errors
+- Verify user permissions for service accounts
+- Ensure no port conflicts (3306 for MySQL, 8000 for Flask)
+- Check disk space on D: drive where application is hosted
+
+**GitHub Runner Issues:**
+- Runner should auto-reconnect after restart
+- If showing offline, restart the service
+- Check runner logs in the application directory
+
+This infrastructure setup ensures zero-manual-intervention startup and professional-grade service management! 🎯
+
 ## 🏗️ Tech Stack
 
 ### Backend
