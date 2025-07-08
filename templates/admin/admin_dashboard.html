@@ -312,9 +312,22 @@
 
         // Initialize on page load
         document.addEventListener('DOMContentLoaded', function() {
-            // Show section that is already marked as active, or default to 'questions'
-            const defaultSection = document.querySelector('.section.active')?.id?.replace('Section', '') || 'questions';
-            showSection(defaultSection);
+            // Check for URL hash to determine which section to show
+            let sectionToShow = 'questions'; // default
+            
+            if (window.location.hash) {
+                const hashSection = window.location.hash.substring(1); // remove '#'
+                // Validate that the section exists
+                const validSections = ['questions', 'database', 'reports', 'manageUsers', 'auditLog', 'mlSettings2', 'marketing'];
+                if (validSections.includes(hashSection)) {
+                    sectionToShow = hashSection;
+                }
+            } else {
+                // Show section that is already marked as active, or default to 'questions'
+                sectionToShow = document.querySelector('.section.active')?.id?.replace('Section', '') || 'questions';
+            }
+            
+            showSection(sectionToShow);
             
             // Handle external links in tabs (ML Settings, Marketing)
             document.querySelectorAll('.section-tabs a[href]:not([href="#"])').forEach(link => {

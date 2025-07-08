@@ -1851,7 +1851,7 @@ def create_marketing_email():
                 # Save as draft
                 flash('Marketing email campaign saved as draft', 'success')
             
-            return redirect(url_for('admin.marketing_emails'))
+            return redirect(url_for('admin.admin_dashboard') + '#marketing')
             
         except Exception as e:
             flash(f'Error creating campaign: {str(e)}', 'error')
