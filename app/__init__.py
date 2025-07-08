@@ -33,6 +33,10 @@ def create_app(config_class=None):
     db.init_app(app)
     migrate.init_app(app, db)
     
+    # Initialize settings service (NEW)
+    from .utils.settings_service import settings_service
+    app.settings_service = settings_service
+    
     # Set up error handling (NEW)
     from .errors import register_error_handlers
     register_error_handlers(app)
@@ -59,6 +63,9 @@ def create_app(config_class=None):
     # Register blueprints
     from .admin.routes import admin_bp
     app.register_blueprint(admin_bp, url_prefix='/admin')
+
+    from .admin.ml_api_routes import ml_api_bp
+    app.register_blueprint(ml_api_bp, url_prefix='/admin/api/ml')
     
     from .main.routes import main_bp
     app.register_blueprint(main_bp)
@@ -72,6 +79,10 @@ def create_app(config_class=None):
     from .api.routes import api_bp
     app.register_blueprint(api_bp, url_prefix='/api')
     
+    # Register analytics API blueprint
+    from .api.analytics_api import analytics_api_bp
+    app.register_blueprint(analytics_api_bp)
+    
     from .learning import learning_bp
     app.register_blueprint(learning_bp, url_prefix='/learning')
     
@@ -83,6 +94,14 @@ def create_app(config_class=None):
     app.register_blueprint(video_bp)
     app.register_blueprint(video_api_bp)
     register_filters(app)  # Register video-specific Jinja2 filters
+    
+    # Register SEO context processor
+    from .utils.seo_context import inject_seo_context
+    app.context_processor(inject_seo_context)
+    
+    # Register SEO template filters
+    from .utils.seo_analytics import register_seo_filters
+    register_seo_filters(app)
     
     # Register custom Jinja2 filters
     @app.template_filter('from_json')
@@ -109,6 +128,16 @@ def create_app(config_class=None):
     from .ml import ml_bp
     app.register_blueprint(ml_bp, url_prefix='/ml')
     
+    # Initialize ML service with settings awareness
+    from .ml.service import ml_service
+    with app.app_context():
+        try:
+            ml_service.initialize()
+            app.logger.info("ML Service initialized successfully")
+        except Exception as e:
+            app.logger.error(f"Failed to initialize ML Service: {e}")
+            # Continue without ML - graceful degradation
+    
     # Register advertising blueprint
     from .advertising import advertising
     app.register_blueprint(advertising, url_prefix='/api/advertising')
@@ -116,6 +145,15 @@ def create_app(config_class=None):
     # Register legal blueprint
     from .legal import legal_bp
     app.register_blueprint(legal_bp)
+    
+    # Register sitemap and SEO routes
+    from .utils.sitemap import sitemap_bp
+    app.register_blueprint(sitemap_bp)
+    
+    # Register SEO analysis (development only)
+    if app.config.get('DEBUG'):
+        from .utils.seo_analysis import seo_analysis_bp
+        app.register_blueprint(seo_analysis_bp)
     
     # Register health check blueprint (NEW) - temporarily commented out
     # from .utils.health_check import health_bp

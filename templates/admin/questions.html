@@ -1,7 +1,12 @@
 {# templates/admin/questions.html #}
 
+<!-- Toast Notification Container -->
+<div id="toastContainer" class="toast-container"></div>
+
 <!-- Questions Section -->
-<div id="questionsSection" class="section active" style="margin-top: 30px;" data-static-url="{{ url_for('static', filename='') }}">
+<div id="questionsSection" class="section active" style="margin-top: 30px;" 
+     data-static-url="{{ url_for('static', filename='') }}"
+     data-initial-pagination='{"page": {{ pagination.page }}, "per_page": {{ current_per_page }}, "total": {{ pagination.total }}, "pages": {{ pagination.pages }}, "has_prev": {{ "true" if pagination.has_prev else "false" }}, "has_next": {{ "true" if pagination.has_next else "false" }}}'>
   <!-- Statistics Section -->
   <div class="stats-container">
     <div class="stat-card">
@@ -36,29 +41,94 @@
 
   <!-- Action Buttons -->
   <div style="margin-bottom: 20px;">
-    <a href="#" onclick="toggleForm()" class="btn">➕ Legg til nytt spørsmål</a>
+    <button onclick="openQuestionModal()" class="btn">➕ Legg til nytt spørsmål</button>
     <button onclick="showImportExportModal()" class="btn btn-success">📂 Import/Export</button>
     <button onclick="toggleBulkMode()" class="btn btn-warning" id="bulkModeBtn">✅ Bulk-operasjoner</button>
     <button type="button" class="btn btn-secondary btn-small" onclick="showUploadModal()">📷 Administrer bilder</button>
     {% include 'admin/upload_image.html' %}
   </div>
 
-  <!-- Search and Filter -->
-  <form method="GET" action="{{ url_for('admin.admin_dashboard') }}">
-    <div class="search-filter-container">
-      <input type="text" name="search" placeholder="🔍 Søk i spørsmål…" value="{{ search_query }}">
-      <select name="category">
-        <option value="">Alle kategorier</option>
-        {% for category in categories %}
-        <option value="{{ category }}" {% if category == category_filter %}selected{% endif %}>
-          {{ category }}
-        </option>
-        {% endfor %}
+  <!-- Results counter will be inserted here by JavaScript -->
+  <div id="resultsCounterContainer"></div>
+
+  <!-- Enhanced Features Bar -->
+  <div class="enhanced-features-bar">
+    <div class="feature-group">
+      <label for="advancedSearchColumn">🔍 Søk i:</label>
+      <select id="advancedSearchColumn">
+        <option value="all">Alle felt</option>
+        <option value="question">Kun spørsmål</option>
+        <option value="category">Kun kategori</option>
+        <option value="subcategory">Kun underkategori</option>
+        <option value="explanation">Kun forklaring</option>
       </select>
-      <button type="submit" class="btn">Søk</button>
-      <a href="{{ url_for('admin.admin_dashboard') }}" class="btn btn-secondary">Tilbakestill</a>
     </div>
-  </form>
+    <div class="feature-group">
+      <label for="tableDensity">📏 Tabellvisning:</label>
+      <select id="tableDensity" onchange="changeTableDensity()">
+        <option value="comfortable">Komfortabel</option>
+        <option value="compact">Kompakt</option>
+        <option value="spacious">Luftig</option>
+      </select>
+    </div>
+    <div class="feature-group">
+      <button type="button" id="keyboardShortcutsBtn" onclick="showKeyboardShortcuts()" class="btn btn-secondary btn-small" title="Vis hurtigtaster">
+        ⌨️ Hurtigtaster
+      </button>
+    </div>
+    <div class="feature-group">
+      <button type="button" id="columnVisibilityBtn" onclick="toggleColumnVisibilityDropdown()" class="btn btn-secondary btn-small" title="Vis/skjul kolonner">
+        👁️ Kolonner
+      </button>
+      <div id="columnVisibilityDropdown" class="column-visibility-dropdown" style="display: none;">
+        <div class="column-checkbox-group">
+          <label><input type="checkbox" class="column-checkbox" data-column="id" checked> ID</label>
+          <label><input type="checkbox" class="column-checkbox" data-column="question" checked> Spørsmål</label>
+          <label><input type="checkbox" class="column-checkbox" data-column="category" checked> Kategori</label>
+          <label><input type="checkbox" class="column-checkbox" data-column="subcategory" checked> Underkategori</label>
+          <label><input type="checkbox" class="column-checkbox" data-column="explanation" checked> Forklaring</label>
+          <label><input type="checkbox" class="column-checkbox" data-column="difficulty" checked> Vanskelighetsgrad</label>
+          <label><input type="checkbox" class="column-checkbox" data-column="image" checked> Bilde</label>
+          <label><input type="checkbox" class="column-checkbox" data-column="options" checked> Alternativer</label>
+          <label><input type="checkbox" class="column-checkbox" data-column="actions" checked> Handlinger</label>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Search and Filter -->
+  <div class="search-filter-container" id="searchFilterContainer">
+    <input type="text" id="realTimeSearch" placeholder="🔍 Søk i spørsmål…" value="{{ search_query }}">
+    <select id="categoryFilter">
+      <option value="">Alle kategorier</option>
+      {% for category in categories %}
+      <option value="{{ category }}" {% if category == category_filter %}selected{% endif %}>
+        {{ category }}
+      </option>
+      {% endfor %}
+    </select>
+    <select id="subcategoryFilter">
+      <option value="">Alle underkategorier</option>
+      {% for subcategory in subcategories %}
+      <option value="{{ subcategory }}" {% if subcategory == subcategory_filter %}selected{% endif %}>
+        {{ subcategory }}
+      </option>
+      {% endfor %}
+    </select>
+    <select id="difficultyFilter">
+      <option value="">Alle vanskelighetsgrader</option>
+      <option value="1" {% if difficulty_filter == '1' %}selected{% endif %}>1 - Lett</option>
+      <option value="2" {% if difficulty_filter == '2' %}selected{% endif %}>2 - Middels</option>
+      <option value="3" {% if difficulty_filter == '3' %}selected{% endif %}>3 - Vanskelig</option>
+      <option value="4" {% if difficulty_filter == '4' %}selected{% endif %}>4 - Ekspert</option>
+      <option value="5" {% if difficulty_filter == '5' %}selected{% endif %}>5 - Meget vanskelig</option>
+    </select>
+    <button type="button" onclick="clearAllFilters()" class="btn btn-secondary">🗙️ Tilbakestill</button>
+    <div id="filterLoadingIndicator" class="filter-loading" style="display: none;">
+      <div class="loading-spinner-small"></div>
+      <span>Søker...</span>
+    </div>
+  </div>
 
   <!-- Bulk Operations Panel -->
   <form method="POST" action="{{ url_for('admin.bulk_delete') }}" id="bulkForm">
@@ -76,103 +146,122 @@
     <form method="POST" action="{{ url_for('admin.admin_dashboard') }}" enctype="multipart/form-data" id="newQuestionForm">
       <h2>Legg til / Rediger spørsmål</h2>
       <input type="hidden" name="question_id" id="questionId">
-
-      <label for="questionText">Spørsmål:</label>
-      <textarea name="question" id="questionText" required></textarea>
-
-      <label for="optionA">Alternativ A:</label>
-      <input type="text" name="option_a" id="optionA" required>
-
-      <label for="optionB">Alternativ B:</label>
-      <input type="text" name="option_b" id="optionB" required>
-
-      <label for="optionC">Alternativ C:</label>
-      <input type="text" name="option_c" id="optionC" required>
-
-      <label for="optionD">Alternativ D:</label>
-      <input type="text" name="option_d" id="optionD" required>
-
-      <label for="correctOption">Riktig svar:</label>
-      <input type="text" name="correct_option" id="correctOption" required placeholder="a, b, c eller d">
-
-      <label for="categoryInput">Kategori:</label>
-      <input type="text" name="category" id="categoryInput">
-
-      <label for="subcategoryInput">Underkategori:</label>
-      <input type="text" name="subcategory" id="subcategoryInput" placeholder="F.eks. Vikeplikt, Fareskilt, etc.">
-
-      <label for="difficultyLevel">Vanskelighetsgrad:</label>
-      <select name="difficulty_level" id="difficultyLevel">
-        <option value="1">1 - Lett</option>
-        <option value="2">2 - Middels</option>
-        <option value="3">3 - Vanskelig</option>
-        <option value="4">4 - Ekspert</option>
-        <option value="5">5 - Meget vanskelig</option>
-      </select>
-
-      <label for="imageSelect">Velg bilde:</label>
-      <select name="image_filename" id="imageSelect">
-        <option value="" data-folder="">Ingen bilde</option>
-        {% for img in images %}
-        <option value="{{ img.filename }}" data-folder="{{ img.folder }}">
-          {{ img.name }} ({{ img.filename }})
-        </option>
-        {% endfor %}
-      </select>
       
-      <label for="galleryFolderFilter">Filtrer galleri på mappe:</label>
-      <select id="galleryFolderFilter" onchange="filterGalleryByFolder()">
-        <option value="all">Alle mapper</option>
-        {% for f in folders %}
-        <option value="{{ f }}">{{ f }}</option>
-        {% endfor %}
-      </select>
-      
-      <div id="imageGallery">
-        {% for img in images %}
-          <img src="{{ url_for('static', filename=( 'images/' ~ img.folder ~ '/' ~ img.filename ) if img.folder else 'images/' ~ img.filename) }}"
-               data-filename="{{ img.filename }}"
-               data-folder="{{ img.folder }}"
-               class="selectable-img"
-               onclick="pickImage(this)"
-               alt="{{ img.name }}">
-        {% endfor %}
+      <!-- Loading indicator -->
+      <div id="formLoadingIndicator" style="display: none; text-align: center; padding: 20px;">
+        <div style="display: inline-block; width: 20px; height: 20px; border: 3px solid #f3f3f3; border-top: 3px solid #3498db; border-radius: 50%; animation: spin 1s linear infinite;"></div>
+        <span style="margin-left: 10px;">Lagrer spørsmål...</span>
       </div>
+      
+      <!-- Form fields container -->
+      <div id="formFieldsContainer">
+        <label for="questionText">Spørsmål:</label>
+        <textarea name="question" id="questionText" required></textarea>
 
-      <div style="display: flex; gap: 10px; margin-top: 15px;">
-        <button type="submit" class="btn btn-primary">💾 Lagre spørsmål</button>
-        <button type="button" onclick="previewQuestion()" class="btn btn-warning">👁️ Forhåndsvis</button>
-        <button type="button" onclick="cancelForm()" class="btn btn-secondary">Avbryt</button>
+        <label for="optionA">Alternativ A:</label>
+        <input type="text" name="option_a" id="optionA" required>
+
+        <label for="optionB">Alternativ B:</label>
+        <input type="text" name="option_b" id="optionB" required>
+
+        <label for="optionC">Alternativ C:</label>
+        <input type="text" name="option_c" id="optionC" required>
+
+        <label for="optionD">Alternativ D:</label>
+        <input type="text" name="option_d" id="optionD" required>
+
+        <label for="correctOption">Riktig svar:</label>
+        <input type="text" name="correct_option" id="correctOption" required placeholder="a, b, c eller d">
+
+        <label for="categoryInput">Kategori:</label>
+        <input type="text" name="category" id="categoryInput">
+
+        <label for="subcategoryInput">Underkategori:</label>
+        <input type="text" name="subcategory" id="subcategoryInput" placeholder="F.eks. Vikeplikt, Fareskilt, etc.">
+
+        <label for="explanationInput">Forklaring:</label>
+        <textarea name="explanation" id="explanationInput" placeholder="Forklaring av hvorfor det riktige svaret er riktig (valgfritt)" rows="3"></textarea>
+
+        <label for="difficultyLevel">Vanskelighetsgrad:</label>
+        <select name="difficulty_level" id="difficultyLevel">
+          <option value="1">1 - Lett</option>
+          <option value="2">2 - Middels</option>
+          <option value="3">3 - Vanskelig</option>
+          <option value="4">4 - Ekspert</option>
+          <option value="5">5 - Meget vanskelig</option>
+        </select>
+
+        <label for="imageSelect">Velg bilde:</label>
+        <select name="image_filename" id="imageSelect">
+          <option value="" data-folder="">Ingen bilde</option>
+          {% for img in images %}
+          <option value="{{ img.filename }}" data-folder="{{ img.folder }}">
+            {{ img.name }} ({{ img.filename }})
+          </option>
+          {% endfor %}
+        </select>
+        
+        <label for="galleryFolderFilter">Filtrer galleri på mappe:</label>
+        <select id="galleryFolderFilter" onchange="filterGalleryByFolder()">
+          <option value="all">Alle mapper</option>
+          {% for f in folders %}
+          <option value="{{ f }}">{{ f }}</option>
+          {% endfor %}
+        </select>
+        
+        <div id="imageGallery">
+          {% for img in images %}
+            <img src="{{ url_for('static', filename=( 'images/' ~ img.folder ~ '/' ~ img.filename ) if img.folder else 'images/' ~ img.filename) }}"
+                 data-filename="{{ img.filename }}"
+                 data-folder="{{ img.folder }}"
+                 class="selectable-img"
+                 onclick="pickImage(this)"
+                 alt="{{ img.name }}">
+          {% endfor %}
+        </div>
+
+        <div style="display: flex; gap: 10px; margin-top: 15px;">
+          <button type="submit" class="btn btn-primary" id="saveQuestionBtn">💾 Lagre spørsmål</button>
+          <button type="button" onclick="previewQuestion()" class="btn btn-warning">👁️ Forhåndsvis</button>
+          <button type="button" onclick="cancelForm()" class="btn btn-secondary">Avbryt</button>
+        </div>
       </div>
     </form>
   </div>
 
   <!-- Questions Table -->
   <div class="table-container">
-    <!-- Column Filter -->
-    <div class="column-filter" style="background: #f8f9fa; padding: 10px; border-radius: 5px; margin-bottom: 15px;">
-      <strong>Vis kolonner:</strong>
-      <label style="margin-left: 10px;"><input type="checkbox" class="column-checkbox" data-column="id" checked> ID</label>
-      <label style="margin-left: 10px;"><input type="checkbox" class="column-checkbox" data-column="question" checked> Spørsmål</label>
-      <label style="margin-left: 10px;"><input type="checkbox" class="column-checkbox" data-column="category" checked> Kategori</label>
-      <label style="margin-left: 10px;"><input type="checkbox" class="column-checkbox" data-column="subcategory" checked> Underkategori</label>
-      <label style="margin-left: 10px;"><input type="checkbox" class="column-checkbox" data-column="difficulty" checked> Vanskelighetsgrad</label>
-      <label style="margin-left: 10px;"><input type="checkbox" class="column-checkbox" data-column="image" checked> Bilde</label>
-      <label style="margin-left: 10px;"><input type="checkbox" class="column-checkbox" data-column="options" checked> Alternativer</label>
-      <label style="margin-left: 10px;"><input type="checkbox" class="column-checkbox" data-column="actions" checked> Handlinger</label>
-    </div>
     <table>
       <thead>
         <tr>
           <th class="checkbox-column bulk-checkbox" style="display: none;"><input type="checkbox" onchange="toggleAllCheckboxes(this)"></th>
-          <th data-column="id">ID</th>
-          <th data-column="question">Spørsmål</th>
-          <th data-column="category">Kategori</th>
-          <th data-column="subcategory">Underkategori</th>
-          <th data-column="difficulty">Vanskelighetsgrad</th>
-          <th data-column="image">Bilde</th>
-          <th data-column="options">Alternativer</th>
-          <th data-column="actions">Handlinger</th>
+          <th data-column="id" data-sortable="id" class="sortable-header" onclick="toggleSort('id')">
+            ID <span class="sort-indicator" data-sort="id"></span>
+          </th>
+          <th data-column="question" data-sortable="question" class="sortable-header" onclick="toggleSort('question')">
+            Spørsmål <span class="sort-indicator" data-sort="question"></span>
+          </th>
+          <th data-column="category" data-sortable="category" class="sortable-header" onclick="toggleSort('category')">
+            Kategori <span class="sort-indicator" data-sort="category"></span>
+          </th>
+          <th data-column="subcategory" data-sortable="subcategory" class="sortable-header" onclick="toggleSort('subcategory')">
+            Underkategori <span class="sort-indicator" data-sort="subcategory"></span>
+          </th>
+          <th data-column="explanation">
+            Forklaring
+          </th>
+          <th data-column="difficulty" data-sortable="difficulty_level" class="sortable-header" onclick="toggleSort('difficulty_level')">
+            Vanskelighetsgrad <span class="sort-indicator" data-sort="difficulty_level"></span>
+          </th>
+          <th data-column="image">
+            Bilde
+          </th>
+          <th data-column="options">
+            Alternativer
+          </th>
+          <th data-column="actions">
+            Handlinger
+          </th>
         </tr>
       </thead>
       <tbody>
@@ -185,6 +274,15 @@
           <td data-column="question">{{ question.question }}</td>
           <td data-column="category">{{ question.category or 'Ukategorisert' }}</td>
           <td data-column="subcategory">{{ question.subcategory or '-' }}</td>
+          <td data-column="explanation">
+            {% if question.explanation %}
+              <div style="max-width: 200px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;" title="{{ question.explanation }}">
+                {{ question.explanation }}
+              </div>
+            {% else %}
+              <span style="color: #999;">Ingen forklaring</span>
+            {% endif %}
+          </td>
           <td data-column="difficulty">{{ question.difficulty_level or '1' }}</td>
           <td data-column="image">
             {% if question.image_filename %}
@@ -212,6 +310,7 @@
             <div style="margin-top: 5px;"><strong>Riktig: <span style="color: #10B981;">{{ question.correct_option|upper }}</span></strong></div>
           </td>
           <td data-column="actions">
+            <button onclick="previewQuestionFromRow(this, {{ question.id }})" class="btn btn-info btn-small">👁️ Forhåndsvis</button>
             <button onclick="editQuestionFromRow(this, {{ question.id }})" class="btn btn-warning btn-small">✏️ Rediger</button>
             <button onclick="confirmDelete({{ question.id }})" class="btn btn-danger btn-small">🗑️ Slett</button>
           </td>
@@ -219,6 +318,27 @@
         {% endfor %}
       </tbody>
     </table>
+  </div>
+
+  <!-- Pagination and Per-page Controls -->
+  <div class="pagination-controls" id="paginationControls">
+    <div class="pagination-info">
+      <span id="paginationInfo">Viser 1-50 av 100 spørsmål</span>
+    </div>
+    <div class="pagination-center">
+      <div class="pagination-buttons" id="paginationButtons">
+        <!-- Pagination buttons will be inserted here by JavaScript -->
+      </div>
+    </div>
+    <div class="pagination-per-page">
+      <label for="perPageSelector">Vis per side:</label>
+      <select id="perPageSelector" onchange="changePerPage()">
+        <option value="20">20</option>
+        <option value="50" selected>50</option>
+        <option value="100">100</option>
+        <option value="-1">Alle</option>
+      </select>
+    </div>
   </div>
 </div>
 
@@ -322,7 +442,16 @@ function editQuestionFromRow(button, id) {
     return;
   }
   
-  // Show form and update title
+  // Extract data for modal
+  const questionData = extractQuestionDataFromRow(row, id);
+  
+  // Open modal with data
+  if (typeof openQuestionModal === 'function') {
+    openQuestionModal(questionData);
+    return;
+  }
+  
+  // Fallback to old inline form if modal not available
   const formDiv = document.getElementById('questionForm');
   formDiv.style.display = 'block';
   document.getElementById('questionId').value = id;
@@ -344,6 +473,8 @@ function editQuestionFromRow(button, id) {
   
   // Fill subcategory and difficulty
   document.getElementById('subcategoryInput').value = subcategory === '-' ? '' : subcategory;
+  document.getElementById('explanationInput').value = row.querySelector('td[data-column="explanation"] span')?.textContent === 'Ingen forklaring' ? '' : 
+    (row.querySelector('td[data-column="explanation"] div')?.title || '');
   document.getElementById('difficultyLevel').value = difficulty || '1';
   
   // Handle image (generic for any folder depth and category)
@@ -411,6 +542,62 @@ function editQuestionFromRow(button, id) {
   formDiv.scrollIntoView({ behavior: 'smooth' });
 }
 
+function extractQuestionDataFromRow(row, id) {
+  // Get data from row using data-column attributes
+  const questionText = row.querySelector('td[data-column="question"]').textContent.trim();
+  const category = row.querySelector('td[data-column="category"]').textContent.trim();
+  const subcategory = row.querySelector('td[data-column="subcategory"]').textContent.trim();
+  const difficulty = row.querySelector('td[data-column="difficulty"]').textContent.trim();
+  const imageCell = row.querySelector('td[data-column="image"]');
+  const optionsCell = row.querySelector('td[data-column="options"]');
+  
+  const questionData = {
+    id: id,
+    question: questionText,
+    category: category === 'Ukategorisert' ? '' : category,
+    subcategory: subcategory === '-' ? '' : subcategory,
+    difficulty_level: difficulty || '1',
+    explanation: row.querySelector('td[data-column="explanation"] span')?.textContent === 'Ingen forklaring' ? '' : 
+                (row.querySelector('td[data-column="explanation"] div')?.title || ''),
+    image_filename: extractImageFilename(imageCell.querySelector('img'))
+  };
+  
+  // Parse options
+  const optionDivs = optionsCell.querySelectorAll('div');
+  let correctAnswer = '';
+  
+  optionDivs.forEach(div => {
+    const text = div.textContent.trim();
+    if (text.startsWith('A:')) {
+      questionData.option_a = text.substring(2).trim();
+    } else if (text.startsWith('B:')) {
+      questionData.option_b = text.substring(2).trim();
+    } else if (text.startsWith('C:')) {
+      questionData.option_c = text.substring(2).trim();
+    } else if (text.startsWith('D:')) {
+      questionData.option_d = text.substring(2).trim();
+    } else if (text.includes('Riktig:')) {
+      correctAnswer = text.split(':')[1].trim().toLowerCase();
+    }
+  });
+  
+  questionData.correct_option = correctAnswer;
+  return questionData;
+}
+
+function extractImageFilename(imgElement) {
+  if (!imgElement) return '';
+  
+  const src = imgElement.src;
+  const parts = src.split('/images/');
+  if (parts.length === 2) {
+    const path = parts[1];
+    const pathParts = path.split('/');
+    return pathParts.pop(); // Get filename only
+  }
+  return '';
+}
+
 function pickImage(el) {
   if (!el || !el.dataset) return;
   document.getElementById('imageSelect').value = el.dataset.filename;
@@ -462,6 +649,55 @@ function previewQuestion() {
   document.getElementById('previewModal').style.display = 'block';
 }
 
+function previewQuestionFromRow(button, id) {
+  const row = button.closest('tr');
+  if (!row) {
+    alert('Kunne ikke finne raden.');
+    return;
+  }
+  
+  // Extract data from the table row
+  const questionData = extractQuestionDataFromRow(row, id);
+  
+  // Build preview HTML
+  let previewHTML = '<div class="preview-question">';
+  
+  // Add image if present
+  if (questionData.image_filename) {
+    const staticUrl = document.getElementById('questionsSection').dataset.staticUrl || '/static/';
+    // Try to find the image in the images array to get the correct folder
+    const imageData = window.adminImages ? window.adminImages.find(img => img.filename === questionData.image_filename) : null;
+    let imagePath;
+    if (imageData && imageData.folder) {
+      imagePath = `images/${imageData.folder}/${questionData.image_filename}`;
+    } else {
+      imagePath = `images/${questionData.image_filename}`;
+    }
+    const imageUrl = `${staticUrl}${imagePath}`;
+    previewHTML += `<img src="${imageUrl}" alt="Question image" onerror="console.error('Failed to load image:', this.src); this.style.display='none'">`;
+  }
+  
+  previewHTML += `<h3>${questionData.question}</h3>`;
+  previewHTML += '<div class="preview-options">';
+  
+  const correctOption = questionData.correct_option.toLowerCase();
+  previewHTML += `<div class="preview-option ${correctOption === 'a' ? 'correct' : ''}">A: ${questionData.option_a}</div>`;
+  previewHTML += `<div class="preview-option ${correctOption === 'b' ? 'correct' : ''}">B: ${questionData.option_b}</div>`;
+  previewHTML += `<div class="preview-option ${correctOption === 'c' ? 'correct' : ''}">C: ${questionData.option_c}</div>`;
+  previewHTML += `<div class="preview-option ${correctOption === 'd' ? 'correct' : ''}">D: ${questionData.option_d}</div>`;
+  previewHTML += '</div>';
+  
+  // Add explanation if present
+  if (questionData.explanation) {
+    previewHTML += `<div class="preview-explanation"><strong>Forklaring:</strong> ${questionData.explanation}</div>`;
+  }
+  
+  previewHTML += '</div>';
+  
+  document.getElementById('previewContent').innerHTML = previewHTML;
+  document.getElementById('previewModal').style.display = 'block';
+}
+
 function closePreview() {
   document.getElementById('previewModal').style.display = 'none';
 }
@@ -478,23 +714,75 @@ function closeImportExportModal() {
 function confirmImport() {
   const fileInput = document.getElementById('csvFile');
   if (!fileInput.files.length) {
-    alert('Vennligst velg en CSV-fil først.');
+    alert('Vennligst velg en fil først.');
     return false;
   }
   
   const fileName = fileInput.files[0].name;
-  if (!fileName.toLowerCase().endsWith('.csv')) {
-    alert('Filen må være en CSV-fil (.csv)');
+  const isCSV = fileName.toLowerCase().endsWith('.csv');
+  const isJSON = fileName.toLowerCase().endsWith('.json');
+  
+  if (!isCSV && !isJSON) {
+    alert('Filen må være en CSV-fil (.csv) eller JSON-fil (.json)');
     return false;
   }
   
-  return confirm(`Er du sikker på at du vil importere spørsmål fra "${fileName}"?\n\nDette kan overskrive eksisterende data hvis du har valgt det alternativet.`);
+  const fileType = isJSON ? 'JSON' : 'CSV';
+  return confirm(`Er du sikker på at du vil importere spørsmål fra "${fileName}" (${fileType}-format)?\n\nDette kan overskrive eksisterende data hvis du har valgt det alternativet.`);
+}
+
+// Export function for the new export options
+function exportQuestions() {
+  const format = document.querySelector('input[name="export_format"]:checked').value;
+  const delimiter = document.getElementById('exportDelimiter').value;
+  
+  let url = '{{ url_for("admin.export_questions") }}?format=' + format;
+  
+  if (format === 'csv') {
+    url += '&delimiter=' + encodeURIComponent(delimiter);
+  }
+  
+  // Trigger download
+  window.location.href = url;
+}
+
+// Toggle export options based on format selection
+function toggleExportOptions() {
+  const csvSelected = document.querySelector('input[name="export_format"]:checked').value === 'csv';
+  const csvOptions = document.getElementById('csvExportOptions');
+  
+  if (csvOptions) {
+    csvOptions.style.display = csvSelected ? 'block' : 'none';
+  }
+}
+
+// Update import options based on file type
+function updateImportOptions() {
+  const fileInput = document.getElementById('csvFile');
+  const csvOptions = document.getElementById('csvImportOptions');
+  const csvFormatHelp = document.getElementById('csvFormatHelp');
+  const jsonFormatHelp = document.getElementById('jsonFormatHelp');
+  
+  if (fileInput.files.length > 0) {
+    const fileName = fileInput.files[0].name;
+    const isJSON = fileName.toLowerCase().endsWith('.json');
+    
+    if (csvOptions) {
+      csvOptions.style.display = isJSON ? 'none' : 'block';
+    }
+    
+    if (csvFormatHelp && jsonFormatHelp) {
+      csvFormatHelp.style.display = isJSON ? 'none' : 'block';
+      jsonFormatHelp.style.display = isJSON ? 'block' : 'none';
+    }
+  }
 }
 
 // Close modal when clicking outside
 window.onclick = function(event) {
   const previewModal = document.getElementById('previewModal');
   const importExportModal = document.getElementById('importExportModal');
+  const keyboardShortcutsModal = document.getElementById('keyboardShortcutsModal');
   
   if (event.target === previewModal) {
     previewModal.style.display = 'none';
@@ -502,28 +790,1625 @@ window.onclick = function(event) {
   if (event.target === importExportModal) {
     importExportModal.style.display = 'none';
   }
+  if (event.target === keyboardShortcutsModal) {
+    closeKeyboardShortcuts();
+  }
 }
 
 // Column visibility toggle for questions table
 document.addEventListener('DOMContentLoaded', function() {
+  // Initialize enhanced column visibility system
+  initializeEnhancedColumnVisibility();
+  
+  // Initialize export options
+  toggleExportOptions();
+  
+  // Setup AJAX form submission
+  setupAjaxForm();
+  
+  // Initialize enhanced filtering (Phase 3)
+  initializeEnhancedFiltering();
+  
+  // Initialize sorting (Phase 5)
+  initializeSorting();
+  
+  // Add keyboard support for sorting
+  addKeyboardSortSupport();
+  
+  // Initialize pagination with server data
+  initializeInitialPagination();
+  
+  // Initialize Phase 6 enhancements
+  initializePhase6Enhancements();
+});
+
+// ========================================
+// AJAX FUNCTIONALITY
+// ========================================
+
+function setupAjaxForm() {
+  const form = document.getElementById('newQuestionForm');
+  if (!form) return;
+  
+  form.addEventListener('submit', function(e) {
+    e.preventDefault();
+    saveQuestionAjax();
+  });
+}
+
+function saveQuestionAjax() {
+  const form = document.getElementById('newQuestionForm');
+  const formData = new FormData(form);
+  const questionId = document.getElementById('questionId').value;
+  const isEdit = questionId !== '';
+  
+  // Convert FormData to JSON
+  const data = {};
+  formData.forEach((value, key) => {
+    data[key] = value;
+  });
+  
+  // Validate required fields
+  if (!data.question || !data.option_a || !data.option_b || !data.option_c || !data.option_d || !data.correct_option) {
+    showNotification('Alle påkrevde felt må fylles ut', 'error');
+    return;
+  }
+  
+  // Show loading state
+  setFormLoading(true);
+  
+  const url = isEdit 
+    ? `/admin/api/question/update/${questionId}`
+    : '/admin/api/question/create';
+  
+  fetch(url, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify(data)
+  })
+  .then(response => response.json())
+  .then(result => {
+    if (result.success) {
+      showNotification(isEdit ? 'Spørsmål oppdatert!' : 'Nytt spørsmål lagt til!', 'success');
+      
+      if (isEdit) {
+        updateTableRow(result.question);
+        // Maintain sort state after edit
+        setTimeout(() => maintainSortState(), 100);
+      } else {
+        addTableRow(result.question);
+        updateStatsAfterAdd();
+        // Maintain sort state after add
+        setTimeout(() => maintainSortState(), 100);
+      }
+      
+      cancelForm();
+    } else {
+      showNotification('Feil: ' + (result.error || 'Ukjent feil'), 'error');
+    }
+  })
+  .catch(error => {
+    console.error('Error saving question:', error);
+    showNotification('Nettverksfeil ved lagring av spørsmål', 'error');
+  })
+  .finally(() => {
+    setFormLoading(false);
+  });
+}
+
+function setFormLoading(loading) {
+  const indicator = document.getElementById('formLoadingIndicator');
+  const container = document.getElementById('formFieldsContainer');
+  const saveBtn = document.getElementById('saveQuestionBtn');
+  
+  if (loading) {
+    indicator.style.display = 'block';
+    container.style.opacity = '0.5';
+    container.style.pointerEvents = 'none';
+    if (saveBtn) saveBtn.disabled = true;
+  } else {
+    indicator.style.display = 'none';
+    container.style.opacity = '1';
+    container.style.pointerEvents = 'auto';
+    if (saveBtn) saveBtn.disabled = false;
+  }
+}
+
+function updateTableRow(question) {
+  const row = document.querySelector(`tr[data-id="${question.id}"]`);
+  if (!row) return;
+  
+  // Update the row data
+  row.querySelector('td[data-column="question"]').textContent = question.question;
+  row.querySelector('td[data-column="category"]').textContent = question.category || 'Ukategoriseret';
+  row.querySelector('td[data-column="subcategory"]').textContent = question.subcategory || '-';
+  row.querySelector('td[data-column="difficulty"]').textContent = question.difficulty_level || '1';
+  
+  // Update explanation
+  const explanationCell = row.querySelector('td[data-column="explanation"]');
+  if (question.explanation) {
+    explanationCell.innerHTML = `
+      <div style="max-width: 200px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;" title="${escapeHtml(question.explanation)}">
+        ${escapeHtml(question.explanation)}
+      </div>
+    `;
+  } else {
+    explanationCell.innerHTML = '<span style="color: #999;">Ingen forklaring</span>';
+  }
+  
+  // Update image with proper folder-aware path construction
+  const imageCell = row.querySelector('td[data-column="image"]');
+  if (question.image_filename) {
+    // Construct proper image path using the same logic as the filtered results
+    let imageSrc = '';
+    if (question.image_filename.startsWith('._')) {
+      imageSrc = ''; // Don't load hidden files
+    } else {
+      // Try to find the image in the images array to get the correct folder
+      const imageData = window.adminImages ? window.adminImages.find(img => img.filename === question.image_filename) : null;
+      if (imageData && imageData.folder) {
+        imageSrc = `/static/images/${imageData.folder}/${question.image_filename}`;
+      } else {
+        imageSrc = `/static/images/${question.image_filename}`;
+      }
+    }
+    
+    if (imageSrc) {
+      imageCell.innerHTML = `<img src="${imageSrc}" alt="" class="question-image" onerror="this.style.display='none'; console.log('Failed to load image: ${imageSrc}')">`;
+    } else {
+      imageCell.innerHTML = '<span style="color: #999;">Ingen bilde</span>';
+    }
+  } else {
+    imageCell.innerHTML = '<span style="color: #999;">Ingen bilde</span>';
+  }
+  
+  // Update options
+  const optionsCell = row.querySelector('td[data-column="options"]');
+  optionsCell.innerHTML = `
+    <div ${question.correct_option.toLowerCase() === 'a' ? 'style="color: #10B981; font-weight: 600;"' : ''}>A: ${escapeHtml(question.option_a)}</div>
+    <div ${question.correct_option.toLowerCase() === 'b' ? 'style="color: #10B981; font-weight: 600;"' : ''}>B: ${escapeHtml(question.option_b)}</div>
+    <div ${question.correct_option.toLowerCase() === 'c' ? 'style="color: #10B981; font-weight: 600;"' : ''}>C: ${escapeHtml(question.option_c)}</div>
+    <div ${question.correct_option.toLowerCase() === 'd' ? 'style="color: #10B981; font-weight: 600;"' : ''}>D: ${escapeHtml(question.option_d)}</div>
+    <div style="margin-top: 5px;"><strong>Riktig: <span style="color: #10B981;">${question.correct_option.toUpperCase()}</span></strong></div>
+  `;
+  
+  // Add highlight effect
+  row.style.backgroundColor = '#d4edda';
+  setTimeout(() => {
+    row.style.backgroundColor = '';
+  }, 2000);
+}
+
+function addTableRow(question) {
+  const tbody = document.querySelector('#questionsSection table tbody');
+  if (!tbody) return;
+  
+  const bulkCheckbox = document.querySelector('.bulk-checkbox').style.display !== 'none' 
+    ? `<td class="checkbox-column bulk-checkbox">
+         <input type="checkbox" name="question_ids" value="${question.id}" onchange="updateSelectedCount()">
+       </td>`
+    : `<td class="checkbox-column bulk-checkbox" style="display: none;">
+         <input type="checkbox" name="question_ids" value="${question.id}" onchange="updateSelectedCount()">
+       </td>`;
+
+  // Construct proper image path using the same logic as the filtered results
+  let imageSrc = '';
+  if (question.image_filename) {
+    // Filter out hidden macOS files
+    if (question.image_filename.startsWith('._')) {
+    imageSrc = ''; // Don't load hidden files
+    } else {
+    // Try to find the image in the images array to get the correct folder
+    const imageData = window.adminImages ? window.adminImages.find(img => img.filename === question.image_filename) : null;
+      if (imageData && imageData.folder) {
+        imageSrc = `/static/images/${imageData.folder}/${question.image_filename}`;
+      } else {
+        imageSrc = `/static/images/${question.image_filename}`;
+      }
+    }
+  }
+
+  const newRow = document.createElement('tr');
+  newRow.dataset.id = question.id;
+  newRow.innerHTML = `
+    ${bulkCheckbox}
+    <td data-column="id">${question.id}</td>
+    <td data-column="question">${escapeHtml(question.question)}</td>
+    <td data-column="category">${question.category || 'Ukategoriseret'}</td>
+    <td data-column="subcategory">${question.subcategory || '-'}</td>
+    <td data-column="explanation">
+      ${question.explanation 
+      ? `<div style="max-width: 200px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;" title="${escapeHtml(question.explanation)}">
+      ${escapeHtml(question.explanation)}
+    </div>`
+    : '<span style="color: #999;">Ingen forklaring</span>'
+      }
+    </td>
+    <td data-column="difficulty">${question.difficulty_level || '1'}</td>
+  <td data-column="image">
+  ${question.image_filename && imageSrc
+  ? `<img src="${imageSrc}" alt="" class="question-image" onerror="this.style.display='none'; console.log('Failed to load image: ${imageSrc}')">`
+  : '<span style="color: #999;">Ingen bilde</span>'
+  }
+  </td>
+  <td data-column="options" class="options-display">
+  <div ${question.correct_option.toLowerCase() === 'a' ? 'style="color: #10B981; font-weight: 600;"' : ''}>A: ${escapeHtml(question.option_a)}</div>
+    <div ${question.correct_option.toLowerCase() === 'b' ? 'style="color: #10B981; font-weight: 600;"' : ''}>B: ${escapeHtml(question.option_b)}</div>
+  <div ${question.correct_option.toLowerCase() === 'c' ? 'style="color: #10B981; font-weight: 600;"' : ''}>C: ${escapeHtml(question.option_c)}</div>
+<div ${question.correct_option.toLowerCase() === 'd' ? 'style="color: #10B981; font-weight: 600;"' : ''}>D: ${escapeHtml(question.option_d)}</div>
+<div style="margin-top: 5px;"><strong>Riktig: <span style="color: #10B981;">${question.correct_option.toUpperCase()}</span></strong></div>
+</td>
+<td data-column="actions">
+<button onclick="previewQuestionFromRow(this, ${question.id})" class="btn btn-info btn-small">👁️ Forhåndsvis</button>
+<button onclick="editQuestionFromRow(this, ${question.id})" class="btn btn-warning btn-small">✏️ Rediger</button>
+<button onclick="confirmDeleteAjax(${question.id})" class="btn btn-danger btn-small">🗑️ Slett</button>
+</td>
+`;
+
+// Add to top of table
+tbody.insertBefore(newRow, tbody.firstChild);
+
+// Add highlight effect
+newRow.style.backgroundColor = '#d4edda';
+setTimeout(() => {
+newRow.style.backgroundColor = '';
+}, 2000);
+}
+
+function updateStatsAfterAdd() {
+  const totalElement = document.getElementById('totalQuestions');
+  if (totalElement) {
+    const currentTotal = parseInt(totalElement.textContent) || 0;
+    totalElement.textContent = currentTotal + 1;
+  }
+}
+
+// AJAX Delete function
+function confirmDeleteAjax(id) {
+  if (!confirm('Er du sikker på at du vil slette dette spørsmålet? Dette kan ikke angres.')) {
+    return;
+  }
+  
+  fetch(`/admin/api/question/delete/${id}`, {
+    method: 'DELETE'
+  })
+  .then(response => response.json())
+  .then(result => {
+    if (result.success) {
+      showNotification('Spørsmål slettet!', 'success');
+      removeTableRow(id);
+      updateStatsAfterDelete();
+      // Maintain sort state after delete
+      setTimeout(() => maintainSortState(), 600);
+    } else {
+      showNotification('Feil ved sletting: ' + (result.error || 'Ukjent feil'), 'error');
+    }
+  })
+  .catch(error => {
+    console.error('Error deleting question:', error);
+    showNotification('Nettverksfeil ved sletting av spørsmål', 'error');
+  });
+}
+
+function removeTableRow(questionId) {
+  const row = document.querySelector(`tr[data-id="${questionId}"]`);
+  if (row) {
+    row.style.backgroundColor = '#f8d7da';
+    setTimeout(() => {
+      row.remove();
+    }, 500);
+  }
+}
+
+function updateStatsAfterDelete() {
+  const totalElement = document.getElementById('totalQuestions');
+  if (totalElement) {
+    const currentTotal = parseInt(totalElement.textContent) || 0;
+    totalElement.textContent = Math.max(0, currentTotal - 1);
+  }
+}
+
+// ========================================
+// PHASE 6: POLISH & UX ENHANCEMENTS
+// ========================================
+
+// Global undo state
+let lastDeletedQuestion = null;
+let undoTimeoutId = null;
+
+// Enhanced Toast Notification System
+function showToast(message, type = 'info', options = {}) {
+  const {
+    duration = 5000,
+    showProgress = true,
+    allowClose = true,
+    isUndo = false,
+    onUndo = null
+  } = options;
+  
+  const toast = document.createElement('div');
+  toast.className = `toast ${type} ${isUndo ? 'undo' : ''}`;
+  
+  const iconMap = {
+    success: '✅',
+    error: '❌',
+    warning: '⚠️',
+    info: 'ℹ️',
+    undo: '↩️'
+  };
+  
+  let toastContent = `
+    <div class="toast-icon">${iconMap[type] || iconMap.info}</div>
+    <div class="toast-content">${message}</div>
+  `;
+  
+  if (isUndo && onUndo) {
+    toastContent += `<button class="toast-undo-btn" onclick="handleUndo()">Angre</button>`;
+  }
+  
+  if (allowClose) {
+    toastContent += `<button class="toast-close" onclick="removeToast(this.parentElement)">×</button>`;
+  }
+  
+  if (showProgress && duration > 0) {
+    toastContent += `<div class="toast-progress"></div>`;
+  }
+  
+  toast.innerHTML = toastContent;
+  
+  // Store undo callback globally if needed
+  if (isUndo && onUndo) {
+    window.currentUndoCallback = onUndo;
+  }
+  
+  const container = document.getElementById('toastContainer');
+  container.appendChild(toast);
+  
+  // Auto-remove after duration
+  if (duration > 0) {
+    setTimeout(() => {
+      removeToast(toast);
+    }, duration);
+  }
+  
+  return toast;
+}
+
+function removeToast(toast) {
+  if (toast && toast.parentElement) {
+    toast.style.animation = 'slideOutToast 0.3s ease-in';
+    setTimeout(() => {
+      if (toast.parentElement) {
+        toast.remove();
+      }
+    }, 300);
+  }
+}
+
+// Undo functionality
+function handleUndo() {
+  if (window.currentUndoCallback) {
+    window.currentUndoCallback();
+    window.currentUndoCallback = null;
+    
+    // Remove all undo toasts
+    document.querySelectorAll('.toast.undo').forEach(toast => {
+      removeToast(toast);
+    });
+  }
+}
+
+// Enhanced notification system (backwards compatible)
+function showNotification(message, type = 'info') {
+  showToast(message, type, {
+    duration: 5000,
+    showProgress: true,
+    allowClose: true
+  });
+}
+
+// Table Density Management
+function initializeTableDensity() {
+  const savedDensity = localStorage.getItem('adminTableDensity') || 'comfortable';
+  applyTableDensity(savedDensity);
+  
+  const densitySelect = document.getElementById('tableDensity');
+  if (densitySelect) {
+    densitySelect.value = savedDensity;
+  }
+}
+
+function changeTableDensity() {
+  const densitySelect = document.getElementById('tableDensity');
+  if (!densitySelect) return;
+  
+  const density = densitySelect.value;
+  applyTableDensity(density);
+  localStorage.setItem('adminTableDensity', density);
+  
+  showToast(`Tabellvisning endret til ${density}`, 'info', { duration: 2000 });
+}
+
+function applyTableDensity(density) {
+  const tableContainer = document.querySelector('.table-container');
+  if (!tableContainer) return;
+  
+  // Remove existing density classes
+  tableContainer.classList.remove('density-compact', 'density-comfortable', 'density-spacious');
+  
+  // Add new density class
+  tableContainer.classList.add(`density-${density}`);
+}
+
+// Advanced Search Implementation
+function initializeAdvancedSearch() {
+  const searchColumnSelect = document.getElementById('advancedSearchColumn');
+  const searchInput = document.getElementById('realTimeSearch');
+  
+  if (!searchColumnSelect || !searchInput) return;
+  
+  // Update placeholder based on search column
+  searchColumnSelect.addEventListener('change', function() {
+    const column = this.value;
+    const placeholders = {
+      all: '🔍 Søk i alle felt…',
+      question: '🔍 Søk i spørsmål…',
+      category: '🔍 Søk i kategorier…',
+      subcategory: '🔍 Søk i underkategorier…',
+      explanation: '🔍 Søk i forklaringer…'
+    };
+    
+    searchInput.placeholder = placeholders[column] || placeholders.all;
+    
+    // Trigger search if there's current search text
+    if (searchInput.value.trim()) {
+      questionsCurrentFilters.search = searchInput.value;
+      questionsCurrentFilters.searchColumn = column;
+      performFilteredSearch(true);
+    }
+  });
+}
+
+// Enhanced smooth transitions
+function addSmoothTransitions() {
+  const tableContainer = document.querySelector('.table-container');
+  if (!tableContainer) return;
+  
+  // Add updating class during operations - use a wrapper approach
+  const originalFetch = window.fetch;
+  let activeRequests = 0;
+  
+  window.fetch = function(...args) {
+    // Only apply to admin API calls
+    if (args[0] && args[0].includes('/admin/api/')) {
+      activeRequests++;
+      if (activeRequests === 1) {
+        tableContainer.classList.add('updating');
+      }
+      
+      return originalFetch.apply(this, args).finally(() => {
+        activeRequests--;
+        if (activeRequests === 0) {
+          setTimeout(() => {
+            tableContainer.classList.remove('updating');
+          }, 300);
+        }
+      });
+    }
+    
+    return originalFetch.apply(this, args);
+  };
+}
+
+// Enhanced AJAX operations with better visual feedback
+function enhancedConfirmDeleteAjax(id) {
+  if (!confirm('Er du sikker på at du vil slette dette spørsmålet?')) {
+    return;
+  }
+  
+  // Get question data before deletion for undo functionality
+  const row = document.querySelector(`tr[data-id="${id}"]`);
+  if (row) {
+    lastDeletedQuestion = {
+      id: id,
+      data: extractQuestionDataFromRow(row, id),
+      rowHtml: row.outerHTML
+    };
+  }
+  
+  fetch(`/admin/api/question/delete/${id}`, {
+    method: 'DELETE'
+  })
+  .then(response => response.json())
+  .then(result => {
+    if (result.success) {
+      // Enhanced deletion with undo
+      enhancedRemoveTableRow(id);
+      updateStatsAfterDelete();
+      
+      // Show undo toast
+      showToast('Spørsmål slettet', 'undo', {
+        duration: 8000,
+        isUndo: true,
+        onUndo: () => restoreDeletedQuestion()
+      });
+      
+      // Maintain sort state after delete
+      setTimeout(() => maintainSortState(), 600);
+    } else {
+      showToast('Feil ved sletting: ' + (result.error || 'Ukjent feil'), 'error');
+    }
+  })
+  .catch(error => {
+    console.error('Error deleting question:', error);
+    showToast('Nettverksfeil ved sletting av spørsmål', 'error');
+  });
+}
+
+function enhancedRemoveTableRow(questionId) {
+  const row = document.querySelector(`tr[data-id="${questionId}"]`);
+  if (row) {
+    row.classList.add('highlight-deleted');
+    setTimeout(() => {
+      if (row.parentElement) {
+        row.remove();
+      }
+    }, 600);
+  }
+}
+
+// Restore deleted question (undo functionality)
+function restoreDeletedQuestion() {
+  if (!lastDeletedQuestion) {
+    showToast('Ingen spørsmål å gjenopprette', 'error');
+    return;
+  }
+  
+  const data = lastDeletedQuestion.data;
+  
+  fetch('/admin/api/question/create', {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify(data)
+  })
+  .then(response => response.json())
+  .then(result => {
+    if (result.success) {
+      // Add the row back with highlight
+      addTableRow(result.question);
+      updateStatsAfterAdd();
+      showToast('Spørsmål gjenopprettet!', 'success');
+      
+      // Clear undo state
+      lastDeletedQuestion = null;
+      
+      // Maintain sort state
+      setTimeout(() => maintainSortState(), 100);
+    } else {
+      showToast('Feil ved gjenoppretting: ' + (result.error || 'Ukjent feil'), 'error');
+    }
+  })
+  .catch(error => {
+    console.error('Error restoring question:', error);
+    showToast('Nettverksfeil ved gjenoppretting', 'error');
+  });
+}
+
+// Enhanced table row operations with animations
+function enhancedAddTableRow(question, type = 'added') {
+  const tbody = document.querySelector('#questionsSection table tbody');
+  if (!tbody) return;
+  
+  const newRow = createQuestionTableRow(question);
+  
+  // Add to top of table
+  tbody.insertBefore(newRow, tbody.firstChild);
+  
+  // Add appropriate highlight class
+  newRow.classList.add(`highlight-${type}`);
+  
+  // Remove highlight after animation
+  setTimeout(() => {
+    newRow.classList.remove(`highlight-${type}`);
+  }, 2000);
+}
+
+function enhancedUpdateTableRow(question) {
+  const row = document.querySelector(`tr[data-id="${question.id}"]`);
+  if (!row) return;
+  
+  // Store original content for smooth transition
+  const originalContent = row.innerHTML;
+  
+  // Update the row content
+  updateTableRowContent(row, question);
+  
+  // Add highlight effect
+  row.classList.add('highlight-updated');
+  
+  // Remove highlight after animation
+  setTimeout(() => {
+    row.classList.remove('highlight-updated');
+  }, 2000);
+}
+
+// Keyboard Shortcuts System
+function initializeKeyboardShortcuts() {
+  document.addEventListener('keydown', function(e) {
+    // Only process if not in input/textarea/select
+    if (['INPUT', 'TEXTAREA', 'SELECT'].includes(e.target.tagName)) {
+      // Allow some shortcuts even in inputs
+      if (e.ctrlKey || e.metaKey) {
+        switch(e.key.toLowerCase()) {
+          case 's':
+            if (isModalOpen()) {
+              e.preventDefault();
+              saveModalQuestion();
+            }
+            break;
+        }
+      }
+      return;
+    }
+    
+    // Global keyboard shortcuts
+    if (e.ctrlKey || e.metaKey) {
+      switch(e.key.toLowerCase()) {
+        case 'n':
+          e.preventDefault();
+          openQuestionModal();
+          break;
+        case 'f':
+          e.preventDefault();
+          document.getElementById('realTimeSearch')?.focus();
+          break;
+        case 'r':
+          e.preventDefault();
+          clearAllFilters();
+          break;
+        case 'd':
+          e.preventDefault();
+          cycleDensity();
+          break;
+        case 'h':
+          e.preventDefault();
+          showKeyboardShortcuts();
+          break;
+        case 'z':
+          e.preventDefault();
+          if (lastDeletedQuestion) {
+            handleUndo();
+          }
+          break;
+      }
+    } else {
+      switch(e.key) {
+        case 'Escape':
+          if (isModalOpen()) {
+            closeQuestionModal();
+          } else if (document.getElementById('keyboardShortcutsModal').style.display === 'block') {
+            closeKeyboardShortcuts();
+          }
+          break;
+      }
+    }
+  });
+}
+
+function isModalOpen() {
+  const modal = document.getElementById('questionModalOverlay');
+  return modal && modal.style.display === 'flex';
+}
+
+function cycleDensity() {
+  const densitySelect = document.getElementById('tableDensity');
+  if (!densitySelect) return;
+  
+  const densities = ['comfortable', 'compact', 'spacious'];
+  const currentIndex = densities.indexOf(densitySelect.value);
+  const nextIndex = (currentIndex + 1) % densities.length;
+  
+  densitySelect.value = densities[nextIndex];
+  changeTableDensity();
+}
+
+// Keyboard shortcuts modal
+function showKeyboardShortcuts() {
+  document.getElementById('keyboardShortcutsModal').style.display = 'block';
+}
+
+function closeKeyboardShortcuts() {
+  const modal = document.getElementById('keyboardShortcutsModal');
+  modal.classList.add('closing');
+  setTimeout(() => {
+    modal.style.display = 'none';
+    modal.classList.remove('closing');
+  }, 200);
+}
+
+// Enhanced modal close with animation
+function enhancedCloseQuestionModal() {
+  const modal = document.getElementById('questionModalOverlay');
+  if (modal) {
+    modal.classList.add('closing');
+    setTimeout(() => {
+      modal.style.display = 'none';
+      modal.classList.remove('closing');
+      document.body.style.overflow = '';
+      resetModalForm();
+    }, 200);
+  }
+}
+
+// Mobile responsiveness enhancements
+function initializeMobileEnhancements() {
+  // Add touch-friendly hover effects on mobile
+  if ('ontouchstart' in window) {
+    document.addEventListener('touchstart', function() {}, {passive: true});
+    
+    // Improve button touch targets
+    const buttons = document.querySelectorAll('.btn');
+    buttons.forEach(btn => {
+      btn.style.minHeight = '44px';
+      btn.style.minWidth = '44px';
+    });
+  }
+  
+  // Optimize table for mobile
+  const mediaQuery = window.matchMedia('(max-width: 768px)');
+  function handleMobileView(e) {
+    const tableContainer = document.querySelector('.table-container');
+    if (e.matches) {
+      // Mobile view optimizations
+      tableContainer?.classList.add('mobile-optimized');
+    } else {
+      tableContainer?.classList.remove('mobile-optimized');
+    }
+  }
+  
+  mediaQuery.addListener(handleMobileView);
+  handleMobileView(mediaQuery);
+}
+
+// Enhanced initialization for Phase 6
+function initializePhase6Enhancements() {
+  console.log('🚀 Initializing Phase 6: Polish & UX enhancements...');
+  
+  try {
+    initializeTableDensity();
+    initializeAdvancedSearch();
+    initializeKeyboardShortcuts();
+    initializeMobileEnhancements();
+    addSmoothTransitions();
+    addColumnVisibilityShortcut();
+    
+    // Replace original delete function with enhanced version
+    window.confirmDeleteAjax = enhancedConfirmDeleteAjax;
+    window.addTableRow = enhancedAddTableRow;
+    window.updateTableRow = enhancedUpdateTableRow;
+    window.closeQuestionModal = enhancedCloseQuestionModal;
+    
+    console.log('✅ Phase 6 enhancements initialized successfully');
+    
+    // Show initialization complete toast
+    setTimeout(() => {
+      showToast('Admin panel enhancements loaded', 'success', { duration: 3000 });
+    }, 500);
+    
+  } catch (error) {
+    console.error('❌ Error initializing Phase 6 enhancements:', error);
+    showToast('Error loading enhancements', 'error');
+  }
+}
+
+// Update the original notification function to use new toast system
+
+// Helper function to update table row content (needed for enhanced updates)
+function updateTableRowContent(row, question) {
+  // Update the row data
+  row.querySelector('td[data-column="question"]').textContent = question.question;
+  row.querySelector('td[data-column="category"]').textContent = question.category || 'Ukategoriseret';
+  row.querySelector('td[data-column="subcategory"]').textContent = question.subcategory || '-';
+  row.querySelector('td[data-column="difficulty"]').textContent = question.difficulty_level || '1';
+  
+  // Update explanation
+  const explanationCell = row.querySelector('td[data-column="explanation"]');
+  if (question.explanation) {
+    explanationCell.innerHTML = `
+      <div style="max-width: 200px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;" title="${escapeHtml(question.explanation)}">
+        ${escapeHtml(question.explanation)}
+      </div>
+    `;
+  } else {
+    explanationCell.innerHTML = '<span style="color: #999;">Ingen forklaring</span>';
+  }
+  
+  // Update image with proper folder-aware path construction
+  const imageCell = row.querySelector('td[data-column="image"]');
+  if (question.image_filename) {
+    // Construct proper image path using the same logic as the filtered results
+    let imageSrc = '';
+    if (question.image_filename.startsWith('._')) {
+      imageSrc = ''; // Don't load hidden files
+    } else {
+      // Try to find the image in the images array to get the correct folder
+      const imageData = window.adminImages ? window.adminImages.find(img => img.filename === question.image_filename) : null;
+      if (imageData && imageData.folder) {
+        imageSrc = `/static/images/${imageData.folder}/${question.image_filename}`;
+      } else {
+        imageSrc = `/static/images/${question.image_filename}`;
+      }
+    }
+    
+    if (imageSrc) {
+      imageCell.innerHTML = `<img src="${imageSrc}" alt="" class="question-image" onerror="this.style.display='none'; console.log('Failed to load image: ${imageSrc}')">`;  
+    } else {
+      imageCell.innerHTML = '<span style="color: #999;">Ingen bilde</span>';
+    }
+  } else {
+    imageCell.innerHTML = '<span style="color: #999;">Ingen bilde</span>';
+  }
+  
+  // Update options
+  const optionsCell = row.querySelector('td[data-column="options"]');
+  optionsCell.innerHTML = `
+    <div ${question.correct_option.toLowerCase() === 'a' ? 'style="color: #10B981; font-weight: 600;"' : ''}>A: ${escapeHtml(question.option_a)}</div>
+    <div ${question.correct_option.toLowerCase() === 'b' ? 'style="color: #10B981; font-weight: 600;"' : ''}>B: ${escapeHtml(question.option_b)}</div>
+    <div ${question.correct_option.toLowerCase() === 'c' ? 'style="color: #10B981; font-weight: 600;"' : ''}>C: ${escapeHtml(question.option_c)}</div>
+    <div ${question.correct_option.toLowerCase() === 'd' ? 'style="color: #10B981; font-weight: 600;"' : ''}>D: ${escapeHtml(question.option_d)}</div>
+    <div style="margin-top: 5px;"><strong>Riktig: <span style="color: #10B981;">${question.correct_option.toUpperCase()}</span></strong></div>
+  `;
+}
+
+// Enhanced modal operations with better integration
+
+// Enhanced Column Visibility System
+function initializeEnhancedColumnVisibility() {
+  // Load saved column preferences
+  loadColumnPreferences();
+  
+  // Set up event listeners for checkboxes
   document.querySelectorAll('.column-checkbox').forEach(checkbox => {
     checkbox.addEventListener('change', function() {
       const column = this.dataset.column;
-      const cells = document.querySelectorAll(`#questionsSection [data-column="${column}"]`);
-      
-      cells.forEach(cell => {
-        cell.style.display = this.checked ? '' : 'none';
-      });
+      toggleColumnVisibility(column, this.checked);
+      saveColumnPreferences();
     });
   });
-});
+  
+  // Close dropdown when clicking outside
+  document.addEventListener('click', function(e) {
+    const dropdown = document.getElementById('columnVisibilityDropdown');
+    const button = document.getElementById('columnVisibilityBtn');
+    
+    if (!dropdown.contains(e.target) && !button.contains(e.target)) {
+      dropdown.style.display = 'none';
+    }
+  });
+}
+
+function toggleColumnVisibilityDropdown() {
+  const dropdown = document.getElementById('columnVisibilityDropdown');
+  dropdown.style.display = dropdown.style.display === 'none' ? 'block' : 'none';
+}
+
+function toggleColumnVisibility(column, visible) {
+  const tableContainer = document.querySelector('.table-container');
+  
+  if (visible) {
+    tableContainer.classList.remove(`hide-${column}`);
+  } else {
+    tableContainer.classList.add(`hide-${column}`);
+  }
+}
+
+function saveColumnPreferences() {
+  const preferences = {};
+  document.querySelectorAll('.column-checkbox').forEach(checkbox => {
+    preferences[checkbox.dataset.column] = checkbox.checked;
+  });
+  localStorage.setItem('adminColumnPreferences', JSON.stringify(preferences));
+}
+
+function loadColumnPreferences() {
+  const saved = localStorage.getItem('adminColumnPreferences');
+  if (!saved) return;
+  
+  try {
+    const preferences = JSON.parse(saved);
+    const tableContainer = document.querySelector('.table-container');
+    
+    document.querySelectorAll('.column-checkbox').forEach(checkbox => {
+      const column = checkbox.dataset.column;
+      if (preferences.hasOwnProperty(column)) {
+        checkbox.checked = preferences[column];
+        
+        // Apply the visibility state
+        if (preferences[column]) {
+          tableContainer.classList.remove(`hide-${column}`);
+        } else {
+          tableContainer.classList.add(`hide-${column}`);
+        }
+      }
+    });
+  } catch (error) {
+    console.error('Error loading column preferences:', error);
+  }
+}
+
+// Add keyboard shortcut for column visibility
+function addColumnVisibilityShortcut() {
+  // Add to existing keyboard shortcuts
+  document.addEventListener('keydown', function(e) {
+    if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'k') {
+      if (!['INPUT', 'TEXTAREA', 'SELECT'].includes(e.target.tagName)) {
+        e.preventDefault();
+        toggleColumnVisibilityDropdown();
+      }
+    }
+  });
+}
+
+// Make functions globally available
+window.toggleColumnVisibilityDropdown = toggleColumnVisibilityDropdown;
+
+function escapeHtml(text) {
+  const div = document.createElement('div');
+  div.textContent = text;
+  return div.innerHTML;
+}
+
+// Update the existing confirmDelete to use AJAX
+function confirmDelete(id) {
+  confirmDeleteAjax(id);
+}
+
+// ========================================
+// ENHANCED FILTERING & SEARCH (PHASE 3)
+// ========================================
+
+// Questions section filter, pagination and sort state (isolated from other sections)
+let questionsCurrentFilters = {
+  search: '',
+  category: '',
+  subcategory: '',
+  difficulty: ''
+};
+
+let questionsCurrentPagination = {
+  page: 1,
+  per_page: 50,
+  total: 0,
+  pages: 1,
+  has_prev: false,
+  has_next: false
+};
+
+let questionsCurrentSort = {
+  sort_by: '',
+  sort_order: 'asc'
+};
+
+// Debounce timer for search
+let searchTimeout = null;
+
+// Initialize enhanced filtering
+function initializeEnhancedFiltering() {
+  const searchInput = document.getElementById('realTimeSearch');
+  const categoryFilter = document.getElementById('categoryFilter');
+  const subcategoryFilter = document.getElementById('subcategoryFilter');
+  const difficultyFilter = document.getElementById('difficultyFilter');
+  
+  if (!searchInput || !categoryFilter) return;
+  
+  // Store images data globally for path construction
+  window.adminImages = {{ images | tojson }};
+  console.log('Admin images loaded:', window.adminImages); // Debug log
+  
+  // Set initial filter state
+  questionsCurrentFilters.search = searchInput.value;
+  questionsCurrentFilters.category = categoryFilter.value;
+  questionsCurrentFilters.subcategory = subcategoryFilter ? subcategoryFilter.value : '';
+  questionsCurrentFilters.difficulty = difficultyFilter ? difficultyFilter.value : '';
+  
+  // Real-time search with debouncing
+  searchInput.addEventListener('input', function() {
+    clearTimeout(searchTimeout);
+    searchTimeout = setTimeout(() => {
+      questionsCurrentFilters.search = this.value;
+      performFilteredSearch(true); // Reset to page 1 on search
+    }, 300); // 300ms debounce
+  });
+  
+  // Category filter with cascading subcategories
+  categoryFilter.addEventListener('change', function() {
+    questionsCurrentFilters.category = this.value;
+    updateSubcategoryFilter(); // Cascading update
+    performFilteredSearch(true); // Reset to page 1
+  });
+  
+  // Subcategory filter
+  if (subcategoryFilter) {
+    subcategoryFilter.addEventListener('change', function() {
+      questionsCurrentFilters.subcategory = this.value;
+      performFilteredSearch(true); // Reset to page 1
+    });
+  }
+  
+  // Difficulty filter
+  if (difficultyFilter) {
+    difficultyFilter.addEventListener('change', function() {
+      questionsCurrentFilters.difficulty = this.value;
+      performFilteredSearch(true); // Reset to page 1
+    });
+  }
+  
+  // Initial subcategory population
+  updateSubcategoryFilter();
+}
+
+// Perform filtered search using AJAX
+function performFilteredSearch(resetPage = false) {
+  setFilterLoading(true);
+  
+  // Reset to page 1 when filters change
+  if (resetPage) {
+    questionsCurrentPagination.page = 1;
+  }
+  
+  const params = new URLSearchParams();
+  if (questionsCurrentFilters.search) params.append('search', questionsCurrentFilters.search);
+  if (questionsCurrentFilters.category) params.append('category', questionsCurrentFilters.category);
+  if (questionsCurrentFilters.subcategory) params.append('subcategory', questionsCurrentFilters.subcategory);
+  if (questionsCurrentFilters.difficulty) params.append('difficulty', questionsCurrentFilters.difficulty);
+  
+  // Add pagination parameters
+  params.append('page', questionsCurrentPagination.page);
+  params.append('per_page', questionsCurrentPagination.per_page);
+  
+  // Add sort parameters
+  if (questionsCurrentSort.sort_by) {
+    params.append('sort_by', questionsCurrentSort.sort_by);
+    params.append('sort_order', questionsCurrentSort.sort_order);
+  }
+  
+  fetch(`/admin/api/questions?${params.toString()}`)
+    .then(response => response.json())
+    .then(result => {
+      if (result.success) {
+        updateQuestionsTable(result.questions);
+        updateQuestionStats(result.stats);
+        updateResultsCounter(result.pagination);
+        updatePagination(result.pagination);
+      } else {
+        showNotification('Feil ved søking: ' + (result.error || 'Ukjent feil'), 'error');
+      }
+    })
+    .catch(error => {
+      console.error('Error performing filtered search:', error);
+      showNotification('Nettverksfeil ved søking', 'error');
+    })
+    .finally(() => {
+      setFilterLoading(false);
+    });
+}
+
+// Update subcategories based on selected category (cascading filter)
+function updateSubcategoryFilter() {
+  const subcategoryFilter = document.getElementById('subcategoryFilter');
+  if (!subcategoryFilter) return;
+  
+  const selectedCategory = questionsCurrentFilters.category;
+  
+  if (!selectedCategory) {
+    // Show all subcategories when no category is selected
+    fetch('/admin/api/subcategories')
+      .then(response => response.json())
+      .then(result => {
+        populateSubcategoryOptions(result.subcategories);
+      })
+      .catch(error => {
+        console.error('Error fetching subcategories:', error);
+      });
+  } else {
+    // Show subcategories for selected category
+    fetch(`/admin/api/subcategories?category=${encodeURIComponent(selectedCategory)}`)
+      .then(response => response.json())
+      .then(result => {
+        populateSubcategoryOptions(result.subcategories);
+      })
+      .catch(error => {
+        console.error('Error fetching subcategories:', error);
+      });
+  }
+}
+
+// Populate subcategory dropdown options
+function populateSubcategoryOptions(subcategories) {
+  const subcategoryFilter = document.getElementById('subcategoryFilter');
+  if (!subcategoryFilter) return;
+  
+  const currentValue = subcategoryFilter.value;
+  
+  // Clear existing options except the first
+  subcategoryFilter.innerHTML = '<option value="">Alle underkategorier</option>';
+  
+  // Add new options
+  subcategories.forEach(subcategory => {
+    const option = document.createElement('option');
+    option.value = subcategory;
+    option.textContent = subcategory;
+    if (subcategory === currentValue) {
+      option.selected = true;
+    }
+    subcategoryFilter.appendChild(option);
+  });
+  
+  // Reset subcategory filter if current value is no longer valid
+  if (currentValue && !subcategories.includes(currentValue)) {
+    subcategoryFilter.value = '';
+    questionsCurrentFilters.subcategory = '';
+  }
+}
+
+// Update questions table with new data
+function updateQuestionsTable(questions) {
+  const tbody = document.querySelector('#questionsSection table tbody');
+  if (!tbody) return;
+  
+  // Clear existing rows
+  tbody.innerHTML = '';
+  
+  // Add new rows
+  questions.forEach(question => {
+    const row = createQuestionTableRow(question);
+    tbody.appendChild(row);
+  });
+  
+  // Add highlight effect
+  tbody.style.opacity = '0.7';
+  setTimeout(() => {
+    tbody.style.opacity = '1';
+  }, 200);
+}
+
+// Create a table row for a question
+function createQuestionTableRow(question) {
+  const row = document.createElement('tr');
+  row.dataset.id = question.id;
+  
+  const bulkCheckbox = document.querySelector('.bulk-checkbox').style.display !== 'none' 
+    ? `<td class="checkbox-column bulk-checkbox">
+         <input type="checkbox" name="question_ids" value="${question.id}" onchange="updateSelectedCount()">
+       </td>`
+    : `<td class="checkbox-column bulk-checkbox" style="display: none;">
+         <input type="checkbox" name="question_ids" value="${question.id}" onchange="updateSelectedCount()">
+       </td>`;
+
+  // Construct proper image path using the same logic as initial page load
+  let imageSrc = '';
+  if (question.image_filename) {
+    // Filter out hidden macOS files
+    if (question.image_filename.startsWith('._')) {
+      console.log('Skipping hidden file:', question.image_filename);
+      imageSrc = ''; // Don't load hidden files
+    } else {
+      // Try to find the image in the images array to get the correct folder
+      const imageData = window.adminImages ? window.adminImages.find(img => img.filename === question.image_filename) : null;
+      if (imageData && imageData.folder) {
+        imageSrc = `/static/images/${imageData.folder}/${question.image_filename}`;
+        console.log('Found image with folder:', imageSrc);
+      } else {
+        imageSrc = `/static/images/${question.image_filename}`;
+        console.log('Image without folder info:', imageSrc);
+      }
+    }
+  }
+
+  row.innerHTML = `
+    ${bulkCheckbox}
+    <td data-column="id">${question.id}</td>
+    <td data-column="question">${escapeHtml(question.question)}</td>
+    <td data-column="category">${question.category || 'Ukategoriseret'}</td>
+    <td data-column="subcategory">${question.subcategory || '-'}</td>
+    <td data-column="explanation">
+      ${question.explanation 
+        ? `<div style="max-width: 200px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;" title="${escapeHtml(question.explanation)}">
+             ${escapeHtml(question.explanation)}
+           </div>`
+        : '<span style="color: #999;">Ingen forklaring</span>'
+      }
+    </td>
+    <td data-column="difficulty">${question.difficulty_level || '1'}</td>
+    <td data-column="image">
+      ${question.image_filename && imageSrc
+        ? `<img src="${imageSrc}" alt="" class="question-image" onerror="this.style.display='none'; console.log('Failed to load image: ${imageSrc}')">`
+        : '<span style="color: #999;">Ingen bilde</span>'
+      }
+    </td>
+    <td data-column="options" class="options-display">
+      <div ${question.correct_option.toLowerCase() === 'a' ? 'style="color: #10B981; font-weight: 600;"' : ''}>A: ${escapeHtml(question.option_a)}</div>
+      <div ${question.correct_option.toLowerCase() === 'b' ? 'style="color: #10B981; font-weight: 600;"' : ''}>B: ${escapeHtml(question.option_b)}</div>
+      <div ${question.correct_option.toLowerCase() === 'c' ? 'style="color: #10B981; font-weight: 600;"' : ''}>C: ${escapeHtml(question.option_c)}</div>
+      <div ${question.correct_option.toLowerCase() === 'd' ? 'style="color: #10B981; font-weight: 600;"' : ''}>D: ${escapeHtml(question.option_d)}</div>
+      <div style="margin-top: 5px;"><strong>Riktig: <span style="color: #10B981;">${question.correct_option.toUpperCase()}</span></strong></div>
+    </td>
+    <td data-column="actions">
+      <button onclick="previewQuestionFromRow(this, ${question.id})" class="btn btn-info btn-small">👁️ Forhåndsvis</button>
+      <button onclick="editQuestionFromRow(this, ${question.id})" class="btn btn-warning btn-small">✏️ Rediger</button>
+      <button onclick="confirmDeleteAjax(${question.id})" class="btn btn-danger btn-small">🗑️ Slett</button>
+    </td>
+  `;
+  
+  return row;
+}
+
+// Update question statistics
+function updateQuestionStats(stats) {
+  const totalElement = document.getElementById('totalQuestions');
+  const categoriesElement = document.getElementById('totalCategories');
+  const withImagesElement = document.getElementById('questionsWithImages');
+  const withoutImagesElement = document.getElementById('questionsWithoutImages');
+  
+  if (totalElement) totalElement.textContent = stats.total || 0;
+  if (categoriesElement) categoriesElement.textContent = Object.keys(stats.by_category || {}).length;
+  if (withImagesElement) withImagesElement.textContent = stats.with_images || 0;
+  if (withoutImagesElement) withoutImagesElement.textContent = stats.without_images || 0;
+}
+
+// Update results counter
+function updateResultsCounter(pagination) {
+  const container = document.getElementById('resultsCounterContainer');
+  if (!container) return;
+  
+  if (pagination.filtered < pagination.total_in_db) {
+    container.innerHTML = `
+      <div class="results-counter">
+        <span class="filter-results">🔍 Viser ${pagination.filtered} av ${pagination.total_in_db} spørsmål</span>
+      </div>
+    `;
+  } else {
+    container.innerHTML = '';
+  }
+}
+
+// Update pagination controls
+function updatePagination(pagination) {
+  // Update questions section pagination state
+  questionsCurrentPagination = {
+    page: pagination.page,
+    per_page: pagination.per_page,
+    total: pagination.total,
+    pages: pagination.pages,
+    has_prev: pagination.has_prev,
+    has_next: pagination.has_next
+  };
+  
+  // Update pagination info
+  const paginationInfo = document.getElementById('paginationInfo');
+  if (paginationInfo) {
+    const start = ((pagination.page - 1) * pagination.per_page) + 1;
+    const end = Math.min(pagination.page * pagination.per_page, pagination.total);
+    
+    if (pagination.per_page === -1) {
+      paginationInfo.textContent = `Viser alle ${pagination.total} spørsmål`;
+    } else {
+      paginationInfo.textContent = `Viser ${start}-${end} av ${pagination.total} spørsmål`;
+    }
+  }
+  
+  // Update per-page selector
+  const perPageSelector = document.getElementById('perPageSelector');
+  if (perPageSelector) {
+    perPageSelector.value = pagination.per_page;
+  }
+  
+  // Always show pagination controls container (contains per-page selector)
+  const paginationControls = document.getElementById('paginationControls');
+  if (paginationControls) {
+    paginationControls.style.display = 'flex';
+    
+    // Only hide/show the pagination buttons (not the whole container)
+    const paginationButtons = document.getElementById('paginationButtons');
+    if (paginationButtons) {
+      if (pagination.per_page === -1 || pagination.pages <= 1) {
+        paginationButtons.style.display = 'none';  // Hide only buttons
+      } else {
+        paginationButtons.style.display = 'flex';   // Show buttons
+        renderPaginationButtons(pagination);
+      }
+    }
+  }
+}
+
+// Render pagination buttons
+function renderPaginationButtons(pagination) {
+  const container = document.getElementById('paginationButtons');
+  if (!container) return;
+  
+  let buttonsHTML = '';
+  
+  // Previous button
+  if (pagination.has_prev) {
+    buttonsHTML += `<button class="pagination-btn" onclick="goToPage(${pagination.page - 1})" title="Forrige side">
+      <span class="pagination-arrow">‹</span> Forrige
+    </button>`;
+  } else {
+    buttonsHTML += `<button class="pagination-btn disabled" disabled title="Ingen forrige side">
+      <span class="pagination-arrow">‹</span> Forrige
+    </button>`;
+  }
+  
+  // Page number buttons
+  const maxVisiblePages = 5;
+  let startPage = Math.max(1, pagination.page - Math.floor(maxVisiblePages / 2));
+  let endPage = Math.min(pagination.pages, startPage + maxVisiblePages - 1);
+  
+  // Adjust start page if we're near the end
+  if (endPage - startPage + 1 < maxVisiblePages) {
+    startPage = Math.max(1, endPage - maxVisiblePages + 1);
+  }
+  
+  // First page + ellipsis
+  if (startPage > 1) {
+    buttonsHTML += `<button class="pagination-btn page-btn" onclick="goToPage(1)">1</button>`;
+    if (startPage > 2) {
+      buttonsHTML += `<span class="pagination-ellipsis">…</span>`;
+    }
+  }
+  
+  // Page number buttons
+  for (let i = startPage; i <= endPage; i++) {
+    if (i === pagination.page) {
+      buttonsHTML += `<button class="pagination-btn page-btn active" disabled>${i}</button>`;
+    } else {
+      buttonsHTML += `<button class="pagination-btn page-btn" onclick="goToPage(${i})">${i}</button>`;
+    }
+  }
+  
+  // Last page + ellipsis
+  if (endPage < pagination.pages) {
+    if (endPage < pagination.pages - 1) {
+      buttonsHTML += `<span class="pagination-ellipsis">…</span>`;
+    }
+    buttonsHTML += `<button class="pagination-btn page-btn" onclick="goToPage(${pagination.pages})">${pagination.pages}</button>`;
+  }
+  
+  // Next button
+  if (pagination.has_next) {
+    buttonsHTML += `<button class="pagination-btn" onclick="goToPage(${pagination.page + 1})" title="Neste side">
+      Neste <span class="pagination-arrow">›</span>
+    </button>`;
+  } else {
+    buttonsHTML += `<button class="pagination-btn disabled" disabled title="Ingen neste side">
+      Neste <span class="pagination-arrow">›</span>
+    </button>`;
+  }
+  
+  container.innerHTML = buttonsHTML;
+}
+
+// Navigate to specific page
+function goToPage(page) {
+  if (page < 1 || page > questionsCurrentPagination.pages || page === questionsCurrentPagination.page) {
+    return;
+  }
+  
+  questionsCurrentPagination.page = page;
+  
+  // If we have active filters or sort, use AJAX
+  if (questionsCurrentFilters.search || questionsCurrentFilters.category || questionsCurrentFilters.subcategory || 
+      questionsCurrentFilters.difficulty || questionsCurrentSort.sort_by) {
+    performFilteredSearch(false); // Don't reset page since we're explicitly setting it
+  } else {
+    // No filters active - reload page with new page parameter
+    const currentUrl = new URL(window.location);
+    currentUrl.searchParams.set('page', page);
+    if (questionsCurrentPagination.per_page !== 50) {
+      currentUrl.searchParams.set('per_page', questionsCurrentPagination.per_page);
+    }
+    window.location.href = currentUrl.toString();
+  }
+}
+
+// Change per-page setting
+function changePerPage() {
+  const perPageSelector = document.getElementById('perPageSelector');
+  if (!perPageSelector) return;
+  
+  const newPerPage = parseInt(perPageSelector.value);
+  if (newPerPage === questionsCurrentPagination.per_page) return;
+  
+  questionsCurrentPagination.per_page = newPerPage;
+  questionsCurrentPagination.page = 1; // Reset to first page when changing per-page
+  
+  // If we have active filters or sort, use AJAX
+  if (questionsCurrentFilters.search || questionsCurrentFilters.category || questionsCurrentFilters.subcategory || 
+      questionsCurrentFilters.difficulty || questionsCurrentSort.sort_by) {
+    performFilteredSearch(false);
+  } else {
+    // No filters active - reload page with new per_page parameter
+    const currentUrl = new URL(window.location);
+    currentUrl.searchParams.set('per_page', newPerPage);
+    window.location.href = currentUrl.toString();
+  }
+}
+
+// Clear all filters
+function clearAllFilters() {
+  document.getElementById('realTimeSearch').value = '';
+  document.getElementById('categoryFilter').value = '';
+  document.getElementById('subcategoryFilter').value = '';
+  document.getElementById('difficultyFilter').value = '';
+  
+  questionsCurrentFilters = {
+    search: '',
+    category: '',
+    subcategory: '',
+    difficulty: ''
+  };
+  
+  // Also clear sorting
+  clearSort();
+  
+  updateSubcategoryFilter();
+  // performFilteredSearch will be called by clearSort()
+}
+
+// Set filter loading state
+function setFilterLoading(loading) {
+  const indicator = document.getElementById('filterLoadingIndicator');
+  const container = document.getElementById('searchFilterContainer');
+  const tableContainer = document.querySelector('.table-container');
+  
+  if (loading) {
+    indicator.style.display = 'flex';
+    container.style.opacity = '0.7';
+    if (tableContainer) {
+      tableContainer.style.opacity = '0.7';
+      tableContainer.style.pointerEvents = 'none';
+    }
+  } else {
+    indicator.style.display = 'none';
+    container.style.opacity = '1';
+    if (tableContainer) {
+      tableContainer.style.opacity = '1';
+      tableContainer.style.pointerEvents = 'auto';
+    }
+  }
+}
+
+// ========================================
+// SORTING FUNCTIONALITY (PHASE 5)
+// ========================================
+
+// Initialize sorting
+function initializeSorting() {
+  // Set up visual indicators for sortable headers
+  updateSortIndicators();
+}
+
+// Toggle sort for a column
+function toggleSort(column) {
+  if (questionsCurrentSort.sort_by === column) {
+    // Same column - toggle direction
+    questionsCurrentSort.sort_order = questionsCurrentSort.sort_order === 'asc' ? 'desc' : 'asc';
+  } else {
+    // New column - default to ascending
+    questionsCurrentSort.sort_by = column;
+    questionsCurrentSort.sort_order = 'asc';
+  }
+  
+  // Update visual indicators
+  updateSortIndicators();
+  
+  // Perform search with sort
+  performFilteredSearch(true); // Reset to page 1 when sorting changes
+}
+
+// Update sort indicator arrows
+function updateSortIndicators() {
+  // Clear all indicators
+  document.querySelectorAll('.sort-indicator').forEach(indicator => {
+    indicator.textContent = '';
+    indicator.className = 'sort-indicator';
+  });
+  
+  // Set active indicator
+  if (questionsCurrentSort.sort_by) {
+    const activeIndicator = document.querySelector(`[data-sort="${questionsCurrentSort.sort_by}"]`);
+    if (activeIndicator) {
+      activeIndicator.textContent = questionsCurrentSort.sort_order === 'asc' ? '↑' : '↓';
+      activeIndicator.className = 'sort-indicator active ' + questionsCurrentSort.sort_order;
+    }
+  }
+  
+  // Update header classes
+  document.querySelectorAll('.sortable-header').forEach(header => {
+    header.classList.remove('sorted-asc', 'sorted-desc');
+    const sortable = header.getAttribute('data-sortable');
+    if (sortable === questionsCurrentSort.sort_by) {
+      header.classList.add(`sorted-${questionsCurrentSort.sort_order}`);
+    }
+  });
+}
+
+// Clear sorting
+function clearSort() {
+  questionsCurrentSort.sort_by = '';
+  questionsCurrentSort.sort_order = 'asc';
+  updateSortIndicators();
+  performFilteredSearch(true);
+}
+
+// Add keyboard support for sorting
+function addKeyboardSortSupport() {
+  document.querySelectorAll('.sortable-header').forEach(header => {
+    // Make headers focusable
+    header.setAttribute('tabindex', '0');
+    header.setAttribute('role', 'button');
+    header.setAttribute('aria-label', 'Sort by ' + header.textContent.trim());
+    
+    // Add keyboard event listener
+    header.addEventListener('keydown', function(e) {
+      if (e.key === 'Enter' || e.key === ' ') {
+        e.preventDefault();
+        const sortable = this.getAttribute('data-sortable');
+        if (sortable) {
+          toggleSort(sortable);
+        }
+      }
+    });
+  });
+}
+
+// Maintain sort state during CRUD operations
+function maintainSortState() {
+  // This function is called after successful CRUD operations
+  // to refresh the table while maintaining the current sort
+  if (questionsCurrentSort.sort_by) {
+    // Re-apply current filters and sort without changing page
+    performFilteredSearch(false);
+  }
+}
+
+// Initialize pagination with server data on page load
+function initializeInitialPagination() {
+  const container = document.getElementById('questionsSection');
+  if (!container) return;
+  
+  try {
+    const paginationData = JSON.parse(container.dataset.initialPagination || '{}');
+    
+    // Update questions section pagination state with server data
+    questionsCurrentPagination = {
+      page: paginationData.page || 1,
+      per_page: paginationData.per_page || 50,
+      total: paginationData.total || 0,
+      pages: paginationData.pages || 1,
+      has_prev: paginationData.has_prev || false,
+      has_next: paginationData.has_next || false
+    };
+    
+    // Update pagination UI with server data
+    updatePagination(questionsCurrentPagination);
+    
+    console.log('Initial questions pagination initialized:', questionsCurrentPagination);
+  } catch (error) {
+    console.error('Error initializing pagination:', error);
+  }
+}
 </script>
 
 <!-- Preview Modal -->
 <div id="previewModal" class="modal">
   <div class="modal-content">
     <span class="close" onclick="closePreview()">&times;</span>
-    <h2>👁️ Forhåndsvisning av spørsmål</h2>
+    <h2 style="text-align: center; margin-bottom: 20px;">👁️ Forhåndsvisning av spørsmål</h2>
     <div id="previewContent"></div>
   </div>
 </div>
@@ -539,10 +2424,37 @@ document.addEventListener('DOMContentLoaded', function() {
       <h3 style="margin-top: 0; color: #28a745; display: flex; align-items: center; gap: 10px;">
         📥 Eksporter Spørsmål
       </h3>
-      <p style="margin-bottom: 15px; color: #555;">Last ned alle spørsmål som en CSV-fil for backup eller redigering i Excel.</p>
-      <a href="{{ url_for('admin.export_questions') }}" class="btn btn-success" style="width: auto; display: inline-block; padding: 12px 24px;">
-        📥 Last ned CSV-fil
-      </a>
+      <p style="margin-bottom: 15px; color: #555;">Last ned alle spørsmål som CSV eller JSON for backup eller redigering.</p>
+      
+      <!-- Export Format Selection -->
+      <div style="margin-bottom: 15px;">
+        <label style="display: block; font-weight: bold; margin-bottom: 5px;">Eksportformat:</label>
+        <div style="display: flex; gap: 15px; margin-bottom: 10px;">
+          <label style="display: flex; align-items: center; gap: 5px; cursor: pointer;">
+            <input type="radio" name="export_format" value="csv" checked onchange="toggleExportOptions()">
+            <span>CSV</span>
+          </label>
+          <label style="display: flex; align-items: center; gap: 5px; cursor: pointer;">
+            <input type="radio" name="export_format" value="json" onchange="toggleExportOptions()">
+            <span>JSON</span>
+          </label>
+        </div>
+      </div>
+      
+      <!-- CSV Delimiter Options -->
+      <div id="csvExportOptions" style="margin-bottom: 15px;">
+        <label for="exportDelimiter" style="display: block; font-weight: bold; margin-bottom: 5px;">CSV-skilletegn:</label>
+        <select id="exportDelimiter" style="width: 100%; padding: 8px; border: 2px solid #ddd; border-radius: 4px;">
+          <option value=",">Komma (,) - Internasjonal standard</option>
+          <option value=";">Semikolon (;) - Norsk standard</option>
+          <option value="\t">Tab (\t) - Tab-separert</option>
+          <option value="|">Pipe (|) - Alternativ</option>
+        </select>
+      </div>
+      
+      <button onclick="exportQuestions()" class="btn btn-success" style="width: auto; display: inline-block; padding: 12px 24px;">
+        📥 Last ned fil
+      </button>
     </div>
 
     <!-- Import Section -->
@@ -550,17 +2462,18 @@ document.addEventListener('DOMContentLoaded', function() {
       <h3 style="margin-top: 0; color: #e67e22; display: flex; align-items: center; gap: 10px;">
         📤 Importer Spørsmål
       </h3>
-      <p style="margin-bottom: 15px; color: #555;">Last opp en CSV-fil med spørsmål. Filen må ha samme format som eksport-filen.</p>
+      <p style="margin-bottom: 15px; color: #555;">Last opp en CSV- eller JSON-fil med spørsmål. Filen må ha samme format som eksport-filen.</p>
       
       <!-- Import Form -->
       <form id="importForm" method="POST" action="{{ url_for('admin.import_questions') }}" enctype="multipart/form-data">
         <div style="margin-bottom: 15px;">
-          <label for="csvFile" style="display: block; font-weight: bold; margin-bottom: 5px;">Velg CSV-fil:</label>
-          <input type="file" id="csvFile" name="csv_file" accept=".csv" required 
-                 style="width: 100%; padding: 8px; border: 2px solid #ddd; border-radius: 4px;">
+          <label for="csvFile" style="display: block; font-weight: bold; margin-bottom: 5px;">Velg fil:</label>
+          <input type="file" id="csvFile" name="csv_file" accept=".csv,.json" required 
+                 style="width: 100%; padding: 8px; border: 2px solid #ddd; border-radius: 4px;" onchange="updateImportOptions()">
+          <small style="color: #6c757d; font-size: 11px;">📁 Aksepterte formater: CSV (.csv) og JSON (.json)</small>
         </div>
         
-        <div style="margin-bottom: 15px;">
+        <div id="csvImportOptions" style="margin-bottom: 15px;">
           <label for="csvDelimiter" style="display: block; font-weight: bold; margin-bottom: 5px;">CSV-skilletegn:</label>
           <select id="csvDelimiter" name="csv_delimiter" style="width: 100%; padding: 8px; border: 2px solid #ddd; border-radius: 4px;">
             <option value=";">Semikolon (;) - Norsk standard</option>
@@ -584,14 +2497,72 @@ document.addEventListener('DOMContentLoaded', function() {
         </button>
       </form>
       
-      <!-- CSV Format Help -->
+      <!-- Format Help -->
       <div style="background: #f8f9fa; padding: 15px; border-radius: 4px; margin-top: 15px; border: 1px solid #dee2e6;">
-        <h4 style="margin-top: 0; font-size: 14px; color: #495057;">📄 CSV-format:</h4>
-        <p style="margin: 5px 0; font-size: 12px; color: #6c757d;">Kolonner: id, question, option_a, option_b, option_c, option_d, correct_option, category, subcategory, difficulty_level, image_filename</p>
-        <p style="margin: 5px 0; font-size: 12px; color: #6c757d;">🇳🇴 Norsk format: <code>id;question;option_a;option_b;...</code></p>
-        <p style="margin: 5px 0; font-size: 12px; color: #6c757d;">🌍 Internasjonalt: <code>id,question,option_a,option_b,...</code></p>
-        <p style="margin: 5px 0 0 0; font-size: 12px; color: #6c757d;">Tips: Last ned en eksport-fil først for å se det korrekte formatet.</p>
+        <h4 style="margin-top: 0; font-size: 14px; color: #495057;">📄 Filformat:</h4>
+        <div id="csvFormatHelp">
+          <p style="margin: 5px 0; font-size: 12px; color: #6c757d;">CSV-kolonner: id, question, option_a, option_b, option_c, option_d, correct_option, category, subcategory, difficulty_level, explanation, image_filename</p>
+          <p style="margin: 5px 0; font-size: 12px; color: #6c757d;">🇳🇴 Norsk format: <code>id;question;option_a;option_b;...</code></p>
+          <p style="margin: 5px 0; font-size: 12px; color: #6c757d;">🌍 Internasjonalt: <code>id,question,option_a,option_b,...</code></p>
+          <p style="margin: 5px 0 0 0; font-size: 12px; color: #6c757d;">Tips: Last ned en eksport-fil først for å se det korrekte formatet.</p>
+        </div>
+        <div id="jsonFormatHelp" style="display: none;">
+          <p style="margin: 5px 0; font-size: 12px; color: #6c757d;">JSON-format: En liste med spørsmål-objekter med samme felt som CSV</p>
+          <p style="margin: 5px 0; font-size: 12px; color: #6c757d;">Eksempel: <code>[{"id": 1, "question": "...", "option_a": "...", ...}]</code></p>
+          <p style="margin: 5px 0 0 0; font-size: 12px; color: #6c757d;">Tips: Eksporter som JSON først for å se det korrekte formatet.</p>
+        </div>
       </div>
+    </div>
+  </div>
+</div>
+
+<!-- Keyboard Shortcuts Modal -->
+<div id="keyboardShortcutsModal" class="modal">
+  <div class="modal-content" style="max-width: 500px;">
+    <span class="close" onclick="closeKeyboardShortcuts()">&times;</span>
+    <h2 style="text-align: center; color: #333; margin-bottom: 30px;">⌨️ Hurtigtaster</h2>
+    
+    <div class="shortcuts-grid">
+      <div class="shortcut-item">
+        <kbd>Ctrl</kbd> + <kbd>N</kbd>
+        <span>Nytt spørsmål</span>
+      </div>
+      <div class="shortcut-item">
+        <kbd>Ctrl</kbd> + <kbd>S</kbd>
+        <span>Lagre spørsmål</span>
+      </div>
+      <div class="shortcut-item">
+        <kbd>Esc</kbd>
+        <span>Lukk modal/form</span>
+      </div>
+      <div class="shortcut-item">
+        <kbd>Ctrl</kbd> + <kbd>F</kbd>
+        <span>Fokus på søk</span>
+      </div>
+      <div class="shortcut-item">
+        <kbd>Ctrl</kbd> + <kbd>Z</kbd>
+        <span>Angre siste sletting</span>
+      </div>
+      <div class="shortcut-item">
+        <kbd>Ctrl</kbd> + <kbd>D</kbd>
+        <span>Bytt tabelltetthet</span>
+      </div>
+      <div class="shortcut-item">
+        <kbd>Ctrl</kbd> + <kbd>R</kbd>
+        <span>Tilbakestill filtre</span>
+      </div>
+      <div class="shortcut-item">
+        <kbd>Ctrl</kbd> + <kbd>H</kbd>
+        <span>Vis hurtigtaster</span>
+      </div>
+      <div class="shortcut-item">
+        <kbd>Ctrl</kbd> + <kbd>K</kbd>
+        <span>Vis/skjul kolonner</span>
+      </div>
+    </div>
+    
+    <div style="text-align: center; margin-top: 20px; color: #666; font-size: 14px;">
+      <em>Tips: Mange av disse funksjonene kan også nås via knappetrykk i grensesnittet</em>
     </div>
   </div>
 </div>
@@ -622,6 +2593,45 @@ document.addEventListener('DOMContentLoaded', function() {
   border-color: #10B981;
   color: #10B981;
   font-weight: 600;
+}
+
+.preview-explanation {
+  margin-top: 15px;
+  padding: 15px;
+  background: #E0F2FE;
+  border-left: 4px solid #0EA5E9;
+  border-radius: 4px;
+  font-size: 14px;
+  line-height: 1.5;
+}
+
+/* Info button styling */
+.btn-info {
+  background-color: #0EA5E9;
+  border-color: #0EA5E9;
+  color: white;
+}
+
+.btn-info:hover {
+  background-color: #0284C7;
+  border-color: #0284C7;
+}
+
+.btn-info.btn-small {
+  font-size: 12px;
+  padding: 4px 8px;
+  margin: 2px;
+}
+
+/* Actions column button alignment */
+td[data-column="actions"] {
+  white-space: nowrap;
+}
+
+td[data-column="actions"] .btn {
+  display: inline-block;
+  vertical-align: middle;
+  margin: 1px 2px;
 }
 
 /* Image gallery enhancement */
@@ -720,5 +2730,960 @@ td[data-column="options"] div {
 #importExportModal .btn:hover {
   transform: translateY(-1px);
   box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
+}
+
+/* AJAX Loading Animation */
+@keyframes spin {
+  0% { transform: rotate(0deg); }
+  100% { transform: rotate(360deg); }
+}
+
+@keyframes slideIn {
+  from {
+    transform: translateX(100%);
+    opacity: 0;
+  }
+  to {
+    transform: translateX(0);
+    opacity: 1;
+  }
+}
+
+/* Enhanced Filtering Styles (Phase 3) */
+.search-filter-container {
+  display: flex;
+  gap: 10px;
+  align-items: center;
+  flex-wrap: wrap;
+  margin-bottom: 20px;
+  padding: 15px;
+  background: #f8f9fa;
+  border-radius: 8px;
+  border: 1px solid #e5e7eb;
+}
+
+.search-filter-container input,
+.search-filter-container select {
+  padding: 8px 12px;
+  border: 2px solid #e5e7eb;
+  border-radius: 6px;
+  font-size: 14px;
+  transition: border-color 0.2s, box-shadow 0.2s;
+}
+
+.search-filter-container input:focus,
+.search-filter-container select:focus {
+  border-color: #3B82F6;
+  box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
+  outline: none;
+}
+
+.search-filter-container input[type="text"] {
+  min-width: 250px;
+  flex: 1;
+}
+
+.filter-loading {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  color: #6B7280;
+  font-size: 14px;
+}
+
+.loading-spinner-small {
+  width: 16px;
+  height: 16px;
+  border: 2px solid #f3f3f3;
+  border-top: 2px solid #3B82F6;
+  border-radius: 50%;
+  animation: spin 1s linear infinite;
+}
+
+.results-counter {
+  background: #e8f5e8;
+  padding: 10px 15px;
+  border-radius: 6px;
+  margin-bottom: 15px;
+  border-left: 4px solid #28a745;
+}
+
+.filter-results {
+  color: #155724;
+  font-weight: 600;
+  font-size: 14px;
+}
+
+/* Pagination Styles */
+.pagination-controls {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 15px;
+  background: #f8f9fa;
+  border-radius: 8px;
+  margin: 20px 0;
+  border: 1px solid #e5e7eb;
+  flex-wrap: wrap;
+  gap: 15px;
+}
+
+.pagination-info {
+  color: #6B7280;
+  font-size: 14px;
+  font-weight: 500;
+}
+
+.pagination-center {
+  flex: 1;
+  display: flex;
+  justify-content: center;
+}
+
+.pagination-buttons {
+  display: flex;
+  gap: 4px;
+  align-items: center;
+}
+
+.pagination-btn {
+  padding: 8px 12px;
+  border: 1px solid #e5e7eb;
+  background: white;
+  color: #374151;
+  border-radius: 6px;
+  cursor: pointer;
+  font-size: 14px;
+  font-weight: 500;
+  transition: all 0.2s;
+  min-width: 40px;
+  height: 36px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+}
+
+.pagination-btn:hover:not(.disabled):not(.active) {
+  background: #f3f4f6;
+  border-color: #d1d5db;
+}
+
+.pagination-btn.active {
+  background: #3B82F6;
+  border-color: #3B82F6;
+  color: white;
+  font-weight: 600;
+}
+
+.pagination-btn.disabled {
+  background: #f9fafb;
+  border-color: #f3f4f6;
+  color: #9ca3af;
+  cursor: not-allowed;
+}
+
+.pagination-btn.page-btn {
+  min-width: 36px;
+  padding: 8px;
+}
+
+.pagination-arrow {
+  font-size: 16px;
+  line-height: 1;
+}
+
+.pagination-ellipsis {
+  padding: 8px 4px;
+  color: #9ca3af;
+  font-size: 14px;
+  line-height: 36px;
+}
+
+.pagination-per-page {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  color: #6B7280;
+  font-size: 14px;
+}
+
+.pagination-per-page label {
+  font-weight: 500;
+  margin: 0;
+}
+
+.pagination-per-page select {
+  padding: 6px 10px;
+  border: 1px solid #e5e7eb;
+  border-radius: 6px;
+  background: white;
+  color: #374151;
+  font-size: 14px;
+  min-width: 70px;
+}
+
+.pagination-per-page select:focus {
+  border-color: #3B82F6;
+  box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
+  outline: none;
+}
+
+/* Responsive pagination layout */
+@media (max-width: 768px) {
+  .pagination-controls {
+    flex-direction: column;
+    align-items: stretch;
+    text-align: center;
+  }
+  
+  .pagination-center {
+    order: 1;
+  }
+  
+  .pagination-info {
+    order: 2;
+    text-align: center;
+  }
+  
+  .pagination-per-page {
+    order: 3;
+    justify-content: center;
+  }
+  
+  .pagination-buttons {
+    flex-wrap: wrap;
+    justify-content: center;
+  }
+  
+  .pagination-btn {
+    flex: 0 0 auto;
+  }
+}
+
+@media (max-width: 480px) {
+  .pagination-btn {
+    padding: 6px 8px;
+    font-size: 13px;
+    min-width: 32px;
+    height: 32px;
+  }
+  
+  .pagination-btn.page-btn {
+    min-width: 32px;
+    padding: 6px;
+  }
+}
+
+/* Responsive filter layout */
+@media (max-width: 768px) {
+  .search-filter-container {
+    flex-direction: column;
+    align-items: stretch;
+  }
+  
+  .search-filter-container input,
+  .search-filter-container select {
+    width: 100%;
+    min-width: auto;
+  }
+}
+
+/* ========================================
+   PHASE 6: POLISH & UX ENHANCEMENTS
+   ======================================== */
+
+/* Toast Notifications */
+.toast-container {
+  position: fixed;
+  top: 20px;
+  right: 20px;
+  z-index: 9999;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  pointer-events: none;
+}
+
+.toast {
+  min-width: 300px;
+  max-width: 500px;
+  padding: 16px 20px;
+  border-radius: 8px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  font-weight: 500;
+  font-size: 14px;
+  line-height: 1.4;
+  pointer-events: auto;
+  animation: slideInToast 0.3s ease-out;
+  position: relative;
+  backdrop-filter: blur(8px);
+  border: 1px solid;
+}
+
+.toast.success {
+  background: rgba(220, 252, 231, 0.95);
+  color: #065f46;
+  border-color: #059669;
+}
+
+.toast.error {
+  background: rgba(254, 226, 226, 0.95);
+  color: #991b1b;
+  border-color: #dc2626;
+}
+
+.toast.info {
+  background: rgba(219, 234, 254, 0.95);
+  color: #1e40af;
+  border-color: #3b82f6;
+}
+
+.toast.warning {
+  background: rgba(255, 237, 213, 0.95);
+  color: #92400e;
+  border-color: #f59e0b;
+}
+
+.toast-icon {
+  font-size: 18px;
+  line-height: 1;
+  flex-shrink: 0;
+}
+
+.toast-content {
+  flex: 1;
+}
+
+.toast-close {
+  background: none;
+  border: none;
+  font-size: 18px;
+  font-weight: bold;
+  color: inherit;
+  cursor: pointer;
+  opacity: 0.7;
+  transition: opacity 0.2s;
+  padding: 0;
+  margin-left: 8px;
+  flex-shrink: 0;
+}
+
+.toast-close:hover {
+  opacity: 1;
+}
+
+.toast-progress {
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  height: 3px;
+  background: currentColor;
+  opacity: 0.3;
+  border-radius: 0 0 8px 8px;
+  animation: toastProgress 5s linear;
+}
+
+.toast.undo {
+  background: rgba(255, 243, 205, 0.95);
+  color: #92400e;
+  border-color: #f59e0b;
+}
+
+.toast-undo-btn {
+  background: #f59e0b;
+  color: white;
+  border: none;
+  padding: 6px 12px;
+  border-radius: 4px;
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+  margin-left: 8px;
+  transition: background-color 0.2s;
+}
+
+.toast-undo-btn:hover {
+  background: #d97706;
+}
+
+@keyframes slideInToast {
+  from {
+    transform: translateX(100%);
+    opacity: 0;
+  }
+  to {
+    transform: translateX(0);
+    opacity: 1;
+  }
+}
+
+@keyframes slideOutToast {
+  to {
+    transform: translateX(100%);
+    opacity: 0;
+  }
+}
+
+@keyframes toastProgress {
+  from {
+    width: 100%;
+  }
+  to {
+    width: 0%;
+  }
+}
+
+/* Enhanced Features Bar */
+.enhanced-features-bar {
+  display: flex;
+  gap: 20px;
+  align-items: center;
+  flex-wrap: wrap;
+  margin-bottom: 15px;
+  padding: 12px 16px;
+  background: linear-gradient(135deg, #f8fafc 0%, #e2e8f0 100%);
+  border-radius: 8px;
+  border: 1px solid #e2e8f0;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+}
+
+.feature-group {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.feature-group label {
+  font-size: 13px;
+  font-weight: 600;
+  color: #475569;
+  margin-bottom: 0;
+}
+
+.feature-group select {
+  padding: 6px 10px;
+  border: 1px solid #d1d5db;
+  border-radius: 6px;
+  font-size: 13px;
+  background: white;
+  min-width: 100px;
+  transition: border-color 0.2s, box-shadow 0.2s;
+}
+
+.feature-group select:focus {
+  border-color: #3b82f6;
+  box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
+  outline: none;
+}
+
+/* Table Density Styles */
+.table-container.density-compact table {
+  font-size: 12px;
+}
+
+.table-container.density-compact th,
+.table-container.density-compact td {
+  padding: 6px 8px;
+  line-height: 1.3;
+}
+
+.table-container.density-compact .question-image {
+  max-width: 60px;
+}
+
+.table-container.density-compact .options-display {
+  font-size: 11px;
+}
+
+.table-container.density-comfortable th,
+.table-container.density-comfortable td {
+  padding: 12px;
+  line-height: 1.5;
+}
+
+.table-container.density-spacious th,
+.table-container.density-spacious td {
+  padding: 18px 16px;
+  line-height: 1.6;
+}
+
+.table-container.density-spacious table {
+  font-size: 15px;
+}
+
+.table-container.density-spacious .question-image {
+  max-width: 120px;
+}
+
+/* Keyboard Shortcuts Modal */
+.shortcuts-grid {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 12px;
+}
+
+.shortcut-item {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 12px 16px;
+  background: #f8fafc;
+  border-radius: 8px;
+  border: 1px solid #e2e8f0;
+  transition: background-color 0.2s;
+}
+
+.shortcut-item:hover {
+  background: #f1f5f9;
+}
+
+.shortcut-item kbd {
+  background: #ffffff;
+  border: 1px solid #d1d5db;
+  border-radius: 4px;
+  padding: 4px 8px;
+  font-size: 12px;
+  font-weight: 600;
+  color: #374151;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.1);
+  margin: 0 2px;
+}
+
+.shortcut-item span {
+  color: #475569;
+  font-weight: 500;
+}
+
+/* Smooth Transitions */
+.table-container {
+  transition: opacity 0.3s ease, transform 0.2s ease;
+}
+
+.table-container.updating {
+  opacity: 0.6;
+  transform: scale(0.995);
+  pointer-events: none;
+}
+
+.table-container tbody tr {
+  transition: background-color 0.3s ease, transform 0.2s ease;
+}
+
+.table-container tbody tr.highlight-added {
+  background-color: #dcfce7 !important;
+  transform: scale(1.01);
+  animation: highlightPulse 2s ease-out;
+}
+
+.table-container tbody tr.highlight-updated {
+  background-color: #dbeafe !important;
+  transform: scale(1.005);
+  animation: highlightPulse 2s ease-out;
+}
+
+.table-container tbody tr.highlight-deleted {
+  background-color: #fee2e2 !important;
+  animation: fadeOutRow 0.6s ease-out forwards;
+}
+
+@keyframes highlightPulse {
+  0% {
+    box-shadow: 0 0 0 0 rgba(34, 197, 94, 0.4);
+  }
+  50% {
+    box-shadow: 0 0 0 10px rgba(34, 197, 94, 0.1);
+  }
+  100% {
+    box-shadow: 0 0 0 0 rgba(34, 197, 94, 0);
+  }
+}
+
+@keyframes fadeOutRow {
+  0% {
+    opacity: 1;
+    transform: scale(1);
+  }
+  50% {
+    opacity: 0.5;
+    transform: scale(0.98);
+  }
+  100% {
+    opacity: 0;
+    transform: scale(0.95);
+    height: 0;
+    padding-top: 0;
+    padding-bottom: 0;
+    margin-top: 0;
+    margin-bottom: 0;
+  }
+}
+
+/* Enhanced Button Hover Effects */
+.btn {
+  transition: all 0.2s ease;
+  position: relative;
+  overflow: hidden;
+}
+
+.btn:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+}
+
+.btn:active {
+  transform: translateY(0);
+}
+
+.btn::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: -100%;
+  width: 100%;
+  height: 100%;
+  background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.2), transparent);
+  transition: left 0.5s;
+}
+
+.btn:hover::before {
+  left: 100%;
+}
+
+/* Enhanced Modal Animations */
+.modal {
+  animation: fadeInModal 0.3s ease-out;
+}
+
+.modal.closing {
+  animation: fadeOutModal 0.2s ease-in;
+}
+
+.modal-content {
+  animation: slideInModal 0.3s ease-out;
+}
+
+.modal.closing .modal-content {
+  animation: slideOutModal 0.2s ease-in;
+}
+
+@keyframes fadeInModal {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+@keyframes fadeOutModal {
+  from {
+    opacity: 1;
+  }
+  to {
+    opacity: 0;
+  }
+}
+
+@keyframes slideInModal {
+  from {
+    transform: translateY(-50px) scale(0.95);
+    opacity: 0;
+  }
+  to {
+    transform: translateY(0) scale(1);
+    opacity: 1;
+  }
+}
+
+@keyframes slideOutModal {
+  from {
+    transform: translateY(0) scale(1);
+    opacity: 1;
+  }
+  to {
+    transform: translateY(-30px) scale(0.95);
+    opacity: 0;
+  }
+}
+
+/* Enhanced Loading States */
+.loading-overlay {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(255, 255, 255, 0.8);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 100;
+  backdrop-filter: blur(2px);
+}
+
+.loading-spinner {
+  width: 40px;
+  height: 40px;
+  border: 3px solid #f3f4f6;
+  border-top: 3px solid #3b82f6;
+  border-radius: 50%;
+  animation: spin 1s linear infinite;
+}
+
+.loading-text {
+  margin-left: 12px;
+  font-weight: 500;
+  color: #6b7280;
+}
+
+/* Enhanced Focus Styles */
+.search-filter-container input:focus,
+.search-filter-container select:focus,
+.enhanced-features-bar select:focus {
+  transform: scale(1.02);
+}
+
+/* Column Visibility Dropdown */
+.column-visibility-dropdown {
+  position: absolute;
+  top: 100%;
+  right: 0;
+  background: white;
+  border: 1px solid #d1d5db;
+  border-radius: 8px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+  z-index: 1000;
+  min-width: 200px;
+  margin-top: 4px;
+}
+
+.column-checkbox-group {
+  padding: 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.column-checkbox-group label {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 8px;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 13px;
+  transition: background-color 0.2s;
+}
+
+.column-checkbox-group label:hover {
+  background: #f8fafc;
+}
+
+.column-checkbox-group input[type="checkbox"] {
+  margin: 0;
+  width: auto;
+}
+
+.feature-group {
+  position: relative;
+}
+
+/* CSS Classes for Column Hiding */
+.table-container.hide-id th[data-column="id"],
+.table-container.hide-id td[data-column="id"] { display: none !important; }
+
+.table-container.hide-question th[data-column="question"],
+.table-container.hide-question td[data-column="question"] { display: none !important; }
+
+.table-container.hide-category th[data-column="category"],
+.table-container.hide-category td[data-column="category"] { display: none !important; }
+
+.table-container.hide-subcategory th[data-column="subcategory"],
+.table-container.hide-subcategory td[data-column="subcategory"] { display: none !important; }
+
+.table-container.hide-explanation th[data-column="explanation"],
+.table-container.hide-explanation td[data-column="explanation"] { display: none !important; }
+
+.table-container.hide-difficulty th[data-column="difficulty"],
+.table-container.hide-difficulty td[data-column="difficulty"] { display: none !important; }
+
+.table-container.hide-image th[data-column="image"],
+.table-container.hide-image td[data-column="image"] { display: none !important; }
+
+.table-container.hide-options th[data-column="options"],
+.table-container.hide-options td[data-column="options"] { display: none !important; }
+
+.table-container.hide-actions th[data-column="actions"],
+.table-container.hide-actions td[data-column="actions"] { display: none !important; }
+
+/* Ensure bulk checkbox columns are handled */
+.table-container.hide-id .checkbox-column.bulk-checkbox { display: none !important; }
+
+/* Mobile Responsiveness for Phase 6 */
+@media (max-width: 768px) {
+  .toast-container {
+    left: 10px;
+    right: 10px;
+    top: 10px;
+  }
+  
+  .toast {
+    min-width: auto;
+    max-width: none;
+  }
+  
+  .enhanced-features-bar {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 12px;
+  }
+  
+  .feature-group {
+    justify-content: space-between;
+  }
+  
+  .feature-group select {
+    min-width: 150px;
+  }
+  
+  .shortcuts-grid {
+    gap: 8px;
+  }
+  
+  .shortcut-item {
+    padding: 10px 12px;
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 6px;
+  }
+  
+  .shortcut-item kbd {
+    font-size: 11px;
+    padding: 3px 6px;
+  }
+}
+
+@media (max-width: 480px) {
+  .table-container.density-compact th,
+  .table-container.density-compact td {
+    padding: 4px 6px;
+  }
+  
+  .table-container.density-comfortable th,
+  .table-container.density-comfortable td {
+    padding: 8px 10px;
+  }
+  
+  .table-container.density-spacious th,
+  .table-container.density-spacious td {
+    padding: 12px;
+  }
+}
+
+/* Accessibility Enhancements */
+.btn:focus-visible,
+.search-filter-container input:focus-visible,
+.search-filter-container select:focus-visible,
+.enhanced-features-bar select:focus-visible {
+  outline: 2px solid #3b82f6;
+  outline-offset: 2px;
+}
+
+/* Print Styles */
+@media print {
+  .toast-container,
+  .enhanced-features-bar,
+  .search-filter-container,
+  .pagination-controls {
+    display: none !important;
+  }
+  
+  .table-container {
+    overflow: visible !important;
+  }
+  
+  table {
+    page-break-inside: auto;
+  }
+  
+  tr {
+    page-break-inside: avoid;
+    page-break-after: auto;
+  }
+}
+
+/* Sortable Table Headers (Phase 5) */
+.sortable-header {
+  cursor: pointer;
+  user-select: none;
+  position: relative;
+  transition: all 0.2s ease;
+  padding: 10px 8px;
+}
+
+.sortable-header:hover {
+  background-color: #f1f5f9;
+  color: #3B82F6;
+}
+
+.sortable-header.sorted-asc,
+.sortable-header.sorted-desc {
+  background-color: #eff6ff;
+  color: #1d4ed8;
+  font-weight: 600;
+}
+
+.sort-indicator {
+  font-size: 12px;
+  color: #9ca3af;
+  margin-left: 4px;
+  display: inline-block;
+  min-width: 12px;
+  text-align: center;
+}
+
+.sort-indicator.active {
+  color: #3B82F6;
+  font-weight: bold;
+}
+
+.sort-indicator.active.asc {
+  color: #059669;
+}
+
+.sort-indicator.active.desc {
+  color: #dc2626;
+}
+
+/* Enhanced loading states */
+.table-container {
+  transition: opacity 0.3s ease;
+}
+
+.table-container.loading {
+  opacity: 0.6;
+  pointer-events: none;
+}
+
+/* Sort indicator hover effects */
+.sortable-header:hover .sort-indicator {
+  color: #3B82F6;
+}
+
+/* Mobile responsive sortable headers */
+@media (max-width: 768px) {
+  .sortable-header {
+    padding: 8px 4px;
+    font-size: 13px;
+  }
+  
+  .sort-indicator {
+    font-size: 10px;
+    margin-left: 2px;
+  }
 }
 </style>

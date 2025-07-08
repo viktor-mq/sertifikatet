@@ -34,36 +34,115 @@
     </div>
   </div>
 
+  <!-- Enhanced Features Bar -->
+  <div class="enhanced-features-bar">
+    <div class="feature-group">
+      <label for="usersAdvancedSearchColumn">🔍 Search in:</label>
+      <select id="usersAdvancedSearchColumn">
+        <option value="all">All fields</option>
+        <option value="username">Username only</option>
+        <option value="email">Email only</option>
+        <option value="full_name">Full Name only</option>
+        <option value="role">Role only</option>
+      </select>
+    </div>
+    <div class="feature-group">
+      <label for="usersTableDensity">📏 Table view:</label>
+      <select id="usersTableDensity" onchange="changeUsersTableDensity()">
+        <option value="comfortable">Comfortable</option>
+        <option value="compact">Compact</option>
+        <option value="spacious">Spacious</option>
+      </select>
+    </div>
+    <div class="feature-group">
+      <button type="button" id="usersColumnVisibilityBtn" onclick="toggleUsersColumnVisibilityDropdown()" class="btn btn-secondary btn-small" title="Show/hide columns">
+        👁️ Columns
+      </button>
+      <div id="usersColumnVisibilityDropdown" class="column-visibility-dropdown" style="display: none;">
+        <div class="column-checkbox-group">
+          <label><input type="checkbox" class="users-column-checkbox" data-column="id" checked> ID</label>
+          <label><input type="checkbox" class="users-column-checkbox" data-column="username" checked> Username</label>
+          <label><input type="checkbox" class="users-column-checkbox" data-column="email" checked> Email</label>
+          <label><input type="checkbox" class="users-column-checkbox" data-column="full_name" checked> Full Name</label>
+          <label><input type="checkbox" class="users-column-checkbox" data-column="status" checked> Status</label>
+          <label><input type="checkbox" class="users-column-checkbox" data-column="admin" checked> Admin</label>
+          <label><input type="checkbox" class="users-column-checkbox" data-column="created_at" checked> Created</label>
+          <label><input type="checkbox" class="users-column-checkbox" data-column="last_login" checked> Last Login</label>
+          <label><input type="checkbox" class="users-column-checkbox" data-column="actions" checked> Actions</label>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Enhanced User Filters -->
+  <div class="search-filter-container" id="usersSearchFilterContainer">
+    <input type="text" id="usersRealTimeSearch" placeholder="🔍 Search users..." value="">
+    <select id="usersAdminStatusFilter">
+      <option value="">All Users</option>
+      <option value="admin">Admin Users</option>
+      <option value="user">Regular Users</option>
+    </select>
+    <select id="usersStatusFilter">
+      <option value="">All Status</option>
+      <option value="active">Active</option>
+      <option value="inactive">Inactive</option>
+      <option value="verified">Verified</option>
+      <option value="unverified">Unverified</option>
+    </select>
+    <button type="button" onclick="clearAllUsersFilters()" class="btn btn-secondary">🗙️ Clear</button>
+    <div id="usersFilterLoadingIndicator" class="filter-loading" style="display: none;">
+      <div class="loading-spinner-small"></div>
+      <span>Searching...</span>
+    </div>
+  </div>
+
   <!-- Users Table -->
   <div class="table-container">
-    <table>
+    <div id="users-results-info" class="results-info"></div>
+    <table id="users-table-enhanced">
       <thead>
         <tr>
-          <th>ID</th>
-          <th>Username</th>
-          <th>Email</th>
-          <th>Full Name</th>
-          <th>Status</th>
-          <th>Admin</th>
-          <th>Created</th>
-          <th>Last Login</th>
-          <th>Actions</th>
+          <th data-column="id" data-sortable="id" class="sortable-header" onclick="toggleUsersSort('id')">
+            ID <span class="sort-indicator" data-sort="id"></span>
+          </th>
+          <th data-column="username" data-sortable="username" class="sortable-header" onclick="toggleUsersSort('username')">
+            Username <span class="sort-indicator" data-sort="username"></span>
+          </th>
+          <th data-column="email" data-sortable="email" class="sortable-header" onclick="toggleUsersSort('email')">
+            Email <span class="sort-indicator" data-sort="email"></span>
+          </th>
+          <th data-column="full_name" data-sortable="full_name" class="sortable-header" onclick="toggleUsersSort('full_name')">
+            Full Name <span class="sort-indicator" data-sort="full_name"></span>
+          </th>
+          <th data-column="status" data-sortable="is_active" class="sortable-header" onclick="toggleUsersSort('is_active')">
+            Status <span class="sort-indicator" data-sort="is_active"></span>
+          </th>
+          <th data-column="admin" data-sortable="is_admin" class="sortable-header" onclick="toggleUsersSort('is_admin')">
+            Admin <span class="sort-indicator" data-sort="is_admin"></span>
+          </th>
+          <th data-column="created_at" data-sortable="created_at" class="sortable-header" onclick="toggleUsersSort('created_at')">
+            Created <span class="sort-indicator" data-sort="created_at"></span>
+          </th>
+          <th data-column="last_login" data-sortable="last_login" class="sortable-header" onclick="toggleUsersSort('last_login')">
+            Last Login <span class="sort-indicator" data-sort="last_login"></span>
+          </th>
+          <th data-column="actions">Actions</th>
         </tr>
       </thead>
       <tbody>
         {% if users %}
           {% for user in users %}
           <tr class="{% if user.is_admin %}table-warning{% endif %}">
-            <td>{{ user.id }}</td>
-            <td>
+            <td data-column="id">{{ user.id }}</td>
+            <td data-column="username">
               <strong>{{ user.username }}</strong>
               {% if user.id == current_user.id %}
               <span class="btn btn-secondary btn-small" style="cursor: default; margin-left: 5px;">You</span>
               {% endif %}
             </td>
-            <td>{{ user.email }}</td>
-            <td>{{ user.full_name or '-' }}</td>
-            <td>
+            <td data-column="email">{{ user.email }}</td>
+            <td data-column="full_name">{{ user.full_name or '-' }}</td>
+            <td data-column="status">
               {% if user.is_active %}
               <span class="btn btn-success btn-small" style="cursor: default;">Active</span>
               {% else %}
@@ -71,42 +150,33 @@
               {% endif %}
               
               {% if user.is_verified %}
-              <span class="btn btn-secondary btn-small" style="cursor: default;">Verified</span>
+              <span class="btn btn-info btn-small" style="cursor: default; margin-left: 3px;">Verified</span>
               {% endif %}
             </td>
-            <td>
+            <td data-column="admin">
               {% if user.is_admin %}
               <span class="btn btn-danger btn-small" style="cursor: default;">🛡️ Admin</span>
               {% else %}
               <span class="btn btn-secondary btn-small" style="cursor: default;">User</span>
               {% endif %}
             </td>
-            <td>
-              <small>{{ user.created_at.strftime('%Y-%m-%d %H:%M') if user.created_at else '-' }}</small>
-            </td>
-            <td>
-              <small>{{ user.last_login.strftime('%Y-%m-%d %H:%M') if user.last_login else 'Never' }}</small>
-            </td>
-            <td>
+            <td data-column="created_at">{{ user.created_at.strftime('%d.%m.%Y %H:%M') if user.created_at else '-' }}</td>
+            <td data-column="last_login">{{ user.last_login.strftime('%d.%m.%Y %H:%M') if user.last_login else 'Never' }}</td>
+            <td data-column="actions">
+              <button onclick="openUserModal({{ user.id }})" class="btn btn-info btn-small" style="margin-right: 5px;">
+                👁️ View
+              </button>
               {% if user.id != current_user.id %}
                 {% if user.is_admin %}
                 <!-- Revoke Admin Button -->
-                <form method="POST" action="{{ url_for('admin.revoke_admin_privileges', user_id=user.id) }}" 
-                      class="d-inline" 
-                      onsubmit="return confirm('Are you sure you want to REVOKE admin privileges from {{ user.username }}?\\n\\nThis action will:\\n- Remove all admin access\\n- Send email notifications to all admins\\n- Be logged in the security audit trail')">
-                  <button type="submit" class="btn btn-danger btn-small">
-                    👤❌ Revoke Admin
-                  </button>
-                </form>
+                <button onclick="revokeAdminAjax({{ user.id }}, '{{ user.username }}')" class="btn btn-danger btn-small">
+                  👤❌ Revoke Admin
+                </button>
                 {% else %}
                 <!-- Grant Admin Button -->
-                <form method="POST" action="{{ url_for('admin.grant_admin_privileges', user_id=user.id) }}" 
-                      class="d-inline" 
-                      onsubmit="return confirm('Are you sure you want to GRANT admin privileges to {{ user.username }}?\\n\\nThis action will:\\n- Give full admin access\\n- Send email alerts to all existing admins\\n- Be permanently logged for security audit\\n\\nOnly proceed if you trust this user completely.')">
-                  <button type="submit" class="btn btn-warning btn-small">
-                    🛡️ Grant Admin
-                  </button>
-                </form>
+                <button onclick="grantAdminAjax({{ user.id }}, '{{ user.username }}')" class="btn btn-warning btn-small">
+                  🛡️ Grant Admin
+                </button>
                 {% endif %}
               {% else %}
               <small style="color: #999; font-style: italic;">Cannot modify own privileges</small>
@@ -123,28 +193,119 @@
     </table>
   </div>
 
+  <!-- Pagination and Per-page Controls -->
+  <div class="pagination-controls" id="usersPaginationControls">
+    <div class="pagination-info">
+      <span id="usersPaginationInfo">Showing users</span>
+    </div>
+    <div class="pagination-center">
+      <div class="pagination-buttons" id="usersPaginationButtons">
+        <!-- Pagination buttons will be inserted here by JavaScript -->
+      </div>
+    </div>
+    <div class="pagination-per-page">
+      <label for="usersPerPageSelector">Show per page:</label>
+      <select id="usersPerPageSelector" onchange="changeUsersPerPage()">
+        <option value="20">20</option>
+        <option value="50" selected>50</option>
+        <option value="100">100</option>
+        <option value="-1">All</option>
+      </select>
+    </div>
+  </div>
+
   <!-- Recent Admin Activity -->
   {% if recent_logs %}
   <div style="background: rgba(255, 255, 255, 0.9); padding: 20px; border-radius: 12px; margin-top: 20px; box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);">
     <h3 style="color: #333; margin-bottom: 15px; display: flex; align-items: center; gap: 10px;">
       📋 Recent Admin Activity (Last 50 entries)
     </h3>
+    
+    <!-- Enhanced Features Bar for Admin Activity -->
+    <div class="enhanced-features-bar">
+      <div class="feature-group">
+        <label for="activityAdvancedSearchColumn">🔍 Search in:</label>
+        <select id="activityAdvancedSearchColumn">
+          <option value="all">All fields</option>
+          <option value="action">Action only</option>
+          <option value="target_user">Target User only</option>
+          <option value="admin_user">Admin only</option>
+          <option value="ip_address">IP Address only</option>
+        </select>
+      </div>
+      <div class="feature-group">
+        <label for="activityTableDensity">📏 Table view:</label>
+        <select id="activityTableDensity" onchange="changeActivityTableDensity()">
+          <option value="comfortable">Comfortable</option>
+          <option value="compact">Compact</option>
+          <option value="spacious">Spacious</option>
+        </select>
+      </div>
+      <div class="feature-group">
+        <button type="button" id="activityColumnVisibilityBtn" onclick="toggleActivityColumnVisibilityDropdown()" class="btn btn-secondary btn-small" title="Show/hide columns">
+          👁️ Columns
+        </button>
+        <div id="activityColumnVisibilityDropdown" class="column-visibility-dropdown" style="display: none;">
+          <div class="column-checkbox-group">
+            <label><input type="checkbox" class="activity-column-checkbox" data-column="timestamp" checked> Timestamp</label>
+            <label><input type="checkbox" class="activity-column-checkbox" data-column="action" checked> Action</label>
+            <label><input type="checkbox" class="activity-column-checkbox" data-column="target_user" checked> Target User</label>
+            <label><input type="checkbox" class="activity-column-checkbox" data-column="admin_user" checked> Admin</label>
+            <label><input type="checkbox" class="activity-column-checkbox" data-column="ip_address" checked> IP Address</label>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Enhanced Activity Filters -->
+    <div class="search-filter-container" id="activitySearchFilterContainer">
+      <input type="text" id="activityRealTimeSearch" placeholder="🔍 Search activity..." value="">
+      <select id="activityActionFilter">
+        <option value="">All Actions</option>
+        <option value="grant_admin">Admin Granted</option>
+        <option value="revoke_admin">Admin Revoked</option>
+        <option value="admin_login_success">Login Success</option>
+        <option value="admin_login_failure">Login Failed</option>
+      </select>
+      <select id="activityTimeFilter">
+        <option value="">All Time</option>
+        <option value="today">Today</option>
+        <option value="week">This Week</option>
+        <option value="month">This Month</option>
+      </select>
+      <button type="button" onclick="clearAllActivityFilters()" class="btn btn-secondary">🗙️ Clear</button>
+      <div id="activityFilterLoadingIndicator" class="filter-loading" style="display: none;">
+        <div class="loading-spinner-small"></div>
+        <span>Searching...</span>
+      </div>
+    </div>
     <div class="table-container">
-      <table>
+      <div id="activity-results-info" class="results-info"></div>
+      <table id="activity-table">
         <thead>
           <tr>
-            <th>Timestamp</th>
-            <th>Action</th>
-            <th>Target User</th>
-            <th>Admin</th>
-            <th>IP Address</th>
+            <th data-column="timestamp" data-sortable="created_at" class="sortable-header" onclick="toggleActivitySort('created_at')">
+              Timestamp <span class="sort-indicator" data-sort="created_at"></span>
+            </th>
+            <th data-column="action" data-sortable="action" class="sortable-header" onclick="toggleActivitySort('action')">
+              Action <span class="sort-indicator" data-sort="action"></span>
+            </th>
+            <th data-column="target_user" data-sortable="target_user" class="sortable-header" onclick="toggleActivitySort('target_user')">
+              Target User <span class="sort-indicator" data-sort="target_user"></span>
+            </th>
+            <th data-column="admin_user" data-sortable="admin_user" class="sortable-header" onclick="toggleActivitySort('admin_user')">
+              Admin <span class="sort-indicator" data-sort="admin_user"></span>
+            </th>
+            <th data-column="ip_address" data-sortable="ip_address" class="sortable-header" onclick="toggleActivitySort('ip_address')">
+              IP Address <span class="sort-indicator" data-sort="ip_address"></span>
+            </th>
           </tr>
         </thead>
         <tbody>
           {% for log in recent_logs %}
           <tr>
-            <td><small>{{ log.created_at.strftime('%Y-%m-%d %H:%M:%S') }}</small></td>
-            <td>
+            <td data-column="timestamp">{{ log.created_at.strftime('%d.%m.%Y %H:%M:%S') }}</td>
+            <td data-column="action">
               {% if log.action == 'grant_admin' %}
               <span class="btn btn-warning btn-small" style="cursor: default;">🛡️ Admin Granted</span>
               {% elif log.action == 'revoke_admin' %}
@@ -157,21 +318,40 @@
               <span class="btn btn-secondary btn-small" style="cursor: default;">{{ log.action }}</span>
               {% endif %}
             </td>
-            <td>{{ log.target_user.username if log.target_user else 'Unknown' }}</td>
-            <td>{{ log.admin_user.username if log.admin_user else 'System' }}</td>
-            <td><small><code>{{ log.ip_address or '-' }}</code></small></td>
+            <td data-column="target_user">{{ log.target_user.username if log.target_user else 'Unknown' }}</td>
+            <td data-column="admin_user">{{ log.admin_user.username if log.admin_user else 'System' }}</td>
+            <td data-column="ip_address"><code>{{ log.ip_address or '-' }}</code></td>
           </tr>
           {% endfor %}
         </tbody>
       </table>
     </div>
-    <div style="text-align: center; margin-top: 15px;">
-      <a href="{{ url_for('admin.security_audit_log') }}" class="btn">
-        🛡️ View Full Security Audit Log
-      </a>
+    
+    <!-- Pagination and Per-page Controls for Activity -->
+    <div class="pagination-controls" id="activityPaginationControls">
+      <div class="pagination-info">
+        <span id="activityPaginationInfo">Showing activity</span>
+      </div>
+      <div class="pagination-center">
+        <div class="pagination-buttons" id="activityPaginationButtons">
+          <!-- Pagination buttons will be inserted here by JavaScript -->
+        </div>
+      </div>
+      <div class="pagination-per-page">
+        <label for="activityPerPageSelector">Show per page:</label>
+        <select id="activityPerPageSelector" onchange="changeActivityPerPage()">
+          <option value="20">20</option>
+          <option value="50" selected>50</option>
+          <option value="100">100</option>
+          <option value="-1">All</option>
+        </select>
+      </div>
     </div>
   </div>
   {% endif %}
+  
+  <!-- Pagination Controls -->
+  <div id="users-pagination" class="pagination-container"></div>
 </div>
 
 <style>
@@ -188,4 +368,412 @@
     font-family: 'Courier New', monospace;
     font-size: 12px;
 }
+
+/* Enhanced CSS for Users Section - Reuse styles from reports */
+.enhanced-filter-form {
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  padding: 20px;
+  border-radius: 12px;
+  margin-bottom: 20px;
+  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+}
+
+.enhanced-search {
+  display: flex;
+  gap: 10px;
+  align-items: center;
+  flex-wrap: wrap;
+}
+
+.search-input {
+  flex: 1;
+  min-width: 300px;
+  padding: 8px 12px;
+  border: 2px solid #e5e7eb;
+  border-radius: 8px;
+  font-size: 14px;
+}
+
+.search-input:focus {
+  border-color: #3b82f6;
+  box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
+}
+
+.sortable {
+  cursor: pointer;
+  user-select: none;
+  position: relative;
+}
+
+.sortable:hover {
+  background-color: rgba(59, 130, 246, 0.1);
+}
+
+.sort-indicator {
+  margin-left: 5px;
+  opacity: 0.5;
+}
+
+.sort-indicator.asc::after {
+  content: '↑';
+  color: #10b981;
+}
+
+.sort-indicator.desc::after {
+  content: '↓';
+  color: #ef4444;
+}
+
+.results-info {
+  margin-bottom: 10px;
+  padding: 8px 12px;
+  background: #f3f4f6;
+  border-radius: 6px;
+  font-size: 14px;
+  color: #374151;
+}
+
+.loading-indicator {
+  color: white;
+  font-weight: bold;
+}
+
+.pagination-container {
+  margin-top: 20px;
+  text-align: center;
+}
+
+.pagination {
+  display: inline-flex;
+  gap: 5px;
+  align-items: center;
+}
+
+.page-btn {
+  padding: 8px 12px;
+  border: 1px solid #d1d5db;
+  background: white;
+  color: #374151;
+  border-radius: 6px;
+  cursor: pointer;
+  text-decoration: none;
+}
+
+.page-btn:hover {
+  background: #f3f4f6;
+}
+
+.page-btn.active {
+  background: #3b82f6;
+  color: white;
+  border-color: #3b82f6;
+}
+
+.page-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+@media (max-width: 768px) {
+  .enhanced-search {
+    flex-direction: column;
+    align-items: stretch;
+  }
+  
+  .search-input {
+    min-width: unset;
+  }
+}
 </style>
+
+<!-- Include admin-base.js -->
+<script src="{{ url_for('static', filename='js/admin-base.js') }}"></script>
+<script src="{{ url_for('static', filename='js/admin/admin-manage-users.js') }}"></script>
+<script>document.addEventListener('DOMContentLoaded', () => {
+    initializeUsersSection();
+    initializeActivitySection();
+  });</script>
+
+<style>
+/* Enhanced Features Bar */
+.enhanced-features-bar {
+    background: linear-gradient(135deg, #f3f4f6 0%, #e5e7eb 100%);
+    padding: 15px 20px;
+    border-radius: 8px;
+    margin-bottom: 15px;
+    display: flex;
+    gap: 20px;
+    align-items: center;
+    flex-wrap: wrap;
+    border: 1px solid #d1d5db;
+}
+
+.feature-group {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.feature-group label {
+    font-weight: 500;
+    color: #374151;
+    font-size: 14px;
+}
+
+.feature-group select {
+    padding: 6px 10px;
+    border: 1px solid #d1d5db;
+    border-radius: 6px;
+    font-size: 14px;
+    background: white;
+}
+
+.feature-group select:focus {
+    border-color: #3b82f6;
+    box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.1);
+}
+
+/* Column Visibility Dropdown */
+.column-visibility-dropdown {
+    position: absolute;
+    background: white;
+    border: 1px solid #d1d5db;
+    border-radius: 8px;
+    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+    padding: 15px;
+    z-index: 1000;
+    margin-top: 5px;
+    min-width: 200px;
+}
+
+.column-checkbox-group {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+
+.column-checkbox-group label {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    cursor: pointer;
+    padding: 4px 8px;
+    border-radius: 4px;
+    transition: background-color 0.2s;
+}
+
+.column-checkbox-group label:hover {
+    background-color: #f3f4f6;
+}
+
+.column-checkbox-group input[type="checkbox"] {
+    margin: 0;
+}
+
+/* Table Header Styling */
+#users-table, #users-table-enhanced, #activity-table {
+    width: 100%;
+    border-collapse: collapse;
+    background: white;
+    border-radius: 8px;
+    overflow: hidden;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+}
+
+#users-table th, #users-table-enhanced th, #activity-table th {
+    background: linear-gradient(135deg, #3b82f6 0%, #1d4ed8 100%);
+    color: white;
+    font-weight: 600;
+    text-align: left;
+    padding: 12px 16px;
+    border-bottom: 2px solid #1e40af;
+    position: relative;
+}
+
+#users-table th:first-child, #users-table-enhanced th:first-child, #activity-table th:first-child {
+    border-top-left-radius: 8px;
+}
+
+#users-table th:last-child, #users-table-enhanced th:last-child, #activity-table th:last-child {
+    border-top-right-radius: 8px;
+}
+
+#users-table td, #users-table-enhanced td, #activity-table td {
+    padding: 12px 16px;
+    border-bottom: 1px solid #e5e7eb;
+    vertical-align: middle;
+}
+
+#users-table tbody tr:hover, #users-table-enhanced tbody tr:hover, #activity-table tbody tr:hover {
+    background-color: #f8fafc;
+}
+
+#users-table tbody tr:last-child td, #users-table-enhanced tbody tr:last-child td, #activity-table tbody tr:last-child td {
+    border-bottom: none;
+}
+
+/* Sortable Headers */
+#manageUsersSection .sortable-header {
+    cursor: pointer;
+    user-select: none;
+    transition: background-color 0.2s;
+}
+
+#manageUsersSection .sortable-header:hover {
+    background: linear-gradient(135deg, #2563eb 0%, #1e40af 100%);
+}
+
+#manageUsersSection .sort-indicator {
+    font-weight: bold;
+    color: #fbbf24;
+    margin-left: 5px;
+}
+
+/* Table Density Classes */
+#users-table.density-compact, #users-table-enhanced.density-compact, #activity-table.density-compact {
+    font-size: 13px;
+}
+
+#users-table.density-compact th, #users-table-enhanced.density-compact th, #activity-table.density-compact th,
+#users-table.density-compact td, #users-table-enhanced.density-compact td, #activity-table.density-compact td {
+    padding: 6px 8px;
+}
+
+#users-table.density-comfortable, #users-table-enhanced.density-comfortable, #activity-table.density-comfortable {
+    font-size: 14px;
+}
+
+#users-table.density-comfortable th, #users-table-enhanced.density-comfortable th, #activity-table.density-comfortable th,
+#users-table.density-comfortable td, #users-table-enhanced.density-comfortable td, #activity-table.density-comfortable td {
+    padding: 12px 8px;
+}
+
+#users-table.density-spacious, #users-table-enhanced.density-spacious, #activity-table.density-spacious {
+    font-size: 15px;
+}
+
+#users-table.density-spacious th, #users-table-enhanced.density-spacious th, #activity-table.density-spacious th,
+#users-table.density-spacious td, #users-table-enhanced.density-spacious td, #activity-table.density-spacious td {
+    padding: 16px 12px;
+}
+
+/* Loading Spinners */
+.filter-loading {
+    display: none;
+    align-items: center;
+    gap: 8px;
+    color: #374151;
+    font-weight: bold;
+}
+
+.loading-spinner-small {
+    width: 16px;
+    height: 16px;
+    border: 2px solid #d1d5db;
+    border-top: 2px solid #3b82f6;
+    border-radius: 50%;
+    animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+    0% { transform: rotate(0deg); }
+    100% { transform: rotate(360deg); }
+}
+
+#manageUsersSection .pagination-per-page label {
+    margin-right: 8px;
+    font-weight: 500;
+}
+
+.table-warning {
+    background-color: rgba(255, 193, 7, 0.1);
+}
+
+/* User Detail Modal */
+.modal {
+    display: none;
+    position: fixed;
+    z-index: 1000;
+    left: 0;
+    top: 0;
+    width: 100%;
+    height: 100%;
+    background-color: rgba(0, 0, 0, 0.5);
+}
+
+.modal-content {
+    background-color: white;
+    margin: 5% auto;
+    padding: 20px;
+    border-radius: 12px;
+    width: 80%;
+    max-width: 600px;
+    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+}
+
+.modal-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 20px;
+    border-bottom: 2px solid #e5e7eb;
+    padding-bottom: 15px;
+}
+
+.modal-header h2 {
+    margin: 0;
+    color: #1f2937;
+}
+
+.close {
+    color: #6b7280;
+    font-size: 28px;
+    font-weight: bold;
+    cursor: pointer;
+    transition: color 0.2s;
+}
+
+.close:hover {
+    color: #ef4444;
+}
+
+.modal-body {
+    line-height: 1.6;
+}
+
+.user-detail-row {
+    display: flex;
+    justify-content: space-between;
+    padding: 8px 0;
+    border-bottom: 1px solid #f3f4f6;
+}
+
+.user-detail-row:last-child {
+    border-bottom: none;
+}
+
+.user-detail-label {
+    font-weight: 600;
+    color: #374151;
+    width: 40%;
+}
+
+.user-detail-value {
+    color: #6b7280;
+    width: 60%;
+    text-align: right;
+}
+</style>
+
+<!-- User Detail Modal -->
+<div id="userModal" class="modal">
+  <div class="modal-content">
+    <div class="modal-header">
+      <h2 id="userModalTitle">User Details</h2>
+      <span class="close" onclick="closeUserModal()">&times;</span>
+    </div>
+    <div class="modal-body" id="userModalBody">
+      <!-- User details will be loaded here -->
+    </div>
+  </div>
+</div>

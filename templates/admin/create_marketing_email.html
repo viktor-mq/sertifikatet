@@ -8,8 +8,8 @@
     <!-- Header -->
     <div class="d-flex justify-content-between align-items-center mb-4">
         <h1 class="h3 mb-0 text-gray-800">Create Marketing Email Campaign</h1>
-        <a href="{{ url_for('admin.marketing_emails') }}" class="btn btn-secondary">
-            <i class="fas fa-arrow-left"></i> Back to Campaigns
+        <a href="{{ url_for('admin.admin_dashboard') }}#marketing" class="btn btn-secondary">
+            <i class="fas fa-arrow-left"></i> Back to Marketing
         </a>
     </div>
 
@@ -159,6 +159,126 @@
                     </div>
                 </div>
 
+                <!-- Template Variables -->
+                <div class="card shadow mb-4">
+                    <div class="card-header py-3">
+                        <h6 class="m-0 font-weight-bold text-primary">Available Variables</h6>
+                    </div>
+                    <div class="card-body">
+                        <p><small class="text-muted">Drag these variables into your email or click to insert:</small></p>
+                        
+                        <style>
+                        .variable-item {
+                            border: 1px solid #e0e0e0;
+                            border-radius: 6px;
+                            padding: 12px;
+                            margin-bottom: 8px;
+                            cursor: pointer;
+                            transition: all 0.2s ease;
+                            background: #f8f9fa;
+                            user-select: none;
+                        }
+                        .variable-item:hover {
+                            border-color: #007bff;
+                            background: #e7f3ff;
+                            transform: translateY(-1px);
+                            box-shadow: 0 2px 4px rgba(0,123,255,0.2);
+                        }
+                        .variable-item:active {
+                            transform: scale(0.98);
+                        }
+                        .variable-item code {
+                            display: block;
+                            color: #007bff;
+                            font-weight: bold;
+                            margin-bottom: 4px;
+                            pointer-events: none;
+                        }
+                        .variable-item small {
+                            color: #666;
+                            font-size: 11px;
+                            pointer-events: none;
+                        }
+                        .variable-link {
+                            border-left: 4px solid #28a745;
+                        }
+                        
+                        /* Drag feedback styles */
+                        .variable-item.dragging {
+                            opacity: 0.5;
+                            transform: rotate(2deg);
+                        }
+                        
+                        #html_content.drag-over {
+                            border-color: #007bff !important;
+                            background-color: #f8f9ff !important;
+                            box-shadow: 0 0 0 3px rgba(0,123,255,0.1) !important;
+                        }
+                        
+                        /* Add drag cursor indicator */
+                        .variable-item[draggable="true"] {
+                            cursor: grab;
+                        }
+                        .variable-item[draggable="true"]:active {
+                            cursor: grabbing;
+                        }
+                        </style>
+                        
+                        <div class="variable-list">
+
+                            <!-- Full name -->
+                            <div class="variable-item"
+                                 draggable="true"
+                                 data-variable="{{ '{{user.full_name}}' }}"
+                                 onclick="insertVariable(this.dataset.variable)"
+                                 title="Drag to email or click to insert">
+                              <code>{{ '{{user.full_name}}' }}</code>
+                              <small>User's full name (e.g., "Viktor Hansen")</small>
+                            </div>
+                          
+                            <!-- Username -->
+                            <div class="variable-item"
+                                 draggable="true"
+                                 data-variable="{{ '{{user.username}}' }}"
+                                 onclick="insertVariable(this.dataset.variable)"
+                                 title="Drag to email or click to insert">
+                              <code>{{ '{{user.username}}' }}</code>
+                              <small>Username (e.g., "viktor")</small>
+                            </div>
+                          
+                            <!-- Email -->
+                            <div class="variable-item"
+                                 draggable="true"
+                                 data-variable="{{ '{{user.email}}' }}"
+                                 onclick="insertVariable(this.dataset.variable)"
+                                 title="Drag to email or click to insert">
+                              <code>{{ '{{user.email}}' }}</code>
+                              <small>Email address</small>
+                            </div>
+                          
+                            <!-- Current plan -->
+                            <div class="variable-item"
+                                 draggable="true"
+                                 data-variable="{{ '{{user.current_plan}}' }}"
+                                 onclick="insertVariable(this.dataset.variable)"
+                                 title="Drag to email or click to insert">
+                              <code>{{ '{{user.current_plan}}' }}</code>
+                              <small>Subscription plan (e.g., "Premium")</small>
+                            </div>
+                          
+                            <!-- Unsubscribe URL -->
+                            <div class="variable-item"
+                                 draggable="true"
+                                 data-variable="{{ '{{unsubscribe_url}}' }}"
+                                 onclick="insertVariable(this.dataset.variable)"
+                                 title="Drag to email or click to insert">
+                              <code>{{ '{{unsubscribe_url}}' }}</code>
+                              <small>Unsubscribe URL</small>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
                 <!-- Quick Templates -->
                 <div class="card shadow mb-4">
                     <div class="card-header py-3">
@@ -206,6 +326,32 @@
 </div>
 
 <script>
+// Initialize page based on URL parameters
+document.addEventListener('DOMContentLoaded', function() {
+    // Check if template_id is in URL parameters
+    const urlParams = new URLSearchParams(window.location.search);
+    const templateId = urlParams.get('template_id');
+    
+    if (templateId) {
+        console.log('Auto-loading template ID:', templateId);
+        
+        // Select "Use Saved Template" radio button
+        document.getElementById('content_template').checked = true;
+        
+        // Show template section
+        document.getElementById('template_section').style.display = 'block';
+        document.getElementById('editor_section').style.display = 'block';
+        document.getElementById('upload_section').style.display = 'none';
+        
+        // Select the template in dropdown
+        const templateSelect = document.getElementById('template_id');
+        templateSelect.value = templateId;
+        
+        // Trigger template loading automatically
+        templateSelect.dispatchEvent(new Event('change'));
+    }
+});
+
 // Content method switching
 document.querySelectorAll('input[name="content_method"]').forEach(radio => {
     radio.addEventListener('change', function() {
@@ -529,5 +675,85 @@ function insertTemplate(type) {
     document.getElementById('upload_section').style.display = 'none';
     document.getElementById('template_section').style.display = 'none';
 }
+
+// Insert variable at cursor position
+function insertVariable(variable) {
+    const textarea = document.getElementById('html_content');
+    const start = textarea.selectionStart;
+    const end = textarea.selectionEnd;
+    const text = textarea.value;
+    
+    // Insert the variable syntax, not the preview value
+    textarea.value = text.substring(0, start) + variable + text.substring(end);
+    textarea.focus();
+    textarea.setSelectionRange(start + variable.length, start + variable.length);
+}
+
+// Drag and Drop functionality
+function initializeDragAndDrop() {
+    const textarea = document.getElementById('html_content');
+    const variableItems = document.querySelectorAll('.variable-item');
+    
+    // Add drag event listeners to variable items
+    variableItems.forEach(item => {
+        item.addEventListener('dragstart', function(e) {
+            const variable = this.getAttribute('data-variable');
+            e.dataTransfer.setData('text/plain', variable);
+            e.dataTransfer.effectAllowed = 'copy';
+            
+            // Visual feedback
+            this.style.opacity = '0.5';
+        });
+        
+        item.addEventListener('dragend', function(e) {
+            // Reset visual feedback
+            this.style.opacity = '1';
+        });
+    });
+    
+    // Add drop event listeners to textarea
+    textarea.addEventListener('dragover', function(e) {
+        e.preventDefault();
+        e.dataTransfer.dropEffect = 'copy';
+        
+        // Visual feedback for textarea
+        this.style.borderColor = '#007bff';
+        this.style.backgroundColor = '#f8f9ff';
+    });
+    
+    textarea.addEventListener('dragleave', function(e) {
+        // Reset textarea visual feedback
+        this.style.borderColor = '';
+        this.style.backgroundColor = '';
+    });
+    
+    textarea.addEventListener('drop', function(e) {
+        e.preventDefault();
+        
+        // Reset visual feedback
+        this.style.borderColor = '';
+        this.style.backgroundColor = '';
+        
+        // Get the variable syntax
+        const variable = e.dataTransfer.getData('text/plain');
+        
+        // Focus textarea and set cursor position
+        this.focus();
+        
+        // For simplicity, insert at current cursor position
+        // (Getting exact position from coordinates is complex)
+        const start = this.selectionStart;
+        const end = this.selectionEnd;
+        const text = this.value;
+        
+        this.value = text.substring(0, start) + variable + text.substring(end);
+        this.setSelectionRange(start + variable.length, start + variable.length);
+    });
+}
+
+// Initialize drag and drop when page loads
+document.addEventListener('DOMContentLoaded', function() {
+    initializeDragAndDrop();
+});
 </script>
 {% endblock %}

@@ -1,6 +1,7 @@
 from flask import render_template, request, redirect, url_for, session, jsonify, flash
 from flask_login import login_required, current_user
 from datetime import datetime
+import logging
 
 from . import quiz_bp
 from .. import db
@@ -9,6 +10,76 @@ from ..ml.service import ml_service
 from ..utils.subscription_decorators import quiz_limit_check
 from ..services.payment_service import SubscriptionService, UsageLimitService
 
+logger = logging.getLogger(__name__)
+
+
+def get_questions_with_ml_check(user_id=None, category=None, num_questions=20, quiz_type='practice'):
+    """
+    Get questions with proper ML settings integration and fallback.
+    This function respects ML activation settings and gracefully degrades.
+    """
+    try:
+        # Check if ML system is enabled and user-specific features
+        if (ml_service.is_ml_enabled() and 
+            ml_service.is_feature_enabled('ml_adaptive_learning') and 
+            user_id):
+            
+            logger.info(f"Using ML adaptive question selection for user {user_id}")
+            questions = ml_service.get_adaptive_questions(
+                user_id=user_id,
+                category=category,
+                num_questions=num_questions
+            )
+            
+            if questions:
+                return questions, True  # ML was used
+                
+        # Fallback to settings-aware selection
+        return get_fallback_questions(category, num_questions), False
+        
+    except Exception as e:
+        logger.error(f"Error in ML question selection: {e}")
+        # Ultimate fallback
+        return get_fallback_questions(category, num_questions), False
+
+
+def get_fallback_questions(category=None, num_questions=20):
+    """
+    Get questions using fallback mode based on settings.
+    """
+    try:
+        # Get fallback mode from settings
+        from ..utils.settings_service import settings_service
+        fallback_mode = settings_service.get_setting('ml_fallback_mode', default='random')
+        
+        logger.info(f"Using fallback mode: {fallback_mode}")
+        
+        query = Question.query.filter_by(is_active=True)
+        if category:
+            query = query.filter_by(category=category)
+        
+        if fallback_mode == 'difficulty':
+            # Order by difficulty level
+            questions = query.order_by(Question.difficulty_level, Question.id).limit(num_questions).all()
+        elif fallback_mode == 'category':
+            # Distribute across categories
+            questions = query.order_by(Question.category, Question.id).limit(num_questions).all()
+        elif fallback_mode == 'legacy':
+            # Use legacy system if available
+            questions = query.order_by(Question.difficulty_level, Question.id).limit(num_questions).all()
+        else:  # random
+            questions = query.order_by(db.func.random()).limit(num_questions).all()
+            
+        return questions
+        
+    except Exception as e:
+        logger.error(f"Error in fallback question selection: {e}")
+        # Ultimate fallback - simple query
+        query = Question.query.filter_by(is_active=True)
+        if category:
+            query = query.filter_by(category=category)
+        return query.limit(num_questions).all()
+
 
 @quiz_bp.route('/practice/<category>')
 @login_required
@@ -16,40 +87,45 @@ from ..services.payment_service import SubscriptionService, UsageLimitService
 def practice(category):
     """Practice mode for a specific category with ML-powered question selection"""
     try:
-        # Check if ML is enabled and use adaptive questions
-        if ml_service.is_ml_enabled():
-            # Get personalized questions for this category
-            questions = ml_service.get_adaptive_questions(
-                user_id=current_user.id,
-                category=category,
-                num_questions=20  # Default practice session size
-            )
-            
-            # Get user's learning insights for this category
-            insights = ml_service.get_user_learning_insights(current_user.id)
-            session_config = ml_service.get_next_session_config(current_user.id, category)
-            
-            return render_template('quiz/practice.html', 
-                                 questions=questions, 
-                                 category=category,
-                                 insights=insights,
-                                 session_config=session_config,
-                                 ml_enabled=True)
-        else:
-            # Fallback to regular question selection
-            questions = Question.query.filter_by(
-                category=category,
-                is_active=True
-            ).limit(20).all()
-            
-            return render_template('quiz/practice.html', 
-                                 questions=questions, 
-                                 category=category,
-                                 ml_enabled=False)
+        # Get questions using ML-aware selection with proper fallback
+        questions, ml_used = get_questions_with_ml_check(
+            user_id=current_user.id,
+            category=category,
+            num_questions=20,
+            quiz_type='practice'
+        )
+        
+        # Get ML insights and session config if ML features are enabled
+        insights = {}
+        session_config = {}
+        
+        if (ml_service.is_ml_enabled() and 
+            ml_service.is_feature_enabled('ml_skill_tracking')):
+            try:
+                insights = ml_service.get_user_learning_insights(current_user.id)
+            except Exception as e:
+                logger.warning(f"Could not get ML insights: {e}")
+                
+        if (ml_service.is_ml_enabled() and 
+            ml_service.is_feature_enabled('ml_adaptive_learning')):
+            try:
+                session_config = ml_service.get_next_session_config(current_user.id, category)
+            except Exception as e:
+                logger.warning(f"Could not get session config: {e}")
+        
+        return render_template('quiz/practice.html', 
+                             questions=questions, 
+                             category=category,
+                             insights=insights,
+                             session_config=session_config,
+                             ml_enabled=ml_service.is_ml_enabled(),
+                             ml_used=ml_used)
     
     except Exception as e:
+        logger.error(f"Error in practice route: {e}")
         flash(f'Error loading practice questions: {str(e)}', 'error')
-        # Fallback to basic question selection
+        
+        # Ultimate fallback to basic question selection
         questions = Question.query.filter_by(
             category=category,
             is_active=True
@@ -58,7 +134,8 @@ def practice(category):
         return render_template('quiz/practice.html', 
                              questions=questions, 
                              category=category,
-                             ml_enabled=False)
+                             ml_enabled=False,
+                             ml_used=False)
 
 
 @quiz_bp.route('/adaptive-practice')
@@ -66,6 +143,12 @@ def practice(category):
 def adaptive_practice():
     """Adaptive practice mode that selects optimal questions for the user"""
     try:
+        # Check if adaptive learning is enabled
+        if not (ml_service.is_ml_enabled() and 
+                ml_service.is_feature_enabled('ml_adaptive_learning')):
+            flash('Adaptive practice is currently disabled. Using regular practice mode.', 'info')
+            return redirect(url_for('quiz.practice', category='all'))
+        
         # Get ML-recommended session configuration
         session_config = ml_service.get_next_session_config(current_user.id)
         
@@ -75,15 +158,22 @@ def adaptive_practice():
             num_questions=session_config.get('suggested_question_count', 15)
         )
         
-        # Get learning insights
-        insights = ml_service.get_user_learning_insights(current_user.id)
+        # Get learning insights if skill tracking is enabled
+        insights = {}
+        if ml_service.is_feature_enabled('ml_skill_tracking'):
+            try:
+                insights = ml_service.get_user_learning_insights(current_user.id)
+            except Exception as e:
+                logger.warning(f"Could not get ML insights: {e}")
         
         return render_template('quiz/adaptive_practice.html',
                              questions=questions,
                              session_config=session_config,
-                             insights=insights)
+                             insights=insights,
+                             ml_enabled=True)
     
     except Exception as e:
+        logger.error(f"Error in adaptive practice: {e}")
         flash(f'Error starting adaptive practice: {str(e)}', 'error')
         return redirect(url_for('main.dashboard'))
 

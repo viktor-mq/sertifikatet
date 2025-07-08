@@ -4,6 +4,19 @@
     <meta charset="UTF-8">
     <title>Adminpanel - Sertifikatet</title>
     <link rel="stylesheet" href="{{ url_for('static', filename='css/admin.css') }}">
+    
+    <!-- Disable service worker for admin section -->
+    <script>
+        // Unregister service worker for admin operations
+        if ('serviceWorker' in navigator) {
+            navigator.serviceWorker.getRegistrations().then(function(registrations) {
+                for(let registration of registrations) {
+                    console.log('Unregistering service worker for admin section');
+                    registration.unregister();
+                }
+            });
+        }
+    </script>
 </head>
 <body style="
     font-family: Arial, sans-serif;
@@ -109,8 +122,8 @@
             <a href="#" class="btn" onclick="showSection('reports')" id="reportsTab">🛡️ Reports & Security</a>
             <a href="#" class="btn" onclick="showSection('manageUsers')" id="manageUsersTab">👥 Manage Users</a>
             <a href="#" class="btn" onclick="showSection('auditLog')" id="auditLogTab">📜 Audit Log</a>
-            <a href="{{ url_for('admin.ml_settings') }}" class="btn">🤖 ML Settings</a>
-            <a href="{{ url_for('admin.marketing_emails') }}" class="btn">📧 Marketing</a>
+            <a href="#" class="btn" onclick="showSection('mlSettings2')" id="mlSettings2Tab">🤖 ML Settings</a>
+            <a href="#" class="btn" onclick="showSection('marketing')" id="marketingTab">📧 Marketing</a>
         </div>
 
         <!-- Questions Section -->
@@ -120,14 +133,25 @@
         {% include 'admin/database_section.html' %}
 
         <!-- Reports & Security Section -->
-        {% include 'admin/reports_section.html' %}
+        {% include 'admin/sections/reports_standalone.html' %}
 
         <!-- Manage Users Section -->
         {% include 'admin/manage_users_section.html' %}
 
         <!-- Audit Log Section -->
         {% include 'admin/audit_log_section.html' %}
+
+        <!-- ML Settings Section -->
+        {% include 'admin/ml_settings_section.html' %}
+        
+        <!-- Marketing Section -->
+        {% include 'admin/marketing_section.html' %}
+        
     </div>
+    
+    <!-- Question Modal -->
+    {% include 'admin/question_modal.html' %}
+    
     </div> <!-- End Main Content Wrapper -->
 
     <script>
@@ -154,7 +178,7 @@
             }
         }
 
-        // Section management
+        // Section management with proper initialization
         function showSection(sectionName) {
             // Hide all sections
             document.querySelectorAll('.section').forEach(section => {
@@ -177,13 +201,133 @@
             if (selectedTab) {
                 selectedTab.classList.add('active');
             }
+            
+            // Initialize section-specific JavaScript
+            initializeSection(sectionName);
         }
+        
+        // Initialize section-specific functionality
+        function initializeSection(sectionName) {
+            console.log('Initializing section:', sectionName);
+            
+            switch(sectionName) {
+                case 'questions':
+                    // Questions section is already initialized on page load
+                    break;
+                    
+                case 'reports':
+                    // Load standalone reports section
+                    if (typeof initializeReportsSection === 'function') {
+                        initializeReportsSection();
+                        console.log('Standalone Reports section initialized');
+                    }
+                    break;
+                    
+                case 'manageUsers':
+                    if (typeof initializeUsersEnhancements === 'function') {
+                        initializeUsersEnhancements();
+                        console.log('Users section initialized');
+                    }
+                    break;
+                    
+                case 'auditLog':
+                    if (typeof initializeAuditEnhancements === 'function') {
+                        initializeAuditEnhancements();
+                        console.log('Audit section initialized');
+                    }
+                    break;
+                    
+                case 'mlSettings2':
+                    if (typeof initializeMLSettings === 'function') {
+                        initializeMLSettings();
+                        console.log('ML Settings section initialized');
+                    }
+                    break;
+                    
+                case 'marketing':
+                    if (typeof initializeMarketing === 'function') {
+                        initializeMarketing();
+                        console.log('Marketing section initialized');
+                    }
+                    break;
+                    
+                case 'database':
+                    // Database section uses its own DatabaseFiltering system
+                    // Skip AdminEnhancements initialization to avoid conflicts
+                    console.log('Database section uses DatabaseFiltering - skipping AdminEnhancements');
+                    break;
+                    
+                default:
+                    console.log('No specific initialization for section:', sectionName);
+            }
+        }
+
+        // New ML Dashboard function - bypasses section management issues
+        function showMLDashboard() {
+            console.log('Opening ML Dashboard...');
+            
+            // Hide all sections
+            document.querySelectorAll('.section').forEach(section => {
+                section.classList.remove('active');
+                section.style.display = 'none';
+            });
+            
+            // Remove active class from all tabs
+            document.querySelectorAll('.section-tabs .btn').forEach(btn => {
+                btn.classList.remove('active');
+            });
+            
+            // Show ML section with forced styling
+            const mlSection = document.getElementById('mlSettings2Section');
+            if (mlSection) {
+                mlSection.style.display = 'block';
+                mlSection.style.width = '100%';
+                mlSection.style.minHeight = '500px';
+                mlSection.style.visibility = 'visible';
+                mlSection.classList.add('active');
+                
+                console.log('ML section shown, dimensions:', {
+                    width: mlSection.offsetWidth,
+                    height: mlSection.offsetHeight
+                });
+                
+                // Initialize ML functionality
+                if (typeof initializeMLSettings === 'function') {
+                    initializeMLSettings();
+                    console.log('ML Settings initialized');
+                }
+                
+                // Make ML Dashboard button active if it exists
+                const mlBtn = document.getElementById('mlDashboardBtn');
+                if (mlBtn) {
+                    mlBtn.classList.add('active');
+                }
+            } else {
+                console.error('ML Settings section not found!');
+            }
+        }
+    </script>
+    
+    <script>
 
         // Initialize on page load
         document.addEventListener('DOMContentLoaded', function() {
-            // Show section that is already marked as active, or default to 'questions'
-            const defaultSection = document.querySelector('.section.active')?.id?.replace('Section', '') || 'questions';
-            showSection(defaultSection);
+            // Check for URL hash to determine which section to show
+            let sectionToShow = 'questions'; // default
+            
+            if (window.location.hash) {
+                const hashSection = window.location.hash.substring(1); // remove '#'
+                // Validate that the section exists
+                const validSections = ['questions', 'database', 'reports', 'manageUsers', 'auditLog', 'mlSettings2', 'marketing'];
+                if (validSections.includes(hashSection)) {
+                    sectionToShow = hashSection;
+                }
+            } else {
+                // Show section that is already marked as active, or default to 'questions'
+                sectionToShow = document.querySelector('.section.active')?.id?.replace('Section', '') || 'questions';
+            }
+            
+            showSection(sectionToShow);
             
             // Handle external links in tabs (ML Settings, Marketing)
             document.querySelectorAll('.section-tabs a[href]:not([href="#"])').forEach(link => {
@@ -224,5 +368,12 @@
             }
         });
     </script>
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/js/bootstrap.bundle.min.js"></script>
+    
+    <!-- Include ML Settings JavaScript -->
+    <script src="{{ url_for('static', filename='js/admin/admin-ml-settings.js') }}"></script>
+    
+    <!-- Include Marketing JavaScript -->
+    <script src="{{ url_for('static', filename='js/admin/admin-marketing.js') }}"></script>
 </body>
 </html>

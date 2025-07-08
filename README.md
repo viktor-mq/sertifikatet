@@ -64,6 +64,111 @@ The entire stack auto-starts and auto-deploys for seamless development! 🚀
 - **Code Quality**: black, flake8, isort, mypy
 - **Security**: bandit, safety, Trivy scanning
 
+## 🔍 SEO & Search Engine Optimization
+
+### Development vs Production SEO Protection
+
+Sertifikatet includes **enterprise-level SEO protection** that automatically prevents search engine indexing during development while enabling full SEO optimization in production.
+
+#### 🔒 **Development Mode Protection**
+
+When `ENVIRONMENT=development` or `DEBUG=True`:
+
+```html
+<!-- Automatic meta robots protection -->
+<meta name="robots" content="noindex, nofollow, noarchive, nosnippet">
+<meta name="environment" content="development">
+```
+
+```
+# Development robots.txt blocks all crawlers
+User-agent: *
+Disallow: /
+```
+
+**Benefits:**
+- ✅ **Zero accidental indexing** of development content
+- ✅ **No SEO penalties** from unfinished features
+- ✅ **Protected developer authentication** pages
+- ✅ **Safe testing environment** for SEO features
+
+#### 🚀 **Production Mode SEO**
+
+When `ENVIRONMENT=production`:
+
+- ✅ **Full search engine optimization** enabled
+- ✅ **Dynamic meta tag generation** with Norwegian localization
+- ✅ **JSON-LD structured data** for rich snippets
+- ✅ **Automatic sitemap.xml** generation
+- ✅ **Google Search Console** integration (DNS verified)
+- ✅ **Open Graph and Twitter Cards** for social sharing
+
+### Environment Configuration
+
+**Development setup:**
+```bash
+# In .env file
+DEBUG=True
+ENVIRONMENT=development
+
+# Result: All search engines blocked
+```
+
+**Production deployment:**
+```bash
+# In .env file
+DEBUG=False
+ENVIRONMENT=production
+
+# Result: Full SEO optimization active
+```
+
+### SEO Features
+
+#### **Dynamic Meta Tags**
+- Page-specific titles and descriptions
+- Norwegian keyword optimization
+- Automatic canonical URLs
+- Geo-targeting for Norway
+
+#### **Structured Data (JSON-LD)**
+- Educational organization schema
+- Course and quiz markup
+- Breadcrumb navigation
+- Video object schemas
+
+#### **Performance Optimization**
+- Resource preloading for critical CSS
+- DNS prefetch for external resources
+- Optimized favicon delivery
+- PWA manifest integration
+
+#### **Search Console Integration**
+- DNS verification via Cloudflare (enterprise-grade)
+- Automatic sitemap submission
+- Search performance monitoring
+- Index status tracking
+
+### Testing SEO Implementation
+
+**Verify development protection:**
+```bash
+# Check robots meta tag
+curl -s http://localhost:8000 | grep "noindex"
+
+# Check robots.txt
+curl -s http://localhost:8000/robots.txt
+```
+
+**Validate production SEO:**
+```bash
+# Test structured data
+curl -s https://sertifikatet.no | grep "application/ld+json"
+
+# Verify meta tags
+curl -s https://sertifikatet.no | grep "<meta"
+```
+
 ## 🧪 Testing Framework & Database Safety
 
 ### Critical Safety Features
@@ -139,7 +244,14 @@ Our CI/CD pipeline includes both **testing** and **automatic deployment**:
 - **flake8**: Linting and style
 - **mypy**: Type checking
 
-#### 3. **Security Scanning**
+#### 3. **SEO Development Protection**
+
+- **Environment-aware SEO**: Automatic search engine blocking during development
+- **robots.txt control**: Dynamic crawler directives based on environment
+- **Meta robots protection**: `noindex, nofollow` during development mode
+- **Production SEO**: Full search engine optimization when `ENVIRONMENT=production`
+
+#### 4. **Security Scanning**
 
 - **bandit**: Python security analysis
 - **safety**: Dependency vulnerability scanning

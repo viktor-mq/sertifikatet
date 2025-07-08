@@ -1,0 +1,147 @@
+{% extends "base.html" %}
+
+{% block title %}SEO Testing Dashboard - Sertifikatet{% endblock %}
+
+{% block content %}
+<div class="max-w-7xl mx-auto px-4 py-8">
+    <h1 class="text-3xl font-bold mb-8">🔍 SEO Testing Dashboard</h1>
+    
+    <!-- Current Page SEO Status -->
+    <div class="bg-gray-800 rounded-lg p-6 mb-8">
+        <h2 class="text-xl font-bold mb-4">📊 Current Page SEO</h2>
+        
+        {% if seo_context.seo %}
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div>
+                <h3 class="font-semibold text-green-400">✅ SEO Data Found</h3>
+                <p><strong>Title:</strong> {{ seo_context.seo.title[:60] }}{% if seo_context.seo.title|length > 60 %}...{% endif %}</p>
+                <p><strong>Description:</strong> {{ seo_context.seo.description[:80] }}{% if seo_context.seo.description|length > 80 %}...{% endif %}</p>
+                <p><strong>Robots:</strong> {{ seo_context.seo.robots }}</p>
+            </div>
+            <div>
+                <h3 class="font-semibold text-blue-400">📏 Length Check</h3>
+                <p>Title: {{ seo_context.seo.title|length }} chars {% if seo_context.seo.title|length > 60 %}<span class="text-red-400">(too long)</span>{% elif seo_context.seo.title|length < 30 %}<span class="text-yellow-400">(too short)</span>{% else %}<span class="text-green-400">(good)</span>{% endif %}</p>
+                <p>Description: {{ seo_context.seo.description|length }} chars {% if seo_context.seo.description|length > 160 %}<span class="text-red-400">(too long)</span>{% elif seo_context.seo.description|length < 120 %}<span class="text-yellow-400">(too short)</span>{% else %}<span class="text-green-400">(good)</span>{% endif %}</p>
+            </div>
+        </div>
+        {% else %}
+        <p class="text-red-400">❌ No SEO data found for this page</p>
+        {% endif %}
+        
+        {% if seo_context.breadcrumbs %}
+        <div class="mt-4">
+            <h3 class="font-semibold text-green-400">✅ Breadcrumbs</h3>
+            <p>{{ seo_context.breadcrumbs|length }} breadcrumb levels found</p>
+            <div class="text-sm text-gray-400">
+                {% for name, url in seo_context.breadcrumbs %}
+                {{ name }}{% if not loop.last %} → {% endif %}
+                {% endfor %}
+            </div>
+        </div>
+        {% endif %}
+    </div>
+    
+    <!-- Quick Testing Tools -->
+    <div class="grid grid-cols-1 md:grid-cols-2 gap-8 mb-8">
+        <!-- Google Testing Tools -->
+        <div class="bg-gray-800 rounded-lg p-6">
+            <h2 class="text-xl font-bold mb-4">🔗 Google Testing Tools</h2>
+            <div class="space-y-2">
+                <a href="{{ test_urls.google_rich_results }}" target="_blank" class="block bg-blue-600 hover:bg-blue-700 px-4 py-2 rounded transition">
+                    📊 Rich Results Test
+                </a>
+                <a href="{{ test_urls.google_structured_data }}" target="_blank" class="block bg-green-600 hover:bg-green-700 px-4 py-2 rounded transition">
+                    📖 Structured Data Docs
+                </a>
+                <a href="{{ sitemap_urls.google_search_console }}" target="_blank" class="block bg-purple-600 hover:bg-purple-700 px-4 py-2 rounded transition">
+                    🎯 Search Console
+                </a>
+            </div>
+        </div>
+        
+        <!-- Site Testing -->
+        <div class="bg-gray-800 rounded-lg p-6">
+            <h2 class="text-xl font-bold mb-4">🌐 Site Testing</h2>
+            <div class="space-y-2">
+                <a href="{{ sitemap_urls.sitemap_xml }}" target="_blank" class="block bg-orange-600 hover:bg-orange-700 px-4 py-2 rounded transition">
+                    📄 View Sitemap.xml
+                </a>
+                <a href="{{ sitemap_urls.robots_txt }}" target="_blank" class="block bg-red-600 hover:bg-red-700 px-4 py-2 rounded transition">
+                    🤖 View Robots.txt
+                </a>
+                <a href="{{ test_urls.schema_org_validator }}" target="_blank" class="block bg-indigo-600 hover:bg-indigo-700 px-4 py-2 rounded transition">
+                    ✅ Schema.org Validator
+                </a>
+            </div>
+        </div>
+    </div>
+    
+    <!-- SEO Checklist -->
+    <div class="bg-gray-800 rounded-lg p-6 mb-8">
+        <h2 class="text-xl font-bold mb-4">📋 SEO Implementation Checklist</h2>
+        
+        <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+            <div>
+                <h3 class="font-semibold text-blue-400 mb-2">Technical SEO</h3>
+                <ul class="text-sm space-y-1">
+                    {% for item in checklist.technical_seo %}
+                    <li class="text-green-400">{{ item }}</li>
+                    {% endfor %}
+                </ul>
+            </div>
+            
+            <div>
+                <h3 class="font-semibold text-green-400 mb-2">Content SEO</h3>
+                <ul class="text-sm space-y-1">
+                    {% for item in checklist.content_seo %}
+                    <li class="text-green-400">{{ item }}</li>
+                    {% endfor %}
+                </ul>
+            </div>
+            
+            <div>
+                <h3 class="font-semibold text-purple-400 mb-2">Social SEO</h3>
+                <ul class="text-sm space-y-1">
+                    {% for item in checklist.social_seo %}
+                    <li class="text-green-400">{{ item }}</li>
+                    {% endfor %}
+                </ul>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Testing Instructions -->
+    <div class="bg-gray-800 rounded-lg p-6">
+        <h2 class="text-xl font-bold mb-4">📝 Testing Instructions</h2>
+        
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <div>
+                <h3 class="font-semibold text-yellow-400 mb-2">Testing Steps</h3>
+                <ol class="text-sm space-y-1 list-decimal list-inside">
+                    {% for step in instructions.steps %}
+                    <li>{{ step }}</li>
+                    {% endfor %}
+                </ol>
+            </div>
+            
+            <div>
+                <h3 class="font-semibold text-red-400 mb-2">Common Issues</h3>
+                <ul class="text-sm space-y-1 list-disc list-inside">
+                    {% for issue in instructions.common_issues %}
+                    <li>{{ issue }}</li>
+                    {% endfor %}
+                </ul>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Structured Data Preview -->
+    {% if seo_context.structured_data %}
+    <div class="bg-gray-800 rounded-lg p-6 mt-8">
+        <h2 class="text-xl font-bold mb-4">📄 Current Structured Data</h2>
+        <pre class="bg-gray-900 p-4 rounded text-sm overflow-x-auto"><code>{{ seo_context.structured_data }}</code></pre>
+        <p class="text-sm text-gray-400 mt-2">Copy this to test in Google's Rich Results Test tool</p>
+    </div>
+    {% endif %}
+</div>
+{% endblock %}

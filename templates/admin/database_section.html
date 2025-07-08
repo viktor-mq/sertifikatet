@@ -1,23 +1,47 @@
 <style>
+/* Table Density Styles for Database */
+.table-container.density-compact table {
+  font-size: 12px;
+}
+
+.table-container.density-compact th,
+.table-container.density-compact td {
+  padding: 6px 8px;
+  line-height: 1.3;
+}
+
+.table-container.density-comfortable th,
+.table-container.density-comfortable td {
+  padding: 12px;
+  line-height: 1.5;
+}
+
+.table-container.density-spacious th,
+.table-container.density-spacious td {
+  padding: 18px 16px;
+  line-height: 1.6;
+}
+
+.table-container.density-spacious table {
+  font-size: 15px;
+}
+
 .column-value-filter {
-    position: absolute;
-    top: calc(100% - 25px);
-    left: 0;
-    width: 200px; /* Fixed width for dropdowns */
-    max-width: 300px;
-    padding: 2px;
-    border: 1px solid #ddd;
-    border-radius: 3px;
-    font-size: 12px;
+    position: relative;
+    max-width: 200px;
+    padding: 8px 12px;
+    border: 2px solid #e5e7eb;
+    border-radius: 6px;
+    font-size: 13px;
     background: white;
-    z-index: 1000;
+    min-width: 120px;
+    z-index: 10;
 }
 
 th {
     position: relative;
     min-width: 100px;
     white-space: nowrap;
-    padding-bottom: 45px; /* Space for dropdown */
 }
 
 /* Handle long text in dropdowns */
@@ -29,7 +53,6 @@ th {
 }
 .table-container {
     position: relative;
-    margin-top: 10px; /* Add space above table */
 }
 </style>
 
@@ -63,142 +86,632 @@ th {
         <button type="submit" class="btn" style="margin-top: 10px;">▶️ Kjør SQL</button>
     </form>
 
-    <!-- Table Filter -->
-    <div style="background: #f8f9fa; padding: 15px; border-radius: 8px; margin-bottom: 20px; display: flex; align-items: center; gap: 15px;">
-        <label for="tableFilter" style="font-size: 16px; font-weight: bold; margin: 0;">📊 Vis tabell:</label>
-        <select id="tableFilter" onchange="filterTables()" style="padding: 8px 12px; border: 2px solid #e5e7eb; border-radius: 8px; font-size: 14px; min-width: 200px;">
-            <option value="all">Alle tabeller</option>
-            {% for table in tables.keys() %}
-                <option value="{{ table }}">{{ table }}</option>
-            {% endfor %}
-        </select>
+    <!-- Enhanced Features Bar -->
+    <div class="enhanced-features-bar">
+        <div class="feature-group">
+            <label for="tableDensitySelector">📏 Visningsmode:</label>
+            <select id="tableDensitySelector" class="density-selector">
+                <option value="comfortable">Komfortabel</option>
+                <option value="compact">Kompakt</option>
+                <option value="spacious">Luftig</option>
+            </select>
+        </div>
+        <div class="feature-group">
+            <label for="tableVisibilityDropdown">Tabellsynlighet:</label>
+            <div class="multiselect-container">
+                <div class="multiselect-dropdown" id="tableVisibilityDropdown">
+                    <div class="multiselect-selected" id="tableVisibilitySelected">
+                        <span class="selected-text">2 tabeller valgt</span>
+                        <span class="dropdown-arrow">▼</span>
+                    </div>
+                    <div class="multiselect-options" id="tableVisibilityOptions" style="display: none;">
+                        <div class="multiselect-header">
+                            <button type="button" class="multiselect-btn" id="selectAllTables">Velg alle</button>
+                            <button type="button" class="multiselect-btn" id="deselectAllTables">Fjern alle</button>
+                        </div>
+                        {% for table, rows in tables.items() %}
+                        <label class="multiselect-option">
+                            <input type="checkbox" class="table-visibility-checkbox" data-table="{{ table }}" checked>
+                            <span class="option-text">{{ table|upper|replace('_', ' ') }}</span>
+                        </label>
+                        {% endfor %}
+                    </div>
+                </div>
+            </div>
+            <div class="control-label-subtitle" id="visibilityStatus">Viser 2 av 65 tabeller</div>
+        </div>
     </div>
 
+
     {% for table, rows in tables.items() %}
-        <div class="table-section" data-table="{{ table }}" style="background: white; padding: 20px; border-radius: 12px; margin-bottom: 20px; box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);">
-            <h3 style="color: #374151; margin-bottom: 15px; display: flex; align-items: center; gap: 10px;">
+        <div class="table-section" data-table="{{ table }}" style="background: white; border-radius: 12px; margin-bottom: 20px; box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1); overflow: hidden;">
+            <h3 style="color: #374151; margin: 0; padding: 20px 20px 15px; display: flex; align-items: center; gap: 10px; background: #f8fafc; border-bottom: 1px solid #e5e7eb;">
                  {{ table|upper|replace('_', ' ') }}
             </h3>
-            
-            {% if rows %}
-                <!-- Column Filter -->
-                <div class="column-filter" style="margin-bottom: 10px;">
+            <!-- Table-specific Filters -->
+            <div style="padding: 20px;">
+                <form id="filter-form-{{ table }}" class="search-filter-container enhanced-search" data-table="{{ table }}">
+                  <input name="search" type="text" class="search-input" placeholder="🔍 Type to search {{ table|upper|replace('_', ' ') }} instantly..." />
+                  <!-- Column-specific filters -->
+                  {% if rows and rows|length > 0 %}
                     {% for col in rows[0].keys() %}
-                        <label style="margin-right: 10px;">
-                            <input type="checkbox" 
-                                   class="column-checkbox" 
-                                   data-table="{{ table }}" 
-                                   data-column="{{ col }}" 
-                                   checked> {{ col }}
-                        </label>
+                      <select name="{{ col }}" class="column-value-filter filter-select" data-table="{{ table }}" data-column="{{ col }}">
+                        <option value="all">All {{ col|replace('_',' ')|title }}</option>
+                        {% set unique_vals = rows | map(attribute=col) | unique %}
+                        {% for val in unique_vals %}
+                          <option value="{{ val }}">{{ val }}</option>
+                        {% endfor %}
+                      </select>
                     {% endfor %}
-                </div>
+                  {% endif %}
+                  <div class="filter-status" style="display: flex; align-items: center; gap: 8px; color: #64748b; font-size: 13px; font-weight: 500;">
+                    ✨ Instant filtering
+                  </div>
+                  <button type="reset" class="btn btn-secondary clear-btn">🗑️ Clear</button>
+                  <div class="loading-indicator" style="display: none;">⏳ Loading...</div>
+                </form>
+            </div>
+            {% if rows %}
 
-                <div class="table-container">
-                    <table>
-                        <thead>
-                            <tr>
-                                {% for col in rows[0].keys() %}
-                                <th data-column="{{ col }}">
-                                    {{ col }}
-                                    <select class="column-value-filter" data-table="{{ table }}" data-column="{{ col }}" onchange="filterTableByColumn()">
-                                        <option value="all">Alle</option>
-                                        {% set unique_values = [] %}
-                                        {% for row in rows %}
-                                            {% if row[col] not in unique_values %}
-                                                {% set _ = unique_values.append(row[col]) %}
-                                                <option value="{{ row[col] }}">{{ row[col] }}</option>
-                                            {% endif %}
-                                        {% endfor %}
-                                    </select>
-                                </th>
-                                {% endfor %}
+                <div class="table-container" style="margin: 0;">
+                    <div id="{{ table }}-results-info" class="results-info" style="margin: 20px; background: #f1f5f9; border: none; border-radius: 6px;"></div>
+                    <table id="{{ table }}-table" class="database-table modern-table">
+                        <thead class="table-header">
+                            <tr style="background: #4f72d6; color: white;">
+                                {% if rows and rows|length > 0 %}
+                                  {% for col in rows[0].keys() %}
+                                  <th class="sortable header-cell" data-field="{{ col }}" data-column="{{ col }}" data-table="{{ table }}" style="padding: 12px 16px; text-align: left; font-weight: 600; border: none; color: white; cursor: pointer; user-select: none; position: relative;">
+                                      {{ col|replace('_', ' ')|title }}
+                                      <span class="sort-indicator" style="margin-left: 8px; font-size: 12px; opacity: 0.7;"></span>
+                                  </th>
+                                  {% endfor %}
+                                {% else %}
+                                  <th style="padding: 12px 16px; text-align: center; border: none; color: white;">No data available</th>
+                                {% endif %}
                             </tr>
                         </thead>
                         <tbody>
-                            {% for row in rows %}
-                                <tr>
-                                    {% for col in rows[0].keys() %}
-                                        <td data-column="{{ col }}" style="color: black;">
-                                            {% if table == 'traffic_signs' and col == 'filename' %}
-                                                {% set matching = images | selectattr('filename', 'equalto', row[col]) | list %}
-                                                {% if matching %}
-                                                    {% set current_folder = matching[0].folder %}
-                                                {% else %}
-                                                    {% set current_folder = '' %}
-                                                {% endif %}
-                                                <img src="{{ url_for('static',
-                                                    filename=( 'images/' ~ current_folder ~ '/' ~ row[col] )
-                                                             if current_folder
-                                                             else 'images/' ~ row[col]
-                                                ) }}"
-                                                     alt="{{ row[col] }}"
-                                                     style="max-width: 100px;">
-                                            {% else %}
-                                                {{ row[col] }}
-                                            {% endif %}
-                                        </td>
-                                    {% endfor %}
-                                </tr>
-                            {% endfor %}
+                            {% if rows and rows|length > 0 %}
+                              {% for row in rows %}
+                                  <tr class="table-row" style="border-bottom: 1px solid #e5e7eb;">
+                                      {% for col in rows[0].keys() %}
+                                          <td data-column="{{ col }}" style="padding: 12px 16px; color: #374151; border: none; vertical-align: top;">
+                                              {% if table == 'traffic_signs' and col == 'filename' %}
+                                                  {% set matching = images | selectattr('filename', 'equalto', row[col]) | list %}
+                                                  {% if matching %}
+                                                      {% set current_folder = matching[0].folder %}
+                                                  {% else %}
+                                                      {% set current_folder = '' %}
+                                                  {% endif %}
+                                                  <img src="{{ url_for('static',
+                                                      filename=( 'images/' ~ current_folder ~ '/' ~ row[col] )
+                                                               if current_folder
+                                                               else 'images/' ~ row[col]
+                                                  ) }}"
+                                                       alt="{{ row[col] }}"
+                                                       style="max-width: 100px; border-radius: 4px; box-shadow: 0 2px 4px rgba(0,0,0,0.1);">
+                                              {% else %}
+                                                  {{ row[col] }}
+                                              {% endif %}
+                                          </td>
+                                      {% endfor %}
+                                  </tr>
+                              {% endfor %}
+                            {% else %}
+                              <tr>
+                                <td colspan="100%" style="text-align: center; color: #666; padding: 40px; border: none;">No data available in this table</td>
+                              </tr>
+                            {% endif %}
                         </tbody>
                     </table>
                 </div>
             {% else %}
-                <p>(Ingen data i denne tabellen.)</p>
+                <div style="padding: 40px; text-align: center; color: #64748b; background: #f8fafc; margin: 20px; border-radius: 8px;">
+                    <p>(Ingen data i denne tabellen.)</p>
+                </div>
             {% endif %}
         </div>
+        <!-- Pagination Controls -->
+        <div class="pagination-controls" id="{{ table }}PaginationControls">
+          <div class="pagination-info">
+            <span id="{{ table }}PaginationInfo">Viser {{ table }}</span>
+          </div>
+          <div class="pagination-center">
+            <div class="pagination-buttons" id="{{ table }}PaginationButtons"></div>
+          </div>
+          <div class="pagination-per-page">
+            <label for="{{ table }}PerPageSelector" style="color: #64748b; font-size: 14px; margin-right: 8px;">Vis per side:</label>
+            <select id="{{ table }}PerPageSelector" name="per_page" class="per-page-selector">
+              <option value="20">20</option>
+              <option value="50">50</option>
+              <option value="100">100</option>
+              <option value="all">Alle</option>
+            </select>
+          </div>
+        </div>
     {% endfor %}
+    
 </div>
 
+<!-- Enhanced CSS for Database Section -->
+<style>
+/* Enhanced Features Bar Database-specific extensions */
+.enhanced-features-bar .feature-group {
+  display: flex !important;
+  flex-direction: row !important;
+  align-items: center !important;
+  gap: 20px !important;
+  margin-right: 30px !important;
+}
+
+.enhanced-features-bar .feature-group label {
+  display: flex !important;
+  align-items: center !important;
+  margin: 0 !important;
+  line-height: 1 !important;
+  vertical-align: middle !important;
+  font-size: 14px !important;
+}
+
+.enhanced-features-bar .feature-group label[for="tableVisibilityDropdown"]::before {
+  content: '👁️';
+  margin-right: 6px;
+  vertical-align: middle;
+  line-height: 1;
+}
+
+.enhanced-features-bar .control-label-subtitle {
+  font-size: 11px;
+  color: #f59e0b;
+  font-weight: 600;
+  margin-left: 8px;
+  white-space: nowrap !important;
+  flex-shrink: 0 !important;
+}
+
+.enhanced-features-bar .multiselect-container {
+  position: relative;
+  margin-left: 8px;
+}
+
+.enhanced-features-bar .multiselect-dropdown {
+  position: relative;
+  min-width: 180px;
+}
+
+.enhanced-features-bar .multiselect-selected {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 6px 10px;
+  border: 1px solid #d1d5db;
+  border-radius: 6px;
+  background: white;
+  cursor: pointer;
+  font-size: 13px;
+  transition: border-color 0.2s, box-shadow 0.2s;
+}
+
+.enhanced-features-bar .multiselect-selected:hover {
+  border-color: #3b82f6;
+}
+
+.enhanced-features-bar .multiselect-selected:focus {
+  border-color: #3b82f6;
+  box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
+  outline: none;
+}
+
+.enhanced-features-bar .selected-text {
+  flex: 1;
+  color: #374151;
+}
+
+.enhanced-features-bar .dropdown-arrow {
+  color: #6b7280;
+  font-size: 12px;
+  margin-left: 8px;
+  transition: transform 0.2s;
+}
+
+.enhanced-features-bar .multiselect-dropdown.open .dropdown-arrow {
+  transform: rotate(180deg);
+}
+
+.enhanced-features-bar .multiselect-options {
+  position: absolute;
+  top: 100%;
+  left: 0;
+  right: 0;
+  background: white;
+  border: 1px solid #d1d5db;
+  border-radius: 6px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+  z-index: 1000;
+  margin-top: 2px;
+  max-height: 200px;
+  overflow-y: auto;
+}
+
+.enhanced-features-bar .multiselect-header {
+  display: flex;
+  gap: 8px;
+  padding: 8px;
+  border-bottom: 1px solid #e5e7eb;
+  background: #f8fafc;
+}
+
+.enhanced-features-bar .multiselect-btn {
+  flex: 1;
+  padding: 4px 8px;
+  border: 1px solid #d1d5db;
+  border-radius: 4px;
+  background: white;
+  color: #374151;
+  font-size: 11px;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.enhanced-features-bar .multiselect-btn:hover {
+  background: #f3f4f6;
+  border-color: #9ca3af;
+}
+
+.enhanced-features-bar .multiselect-option {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 12px;
+  cursor: pointer;
+  font-size: 13px;
+  transition: background-color 0.2s;
+  border: none;
+}
+
+.enhanced-features-bar .multiselect-option:hover {
+  background: #f8fafc;
+}
+
+.enhanced-features-bar .multiselect-option input[type="checkbox"] {
+  margin: 0;
+  width: auto;
+}
+
+.enhanced-features-bar .option-text {
+  color: #374151;
+  font-weight: 500;
+}
+
+/* Modern table styling to match reports section */
+.modern-table {
+  width: 100%;
+  border-collapse: collapse;
+  background: white;
+  border-radius: 0 0 8px 8px;
+  overflow: hidden;
+}
+
+.table-header th {
+  background: #4f72d6 !important;
+  color: white !important;
+  font-weight: 600;
+  text-transform: uppercase;
+  font-size: 12px;
+  letter-spacing: 0.5px;
+  border: none !important;
+}
+
+.table-row:hover {
+  background-color: #f8fafc;
+  transition: background-color 0.2s ease;
+}
+
+.table-row:nth-child(even) {
+  background-color: #fafbfc;
+}
+
+.table-row:nth-child(even):hover {
+  background-color: #f1f5f9;
+}
+
+/* Enhanced sort indicators */
+.sortable {
+  cursor: pointer;
+  user-select: none;
+  position: relative;
+  transition: background-color 0.2s ease;
+}
+
+.sortable:hover {
+  background-color: rgba(255, 255, 255, 0.1) !important;
+}
+
+.sort-indicator {
+  margin-left: 8px;
+  font-size: 12px;
+  opacity: 0.7;
+  transition: all 0.2s ease;
+}
+
+.sort-indicator:after {
+  content: '↕';
+  color: rgba(255, 255, 255, 0.6);
+}
+
+.sort-indicator.asc:after {
+  content: '▲';
+  color: #10b981;
+  opacity: 1;
+  font-weight: bold;
+}
+
+.sort-indicator.desc:after {
+  content: '▼';
+  color: #ef4444;
+  opacity: 1;
+  font-weight: bold;
+}
+
+/* Enhanced search and filter styling */
+.enhanced-search {
+  display: flex;
+  gap: 12px;
+  align-items: center;
+  flex-wrap: wrap;
+  padding: 20px;
+  background: #f8fafc;
+  border-radius: 8px;
+  margin-bottom: 0;
+}
+
+.search-input {
+  flex: 1;
+  min-width: 320px;
+  padding: 12px 16px;
+  border: 2px solid #e5e7eb;
+  border-radius: 8px;
+  font-size: 14px;
+  transition: all 0.2s ease;
+  background: white;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+}
+
+.search-input:focus {
+  border-color: #667eea;
+  box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1), 0 1px 3px rgba(0, 0, 0, 0.1);
+  outline: none;
+}
+
+.search-input::placeholder {
+  color: #9ca3af;
+  font-style: italic;
+}
+
+.filter-select {
+  padding: 8px 12px;
+  border: 2px solid #e5e7eb;
+  border-radius: 6px;
+  font-size: 13px;
+  background: white;
+  min-width: 120px;
+  transition: border-color 0.2s ease;
+}
+
+.filter-select:focus {
+  border-color: #667eea;
+  outline: none;
+}
+
+.search-btn, .clear-btn {
+  padding: 10px 16px;
+  border: none;
+  border-radius: 6px;
+  font-size: 14px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.search-btn {
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  color: white;
+}
+
+.search-btn:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 4px 8px rgba(102, 126, 234, 0.3);
+}
+
+.clear-btn {
+  background: #f1f5f9;
+  color: #64748b;
+  border: 1px solid #e5e7eb;
+}
+
+.clear-btn:hover {
+  background: #e5e7eb;
+  color: #374151;
+}
+
+.results-info {
+  margin: 20px;
+  padding: 10px 16px;
+  background: #f1f5f9;
+  border: none;
+  border-radius: 6px;
+  font-size: 14px;
+  color: #64748b;
+  font-weight: 500;
+}
+
+/* Pagination styling */
+.pagination-controls {
+  margin-top: 20px;
+  padding: 20px;
+  background: #f8fafc;
+  border-top: 1px solid #e5e7eb;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  border-radius: 0 0 8px 8px;
+}
+
+.pagination-info {
+  color: #64748b;
+  font-size: 14px;
+}
+
+.pagination-buttons {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+}
+
+.page-btn {
+  padding: 8px 12px;
+  border: 1px solid #d1d5db;
+  background: white;
+  color: #374151;
+  border-radius: 6px;
+  cursor: pointer;
+  text-decoration: none;
+  font-size: 14px;
+  transition: all 0.2s ease;
+}
+
+.page-btn:hover {
+  background: #f3f4f6;
+  border-color: #9ca3af;
+}
+
+.page-btn.active {
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  color: white;
+  border-color: #667eea;
+}
+
+.page-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.per-page-selector {
+  padding: 6px 10px;
+  border: 1px solid #d1d5db;
+  border-radius: 4px;
+  font-size: 13px;
+  background: white;
+}
+
+/* Loading indicator */
+.loading-indicator {
+  color: #667eea;
+  font-weight: 500;
+  display: none;
+}
+
+/* Responsive design */
+@media (max-width: 768px) {
+  .enhanced-search {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 16px;
+  }
+  
+  .search-input {
+    min-width: unset;
+    margin-bottom: 0;
+  }
+  
+  .filter-status {
+    order: -1;
+    text-align: center;
+    font-size: 12px !important;
+    padding: 8px;
+    background: rgba(102, 126, 234, 0.1);
+    border-radius: 6px;
+    color: #667eea !important;
+  }
+  
+  .clear-btn {
+    align-self: center;
+    min-width: 120px;
+  }
+  
+  .pagination-controls {
+    flex-direction: column;
+    gap: 15px;
+    text-align: center;
+  }
+  
+  .modern-table {
+    font-size: 13px;
+  }
+  
+  .table-header th,
+  .table-row td {
+    padding: 8px 12px;
+  }
+}
+</style>
+
+<!-- Include database-specific enhancements only -->
+<script src="{{ url_for('static', filename='js/admin-database.js') }}?v=20250102_enhanced"></script>
 <script>
-function filterTables() {
-    const selectedTable = document.getElementById('tableFilter').value;
-    const tables = document.querySelectorAll('.table-section');
+  document.addEventListener('DOMContentLoaded', () => {
+    // ONLY initialize database filtering if we're in the database section
+    function initializeDatabaseWhenActive() {
+      const databaseSection = document.getElementById('databaseSection');
+      
+      // Check if database section exists and is active
+      if (!databaseSection) {
+        console.log('🚫 Database section not found - skipping database filtering initialization');
+        return;
+      }
+      
+      // Additional check: only initialize if database section is visible/active
+      const isActive = databaseSection.classList.contains('active') || 
+                      getComputedStyle(databaseSection).display !== 'none';
+      
+      if (!isActive) {
+        console.log('🚫 Database section not active - deferring initialization');
+        return;
+      }
+      
+      console.log('✅ Database section is active - initializing database filtering');
+      
+      // Initialize client-side database filtering system (scoped to database section)
+      {% for table, rows in tables.items() %}
+        DatabaseFiltering.initializeTableFiltering('{{ table }}');
+      {% endfor %}
+      
+      // Initialize database control features
+      DatabaseFiltering.initializeDatabaseControls();
+      
+      console.log('✅ DatabaseFiltering initialized for database section with controls');
+    }
     
-    tables.forEach(table => {
-        if (selectedTable === 'all' || table.dataset.table === selectedTable) {
-            table.style.display = 'block';
-        } else {
-            table.style.display = 'none';
+    // Try to initialize immediately
+    initializeDatabaseWhenActive();
+    
+    // Also try to initialize when database section becomes active
+    // (for when users switch between sections)
+    const observer = new MutationObserver(function(mutations) {
+      mutations.forEach(function(mutation) {
+        if (mutation.type === 'attributes' && mutation.attributeName === 'class') {
+          const target = mutation.target;
+          if (target.id === 'databaseSection' && target.classList.contains('active')) {
+            console.log('🔄 Database section became active - initializing');
+            initializeDatabaseWhenActive();
+          }
         }
+      });
     });
-}
-
-document.querySelectorAll('.column-checkbox').forEach(checkbox => {
-    checkbox.addEventListener('change', function() {
-        const table = this.dataset.table;
-        const column = this.dataset.column;
-        const cells = document.querySelectorAll(`.table-section[data-table="${table}"] td[data-column="${column}"]`);
-        
-        cells.forEach(cell => {
-            cell.style.display = this.checked ? '' : 'none';
-        });
-    });
-});
-
-function filterTableByColumn() {
-    const tables = document.querySelectorAll('.table-section');
     
-    tables.forEach(table => {
-        const rows = table.querySelectorAll('tbody tr');
-        const filters = table.querySelectorAll('.column-value-filter');
-        
-        rows.forEach(row => {
-            let showRow = true;
-            
-            filters.forEach(filter => {
-                const column = filter.dataset.column;
-                const filterValue = filter.value;
-                const cell = row.querySelector(`td[data-column="${column}"]`);
-                
-                if (filterValue !== 'all' && cell.textContent.trim() !== filterValue) {
-                    showRow = false;
-                }
-            });
-            
-            row.style.display = showRow ? '' : 'none';
-        });
-    });
-}
+    const databaseSection = document.getElementById('databaseSection');
+    if (databaseSection) {
+      observer.observe(databaseSection, { attributes: true, attributeFilter: ['class'] });
+    }
+  });
 </script>

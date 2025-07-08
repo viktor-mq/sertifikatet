@@ -1,4 +1,8 @@
 {# templates/admin/reports_section.html #}
+<script src="{{ url_for('static', filename='js/admin/admin-report-section.js') }}"></script>
+<script>
+  document.addEventListener('DOMContentLoaded', initializeReportsEnhancements);
+</script>
 
 <!-- Reports & Security Section -->
 <div id="reportsSection" class="section" style="margin-top: 30px;">
@@ -30,20 +34,48 @@
     </div>
   </div>
 
-  <!-- Recent Security Alerts -->
+  <!-- Security Alerts Table -->
   {% if recent_security_alerts %}
-  <div style="background: rgba(255, 255, 255, 0.9); padding: 20px; border-radius: 12px; margin-bottom: 20px; box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1); border-left: 4px solid #dc3545;">
+  <div class="table-section" style="margin-bottom: 30px;">
     <h3 style="color: #dc3545; margin-bottom: 15px; display: flex; align-items: center; gap: 10px;">
       🚨 Recent Security Alerts
     </h3>
+    
+    <!-- Security Alerts Filter Form -->
+    <form id="security-alerts-filter-form" class="enhanced-filter-form" onsubmit="event.preventDefault(); performSecurityAlertsSearch(); return false;">
+      <div class="search-filter-container enhanced-search">
+        <input type="text" id="security-alerts-search" name="search" placeholder="🔍 Search security alerts..." class="search-input" oninput="debouncedSecurityAlertsSearch()" />
+        <select name="type" id="security-alerts-type" onchange="performSecurityAlertsSearch()">
+          <option value="">All Alert Types</option>
+          <option value="security_alert">Security Alert</option>
+          <option value="suspicious_activity">Suspicious Activity</option>
+          <option value="admin_change">Admin Change</option>
+          <option value="system_error">System Error</option>
+        </select>
+        <select name="user" id="security-alerts-user" onchange="performSecurityAlertsSearch()">
+          <option value="">All Users</option>
+          <option value="unknown">Unknown/System</option>
+        </select>
+        <select name="per_page" id="security-alerts-per-page" onchange="performSecurityAlertsSearch()">
+          <option value="10">10 per page</option>
+          <option value="20" selected>20 per page</option>
+          <option value="50">50 per page</option>
+        </select>
+        <button type="button" class="btn" onclick="performSecurityAlertsSearch()">🔍 Filter</button>
+        <button type="button" class="btn btn-secondary" onclick="clearSecurityAlertsFilters()">🗑️ Clear</button>
+        <div class="loading-indicator" id="security-alerts-loading" style="display: none;">⏳ Loading...</div>
+      </div>
+    </form>
+
     <div class="table-container">
-      <table>
+      <div id="security-alerts-results-info" class="results-info"></div>
+      <table id="security-alerts-table">
         <thead>
           <tr>
-            <th>Time</th>
-            <th>Type</th>
-            <th>Description</th>
-            <th>User</th>
+            <th class="sortable" data-field="created_at">Time <span class="sort-indicator"></span></th>
+            <th class="sortable" data-field="report_type">Type <span class="sort-indicator"></span></th>
+            <th class="sortable" data-field="title">Description <span class="sort-indicator"></span></th>
+            <th class="sortable" data-field="user">User <span class="sort-indicator"></span></th>
             <th>Action</th>
           </tr>
         </thead>
@@ -63,7 +95,7 @@
               {% endif %}
             </td>
             <td>
-              <a href="{{ url_for('admin.view_report', report_id=alert.id) }}" 
+              <a href="/admin/reports/{{ alert.id }}" 
                  class="btn btn-danger btn-small">
                 👁️ View
               </a>
@@ -73,66 +105,84 @@
         </tbody>
       </table>
     </div>
+    
+    <!-- Security Alerts Pagination Controls -->
+    <div id="security-alerts-pagination" class="pagination-container"></div>
   </div>
   {% endif %}
 
-  <!-- Filters -->
-  <form method="GET" action="{{ url_for('admin.reports') }}">
-    <div class="search-filter-container">
-      <select name="type">
-        <option value="">All Types</option>
-        <option value="user_feedback" {% if report_type_filter == 'user_feedback' %}selected{% endif %}>
-          User Feedback
-        </option>
-        <option value="system_error" {% if report_type_filter == 'system_error' %}selected{% endif %}>
-          System Error
-        </option>
-        <option value="security_alert" {% if report_type_filter == 'security_alert' %}selected{% endif %}>
-          Security Alert
-        </option>
-        <option value="admin_change" {% if report_type_filter == 'admin_change' %}selected{% endif %}>
-          Admin Change
-        </option>
-        <option value="suspicious_activity" {% if report_type_filter == 'suspicious_activity' %}selected{% endif %}>
-          Suspicious Activity
-        </option>
-      </select>
-
-      <select name="status">
-        <option value="">All Status</option>
-        <option value="new" {% if status_filter == 'new' %}selected{% endif %}>New</option>
-        <option value="in_progress" {% if status_filter == 'in_progress' %}selected{% endif %}>
-          In Progress
-        </option>
-        <option value="resolved" {% if status_filter == 'resolved' %}selected{% endif %}>Resolved</option>
-        <option value="archived" {% if status_filter == 'archived' %}selected{% endif %}>Archived</option>
-      </select>
-
-      <select name="priority">
-        <option value="">All Priorities</option>
-        <option value="critical" {% if priority_filter == 'critical' %}selected{% endif %}>Critical</option>
-        <option value="high" {% if priority_filter == 'high' %}selected{% endif %}>High</option>
-        <option value="medium" {% if priority_filter == 'medium' %}selected{% endif %}>Medium</option>
-        <option value="low" {% if priority_filter == 'low' %}selected{% endif %}>Low</option>
-      </select>
-
-      <button type="submit" class="btn">🔍 Filter</button>
-      <a href="{{ url_for('admin.reports') }}" class="btn btn-secondary">🗑️ Clear</a>
-    </div>
-  </form>
-
   <!-- Reports Table -->
+  <div class="table-section">
+    <h3 style="color: #374151; margin-bottom: 15px; display: flex; align-items: center; gap: 10px;">
+      📊 All Reports
+    </h3>
+    
+    <!-- Reports Filter Form -->
+    <form id="reports-filter-form" class="enhanced-filter-form" onsubmit="event.preventDefault(); performReportsSearch(); return false;">
+      <div class="search-filter-container enhanced-search">
+        <input type="text" id="reports-search" name="search" placeholder="🔍 Search reports, users, content..." 
+               value="{{ search_filter or '' }}" class="search-input" oninput="debouncedReportsSearch()" />
+        <select name="type" id="reports-type" onchange="performReportsSearch()">
+          <option value="">All Types</option>
+          <option value="user_feedback" {% if report_type_filter == 'user_feedback' %}selected{% endif %}>
+            User Feedback
+          </option>
+          <option value="system_error" {% if report_type_filter == 'system_error' %}selected{% endif %}>
+            System Error
+          </option>
+          <option value="security_alert" {% if report_type_filter == 'security_alert' %}selected{% endif %}>
+            Security Alert
+          </option>
+          <option value="admin_change" {% if report_type_filter == 'admin_change' %}selected{% endif %}>
+            Admin Change
+          </option>
+          <option value="suspicious_activity" {% if report_type_filter == 'suspicious_activity' %}selected{% endif %}>
+            Suspicious Activity
+          </option>
+        </select>
+
+        <select name="status" id="reports-status" onchange="performReportsSearch()">
+          <option value="">All Status</option>
+          <option value="new" {% if status_filter == 'new' %}selected{% endif %}>New</option>
+          <option value="in_progress" {% if status_filter == 'in_progress' %}selected{% endif %}>
+            In Progress
+          </option>
+          <option value="resolved" {% if status_filter == 'resolved' %}selected{% endif %}>Resolved</option>
+          <option value="archived" {% if status_filter == 'archived' %}selected{% endif %}>Archived</option>
+        </select>
+
+        <select name="priority" id="reports-priority" onchange="performReportsSearch()">
+          <option value="">All Priorities</option>
+          <option value="critical" {% if priority_filter == 'critical' %}selected{% endif %}>Critical</option>
+          <option value="high" {% if priority_filter == 'high' %}selected{% endif %}>High</option>
+          <option value="medium" {% if priority_filter == 'medium' %}selected{% endif %}>Medium</option>
+          <option value="low" {% if priority_filter == 'low' %}selected{% endif %}>Low</option>
+        </select>
+
+        <select name="per_page" id="reports-per-page" onchange="performReportsSearch()">
+          <option value="20">20 per page</option>
+          <option value="50">50 per page</option>
+          <option value="100">100 per page</option>
+        </select>
+        <button type="button" class="btn" onclick="performReportsSearch()">🔍 Filter</button>
+        <button type="button" class="btn btn-secondary" onclick="clearReportsFilters()">🗑️ Clear</button>
+        <div class="loading-indicator" id="reports-loading" style="display: none;">⏳ Loading...</div>
+      </div>
+    </form>
+
+  <!-- Reports Table with Enhanced Features -->
   <div class="table-container">
-    <table>
+    <div id="reports-results-info" class="results-info"></div>
+    <table id="reports-table">
       <thead>
         <tr>
-          <th>ID</th>
-          <th>Priority</th>
-          <th>Type</th>
-          <th>Title</th>
-          <th>Reported By</th>
-          <th>Status</th>
-          <th>Created</th>
+          <th class="sortable" data-field="id">ID <span class="sort-indicator"></span></th>
+          <th class="sortable" data-field="priority">Priority <span class="sort-indicator"></span></th>
+          <th class="sortable" data-field="report_type">Type <span class="sort-indicator"></span></th>
+          <th class="sortable" data-field="title">Title <span class="sort-indicator"></span></th>
+          <th class="sortable" data-field="reported_by">Reported By <span class="sort-indicator"></span></th>
+          <th class="sortable" data-field="status">Status <span class="sort-indicator"></span></th>
+          <th class="sortable" data-field="created_at">Created <span class="sort-indicator"></span></th>
           <th>Assigned To</th>
           <th>Actions</th>
         </tr>
@@ -186,18 +236,13 @@
               {% endif %}
             </td>
             <td>
-              <a href="{{ url_for('admin.view_report', report_id=report.id) }}" 
-                 class="btn btn-small">
+              <a href="/admin/reports/{{ report.id }}" class="btn btn-small">
                 👁️ View
               </a>
               {% if report.status == 'new' and not report.assigned_to %}
-              <form method="POST" action="{{ url_for('admin.update_report', report_id=report.id) }}" 
-                    class="d-inline">
-                <input type="hidden" name="action" value="assign">
-                <button type="submit" class="btn btn-warning btn-small">
-                  👤 Assign
-                </button>
-              </form>
+              <button onclick="assignReportAjax({{ report.id }})" class="btn btn-warning btn-small">
+                👤 Assign
+              </button>
               {% endif %}
             </td>
           </tr>
@@ -210,21 +255,49 @@
       </tbody>
     </table>
   </div>
+  
+  <!-- Reports Pagination Controls -->
+  <div id="reports-pagination" class="pagination-container"></div>
+  </div>
 
   <!-- Unresolved User Feedback -->
   {% if user_feedback %}
-  <div style="background: rgba(255, 255, 255, 0.9); padding: 20px; border-radius: 12px; margin-top: 20px; box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);">
+  <div class="table-section" style="margin-top: 30px;">
     <h3 style="color: #333; margin-bottom: 15px; display: flex; align-items: center; gap: 10px;">
       💬 Unresolved User Feedback
     </h3>
+    
+    <!-- User Feedback Filter Form -->
+    <form id="user-feedback-filter-form" class="enhanced-filter-form" onsubmit="event.preventDefault(); performUserFeedbackSearch(); return false;">
+      <div class="search-filter-container enhanced-search">
+        <input type="text" id="user-feedback-search" name="search" placeholder="🔍 Search feedback..." class="search-input" oninput="debouncedUserFeedbackSearch()" />
+        <select name="type" id="user-feedback-type" onchange="performUserFeedbackSearch()">
+          <option value="">All Feedback Types</option>
+          <option value="bug">Bug Report</option>
+          <option value="feature">Feature Request</option>
+          <option value="general">General Feedback</option>
+          <option value="complaint">Complaint</option>
+        </select>
+        <select name="per_page" id="user-feedback-per-page" onchange="performUserFeedbackSearch()">
+          <option value="10">10 per page</option>
+          <option value="20" selected>20 per page</option>
+          <option value="50">50 per page</option>
+        </select>
+        <button type="button" class="btn" onclick="performUserFeedbackSearch()">🔍 Filter</button>
+        <button type="button" class="btn btn-secondary" onclick="clearUserFeedbackFilters()">🗑️ Clear</button>
+        <div class="loading-indicator" id="user-feedback-loading" style="display: none;">⏳ Loading...</div>
+      </div>
+    </form>
+
     <div class="table-container">
-      <table>
+      <div id="user-feedback-results-info" class="results-info"></div>
+      <table id="user-feedback-table">
         <thead>
           <tr>
-            <th>User</th>
-            <th>Type</th>
-            <th>Subject</th>
-            <th>Date</th>
+            <th class="sortable" data-field="user">User <span class="sort-indicator"></span></th>
+            <th class="sortable" data-field="feedback_type">Type <span class="sort-indicator"></span></th>
+            <th class="sortable" data-field="subject">Subject <span class="sort-indicator"></span></th>
+            <th class="sortable" data-field="created_at">Date <span class="sort-indicator"></span></th>
             <th>Action</th>
           </tr>
         </thead>
@@ -251,8 +324,30 @@
         </tbody>
       </table>
     </div>
+    
+    <!-- User Feedback Pagination Controls -->
+    <div id="user-feedback-pagination" class="pagination-container"></div>
   </div>
   {% endif %}
+
+</div>
+
+<!-- Report Details Modal -->
+<div id="reportModal" class="modal">
+  <div class="modal-content">
+    <div class="modal-header">
+      <h3 id="reportModalTitle">Report Details</h3>
+      <button class="close-btn" onclick="closeReportModal()">&times;</button>
+    </div>
+    <div class="modal-body" id="reportModalBody">
+      <!-- Content loaded via AJAX -->
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-secondary" onclick="closeReportModal()">Close</button>
+      <button class="btn btn-warning" onclick="assignCurrentReport()">Assign to Me</button>
+      <button class="btn btn-success" onclick="resolveCurrentReport()">Mark Resolved</button>
+    </div>
+  </div>
 </div>
 
 <style>
@@ -265,4 +360,210 @@
 #reportsSection form.d-inline {
     display: inline-block;
 }
+
+/* Enhanced CSS for Reports Section */
+.enhanced-filter-form {
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  padding: 20px;
+  border-radius: 12px;
+  margin-bottom: 20px;
+  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+}
+
+.enhanced-search {
+  display: flex;
+  gap: 10px;
+  align-items: center;
+  flex-wrap: wrap;
+}
+
+.search-input {
+  flex: 1;
+  min-width: 300px;
+  padding: 8px 12px;
+  border: 2px solid #e5e7eb;
+  border-radius: 8px;
+  font-size: 14px;
+}
+
+.search-input:focus {
+  border-color: #3b82f6;
+  box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
+}
+
+.sortable {
+  cursor: pointer;
+  user-select: none;
+  position: relative;
+}
+
+.sortable:hover {
+  background-color: rgba(59, 130, 246, 0.1);
+}
+
+.sort-indicator {
+  margin-left: 5px;
+  opacity: 0.5;
+}
+
+.sort-indicator.asc::after {
+  content: '↑';
+  color: #10b981;
+}
+
+.sort-indicator.desc::after {
+  content: '↓';
+  color: #ef4444;
+}
+
+.results-info {
+  margin-bottom: 10px;
+  padding: 8px 12px;
+  background: #f3f4f6;
+  border-radius: 6px;
+  font-size: 14px;
+  color: #374151;
+}
+
+.loading-indicator {
+  color: white;
+  font-weight: bold;
+}
+
+.pagination-container {
+  margin-top: 20px;
+  text-align: center;
+}
+
+.pagination {
+  display: inline-flex;
+  gap: 5px;
+  align-items: center;
+}
+
+.page-btn {
+  padding: 8px 12px;
+  border: 1px solid #d1d5db;
+  background: white;
+  color: #374151;
+  border-radius: 6px;
+  cursor: pointer;
+  text-decoration: none;
+}
+
+.page-btn:hover {
+  background: #f3f4f6;
+}
+
+.page-btn.active {
+  background: #3b82f6;
+  color: white;
+  border-color: #3b82f6;
+}
+
+.page-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+/* Modal Styles */
+.modal {
+  display: none;
+  position: fixed;
+  z-index: 1000;
+  left: 0;
+  top: 0;
+  width: 100%;
+  height: 100%;
+  background-color: rgba(0, 0, 0, 0.5);
+  backdrop-filter: blur(5px);
+}
+
+.modal-content {
+  background-color: white;
+  margin: 5% auto;
+  padding: 0;
+  border-radius: 12px;
+  width: 90%;
+  max-width: 800px;
+  max-height: 80vh;
+  overflow-y: auto;
+  box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1);
+}
+
+.modal-header {
+  padding: 20px;
+  border-bottom: 1px solid #e5e7eb;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  color: white;
+  border-radius: 12px 12px 0 0;
+}
+
+.modal-body {
+  padding: 20px;
+}
+
+.modal-footer {
+  padding: 20px;
+  border-top: 1px solid #e5e7eb;
+  display: flex;
+  gap: 10px;
+  justify-content: flex-end;
+}
+
+.close-btn {
+  background: none;
+  border: none;
+  font-size: 24px;
+  cursor: pointer;
+  color: white;
+}
+
+.close-btn:hover {
+  opacity: 0.7;
+}
+
+.detail-section {
+  margin-bottom: 20px;
+  padding: 15px;
+  background: #f8f9fa;
+  border-radius: 8px;
+}
+
+.detail-section h4 {
+  margin: 0 0 10px 0;
+  color: #374151;
+}
+
+.detail-section pre {
+  background: white;
+  padding: 10px;
+  border-radius: 4px;
+  border: 1px solid #e5e7eb;
+  white-space: pre-wrap;
+  word-wrap: break-word;
+}
+
+@media (max-width: 768px) {
+  .enhanced-search {
+    flex-direction: column;
+    align-items: stretch;
+  }
+  
+  .search-input {
+    min-width: unset;
+  }
+  
+  .modal-content {
+    width: 95%;
+    margin: 10% auto;
+  }
+}
 </style>
+
+<!-- Include admin-base.js -->
+<script src="{{ url_for('static', filename='js/admin-base.js') }}"></script>
+

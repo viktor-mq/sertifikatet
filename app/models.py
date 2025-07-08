@@ -401,6 +401,20 @@ class AdminAuditLog(db.Model):
     target_user = db.relationship('User', foreign_keys=[target_user_id], backref='admin_logs_target')
     admin_user = db.relationship('User', foreign_keys=[admin_user_id], backref='admin_logs_performed')
 
+    def to_dict(self):
+        return {
+            'id': self.id,
+            'target_user_id': self.target_user_id,
+            'admin_user_id': self.admin_user_id,
+            'action': self.action,
+            'ip_address': self.ip_address,
+            'user_agent': self.user_agent,
+            'additional_info': self.additional_info,
+            'created_at': self.created_at.isoformat(),
+            'target_user': self.target_user.username if self.target_user else None,
+            'admin_user': self.admin_user.username if self.admin_user else None
+        }
+
 
 # Legacy table for image management (keeping for compatibility)
 class QuizImage(db.Model):
@@ -411,3 +425,126 @@ class QuizImage(db.Model):
     folder = db.Column(db.String(100))
     title = db.Column(db.String(255))
     description = db.Column(db.Text)
+
+
+class SystemSettings(db.Model):
+    """Store system-wide configuration settings for features like ML, notifications, etc."""
+    __tablename__ = 'system_settings'
+    
+    id = db.Column(db.Integer, primary_key=True)
+    setting_key = db.Column(db.String(100), unique=True, nullable=False, index=True)
+    setting_value = db.Column(db.Text, nullable=False)
+    setting_type = db.Column(db.String(20), default='string', nullable=False)  # 'boolean', 'integer', 'float', 'string', 'json'
+    description = db.Column(db.Text)
+    category = db.Column(db.String(50), default='general', nullable=False, index=True)  # 'ml', 'quiz', 'general', 'security', etc.
+    is_public = db.Column(db.Boolean, default=False, nullable=False)  # Can non-admins see this setting?
+    is_editable = db.Column(db.Boolean, default=True, nullable=False)  # Can this setting be changed via UI?
+    
+    # Metadata
+    created_at = db.Column(db.DateTime, default=datetime.utcnow, nullable=False)
+    updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow, nullable=False)
+    updated_by = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=True)
+    
+    # Relationships
+    updated_by_user = db.relationship('User', foreign_keys=[updated_by], backref='settings_updated')
+    
+    # Indexes for performance
+    __table_args__ = (
+        db.Index('idx_setting_category_key', 'category', 'setting_key'),
+        db.Index('idx_setting_public', 'is_public'),
+    )
+    
+    def __repr__(self):
+        return f'<SystemSettings {self.setting_key}={self.setting_value}>'
+    
+    def get_typed_value(self):
+        """Return the setting value converted to its proper Python type"""
+        try:
+            if self.setting_type == 'boolean':
+                return self.setting_value.lower() in ('true', '1', 'yes', 'on')
+            elif self.setting_type == 'integer':
+                return int(self.setting_value)
+            elif self.setting_type == 'float':
+                return float(self.setting_value)
+            elif self.setting_type == 'json':
+                import json
+                return json.loads(self.setting_value)
+            else:  # string
+                return self.setting_value
+        except (ValueError, TypeError, json.JSONDecodeError) as e:
+            # If conversion fails, return the raw string value
+            return self.setting_value
+    
+    def set_typed_value(self, value):
+        """Set the setting value from a Python type, converting to string for storage"""
+        if self.setting_type == 'boolean':
+            self.setting_value = 'true' if value else 'false'
+        elif self.setting_type == 'json':
+            import json
+            self.setting_value = json.dumps(value)
+        else:
+            self.setting_value = str(value)
+    
+    def to_dict(self):
+        """Convert to dictionary for API responses"""
+        return {
+            'id': self.id,
+            'setting_key': self.setting_key,
+            'setting_value': self.get_typed_value(),
+            'setting_type': self.setting_type,
+            'description': self.description,
+            'category': self.category,
+            'is_public': self.is_public,
+            'is_editable': self.is_editable,
+            'created_at': self.created_at.isoformat() if self.created_at else None,
+            'updated_at': self.updated_at.isoformat() if self.updated_at else None,
+            'updated_by': self.updated_by_user.username if self.updated_by_user else None
+        }
+    
+    @classmethod
+    def get_setting(cls, key, default=None, setting_type=None):
+        """Get a setting value by key, with optional type conversion"""
+        setting = cls.query.filter_by(setting_key=key).first()
+        if setting:
+            return setting.get_typed_value()
+        return default
+    
+    @classmethod
+    def set_setting(cls, key, value, description=None, category='general', setting_type='string', 
+                   is_public=False, is_editable=True, updated_by=None):
+        """Set a setting value, creating or updating as needed"""
+        setting = cls.query.filter_by(setting_key=key).first()
+        
+        if setting:
+            # Update existing setting
+            setting.set_typed_value(value)
+            setting.updated_by = updated_by
+            setting.updated_at = datetime.utcnow()
+            if description:
+                setting.description = description
+        else:
+            # Create new setting
+            setting = cls(
+                setting_key=key,
+                setting_type=setting_type,
+                description=description,
+                category=category,
+                is_public=is_public,
+                is_editable=is_editable,
+                updated_by=updated_by
+            )
+            setting.set_typed_value(value)
+            db.session.add(setting)
+        
+        db.session.commit()
+        return setting
+    
+    @classmethod
+    def get_category_settings(cls, category):
+        """Get all settings for a specific category"""
+        return cls.query.filter_by(category=category).all()
+    
+    @classmethod
+    def get_public_settings(cls):
+        """Get all public settings (viewable by non-admins)"""
+        return cls.query.filter_by(is_public=True).all()

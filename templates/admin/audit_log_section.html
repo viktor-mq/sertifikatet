@@ -4,193 +4,97 @@
 <div id="auditLogSection" class="section" style="margin-top: 30px;">
   
   <!-- Statistics Section -->
-  <div class="stats-container">
+  <div class="stats-container" id="audit-stats-cards">
     <div class="stat-card">
-      <h3>{{ logs.total if logs else 0 }}</h3>
+      <h3 id="total-logs">-</h3>
       <p>Total Log Entries</p>
     </div>
     <div class="stat-card">
-      <h3>{{ actions|length if actions else 0 }}</h3>
+      <h3 id="unique-actions">-</h3>
       <p>Unique Actions</p>
     </div>
     <div class="stat-card">
-      <h3>{{ logs.page if logs else 1 }}</h3>
+      <h3 id="current-page">-</h3>
       <p>Current Page</p>
     </div>
     <div class="stat-card">
-      <h3>{{ logs.pages if logs else 1 }}</h3>
+      <h3 id="total-pages">-</h3>
       <p>Total Pages</p>
     </div>
   </div>
 
-  <!-- Filters -->
-  <form method="GET" action="{{ url_for('admin.security_audit_log') }}">
-    <div class="search-filter-container">
-      <select name="action">
+  <!-- Enhanced Filters -->
+  <div class="table-section">
+  <h3 style="color: #374151; margin-bottom: 15px; display: flex; align-items: center; gap: 10px;">
+      Audit Log Filters
+    </h3>
+  </div>
+  <form id="audit-filter-form" class="enhanced-filter-form" onsubmit="event.preventDefault(); performAuditSearch();">
+    <div class="search-filter-container enhanced-search">
+      <input type="text" id="audit-search" name="search" placeholder="🔍 Search actions, users, details..." class="search-input" />
+      <select name="action" id="audit-action-filter">
         <option value="">All Actions</option>
-        {% if actions %}
-          {% for action in actions %}
-          <option value="{{ action }}" {% if action_filter == action %}selected{% endif %}>
-            {{ action|replace('_', ' ')|title }}
-          </option>
-          {% endfor %}
-        {% endif %}
+        {# Options will be populated by JavaScript if needed, or can be pre-filled #}
       </select>
 
-      <input type="text" name="user" placeholder="🔍 Search by username..." value="{{ user_filter }}">
-      
-      <button type="submit" class="btn">🔍 Filter</button>
-      <a href="{{ url_for('admin.security_audit_log') }}" class="btn btn-secondary">🗑️ Clear</a>
+      <select name="per_page" id="audit-per-page">
+        <option value="20">20 per page</option>
+        <option value="50">50 per page</option>
+        <option value="100">100 per page</option>
+      </select>
+      <button type="button" class="btn btn-secondary" onclick="clearAuditFilters()">🗑️ Clear</button>
+      <div class="loading-indicator" id="audit-loading" style="display: none;">⏳ Loading...</div>
     </div>
   </form>
 
+  <!-- Table Controls -->
+  <div class="table-controls">
+    <div class="control-group">
+        <label>Table View:</label>
+        <div class="btn-group">
+            <button class="btn btn-small dropdown-toggle" id="view-mode-btn">Comfortable</button>
+            <div class="dropdown-menu" id="view-mode-menu">
+                <a class="dropdown-item" href="#" data-view="compact">Compact</a>
+                <a class="dropdown-item active" href="#" data-view="comfortable">Comfortable</a>
+                <a class="dropdown-item" href="#" data-view="spacious">Spacious</a>
+            </div>
+        </div>
+    </div>
+    <div class="control-group">
+        <label>Columns:</label>
+        <div class="btn-group">
+            <button class="btn btn-small dropdown-toggle" id="column-toggle-btn">Toggle Columns</button>
+            <div class="dropdown-menu" id="column-toggle-menu">
+                <!-- Column toggles will be inserted here by JavaScript -->
+            </div>
+        </div>
+    </div>
+  </div>
+
   <!-- Audit Log Table -->
   <div class="table-container">
-    <table>
+    <div id="audit-results-info" class="results-info"></div>
+    <table id="audit-table">
       <thead>
         <tr>
-          <th>ID</th>
-          <th>Timestamp</th>
-          <th>Action</th>
-          <th>Admin User</th>
-          <th>Target User</th>
-          <th>IP Address</th>
+          <th class="sortable" data-field="id">ID <span class="sort-indicator"></span></th>
+          <th class="sortable" data-field="created_at">Timestamp <span class="sort-indicator"></span></th>
+          <th class="sortable" data-field="action">Action <span class="sort-indicator"></span></th>
+          <th class="sortable" data-field="admin_user_id">Admin User <span class="sort-indicator"></span></th>
+          <th class="sortable" data-field="target_user_id">Target User <span class="sort-indicator"></span></th>
+          <th class="sortable" data-field="ip_address">IP Address <span class="sort-indicator"></span></th>
           <th>User Agent</th>
           <th>Additional Info</th>
         </tr>
       </thead>
       <tbody>
-        {% if logs %}
-          {% for log in logs %}
-          <tr>
-            <td>{{ log.id }}</td>
-            <td><small>{{ log.created_at.strftime('%Y-%m-%d %H:%M:%S') }}</small></td>
-            <td>
-              {% if log.action == 'grant_admin' %}
-              <span class="btn btn-warning btn-small" style="cursor: default;">🛡️ Admin Granted</span>
-              {% elif log.action == 'revoke_admin' %}
-              <span class="btn btn-danger btn-small" style="cursor: default;">❌ Admin Revoked</span>
-              {% elif log.action == 'admin_login_success' %}
-              <span class="btn btn-success btn-small" style="cursor: default;">✅ Admin Login</span>
-              {% elif log.action == 'admin_login_failure' %}
-              <span class="btn btn-danger btn-small" style="cursor: default;">❌ Login Failed</span>
-              {% elif log.action == 'admin_access_denied' %}
-              <span class="btn btn-danger btn-small" style="cursor: default;">🚫 Access Denied</span>
-              {% elif log.action == 'report_assign' %}
-              <span class="btn btn-secondary btn-small" style="cursor: default;">📋 Report Assigned</span>
-              {% elif log.action == 'report_resolve' %}
-              <span class="btn btn-success btn-small" style="cursor: default;">✅ Report Resolved</span>
-              {% elif log.action == 'report_archive' %}
-              <span class="btn btn-secondary btn-small" style="cursor: default;">📦 Report Archived</span>
-              {% elif log.action == 'report_change_priority' %}
-              <span class="btn btn-warning btn-small" style="cursor: default;">⚡ Priority Changed</span>
-              {% else %}
-              <span class="btn btn-secondary btn-small" style="cursor: default;">{{ log.action|replace('_', ' ')|title }}</span>
-              {% endif %}
-            </td>
-            <td>
-              {% if log.admin_user %}
-                {{ log.admin_user.username }}
-                {% if log.admin_user.id == current_user.id %}
-                <span class="btn btn-secondary btn-small" style="cursor: default; margin-left: 5px;">You</span>
-                {% endif %}
-              {% else %}
-                <em>System</em>
-              {% endif %}
-            </td>
-            <td>
-              {% if log.target_user %}
-                {{ log.target_user.username }}
-              {% else %}
-                -
-              {% endif %}
-            </td>
-            <td>
-              {% if log.ip_address %}
-                <small><code>{{ log.ip_address }}</code></small>
-              {% else %}
-                -
-              {% endif %}
-            </td>
-            <td>
-              {% if log.user_agent %}
-                <small title="{{ log.user_agent }}">
-                  {% if 'Chrome' in log.user_agent %}
-                    🔍 Chrome
-                  {% elif 'Firefox' in log.user_agent %}
-                    🦊 Firefox
-                  {% elif 'Safari' in log.user_agent %}
-                    🧭 Safari
-                  {% elif 'Edge' in log.user_agent %}
-                    🌐 Edge
-                  {% else %}
-                    💻 {{ log.user_agent[:20] }}...
-                  {% endif %}
-                </small>
-              {% else %}
-                -
-              {% endif %}
-            </td>
-            <td>
-              {% if log.additional_info %}
-                <small>
-                  {% if log.additional_info|length > 50 %}
-                    <span title="{{ log.additional_info }}">{{ log.additional_info[:50] }}...</span>
-                  {% else %}
-                    {{ log.additional_info }}
-                  {% endif %}
-                </small>
-              {% else %}
-                -
-              {% endif %}
-            </td>
-          </tr>
-          {% endfor %}
-        {% else %}
-          <tr>
-            <td colspan="8" style="text-align: center; color: #999; font-style: italic;">No audit log entries found</td>
-          </tr>
-        {% endif %}
+        {# Rows will be populated by JavaScript #}
       </tbody>
     </table>
   </div>
 
-  <!-- Pagination -->
-  {% if logs and logs.pages and logs.pages > 1 %}
-  <div style="text-align: center; margin-top: 20px;">
-    <div class="pagination" style="display: inline-flex; gap: 5px; align-items: center;">
-      {% if logs.has_prev %}
-      <a href="{{ url_for('admin.security_audit_log', page=logs.prev_num, action=action_filter, user=user_filter) }}" 
-         class="btn btn-secondary btn-small">
-        ← Previous
-      </a>
-      {% endif %}
-
-      {% for page_num in logs.iter_pages(left_edge=1, right_edge=1, left_current=2, right_current=3) %}
-        {% if page_num %}
-          <a href="{{ url_for('admin.security_audit_log', page=page_num, action=action_filter, user=user_filter) }}" 
-             class="btn {% if page_num == logs.page %}btn-primary{% else %}btn-secondary{% endif %} btn-small">
-            {{ page_num }}
-          </a>
-        {% else %}
-          <span class="btn btn-secondary btn-small" style="cursor: default;">...</span>
-        {% endif %}
-      {% endfor %}
-
-      {% if logs.has_next %}
-      <a href="{{ url_for('admin.security_audit_log', page=logs.next_num, action=action_filter, user=user_filter) }}" 
-         class="btn btn-secondary btn-small">
-        Next →
-      </a>
-      {% endif %}
-    </div>
-    
-    <div style="margin-top: 10px; color: #666; font-size: 14px;">
-      Showing {{ ((logs.page - 1) * 50) + 1 }} to {{ logs.page * 50 if logs.page * 50 < logs.total else logs.total }} 
-      of {{ logs.total }} entries
-    </div>
-  </div>
-  {% endif %}
+  <!-- Pagination Controls -->
+  <div id="audit-pagination" class="pagination-container"></div>
 
   <!-- Export and Security Actions -->
   <div style="background: rgba(255, 255, 255, 0.9); padding: 20px; border-radius: 12px; margin-top: 20px; box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);">
@@ -198,71 +102,193 @@
       ⚙️ Security Actions
     </h3>
     <div style="display: flex; gap: 10px; flex-wrap: wrap;">
-      <a href="{{ url_for('admin.security_audit_log') }}?download=csv" class="btn btn-secondary">
-        📄 Export CSV
-      </a>
+      <div class="btn-group">
+        <button type="button" class="btn btn-secondary dropdown-toggle" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false">
+          📄 Export Log
+        </button>
+        <div class="dropdown-menu">
+          <a class="dropdown-item" href="#" onclick="exportAuditLog('csv')">Export as CSV</a>
+          <a class="dropdown-item" href="#" onclick="exportAuditLog('json')">Export as JSON</a>
+        </div>
+      </div>
       <button onclick="refreshAuditLog()" class="btn">
         🔄 Refresh Log
       </button>
       <button onclick="showSecuritySummary()" class="btn btn-warning">
-        📊 Security Summary
+       Security Summary
       </button>
+      <div id="export-loading" class="loading-indicator" style="display: none; margin-left: 10px;">Exporting...</div>
+    </div>
+  </div>
+</div>
+
+<!-- Security Summary Modal -->
+<div id="securitySummaryModal" class="modal" style="display: none;">
+  <div class="modal-content">
+    <div class="modal-header">
+      <h3>Security Summary</h3>
+      <button class="close-btn" onclick="closeSecuritySummary()">&times;</button>
+    </div>
+    <div class="modal-body" id="securitySummaryBody">
+      <!-- Content will be loaded via JavaScript -->
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-secondary" onclick="closeSecuritySummary()">Close</button>
     </div>
   </div>
 </div>
 
 <style>
-#auditLogSection code {
-    background-color: rgba(0, 0, 0, 0.1);
-    padding: 2px 4px;
-    border-radius: 3px;
-    font-family: 'Courier New', monospace;
+/* Add styles for modal and other new elements */
+.btn-group .dropdown-menu {
+    display: none;
+    position: absolute;
+    background-color: #f9f9f9;
+    min-width: 160px;
+    box-shadow: 0px 8px 16px 0px rgba(0,0,0,0.2);
+    z-index: 1;
+}
+.btn-group:hover .dropdown-menu { display: block; }
+.dropdown-item { 
+    color: black; 
+    padding: 12px 16px; 
+    text-decoration: none; 
+    display: block; 
+}
+.dropdown-item:hover { background-color: #f1f1f1; }
+
+.modal {
+  display: none;
+  position: fixed;
+  z-index: 1000;
+  left: 0;
+  top: 0;
+  width: 100%;
+  height: 100%;
+  background-color: rgba(0, 0, 0, 0.5);
+  backdrop-filter: blur(5px);
+}
+
+.modal-content {
+  background-color: white;
+  margin: 5% auto;
+  padding: 0;
+  border-radius: 12px;
+  width: 90%;
+  max-width: 800px;
+  max-height: 80vh;
+  overflow-y: auto;
+  box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1);
+}
+
+.modal-header {
+  padding: 20px;
+  border-bottom: 1px solid #e5e7eb;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  color: white;
+  border-radius: 12px 12px 0 0;
+}
+
+.modal-body {
+  padding: 20px;
+}
+
+.modal-footer {
+  padding: 20px;
+  border-top: 1px solid #e5e7eb;
+  display: flex;
+  gap: 10px;
+  justify-content: flex-end;
+}
+
+.close-btn {
+  background: none;
+  border: none;
+  font-size: 24px;
+  cursor: pointer;
+  color: white;
+}
+
+.close-btn:hover {
+  opacity: 0.7;
+}
+
+/* Horizontal flex layout for audit log controls to match database section */
+.table-controls {
+    display: flex !important;
+    flex-direction: row !important;
+    align-items: center !important;
+    gap: 30px !important;
+    margin-bottom: 15px;
+    padding: 10px;
+    background: #f8f9fa;
+    border-radius: 8px;
+}
+
+.table-controls .control-group {
+    display: flex !important;
+    flex-direction: row !important;
+    align-items: center !important;
+    gap: 10px !important;
+    margin: 0 !important;
+}
+
+.table-controls .control-group label {
+    display: flex !important;
+    align-items: center !important;
+    margin: 0 !important;
+    line-height: 1 !important;
+    vertical-align: middle !important;
+    font-size: 14px !important;
+    font-weight: bold;
+    color: #555;
+}
+
+/* Override table icon for Security Actions section */
+#auditLogSection h3:not(.table-section h3)::before {
+    content: none !important;
+}
+
+#column-toggle-menu {
+    position: absolute;
+    background-color: white;
+    border: 1px solid #ddd;
+    border-radius: 4px;
+    box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+    padding: 10px;
+    display: none; /* Hidden by default */
+    z-index: 10;
+}
+
+#column-toggle-menu .dropdown-item {
+    display: block;
+    padding: 5px;
+}
+
+#column-toggle-btn:focus + #column-toggle-menu, 
+#column-toggle-menu:hover {
+    display: block;
+}
+
+/* Table View Density Styles */
+#audit-table.view-compact td, #audit-table.view-compact th {
+    padding: 4px 8px;
     font-size: 12px;
 }
 
-.pagination {
-    list-style: none;
-    padding: 0;
-    margin: 0;
+#audit-table.view-comfortable td, #audit-table.view-comfortable th {
+    padding: 8px 12px;
+    font-size: 14px;
 }
 
-#auditLogSection small {
-    color: #666;
+#audit-table.view-spacious td, #audit-table.view-spacious th {
+    padding: 16px 12px;
+    font-size: 16px;
 }
 
-#auditLogSection td small span[title] {
-    cursor: help;
-    border-bottom: 1px dotted #999;
-}
 </style>
 
-<script>
-function refreshAuditLog() {
-    window.location.reload();
-}
-
-function showSecuritySummary() {
-    // Get values from template variables
-    const totalEntries = {{ logs.total if logs else 0 }};
-    const uniqueActions = {{ actions|length if actions else 0 }};
-    const currentPage = {{ logs.page if logs else 1 }};
-    const totalPages = {{ logs.pages if logs else 1 }};
-    
-    alert(`Security Audit Log Summary:
-    
-📊 Total Entries: ${totalEntries}
-🔧 Unique Actions: ${uniqueActions}
-📄 Current Page: ${currentPage} of ${totalPages}
-
-This log tracks all administrative actions and security events in the system.`);
-}
-
-// Auto-refresh every 30 seconds for real-time monitoring
-setInterval(function() {
-    // Only refresh if user is not actively filtering
-    const urlParams = new URLSearchParams(window.location.search);
-    if (!urlParams.has('action') && !urlParams.has('user')) {
-        refreshAuditLog();
-    }
-}, 30000);
-</script>
+<script src="{{ url_for('static', filename='js/admin/admin-audit-log.js') }}"></script>

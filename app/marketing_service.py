@@ -38,14 +38,14 @@ class MarketingEmailService:
             UserNotificationPreferences.marketing_emails == True
         )
         
-        # Filter by subscription tiers
+        # Filter by subscription tiers using current_plan_id
         plan_filters = []
         if target_free:
-            plan_filters.append(User.subscription_tier == 'free')
+            plan_filters.append(User.current_plan_id == 1)  # Free plan
         if target_premium:
-            plan_filters.append(User.subscription_tier == 'premium')
+            plan_filters.append(User.current_plan_id == 2)  # Premium plan
         if target_pro:
-            plan_filters.append(User.subscription_tier == 'pro')
+            plan_filters.append(User.current_plan_id == 3)  # Pro plan
         
         if plan_filters:
             from sqlalchemy import or_
@@ -249,7 +249,10 @@ class MarketingEmailService:
         Returns:
             str: Personalized HTML content
         """
-        # Simple template variable replacement
+        # Generate URLs using the same method as the footer
+        notification_settings_url = get_notification_settings_url()
+        
+        # Replace user variables
         personalized = html_content.replace(
             '{{user.full_name or user.username}}', 
             user.full_name or user.username
@@ -261,6 +264,28 @@ class MarketingEmailService:
         personalized = personalized.replace(
             '{{user.full_name}}', 
             user.full_name or user.username
+        )
+        personalized = personalized.replace(
+            '{{user.email}}', 
+            user.email
+        )
+        
+        # Map subscription plan ID to readable name
+        plan_names = {1: 'Free', 2: 'Premium', 3: 'Pro'}
+        current_plan = plan_names.get(user.current_plan_id, 'Free')
+        personalized = personalized.replace(
+            '{{user.current_plan}}', 
+            current_plan
+        )
+        
+        # Replace URL variables using the same URL generation as footer
+        personalized = personalized.replace(
+            '{{settings_url}}', 
+            notification_settings_url
+        )
+        personalized = personalized.replace(
+            '{{unsubscribe_url}}', 
+            notification_settings_url  # Same URL as footer - points to notification settings
         )
         
         return personalized

@@ -24,7 +24,7 @@ class PWAInstaller {
     async registerServiceWorker() {
         if ('serviceWorker' in navigator) {
             try {
-                const registration = await navigator.serviceWorker.register('/static/sw.js', {
+                const registration = await navigator.serviceWorker.register('/sw.js', {
                     scope: '/'
                 });
                 

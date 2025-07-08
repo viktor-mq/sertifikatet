@@ -3,6 +3,115 @@ project:
   purpose: Modern, all-in-one web/mobile app that helps users
     pass the driver’s theory test through quizzes, videos,
     games, progress tracking and gamification in Norway.
+  learning_plan:
+    description: >
+      Structured learning curriculum for Norwegian driving theory test (klasse B).
+      Each module includes goal, script, video, and quiz. Supports AI content generation
+      and short video formats for modern learners.
+    
+    content_management:
+      approach: "Hybrid Database + File System"
+      philosophy: "Database for user progress/analytics, files for content management"
+      version_control: "Git-tracked markdown files with database metadata"
+      ai_integration: "Automated content generation and updates"
+      
+    content_structure:
+      base_directory: "content/"
+      organization:
+        modules:
+          path: "modules/{module_id}-{slug}/"
+          contains: ["module.yaml", "submodules/"]
+        submodules:
+          path: "modules/{module_id}-{slug}/{submodule_id}-{slug}/"
+          contains: ["content.md", "summary.md", "shorts/", "metadata.yaml"]
+        shorts:
+          path: "modules/{module_id}-{slug}/{submodule_id}-{slug}/shorts/"
+          format: "vertical_video_mp4"
+          naming: "{sequence}-{topic-slug}.mp4"
+          
+    content_format:
+      markdown_variants:
+        long: "Full detailed version with explanations, images, and examples"
+        short: "Concise summary version for repetition and quick learning"
+      video_shorts:
+        description: "Short-form educational videos in vertical format for TikTok-style viewing"
+        format: "9:16 aspect ratio, 15-60 seconds duration"
+        features: ["swipe_navigation", "quiz_integration", "progress_tracking"]
+        usage:
+          - "Users can swipe through bite-sized videos per submodule"
+          - "Integrated with quiz check-ins and explanations"
+          - "Engagement analytics and completion tracking"
+      metadata_structure:
+        module_yaml:
+          - "id, title, description, estimated_hours"
+          - "prerequisites, learning_objectives"
+          - "ai_generated_content_flags"
+        submodule_metadata:
+          - "content_version, last_updated, ai_generated"
+          - "engagement_metrics, completion_rates"
+          - "linked_questions, related_videos"
+    modules:
+      - id: 1
+        title: Grunnleggende trafikklære
+        submodules:
+          - id: 1.1
+            title: Hva er trafikkreglene?
+          - id: 1.2
+            title: Vikeplikt og vikepliktregler
+          - id: 1.3
+            title: Tegn fra politi og trafikklys
+          - id: 1.4
+            title: Plassering og feltskifte
+          - id: 1.5
+            title: Kjøring i rundkjøring
+      - id: 2
+        title: Skilt og oppmerking
+        submodules:
+          - id: 2.1
+            title: Fareskilt – lær mønstrene
+          - id: 2.2
+            title: Forbudsskilt – hva du IKKE kan gjøre
+          - id: 2.3
+            title: Påbudsskilt – følg instruksjonen
+          - id: 2.4
+            title: Opplysningsskilt og serviceskilt
+          - id: 2.5
+            title: Vegoppmerking – linjer og symboler
+      - id: 3
+        title: Kjøretøy og teknologi
+        submodules:
+          - id: 3.1
+            title: Bremselengde og reaksjonstid
+          - id: 3.2
+            title: Sikt, lysbruk og vær
+          - id: 3.3
+            title: Dekk, mønsterdybde og grep
+          - id: 3.4
+            title: Kontrollrutiner før kjøring
+          - id: 3.5
+            title: Elbil, hybrid og moderne hjelpemidler
+      - id: 4
+        title: Mennesket i trafikken
+        submodules:
+          - id: 4.1
+            title: Alkohol, rus og reaksjonsevne
+          - id: 4.2
+            title: Trøtthet og distraksjoner
+          - id: 4.3
+            title: Risikoforståelse og kjørestrategi
+          - id: 4.4
+            title: Førstehjelp og ulykkesberedskap
+      - id: 5
+        title: Øvingskjøring og avsluttende test
+        submodules:
+          - id: 5.1
+            title: Ansvar og regler under øvingskjøring
+          - id: 5.2
+            title: Oppsummeringsquiz
+          - id: 5.3
+            title: Eksamenstrening med tidspress
+          - id: 5.4
+            title: Hva skjer på teoriprøven?
   features:
     quizzes:
       - interactive
@@ -16,10 +125,18 @@ project:
       - playlist management for premium users
     progress_tracking:
       - personalized analytics
+      - ML-powered adaptive learning
     gamification:
       - achievements
       - daily streaks
       - leaderboards
+    analytics:
+      - Google Analytics 4 integration
+      - Google Tag Manager (GTM-M26JWCMT)
+      - advanced event tracking
+      - user journey analytics
+      - ecommerce tracking
+      - GDPR-compliant data collection
     gdpr_compliance:
       - cookie consent management
       - privacy-first design
@@ -43,6 +160,11 @@ tech_stack:
     css_framework: Tailwind CSS
     charts: Chart.js
     games: Phaser.js
+    analytics:
+      google_analytics: Google Analytics 4 (G-353HJJCNYR)
+      google_tag_manager: GTM container (GTM-M26JWCMT)
+      event_tracking: Advanced business intelligence
+      gdpr_compliance: Consent-based loading
   mobile:
     framework: Progressive Web App (PWA)
   infrastructure:
@@ -52,8 +174,27 @@ tech_stack:
     ml_privacy: Local processing (no external APIs)
     testing: pytest with database isolation
     caching: Redis with fallback mechanisms
-    monitoring: Centralized error logging
+    monitoring: Centralized error logging via AdminReport
     deployment: Branch-based strategy (develop/main)
+    ssl_cdn: Cloudflare (SSL + CDN integration)
+    production_ready: SSL certificates and CDN via Cloudflare Free tier
+    analytics:
+      google_tag_manager: GTM-M26JWCMT with GDPR compliance
+      google_analytics: G-353HJJCNYR with privacy-first config
+      event_tracking: Comprehensive business intelligence
+      server_side_api: Analytics API endpoints
+      testing_tools: Development validation suite
+    seo:
+      environment_protection: Development/production mode switching
+      search_engine_blocking: Automatic robots.txt and meta tag control
+      development_safety: No indexing during development
+      production_ready: Full SEO activation with environment switch
+      meta_tags: Dynamic generation with structured data
+      search_console: DNS verification via Cloudflare (enterprise-grade)
+      norwegian_optimization: Language, geo-region, and market-specific
+      rich_snippets: JSON-LD structured data for enhanced search results
+      sitemap_generation: Automatic sitemap.xml generation
+      robots_txt: Environment-aware crawler directives
 
 database:
   tables:
@@ -529,7 +670,123 @@ database:
       - skill_level_before        # FLOAT Estimated skill before question
       - skill_level_after         # FLOAT Estimated skill after question
       - created_at                # DATETIME Response creation time
-    # AD REVENUE & TRACKING TABLES
+    # LEARNING CONTENT MANAGEMENT TABLES
+    learning_modules:
+      - id
+      - module_number               # INT - Module sequence (1, 2, 3, 4, 5)
+      - title                       # VARCHAR(200) - Module title
+      - description                 # TEXT - Module description
+      - estimated_hours             # FLOAT - Estimated completion time
+      - prerequisites               # JSON - Required prior modules/skills
+      - learning_objectives         # JSON - What users will learn
+      - content_directory           # VARCHAR(255) - File system path
+      - is_active                   # BOOLEAN - Module availability
+      - ai_generated                # BOOLEAN - Content generated by AI
+      - last_content_update         # DATETIME - When content was last modified
+      - completion_rate             # FLOAT - Overall completion percentage
+      - average_time_spent          # INT - Average minutes users spend
+      - created_at
+      - updated_at
+    
+    learning_submodules:
+      - id
+      - module_id                   # FK → learning_modules.id
+      - submodule_number            # FLOAT - Submodule sequence (1.1, 1.2, etc.)
+      - title                       # VARCHAR(200) - Submodule title
+      - description                 # TEXT - Submodule description
+      - content_file_path           # VARCHAR(500) - Path to content.md
+      - summary_file_path           # VARCHAR(500) - Path to summary.md
+      - shorts_directory            # VARCHAR(500) - Path to shorts/ folder
+      - estimated_minutes           # INT - Time to complete
+      - difficulty_level            # INT - 1-5 difficulty rating
+      - has_quiz                    # BOOLEAN - Has associated quiz questions
+      - quiz_question_count         # INT - Number of quiz questions
+      - has_video_shorts            # BOOLEAN - Has TikTok-style videos
+      - shorts_count                # INT - Number of short videos
+      - is_active                   # BOOLEAN - Submodule availability
+      - ai_generated_content        # BOOLEAN - Content generated by AI
+      - ai_generated_summary        # BOOLEAN - Summary generated by AI
+      - content_version             # VARCHAR(50) - Content version tracking
+      - last_content_update         # DATETIME - When files were last modified
+      - engagement_score            # FLOAT - User engagement metrics
+      - completion_rate             # FLOAT - Completion percentage
+      - average_study_time          # INT - Average minutes spent
+      - created_at
+      - updated_at
+    
+    user_learning_progress:
+      - id
+      - user_id                     # FK → users.id
+      - module_id                   # FK → learning_modules.id
+      - submodule_id                # FK → learning_submodules.id (NULL for module-level)
+      - progress_type               # ENUM('module', 'submodule', 'content', 'summary', 'shorts')
+      - status                      # ENUM('not_started', 'in_progress', 'completed', 'skipped')
+      - completion_percentage       # FLOAT - 0.0 to 1.0
+      - time_spent_minutes          # INT - Total time spent
+      - content_viewed              # BOOLEAN - Has viewed long-form content
+      - summary_viewed              # BOOLEAN - Has viewed summary
+      - shorts_watched              # INT - Number of shorts completed
+      - quiz_attempts               # INT - Number of quiz attempts
+      - quiz_best_score             # FLOAT - Best quiz score percentage
+      - last_accessed               # DATETIME - Last interaction
+      - started_at                  # DATETIME - When first accessed
+      - completed_at                # DATETIME - When completed (NULL if incomplete)
+      - created_at
+      - updated_at
+    
+    video_shorts:
+      - id
+      - submodule_id                # FK → learning_submodules.id
+      - title                       # VARCHAR(200) - Short video title
+      - description                 # TEXT - Video description
+      - filename                    # VARCHAR(255) - Video filename
+      - file_path                   # VARCHAR(500) - Full file path
+      - duration_seconds            # INT - Video duration
+      - sequence_order              # INT - Order within submodule
+      - aspect_ratio                # VARCHAR(10) - '9:16' for TikTok-style
+      - resolution                  # VARCHAR(20) - '1080x1920' etc.
+      - file_size_mb                # FLOAT - File size for bandwidth optimization
+      - thumbnail_path              # VARCHAR(500) - Thumbnail image path
+      - has_captions                # BOOLEAN - Has subtitle/caption file
+      - caption_file_path           # VARCHAR(500) - Path to captions
+      - topic_tags                  # JSON - Array of topic tags
+      - difficulty_level            # INT - 1-5 difficulty rating
+      - engagement_score            # FLOAT - Average user engagement
+      - view_count                  # INT - Total views
+      - completion_rate             # FLOAT - Percentage who watch to end
+      - average_watch_time          # FLOAT - Average seconds watched
+      - like_count                  # INT - User likes (if implemented)
+      - ai_generated                # BOOLEAN - Generated by AI
+      - is_active                   # BOOLEAN - Video availability
+      - created_at
+      - updated_at
+    
+    user_shorts_progress:
+      - id
+      - user_id                     # FK → users.id
+      - shorts_id                   # FK → video_shorts.id
+      - watch_status                # ENUM('not_watched', 'started', 'completed', 'skipped')
+      - watch_percentage            # FLOAT - How much was watched (0.0-1.0)
+      - watch_time_seconds          # FLOAT - Total seconds watched
+      - replay_count                # INT - Number of times replayed
+      - liked                       # BOOLEAN - User liked the video
+      - swipe_direction             # ENUM('up', 'down', 'left', 'right') - Last swipe
+      - interaction_quality         # FLOAT - Engagement quality score
+      - first_watched_at            # DATETIME - First view timestamp
+      - last_watched_at             # DATETIME - Most recent view
+      - completed_at                # DATETIME - When fully watched (NULL if incomplete)
+      - created_at
+      - updated_at
+    
+    content_analytics:
+      - id
+      - content_type                # ENUM('module', 'submodule', 'content', 'summary', 'shorts')
+      - content_id                  # INT - ID of the content (polymorphic)
+      - metric_type                 # ENUM('view', 'completion', 'engagement', 'time_spent')
+      - metric_value                # FLOAT - Metric value
+      - user_count                  # INT - Number of users for this metric
+      - date                        # DATE - Analytics date
+      - created_at
     ad_interactions:
       - id
       - user_id                   # FK → users.id (NULL for anonymous)
@@ -600,26 +857,67 @@ file_structure:
     - run.py
     - .env
     - README.md
-    app:
-      - auth
-      - main
-      - quiz
-      - game   # Interactive games module (Phase 9)
-      - video
-      - admin
-      - api
-      - ml     # Machine Learning module (Phase 12)
-      - advertising  # Ad management and revenue tracking module
-      - utils
+  content:  # NEW: Learning content management
+    - modules/
+      - "1-grunnleggende-trafikklare/"
+        - module.yaml
+        - "1.1-trafikkregler/"
+          - content.md
+          - summary.md
+          - metadata.yaml
+          - shorts/
+            - "001-vikeplikt-intro.mp4"
+            - "002-trafikklys-regler.mp4"
+            - "003-politiregulering.mp4"
+        - "1.2-vikeplikt/"
+        - "1.3-politi-trafikklys/"
+        - "1.4-plassering-feltskifte/"
+        - "1.5-rundkjoring/"
+      - "2-skilt-oppmerking/"
+        - module.yaml
+        - "2.1-fareskilt/"
+        - "2.2-forbudsskilt/"
+        - "2.3-pabudsskilt/"
+        - "2.4-opplysningsskilt/"
+        - "2.5-vegoppmerking/"
+      - "3-kjortoy-teknologi/"
+      - "4-mennesket-trafikken/"
+      - "5-ovingskjoring-test/"
+    - templates/
+      - module_template.md
+      - submodule_template.md
+      - summary_template.md
+    - assets/
+      - images/
+      - diagrams/
+      - audio/
+  app:
+    - auth
+    - main
+    - quiz
+    - game   # Interactive games module (Phase 9)
+    - video
+    - learning  # NEW: Learning content module
+      - routes.py
       - models.py
-      - gamification_models.py
-      - video_models.py
-      - payment_models.py
-      - notification_models.py
-      - ad_models.py  # Ad tracking and revenue models
+      - content_service.py
+      - ai_generator.py
+      - shorts_player.py
+    - admin
+    - api
+    - ml     # Machine Learning module (Phase 12)
+    - advertising  # Ad management and revenue tracking module
+    - utils
+    - models.py
+    - gamification_models.py
+    - video_models.py
+    - payment_models.py
+    - notification_models.py
+    - learning_models.py  # NEW: Learning content models
+    - ad_models.py  # Ad tracking and revenue models
     static:
       css: [main.css, quiz.css, game.css, video.css, admin.css, ml.css, ad-integration.css]
-      js: [main.js, quiz.js, game scripts, video-player.js, admin.js, ml-insights.js, cookie-consent.js, gtm-integration.js, ad-manager.js, ad-revenue-funnel.js]
+      js: [main.js, quiz.js, game scripts, video-player.js, admin.js, ml-insights.js, cookie-consent.js, gtm-integration.js, gtm-testing.js, analytics-integration.js, analytics-service.js]
       images: [signs, scenarios, achievements, ui, profiles]
       videos: []
       audio: []
@@ -643,6 +941,12 @@ file_structure:
         - bookmarks.html
         - recommended.html
         - admin_upload.html
+      - learning  # NEW: Learning content templates
+        - module_overview.html
+        - submodule_content.html
+        - shorts_player.html
+        - progress_dashboard.html
+        - tiktok_style_viewer.html
       - progress
       - admin
       - ml     # ML templates (insights.html, learning_dashboard.html, etc.)
@@ -658,7 +962,7 @@ file_structure:
         - (and 7 more email types)
     migrations: []
     tests: [test_auth.py, test_basic.py, test_models.py, conftest.py]
-    scripts: [init_db.py, import_questions.py, generate_stats.py, init_ml.py]
+    scripts: [init_db.py, import_questions.py, generate_stats.py, init_ml.py, init_learning_content.py, generate_ai_content.py]
     ci_cd:
       - .github/workflows/ci.yml
       - .pre-commit-config.yaml
@@ -707,9 +1011,10 @@ monetization:
     The platform is free by default and monetized via ads. Users can optionally upgrade
     to remove ads and unlock additional features.
   advertising_strategy:
-    primary_provider: Google AdSense
-    secondary_providers: [Adnorge, Amedia]
-    implementation: Google Tag Manager + Enhanced Cookie Consent
+  primary_provider: Google AdSense
+  implementation_method: Google AdSense automatic placement (no custom ad slots required)
+  secondary_providers: [Adnorge, Amedia] # Future expansion
+  implementation: Google Tag Manager + Enhanced Cookie Consent + Automatic Placement
     targeting: Norwegian driving education market
     revenue_model:
       ad_revenue: 15-25 NOK CPM (educational content premium)
@@ -719,9 +1024,10 @@ monetization:
         conversion_rate: 1.5-3%
         revenue_per_user: 1.5-2.5 NOK/month
     ad_placements:
-      quiz_pages: [between_questions, after_completion, sidebar]
-      video_pages: [pre_roll, sidebar, between_playlist_items]
-      general_pages: [header_banner, content_rectangle, footer]
+      implementation: Google AdSense automatic placement optimization
+      coverage: [quiz_pages, video_pages, general_pages]
+      responsive: Mobile and desktop optimized
+      note: "Custom ad slots replaced by Google's automatic placement system"
     smart_upgrade_system:
       triggers: [high_ad_exposure, high_engagement, repeated_usage, adblock_detection]
       frequency: every_3rd_ad
@@ -769,7 +1075,32 @@ monetization:
       total: 18650-21150 NOK
 
 future_enhancements:
-  phase_13_advanced_ml:
+  production_status:
+    description: "Current implementation status as of 2025"
+    completed_phases: "Phases 1-16 complete (infrastructure, features, ML, ads, production readiness, SEO)"
+    next_priorities: [theory_content_integration, tiktok_shorts_system, advanced_ml_features]
+    
+  phase_17_theory_content_system:
+    description: "Comprehensive theory learning system with TikTok-style shorts"
+    implementation_strategy:
+      phase_1: "File-based content structure with database progress tracking"
+      phase_2: "AI content generation for missing modules"
+      phase_3: "Video shorts integration with swipe mechanics"
+      phase_4: "Advanced analytics and adaptive content recommendations"
+    features:
+      - hybrid_content_management: "Database + file system approach"
+      - ai_content_generation: "Automated markdown and summary creation"
+      - tiktok_style_videos: "Vertical short-form educational content"
+      - swipe_navigation: "Mobile-first video consumption"
+      - progress_tracking: "Granular completion and engagement metrics"
+      - adaptive_recommendations: "ML-powered content suggestions"
+      - version_control: "Git-tracked content with database metadata"
+    content_workflow:
+      creation: "AI generates markdown → Manual review → Video shorts creation"
+      updates: "Content versioning with user progress preservation"
+      analytics: "Engagement tracking for content optimization"
+    
+  phase_18_advanced_ml:
     description: "Advanced ML features for next-generation personalization"
     features:
       - advanced_learning_styles: "Visual, auditory, kinesthetic adaptation"
@@ -778,9 +1109,10 @@ future_enhancements:
       - advanced_nlp: "Question content analysis for better categorization"
       - real_time_adaptation: "Within-session difficulty adjustment"
       - emotional_intelligence: "Detect frustration and adjust accordingly"
-      - multi_modal_learning: "Combine quiz, video, and game data"
+      - multi_modal_learning: "Combine quiz, video, and theory content data"
+      - content_optimization: "AI-driven content improvement suggestions"
   
-  phase_14_ai_tutoring:
+  phase_19_ai_tutoring:
     description: "AI-powered personal tutoring system"
     features:
       - conversational_ai: "Natural language explanations and help"
@@ -789,8 +1121,9 @@ future_enhancements:
       - weakness_remediation: "Targeted remedial content generation"
       - exam_preparation: "AI-powered exam readiness assessment"
       - progress_prediction: "Predict time to exam readiness"
+      - content_questioning: "AI asks clarifying questions about theory"
   
-  phase_15_social_learning:
+  phase_20_social_learning:
     description: "Community-driven learning with ML insights"
     features:
       - peer_matching: "Connect users with similar learning patterns"
@@ -799,8 +1132,9 @@ future_enhancements:
       - instructor_insights: "Teacher dashboard with ML student analytics"
       - collaborative_filtering: "Learn from collective user behavior"
       - social_gamification: "ML-powered social achievements"
+      - shorts_sharing: "User-generated educational short videos"
   
-  phase_16_advanced_analytics:
+  phase_21_advanced_analytics:
     description: "Deep learning analytics and insights"
     features:
       - learning_pattern_analysis: "Deep learning pattern recognition"
@@ -809,24 +1143,33 @@ future_enhancements:
       - cognitive_load_management: "Optimize mental effort and fatigue"
       - skill_transfer_analysis: "Identify knowledge transfer between topics"
       - long_term_retention: "Predict and prevent knowledge decay"
+      - content_effectiveness: "Measure theory content impact on quiz performance"
   
   integration_opportunities:
-    gamification_ml:
-      - "ML-optimized achievement systems"
-      - "Personalized challenge difficulty"
-      - "Adaptive reward systems"
+    theory_quiz_integration:
+      - "Theory content directly linked to quiz questions"
+      - "Contextual theory review during quiz mistakes"
+      - "Adaptive theory recommendations based on quiz performance"
+    
+    gamification_content:
+      - "Achievement unlocking through theory completion"
+      - "Theory-based challenges and competitions"
+      - "Progress visualization across theory modules"
     
     video_learning_ml:
       - "Adaptive video recommendation"
       - "Optimal video checkpoint placement"
       - "Personalized video speed recommendations"
+      - "TikTok-style engagement optimization"
     
     mobile_optimization:
-      - "Offline ML for PWA features"
+      - "Offline theory content for PWA features"
       - "Edge computing for instant personalization"
       - "Mobile-specific learning pattern analysis"
+      - "Swipe gesture analytics and optimization"
     
     api_extensions:
       - "Third-party integration capabilities"
-      - "Embeddable ML widgets"
+      - "Embeddable learning widgets"
       - "External learning system integration"
+      - "Content syndication APIs"

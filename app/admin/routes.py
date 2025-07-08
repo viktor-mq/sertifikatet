@@ -57,6 +57,18 @@ def admin_dashboard():
     # Handle search/filter parameters
     search_query = request.args.get('search', '').strip()
     category_filter = request.args.get('category', '').strip()
+    subcategory_filter = request.args.get('subcategory', '').strip()
+    difficulty_filter = request.args.get('difficulty', '').strip()
+    
+    # Pagination parameters
+    page = request.args.get('page', 1, type=int)
+    per_page = request.args.get('per_page', 50, type=int)
+    sort_by = request.args.get('sort_by', 'id')  # Default sort by ID
+    sort_order = request.args.get('sort_order', 'asc')  # asc or desc
+    
+    # Validate per_page options
+    if per_page not in [20, 50, 100] and per_page != -1:  # -1 means "All"
+        per_page = 50
 
     validation_errors = []
     message = None
@@ -123,6 +135,7 @@ def admin_dashboard():
                 'category': request.form.get('category') or 'Ukategorisert',
                 'subcategory': request.form.get('subcategory'),
                 'difficulty_level': int(request.form.get('difficulty_level', 1)),
+                'explanation': request.form.get('explanation'),
                 'image_filename': request.form.get('image_filename')
             }
             validation_errors = validate_question(question_data, question_id)
@@ -136,6 +149,7 @@ def admin_dashboard():
                         q.category = question_data['category']
                         q.subcategory = question_data['subcategory']
                         q.difficulty_level = question_data['difficulty_level']
+                        q.explanation = question_data['explanation']
                         q.image_filename = question_data['image_filename']
                         
                         # Delete existing options
@@ -160,6 +174,7 @@ def admin_dashboard():
                         category=question_data['category'],
                         subcategory=question_data['subcategory'],
                         difficulty_level=question_data['difficulty_level'],
+                        explanation=question_data['explanation'],
                         image_filename=question_data['image_filename']
                     )
                     db.session.add(q)
@@ -180,16 +195,54 @@ def admin_dashboard():
                 db.session.commit()
                 return redirect(url_for('admin.admin_dashboard'))
     
-    # Fetch questions with options using ORM
+    # Fetch questions with options using ORM with advanced filtering
     query = Question.query
     
+    # Apply search filter
     if search_query:
         query = query.filter(Question.question.ilike(f'%{search_query}%'))
     
-    if category_filter:
+    # Apply category filter
+    if category_filter and category_filter != 'all':
         query = query.filter(Question.category == category_filter)
     
-    all_questions = query.all()
+    # Apply subcategory filter
+    if subcategory_filter and subcategory_filter != 'all':
+        query = query.filter(Question.subcategory == subcategory_filter)
+    
+    # Apply difficulty filter
+    if difficulty_filter and difficulty_filter != 'all':
+        try:
+            difficulty_int = int(difficulty_filter)
+            query = query.filter(Question.difficulty_level == difficulty_int)
+        except ValueError:
+            pass  # Invalid difficulty filter, ignore
+    
+    # Apply sorting
+    valid_sort_columns = ['id', 'question', 'category', 'subcategory', 'difficulty_level']
+    if sort_by in valid_sort_columns:
+        sort_column = getattr(Question, sort_by)
+        if sort_order == 'desc':
+            query = query.order_by(sort_column.desc())
+        else:
+            query = query.order_by(sort_column.asc())
+    else:
+        query = query.order_by(Question.id.asc())  # Default sort
+    
+    # Get total count for pagination info (before applying pagination)
+    total_questions = query.count()
+    
+    # Apply pagination
+    if per_page == -1:  # Show all
+        all_questions = query.all()
+        paginated_questions = None
+    else:
+        paginated_questions = query.paginate(
+            page=page, 
+            per_page=per_page, 
+            error_out=False
+        )
+        all_questions = paginated_questions.items
 
     questions = []
     for q in all_questions:
@@ -201,6 +254,7 @@ def admin_dashboard():
             'category': q.category,
             'subcategory': q.subcategory,
             'difficulty_level': q.difficulty_level,
+            'explanation': q.explanation,
             'image_filename': q.image_filename,
             'option_a': opts.get('a', ''),
             'option_b': opts.get('b', ''),
@@ -209,7 +263,7 @@ def admin_dashboard():
             'correct_option': q.correct_option
         })
 
-    # Statistics using ORM
+    # Statistics using ORM (based on all questions, not filtered)
     total = Question.query.count()
     
     # Count by category
@@ -228,13 +282,39 @@ def admin_dashboard():
     
     stats = {
         'total': total, 
+        'filtered': total_questions,  # Add filtered count
         'by_category': by_category, 
         'with_images': with_images, 
         'without_images': without_images
     }
 
-    # Get all unique categories
-    categories = [cat[0] for cat in db.session.query(Question.category).distinct().all() if cat[0]]
+    # Get all unique categories and subcategories for filters
+    categories = [cat[0] for cat in db.session.query(Question.category).distinct().order_by(Question.category).all() if cat[0]]
+    
+    # Get subcategories (all or filtered by category)
+    if category_filter and category_filter != 'all':
+        subcategories = [sub[0] for sub in db.session.query(Question.subcategory).filter(
+            Question.category == category_filter,
+            Question.subcategory.isnot(None),
+            Question.subcategory != ''
+        ).distinct().order_by(Question.subcategory).all() if sub[0]]
+    else:
+        subcategories = [sub[0] for sub in db.session.query(Question.subcategory).filter(
+            Question.subcategory.isnot(None),
+            Question.subcategory != ''
+        ).distinct().order_by(Question.subcategory).all() if sub[0]]
+    
+    # Pagination info
+    pagination_info = {
+        'page': page,
+        'per_page': per_page,
+        'total': total_questions,
+        'pages': (total_questions + per_page - 1) // per_page if per_page != -1 else 1,
+        'has_prev': page > 1 if per_page != -1 else False,
+        'has_next': page < ((total_questions + per_page - 1) // per_page) if per_page != -1 else False,
+        'prev_num': page - 1 if page > 1 else None,
+        'next_num': page + 1 if per_page != -1 and page < ((total_questions + per_page - 1) // per_page) else None
+    }
 
     # Image list for gallery
     images = []
@@ -396,14 +476,35 @@ def admin_dashboard():
         print(f"[ADMIN] Error fetching audit log data: {e}")
         audit_logs = []
         audit_actions = []
+    
+    # Marketing data
+    try:
+        marketing_stats = MarketingEmailService.get_marketing_statistics()
+    except Exception as e:
+        logger.error(f'Error loading marketing stats in admin dashboard: {e}')
+        marketing_stats = {
+            'total_campaigns': 0,
+            'opted_in_users': 0,
+            'sent_this_month': 0,
+            'success_rate': 0
+        }
+    
+    marketing_emails = []
 
     return render_template(
         'admin/admin_dashboard.html',
         questions=questions,
         stats=stats,
         categories=categories,
+        subcategories=subcategories,
         search_query=search_query,
         category_filter=category_filter,
+        subcategory_filter=subcategory_filter,
+        difficulty_filter=difficulty_filter,
+        sort_by=sort_by,
+        sort_order=sort_order,
+        pagination=pagination_info,
+        current_per_page=per_page,  # Pass current per_page to template
         validation_errors=validation_errors,
         images=images,
         folders=folders,
@@ -425,9 +526,11 @@ def admin_dashboard():
         logs=audit_logs,
         actions=audit_actions,
         action_filter='',
-        user_filter=''
-    )
-
+        user_filter='',
+        # Marketing data
+        marketing_stats=marketing_stats,
+        marketing_emails=marketing_emails)
+        
 @admin_bp.route('/bulk_delete', methods=['POST'])
 @admin_required
 def bulk_delete():
@@ -537,8 +640,8 @@ def import_questions():
         flash('Ingen fil valgt', 'error')
         return redirect(url_for('admin.admin_dashboard'))
     
-    if not file.filename.lower().endswith('.csv'):
-        flash('Filen må være en CSV-fil (.csv)', 'error')
+    if not (file.filename.lower().endswith('.csv') or file.filename.lower().endswith('.json')):
+        flash('Filen må være en CSV-fil (.csv) eller JSON-fil (.json)', 'error')
         return redirect(url_for('admin.admin_dashboard'))
     
     overwrite_existing = request.form.get('overwrite_existing') == '1'
@@ -549,41 +652,86 @@ def import_questions():
         csv_delimiter = None  # Will be detected automatically
     
     try:
-        # Read CSV content
-        csv_content = file.read().decode('utf-8-sig')
+        # Read file content
+        file_content = file.read().decode('utf-8-sig')
         
-        # Auto-detect delimiter if requested
-        if csv_delimiter is None:
-            import csv as csv_module
-            sniffer = csv_module.Sniffer()
+        # Determine if this is JSON or CSV
+        is_json = file.filename.lower().endswith('.json')
+        
+        if is_json:
+            # JSON Import
             try:
-                # Try to detect delimiter from first few lines
-                sample = csv_content[:1024]
-                csv_delimiter = sniffer.sniff(sample, delimiters=';,\t|').delimiter
-                logger.info(f"Auto-detected CSV delimiter: '{csv_delimiter}'")
-            except:
-                # Fallback to semicolon if detection fails
-                csv_delimiter = ';'
-                logger.info("Could not auto-detect delimiter, using semicolon (;)")
+                questions_data = json.loads(file_content)
+                if not isinstance(questions_data, list):
+                    flash('JSON-filen må inneholde en liste med spørsmål', 'error')
+                    return redirect(url_for('admin.admin_dashboard'))
+                
+                # Convert JSON to CSV-like format for processing
+                expected_fields = ['id', 'question', 'option_a', 'option_b', 'option_c', 'option_d', 'correct_option', 'category', 'subcategory', 'difficulty_level', 'explanation', 'image_filename']
+                csv_data = []
+                
+                for item in questions_data:
+                    if not isinstance(item, dict):
+                        continue
+                    # Ensure all required fields exist
+                    row = {field: item.get(field, '') for field in expected_fields}
+                    csv_data.append(row)
+                
+                # Create a fake CSV reader-like iterator
+                class JSONReader:
+                    def __init__(self, data):
+                        self.data = data
+                        self.fieldnames = expected_fields
+                    
+                    def __iter__(self):
+                        return iter(self.data)
+                
+                csv_reader = JSONReader(csv_data)
+                logger.info(f"Processing JSON file with {len(csv_data)} questions")
+                
+            except json.JSONDecodeError as e:
+                flash(f'Ugyldig JSON-format: {str(e)}', 'error')
+                return redirect(url_for('admin.admin_dashboard'))
         
-        # Handle tab character
-        if csv_delimiter == '\\t':
-            csv_delimiter = '\t'
+        else:
+            # CSV Import
+            # Auto-detect delimiter if requested
+            if csv_delimiter is None:
+                import csv as csv_module
+                sniffer = csv_module.Sniffer()
+                try:
+                    # Try to detect delimiter from first few lines
+                    sample = file_content[:1024]
+                    csv_delimiter = sniffer.sniff(sample, delimiters=';,\t|').delimiter
+                    logger.info(f"Auto-detected CSV delimiter: '{csv_delimiter}'")
+                except:
+                    # Fallback to semicolon if detection fails
+                    csv_delimiter = ';'
+                    logger.info("Could not auto-detect delimiter, using semicolon (;)")
             
-        csv_reader = csv.DictReader(StringIO(csv_content), delimiter=csv_delimiter)
+            # Handle tab character
+            if csv_delimiter == '\\t':
+                csv_delimiter = '\t'
+                
+            csv_reader = csv.DictReader(StringIO(file_content), delimiter=csv_delimiter)
         
-        # Validate CSV headers
-        expected_headers = ['id', 'question', 'option_a', 'option_b', 'option_c', 'option_d', 'correct_option', 'category', 'subcategory', 'difficulty_level', 'image_filename']
+        # Validate headers (works for both CSV and JSON)
+        expected_headers = ['id', 'question', 'option_a', 'option_b', 'option_c', 'option_d', 'correct_option', 'category', 'subcategory', 'difficulty_level', 'explanation', 'image_filename']
         actual_headers = csv_reader.fieldnames or []
         
         # Debug info
-        logger.info(f"Using delimiter: '{csv_delimiter}'")
+        if not is_json:
+            logger.info(f"Using delimiter: '{csv_delimiter}'")
         logger.info(f"Found headers: {actual_headers}")
         logger.info(f"Expected headers: {expected_headers}")
         
         if not all(header in actual_headers for header in expected_headers):
             missing_headers = [h for h in expected_headers if h not in actual_headers]
-            flash(f'CSV-filen mangler følgende kolonner: {", ".join(missing_headers)}. Funnet kolonner: {", ".join(actual_headers)}. Prøv et annet skilletegn.', 'error')
+            file_type = 'JSON-filen' if is_json else 'CSV-filen'
+            if is_json:
+                flash(f'{file_type} mangler følgende felt: {", ".join(missing_headers)}. Funnet felt: {", ".join(actual_headers)}.', 'error')
+            else:
+                flash(f'{file_type} mangler følgende kolonner: {", ".join(missing_headers)}. Funnet kolonner: {", ".join(actual_headers)}. Prøv et annet skilletegn.', 'error')
             return redirect(url_for('admin.admin_dashboard'))
         
         imported_count = 0
@@ -631,6 +779,7 @@ def import_questions():
                 question.category = row.get('category', '').strip() or 'Ukategoriseret'
                 question.subcategory = row.get('subcategory', '').strip() or None
                 question.difficulty_level = int(row.get('difficulty_level', '1').strip() or 1)
+                question.explanation = row.get('explanation', '').strip() or None
                 question.image_filename = row.get('image_filename', '').strip() or None
                 
                 # Add new question to session if it's new
@@ -679,17 +828,21 @@ def import_questions():
                 flash(f'... og {len(errors) - 10} flere feil', 'error')
         
         # Log the import action
+        log_info = {
+            'filename': file.filename,
+            'imported': imported_count,
+            'updated': updated_count,
+            'errors': error_count,
+            'overwrite_mode': overwrite_existing,
+            'format': 'json' if is_json else 'csv'
+        }
+        if not is_json:
+            log_info['csv_delimiter'] = csv_delimiter
+            
         AdminSecurityService.log_admin_action(
             admin_user=current_user,
             action='questions_import',
-            additional_info=json.dumps({
-                'filename': file.filename,
-                'imported': imported_count,
-                'updated': updated_count,
-                'errors': error_count,
-                'overwrite_mode': overwrite_existing,
-                'csv_delimiter': csv_delimiter
-            })
+            additional_info=json.dumps(log_info)
         )
         
     except Exception as e:
@@ -701,57 +854,115 @@ def import_questions():
 @admin_bp.route('/export_questions')
 @admin_required
 def export_questions():
-    """Export all questions to CSV file"""
+    """Export all questions in CSV or JSON format with delimiter options"""
+    
+    # Get export parameters from query string
+    export_format = request.args.get('format', 'csv').lower()  # 'csv' or 'json'
+    csv_delimiter = request.args.get('delimiter', ',')  # Default to comma
+    
+    # Handle tab character
+    if csv_delimiter == '\\t':
+        csv_delimiter = '\t'
     
     # Get all questions with their options
     questions = Question.query.all()
     
-    # Create CSV in memory using BytesIO
-    output = BytesIO()
-    
-    # Create a text wrapper for CSV writing
-    text_stream = StringIO()
-    writer = csv.writer(text_stream)
-    writer.writerow(['id', 'question', 'option_a', 'option_b', 'option_c', 'option_d', 'correct_option', 'category', 'subcategory', 'difficulty_level', 'image_filename'])
-    
-    for q in questions:
-        # Get options as dict
-        opts = {opt.option_letter: opt.option_text for opt in q.options}
+    if export_format == 'json':
+        # JSON Export
+        questions_data = []
+        for q in questions:
+            # Get options as dict
+            opts = {opt.option_letter: opt.option_text for opt in q.options}
+            
+            question_data = {
+                'id': q.id,
+                'question': q.question,
+                'option_a': opts.get('a', ''),
+                'option_b': opts.get('b', ''),
+                'option_c': opts.get('c', ''),
+                'option_d': opts.get('d', ''),
+                'correct_option': q.correct_option,
+                'category': q.category or 'Ukategoriseret',
+                'subcategory': q.subcategory or '',
+                'difficulty_level': q.difficulty_level or 1,
+                'explanation': q.explanation or '',
+                'image_filename': q.image_filename or ''
+            }
+            questions_data.append(question_data)
         
-        writer.writerow([
-            q.id,
-            q.question,
-            opts.get('a', ''),
-            opts.get('b', ''),
-            opts.get('c', ''),
-            opts.get('d', ''),
-            q.correct_option,
-            q.category or 'Ukategoriseret',
-            q.subcategory or '',
-            q.difficulty_level or 1,
-            q.image_filename or ''
-        ])
+        # Create JSON in memory
+        output = BytesIO()
+        json_content = json.dumps(questions_data, ensure_ascii=False, indent=2)
+        output.write(json_content.encode('utf-8'))
+        output.seek(0)
+        
+        # Log the export action
+        AdminSecurityService.log_admin_action(
+            admin_user=current_user,
+            action='questions_export',
+            additional_info=json.dumps({
+                'question_count': len(questions),
+                'format': 'json'
+            })
+        )
+        
+        return send_file(
+            output,
+            mimetype='application/json',
+            as_attachment=True,
+            download_name='questions_export.json'
+        )
     
-    # Convert string to bytes and write to BytesIO
-    csv_content = text_stream.getvalue()
-    output.write(csv_content.encode('utf-8-sig'))  # utf-8-sig adds BOM for Excel compatibility
-    output.seek(0)
-    
-    # Log the export action
-    AdminSecurityService.log_admin_action(
-        admin_user=current_user,
-        action='questions_export',
-        additional_info=json.dumps({
-            'question_count': len(questions)
-        })
-    )
-    
-    return send_file(
-        output,
-        mimetype='text/csv',
-        as_attachment=True,
-        download_name='questions_export.csv'
-    )
+    else:
+        # CSV Export with specified delimiter
+        output = BytesIO()
+        
+        # Create a text wrapper for CSV writing
+        text_stream = StringIO()
+        writer = csv.writer(text_stream, delimiter=csv_delimiter)
+        writer.writerow(['id', 'question', 'option_a', 'option_b', 'option_c', 'option_d', 'correct_option', 'category', 'subcategory', 'difficulty_level', 'explanation', 'image_filename'])
+        
+        for q in questions:
+            # Get options as dict
+            opts = {opt.option_letter: opt.option_text for opt in q.options}
+            
+            writer.writerow([
+                q.id,
+                q.question,
+                opts.get('a', ''),
+                opts.get('b', ''),
+                opts.get('c', ''),
+                opts.get('d', ''),
+                q.correct_option,
+                q.category or 'Ukategoriseret',
+                q.subcategory or '',
+                q.difficulty_level or 1,
+                q.explanation or '',
+                q.image_filename or ''
+            ])
+        
+        # Convert string to bytes and write to BytesIO
+        csv_content = text_stream.getvalue()
+        output.write(csv_content.encode('utf-8-sig'))  # utf-8-sig adds BOM for Excel compatibility
+        output.seek(0)
+        
+        # Log the export action
+        AdminSecurityService.log_admin_action(
+            admin_user=current_user,
+            action='questions_export',
+            additional_info=json.dumps({
+                'question_count': len(questions),
+                'format': 'csv',
+                'delimiter': csv_delimiter
+            })
+        )
+        
+        return send_file(
+            output,
+            mimetype='text/csv',
+            as_attachment=True,
+            download_name='questions_export.csv'
+        )
 
 # ========================================
 # ADMIN USER MANAGEMENT ROUTES
@@ -844,45 +1055,179 @@ def revoke_admin_privileges(user_id):
     
     return redirect(url_for('admin.manage_users'))
 
-@admin_bp.route('/security/audit-log')
+@admin_bp.route('/api/audit-log/summary', methods=['GET'])
 @admin_required
-def security_audit_log():
-    """View detailed security audit log"""
-    
-    # Get pagination parameters
-    page = request.args.get('page', 1, type=int)
-    per_page = 50
-    
-    # Filter parameters
-    action_filter = request.args.get('action', '')
-    user_filter = request.args.get('user', '')
-    
-    # Build query
-    query = AdminAuditLog.query
-    
-    if action_filter:
-        query = query.filter(AdminAuditLog.action == action_filter)
-    
-    if user_filter:
-        query = query.join(User, AdminAuditLog.target_user_id == User.id)
-        query = query.filter(User.username.ilike(f'%{user_filter}%'))
-    
-    # Paginate results
-    logs = query.order_by(AdminAuditLog.created_at.desc()).paginate(
-        page=page, per_page=per_page, error_out=False
-    )
-    
-    # Get unique actions for filter dropdown
-    actions = db.session.query(AdminAuditLog.action).distinct().all()
-    actions = [action[0] for action in actions]
-    
-    return render_template(
-        'admin/security_audit_log.html',
-        logs=logs,
-        actions=actions,
-        action_filter=action_filter,
-        user_filter=user_filter
-    )
+def get_audit_log_summary():
+    """AJAX endpoint for security summary modal."""
+    try:
+        # Recent security actions (last 7 days)
+        seven_days_ago = datetime.utcnow() - timedelta(days=7)
+        recent_actions = AdminAuditLog.query.filter(
+            AdminAuditLog.created_at >= seven_days_ago
+        ).order_by(AdminAuditLog.created_at.desc()).limit(10).all()
+
+        # Most frequent admin actions
+        top_actions = db.session.query(
+            AdminAuditLog.action, db.func.count(AdminAuditLog.action).label('count')
+        ).group_by(AdminAuditLog.action).order_by(db.desc('count')).limit(5).all()
+
+        # Recent login attempts
+        login_attempts = AdminAuditLog.query.filter(
+            AdminAuditLog.action.in_(['admin_login_success', 'admin_login_failure'])
+        ).order_by(AdminAuditLog.created_at.desc()).limit(10).all()
+
+        # Top active admins
+        top_admins = db.session.query(
+            User.username, db.func.count(AdminAuditLog.id).label('action_count')
+        ).join(User, AdminAuditLog.admin_user_id == User.id).group_by(User.username).order_by(db.desc('action_count')).limit(5).all()
+
+        summary_data = {
+            'recent_actions': [log.to_dict() for log in recent_actions],
+            'top_actions': {action: count for action, count in top_actions},
+            'login_attempts': [log.to_dict() for log in login_attempts],
+            'top_admins': {username: count for username, count in top_admins}
+        }
+        return jsonify({'success': True, 'data': summary_data})
+
+    except Exception as e:
+        logger.error(f"Error in get_audit_log_summary: {e}")
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+@admin_bp.route('/api/audit-log/export', methods=['GET'])
+@admin_required
+def export_audit_log():
+    """Export audit log to CSV or JSON with filters."""
+    try:
+        # Get filter parameters from request
+        search = request.args.get('search', '')
+        action = request.args.get('action', '')
+        ip = request.args.get('ip', '')
+        sort_by = request.args.get('sort_by', 'created_at')
+        sort_order = request.args.get('sort_order', 'desc')
+        export_format = request.args.get('format', 'csv').lower()
+
+        # Build query with filters
+        query = AdminAuditLog.query.join(User, User.id == AdminAuditLog.admin_user_id, isouter=True)
+        
+        if search:
+            search_term = f'%{search}%'
+            query = query.filter(db.or_(
+                AdminAuditLog.action.ilike(search_term),
+                User.username.ilike(search_term),
+                AdminAuditLog.ip_address.ilike(search_term),
+                AdminAuditLog.additional_info.ilike(search_term)
+            ))
+        if action:
+            query = query.filter(AdminAuditLog.action == action)
+        if ip:
+            query = query.filter(AdminAuditLog.ip_address == ip)
+
+        # Sorting
+        sort_column = getattr(AdminAuditLog, sort_by, AdminAuditLog.created_at)
+        if sort_order == 'desc':
+            query = query.order_by(sort_column.desc())
+        else:
+            query = query.order_by(sort_column.asc())
+
+        logs = query.all()
+        timestamp = datetime.now().strftime("%Y-%m-%d_%H-%M-%S")
+        filename = f"audit_log_{timestamp}.{export_format}"
+
+        if export_format == 'json':
+            output = jsonify([log.to_dict() for log in logs])
+            output.headers["Content-Disposition"] = f"attachment; filename={filename}"
+            output.headers["Content-Type"] = "application/json"
+            return output
+        else: # CSV
+            def generate():
+                data = StringIO()
+                writer = csv.writer(data)
+                writer.writerow(['ID', 'Timestamp', 'Action', 'Admin User', 'Target User', 'IP Address', 'User Agent', 'Info'])
+                yield data.getvalue()
+                data.seek(0)
+                data.truncate(0)
+                for log in logs:
+                    writer.writerow([
+                        log.id, log.created_at, log.action, 
+                        log.admin_user.username if log.admin_user else 'N/A', 
+                        log.target_user.username if log.target_user else 'N/A', 
+                        log.ip_address, log.user_agent, log.additional_info
+                    ])
+                    yield data.getvalue()
+                    data.seek(0)
+                    data.truncate(0)
+            
+            headers = {"Content-Disposition": f"attachment; filename={filename}"}
+            return current_app.response_class(generate(), mimetype='text/csv', headers=headers)
+
+    except Exception as e:
+        logger.error(f"Error exporting audit log: {e}")
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+@admin_bp.route('/api/audit-logs', methods=['GET'])
+@admin_required
+def api_get_audit_logs():
+    """AJAX endpoint for getting filtered/paginated audit logs."""
+    try:
+        # Get parameters
+        search = request.args.get('search', '').strip()
+        action = request.args.get('action', '').strip()
+        ip = request.args.get('ip', '').strip()
+        page = request.args.get('page', 1, type=int)
+        per_page = request.args.get('per_page', 50, type=int)
+        sort_by = request.args.get('sort_by', 'created_at')
+        sort_order = request.args.get('sort_order', 'desc')
+
+        # Build query
+        query = AdminAuditLog.query.join(User, User.id == AdminAuditLog.admin_user_id, isouter=True)
+
+        if search:
+            search_term = f'%{search}%'
+            query = query.filter(db.or_(
+                AdminAuditLog.action.ilike(search_term),
+                User.username.ilike(search_term),
+                AdminAuditLog.ip_address.ilike(search_term),
+                AdminAuditLog.additional_info.ilike(search_term)
+            ))
+        if action:
+            query = query.filter(AdminAuditLog.action == action)
+        if ip:
+            query = query.filter(AdminAuditLog.ip_address == ip)
+
+        # Sorting
+        sort_column = getattr(AdminAuditLog, sort_by, AdminAuditLog.created_at)
+        if sort_order == 'desc':
+            query = query.order_by(sort_column.desc())
+        else:
+            query = query.order_by(sort_column.asc())
+
+        # Pagination
+        paginated_logs = query.paginate(page=page, per_page=per_page, error_out=False)
+        logs = [log.to_dict() for log in paginated_logs.items]
+
+        # Stats
+        total_logs = paginated_logs.total
+        unique_actions = db.session.query(db.func.count(db.distinct(AdminAuditLog.action))).scalar()
+
+        return jsonify({
+            'success': True,
+            'logs': logs,
+            'pagination': {
+                'page': paginated_logs.page,
+                'per_page': paginated_logs.per_page,
+                'total': total_logs,
+                'pages': paginated_logs.pages,
+                'has_prev': paginated_logs.has_prev,
+                'has_next': paginated_logs.has_next,
+                'prev_num': paginated_logs.prev_num,
+                'next_num': paginated_logs.next_num,
+                'unique_actions': unique_actions
+            }
+        })
+
+    except Exception as e:
+        logger.error(f"Error in api_get_audit_logs: {e}")
+        return jsonify({'success': False, 'error': str(e)}), 500
 
 @admin_bp.route('/reports')
 @admin_required
@@ -1052,6 +1397,46 @@ def create_report_from_feedback(feedback_id):
     return redirect(url_for('admin.view_report', report_id=report.id))
 
 # ========================================
+# AJAX API ENDPOINTS FOR REPORTS
+# ========================================
+
+@admin_bp.route('/api/reports/<int:report_id>/assign', methods=['POST'])
+@admin_required
+def api_assign_report(report_id):
+    """AJAX endpoint to assign a report to the current user."""
+    try:
+        report = AdminReport.query.get_or_404(report_id)
+        
+        if report.assigned_to_user_id:
+            return jsonify({'success': False, 'error': 'Report is already assigned.'}), 400
+
+        report.assigned_to_user_id = current_user.id
+        report.status = 'in_progress'
+        db.session.commit()
+
+        AdminSecurityService.log_admin_action(
+            admin_user=current_user,
+            action='report_assign_ajax',
+            target_user_id=report.affected_user_id,
+            additional_info=json.dumps({
+                'report_id': report.id,
+                'report_type': report.report_type
+            })
+        )
+        
+        return jsonify({
+            'success': True, 
+            'message': 'Report assigned successfully',
+            'assigned_to': current_user.username,
+            'status': 'in_progress'
+        })
+
+    except Exception as e:
+        db.session.rollback()
+        logger.error(f"Error in api_assign_report: {e}")
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+# ========================================
 # ML SETTINGS ROUTES
 # ========================================
 
@@ -1073,331 +1458,317 @@ def test_notifications():
     flash('Test error notification', 'error')
     return redirect(url_for('admin.admin_dashboard'))
 
-@admin_bp.route('/ml-settings')
-@admin_required
-def ml_settings():
-    """Machine Learning settings and monitoring dashboard"""
-    try:
-        # Try to import ML modules
-        try:
-            from ..ml.service import ml_service
-            from ..ml.models import UserSkillProfile, QuestionDifficultyProfile, AdaptiveQuizSession, LearningAnalytics, MLModel, EnhancedQuizResponse
-            ml_available = True
-        except ImportError as e:
-            flash(f'ML modules not available: {str(e)}', 'warning')
-            ml_available = False
-            
-        if not ml_available:
-            # Return a basic page if ML is not available
-            return render_template('admin/ml_settings.html',
-                                 ml_status={'ml_enabled': False, 'error': 'ML modules not available'},
-                                 stats={'total_users_with_profiles': 0, 'total_skill_profiles': 0, 'questions_with_difficulty_profiles': 0, 'adaptive_sessions_count': 0, 'learning_analytics_entries': 0, 'enhanced_responses': 0, 'ml_models': 0, 'active_ml_models': 0},
-                                 top_performers=[],
-                                 struggling_users=[],
-                                 ml_models=[],
-                                 recent_sessions=[],
-                                 category_stats=[])
-        
-        # Get ML status and statistics
-        ml_status = ml_service.get_ml_status()
-        
-        # Get comprehensive statistics
-        stats = {
-            'total_users_with_profiles': UserSkillProfile.query.distinct(UserSkillProfile.user_id).count() if ml_available else 0,
-            'total_skill_profiles': UserSkillProfile.query.count() if ml_available else 0,
-            'questions_with_difficulty_profiles': QuestionDifficultyProfile.query.count() if ml_available else 0,
-            'adaptive_sessions_count': AdaptiveQuizSession.query.count() if ml_available else 0,
-            'learning_analytics_entries': LearningAnalytics.query.count() if ml_available else 0,
-            'enhanced_responses': EnhancedQuizResponse.query.count() if ml_available else 0,
-            'ml_models': MLModel.query.count() if ml_available else 0,
-            'active_ml_models': MLModel.query.filter_by(is_active=True).count() if ml_available else 0
-        }
-        
-        # Get top performers and struggling users
-        if ml_available:
-            top_skill_profiles = db.session.query(
-                UserSkillProfile.user_id,
-                User.username,
-                db.func.avg(UserSkillProfile.accuracy_score).label('avg_accuracy'),
-                db.func.count(UserSkillProfile.id).label('profile_count')
-            ).join(User, UserSkillProfile.user_id == User.id).group_by(
-                UserSkillProfile.user_id, User.username
-            ).order_by(db.desc('avg_accuracy')).limit(10).all()
-            
-            struggling_users = db.session.query(
-                UserSkillProfile.user_id,
-                User.username,
-                db.func.avg(UserSkillProfile.accuracy_score).label('avg_accuracy'),
-                db.func.count(UserSkillProfile.id).label('profile_count')
-            ).join(User, UserSkillProfile.user_id == User.id).group_by(
-                UserSkillProfile.user_id, User.username
-            ).having(db.func.avg(UserSkillProfile.accuracy_score) < 0.4).order_by('avg_accuracy').limit(10).all()
-            
-            # Get recent adaptive sessions
-            recent_sessions = db.session.query(
-                AdaptiveQuizSession,
-                User.username,
-                QuizSession.total_questions,
-                QuizSession.correct_answers
-            ).join(User, AdaptiveQuizSession.user_id == User.id).join(
-                QuizSession, AdaptiveQuizSession.quiz_session_id == QuizSession.id
-            ).order_by(AdaptiveQuizSession.created_at.desc()).limit(20).all()
-            
-            # Get category distribution
-            category_stats = db.session.query(
-                UserSkillProfile.category,
-                db.func.count(UserSkillProfile.id).label('profile_count'),
-                db.func.avg(UserSkillProfile.accuracy_score).label('avg_accuracy')
-            ).group_by(UserSkillProfile.category).order_by(db.desc('profile_count')).all()
-            
-            # Get model performance data
-            ml_models = MLModel.query.order_by(MLModel.created_at.desc()).all()
-        else:
-            top_skill_profiles = []
-            struggling_users = []
-            recent_sessions = []
-            category_stats = []
-            ml_models = []
-        
-        return render_template('admin/ml_settings.html',
-                             ml_status=ml_status,
-                             stats=stats,
-                             top_performers=top_skill_profiles,
-                             struggling_users=struggling_users,
-                             ml_models=ml_models,
-                             recent_sessions=recent_sessions,
-                             category_stats=category_stats)
-    
-    except Exception as e:
-        flash(f'Error loading ML settings: {str(e)}', 'error')
-        return redirect(url_for('admin.admin_dashboard'))
 
-@admin_bp.route('/ml-settings/cleanup-models', methods=['POST'])
+
+
+
+# ========================================
+# AJAX API ENDPOINTS FOR QUESTION MANAGEMENT
+# ========================================
+
+@admin_bp.route('/api/questions', methods=['GET'])
 @admin_required
-def cleanup_ml_models():
-    """Clean up old ML model records"""
+def api_get_questions():
+    """AJAX endpoint for getting filtered/paginated questions"""
     try:
-        from ..ml.models import MLModel
+        # Get parameters
+        search_query = request.args.get('search', '').strip()
+        category_filter = request.args.get('category', '').strip()
+        subcategory_filter = request.args.get('subcategory', '').strip()
+        difficulty_filter = request.args.get('difficulty', '').strip()
         
-        # Count models before cleanup
-        before_count = MLModel.query.count()
+        page = request.args.get('page', 1, type=int)
+        per_page = request.args.get('per_page', 50, type=int)
+        sort_by = request.args.get('sort_by', 'id')
+        sort_order = request.args.get('sort_order', 'asc')
         
-        # Delete all model records
-        MLModel.query.delete()
+        # Validate per_page options
+        if per_page not in [20, 50, 100] and per_page != -1:
+            per_page = 50
+
+        # Build query
+        query = Question.query
+        
+        # Apply search filter
+        if search_query:
+            query = query.filter(Question.question.ilike(f'%{search_query}%'))
+        
+        # Apply category filter
+        if category_filter and category_filter != 'all':
+            query = query.filter(Question.category == category_filter)
+        
+        # Apply subcategory filter
+        if subcategory_filter and subcategory_filter != 'all':
+            query = query.filter(Question.subcategory == subcategory_filter)
+        
+        # Apply difficulty filter
+        if difficulty_filter and difficulty_filter != 'all':
+            try:
+                difficulty_int = int(difficulty_filter)
+                query = query.filter(Question.difficulty_level == difficulty_int)
+            except ValueError:
+                pass
+        
+        # Apply sorting
+        valid_sort_columns = ['id', 'question', 'category', 'subcategory', 'difficulty_level']
+        if sort_by in valid_sort_columns:
+            sort_column = getattr(Question, sort_by)
+            if sort_order == 'desc':
+                query = query.order_by(sort_column.desc())
+            else:
+                query = query.order_by(sort_column.asc())
+        else:
+            query = query.order_by(Question.id.asc())
+        
+        # Get total count for pagination
+        total_questions = query.count()
+        total_in_db = Question.query.count()
+        
+        # Apply pagination
+        if per_page == -1:  # Show all
+            all_questions = query.all()
+            pages = 1
+            has_prev = False
+            has_next = False
+            prev_num = None
+            next_num = None
+        else:
+            paginated = query.paginate(page=page, per_page=per_page, error_out=False)
+            all_questions = paginated.items
+            pages = paginated.pages
+            has_prev = paginated.has_prev
+            has_next = paginated.has_next
+            prev_num = paginated.prev_num
+            next_num = paginated.next_num
+
+        # Convert questions to JSON format
+        questions = []
+        for q in all_questions:
+            opts = {opt.option_letter: opt.option_text for opt in q.options}
+            questions.append({
+                'id': q.id,
+                'question': q.question,
+                'category': q.category,
+                'subcategory': q.subcategory,
+                'difficulty_level': q.difficulty_level,
+                'explanation': q.explanation,
+                'image_filename': q.image_filename,
+                'option_a': opts.get('a', ''),
+                'option_b': opts.get('b', ''),
+                'option_c': opts.get('c', ''),
+                'option_d': opts.get('d', ''),
+                'correct_option': q.correct_option
+            })
+
+        # Statistics
+        category_counts = db.session.query(
+            Question.category, 
+            db.func.count(Question.id)
+        ).group_by(Question.category).all()
+        by_category = dict(category_counts)
+        
+        with_images = Question.query.filter(
+            Question.image_filename.isnot(None), 
+            Question.image_filename != ''
+        ).count()
+        
+        stats = {
+            'total': total_in_db,
+            'filtered': total_questions,
+            'by_category': by_category,
+            'with_images': with_images,
+            'without_images': total_in_db - with_images
+        }
+
+        # Pagination info
+        pagination = {
+            'page': page,
+            'per_page': per_page,
+            'total': total_questions,
+            'total_in_db': total_in_db,
+            'pages': pages,
+            'has_prev': has_prev,
+            'has_next': has_next,
+            'prev_num': prev_num,
+            'next_num': next_num,
+            'filtered': total_questions
+        }
+
+        return jsonify({
+            'success': True,
+            'questions': questions,
+            'pagination': pagination,
+            'stats': stats
+        })
+
+    except Exception as e:
+        logger.error(f"Error in api_get_questions: {e}")
+        return jsonify({'success': False, 'error': str(e)})
+
+@admin_bp.route('/api/question/create', methods=['POST'])
+@admin_required
+def api_create_question():
+    """AJAX endpoint for creating a new question"""
+    try:
+        data = request.get_json()
+        
+        # Validate required fields
+        if not data.get('question', '').strip():
+            return jsonify({'success': False, 'error': 'Question text is required'})
+        
+        if not data.get('correct_option', '').strip().lower() in ['a', 'b', 'c', 'd']:
+            return jsonify({'success': False, 'error': 'Valid correct option (a, b, c, d) is required'})
+        
+        # Create new question
+        question = Question(
+            question=data['question'].strip(),
+            correct_option=data['correct_option'].strip().lower(),
+            category=data.get('category', '').strip() or 'Ukategoriseret',
+            subcategory=data.get('subcategory', '').strip() or None,
+            difficulty_level=int(data.get('difficulty_level', 1)),
+            explanation=data.get('explanation', '').strip() or None,
+            image_filename=data.get('image_filename', '').strip() or None
+        )
+        
+        db.session.add(question)
+        db.session.flush()  # Get the ID
+        
+        # Add options
+        for letter, option_key in [('a', 'option_a'), ('b', 'option_b'), ('c', 'option_c'), ('d', 'option_d')]:
+            option_text = data.get(option_key, '').strip()
+            if option_text:
+                option = Option(
+                    question_id=question.id,
+                    option_letter=letter,
+                    option_text=option_text
+                )
+                db.session.add(option)
+        
         db.session.commit()
         
-        flash(f'Successfully cleaned up {before_count} old ML model records. Reactivate the ML system to create fresh models.', 'success')
+        # Return the created question data
+        opts = {opt.option_letter: opt.option_text for opt in question.options}
+        question_data = {
+            'id': question.id,
+            'question': question.question,
+            'category': question.category,
+            'subcategory': question.subcategory,
+            'difficulty_level': question.difficulty_level,
+            'explanation': question.explanation,
+            'image_filename': question.image_filename,
+            'option_a': opts.get('a', ''),
+            'option_b': opts.get('b', ''),
+            'option_c': opts.get('c', ''),
+            'option_d': opts.get('d', ''),
+            'correct_option': question.correct_option
+        }
         
-        # Log the action
-        AdminSecurityService.log_admin_action(
-            admin_user=current_user,
-            action='ml_models_cleanup',
-            additional_info=json.dumps({
-                'models_deleted': before_count
-            })
-        )
+        return jsonify({'success': True, 'question': question_data})
         
     except Exception as e:
-        flash(f'Error cleaning up ML models: {str(e)}', 'error')
         db.session.rollback()
-    
-    return redirect(url_for('admin.ml_settings'))
+        return jsonify({'success': False, 'error': str(e)})
 
-@admin_bp.route('/ml-settings/activate', methods=['POST'])
+@admin_bp.route('/api/question/update/<int:question_id>', methods=['POST'])
 @admin_required
-def activate_ml_system():
-    """Activate and initialize the ML system"""
+def api_update_question(question_id):
+    """AJAX endpoint for updating an existing question"""
     try:
-        from ..ml.service import ml_service
+        question = Question.query.get_or_404(question_id)
+        data = request.get_json()
         
-        # Force initialization
-        ml_service.initialize()
+        # Validate required fields
+        if not data.get('question', '').strip():
+            return jsonify({'success': False, 'error': 'Question text is required'})
         
-        if ml_service.is_ml_enabled():
-            # Run initial profile building if no data exists
-            from ..ml.models import UserSkillProfile
-            if UserSkillProfile.query.count() == 0:
-                result = ml_service.engine.rebuild_all_profiles()
-                if result.get('success', False):
-                    flash(f'ML system activated successfully! Built {result.get("updated_profiles", 0)} user profiles.', 'success')
-                else:
-                    flash(f'ML system activated but profile building failed: {result.get("error", "Unknown error")}', 'warning')
-            else:
-                flash('ML system activated successfully!', 'success')
-        else:
-            flash('Failed to activate ML system. Check dependencies and logs.', 'error')
-            
-        # Log the action
-        AdminSecurityService.log_admin_action(
-            admin_user=current_user,
-            action='ml_system_activate',
-            additional_info=json.dumps({
-                'success': ml_service.is_ml_enabled()
-            })
-        )
+        if not data.get('correct_option', '').strip().lower() in ['a', 'b', 'c', 'd']:
+            return jsonify({'success': False, 'error': 'Valid correct option (a, b, c, d) is required'})
+        
+        # Update question data
+        question.question = data['question'].strip()
+        question.correct_option = data['correct_option'].strip().lower()
+        question.category = data.get('category', '').strip() or 'Ukategoriseret'
+        question.subcategory = data.get('subcategory', '').strip() or None
+        question.difficulty_level = int(data.get('difficulty_level', 1))
+        question.explanation = data.get('explanation', '').strip() or None
+        question.image_filename = data.get('image_filename', '').strip() or None
+        
+        # Delete existing options and add new ones
+        Option.query.filter_by(question_id=question.id).delete()
+        
+        for letter, option_key in [('a', 'option_a'), ('b', 'option_b'), ('c', 'option_c'), ('d', 'option_d')]:
+            option_text = data.get(option_key, '').strip()
+            if option_text:
+                option = Option(
+                    question_id=question.id,
+                    option_letter=letter,
+                    option_text=option_text
+                )
+                db.session.add(option)
+        
+        db.session.commit()
+        
+        # Return the updated question data
+        opts = {opt.option_letter: opt.option_text for opt in question.options}
+        question_data = {
+            'id': question.id,
+            'question': question.question,
+            'category': question.category,
+            'subcategory': question.subcategory,
+            'difficulty_level': question.difficulty_level,
+            'explanation': question.explanation,
+            'image_filename': question.image_filename,
+            'option_a': opts.get('a', ''),
+            'option_b': opts.get('b', ''),
+            'option_c': opts.get('c', ''),
+            'option_d': opts.get('d', ''),
+            'correct_option': question.correct_option
+        }
+        
+        return jsonify({'success': True, 'question': question_data})
         
     except Exception as e:
-        flash(f'Error activating ML system: {str(e)}', 'error')
-    
-    return redirect(url_for('admin.ml_settings'))
+        db.session.rollback()
+        return jsonify({'success': False, 'error': str(e)})
 
-@admin_bp.route('/ml-settings/deactivate', methods=['POST'])
+@admin_bp.route('/api/question/delete/<int:question_id>', methods=['DELETE'])
 @admin_required
-def deactivate_ml_system():
-    """Deactivate the ML system"""
+def api_delete_question(question_id):
+    """AJAX endpoint for deleting a question"""
     try:
-        from ..ml.service import ml_service
+        question = Question.query.get_or_404(question_id)
+        db.session.delete(question)
+        db.session.commit()
         
-        # Reset ML service
-        ml_service._initialized = False
-        ml_service.engine.is_initialized = False
-        
-        flash('ML system deactivated successfully!', 'success')
-        
-        # Log the action
-        AdminSecurityService.log_admin_action(
-            admin_user=current_user,
-            action='ml_system_deactivate',
-            additional_info=json.dumps({
-                'deactivated_at': datetime.now().isoformat()
-            })
-        )
+        return jsonify({'success': True, 'message': 'Question deleted successfully'})
         
     except Exception as e:
-        flash(f'Error deactivating ML system: {str(e)}', 'error')
-    
-    return redirect(url_for('admin.ml_settings'))
+        db.session.rollback()
+        return jsonify({'success': False, 'error': str(e)})
 
-@admin_bp.route('/ml-settings/rebuild-profiles', methods=['POST'])
+@admin_bp.route('/api/subcategories')
 @admin_required
-def rebuild_ml_profiles():
-    """Rebuild ML profiles for all users"""
-    try:
-        from ..ml.service import ml_service
-        
-        # This is an intensive operation - should be run in background
-        # For now, we'll provide a simple rebuild
-        result = ml_service.engine.rebuild_all_profiles()
-        
-        if result.get('success', False):
-            flash(f'ML profiles rebuilt successfully. Updated {result.get("updated_profiles", 0)} profiles.', 'success')
-        else:
-            flash(f'Failed to rebuild ML profiles: {result.get("error", "Unknown error")}', 'error')
-            
-        # Log the action
-        AdminSecurityService.log_admin_action(
-            admin_user=current_user,
-            action='ml_profiles_rebuild',
-            additional_info=json.dumps(result)
-        )
-        
-    except Exception as e:
-        flash(f'Error rebuilding ML profiles: {str(e)}', 'error')
+def api_get_subcategories():
+    """AJAX endpoint to get subcategories for a given category"""
+    category = request.args.get('category')
     
-    return redirect(url_for('admin.ml_settings'))
-
-@admin_bp.route('/ml-settings/retrain-models', methods=['POST'])
-@admin_required
-def retrain_ml_models():
-    """Retrain ML models with latest data"""
-    try:
-        from ..ml.service import ml_service
-        
-        # Retrain difficulty prediction models
-        result = ml_service.engine.retrain_models()
-        
-        if result.get('success', False):
-            flash(f'ML models retrained successfully. {result.get("message", "")}', 'success')
-        else:
-            flash(f'Failed to retrain ML models: {result.get("error", "Unknown error")}', 'error')
-            
-        # Log the action
-        AdminSecurityService.log_admin_action(
-            admin_user=current_user,
-            action='ml_models_retrain',
-            additional_info=json.dumps(result)
-        )
-        
-    except Exception as e:
-        flash(f'Error retraining ML models: {str(e)}', 'error')
+    if not category or category == 'all':
+        # Return all subcategories
+        subcategories = db.session.query(Question.subcategory).filter(
+            Question.subcategory.isnot(None),
+            Question.subcategory != ''
+        ).distinct().order_by(Question.subcategory).all()
+    else:
+        # Return subcategories for specific category
+        subcategories = db.session.query(Question.subcategory).filter(
+            Question.category == category,
+            Question.subcategory.isnot(None),
+            Question.subcategory != ''
+        ).distinct().order_by(Question.subcategory).all()
     
-    return redirect(url_for('admin.ml_settings'))
-
-@admin_bp.route('/ml-settings/export-analytics')
-@admin_required
-def export_ml_analytics():
-    """Export ML analytics data to CSV"""
-    try:
-        from ..ml.models import LearningAnalytics, UserSkillProfile
-        
-        # Get analytics data
-        analytics = db.session.query(
-            LearningAnalytics,
-            User.username
-        ).join(User, LearningAnalytics.user_id == User.id).order_by(
-            LearningAnalytics.date.desc()
-        ).limit(10000).all()
-        
-        # Create CSV in memory
-        output = BytesIO()
-        text_stream = StringIO()
-        writer = csv.writer(text_stream)
-        
-        # Write headers
-        writer.writerow([
-            'user_id', 'username', 'date', 'study_time_minutes', 'questions_attempted',
-            'questions_correct', 'accuracy', 'avg_difficulty', 'avg_response_time',
-            'learning_velocity', 'concept_mastery', 'recommended_difficulty'
-        ])
-        
-        # Write data
-        for analytics_entry, username in analytics:
-            accuracy = (analytics_entry.questions_correct / analytics_entry.questions_attempted 
-                       if analytics_entry.questions_attempted > 0 else 0)
-            
-            writer.writerow([
-                analytics_entry.user_id,
-                username,
-                analytics_entry.date.isoformat(),
-                analytics_entry.total_study_time_minutes,
-                analytics_entry.questions_attempted,
-                analytics_entry.questions_correct,
-                f'{accuracy:.3f}',
-                f'{analytics_entry.average_difficulty_attempted:.3f}' if analytics_entry.average_difficulty_attempted else '',
-                f'{analytics_entry.avg_response_time:.1f}' if analytics_entry.avg_response_time else '',
-                f'{analytics_entry.learning_velocity:.3f}' if analytics_entry.learning_velocity else '',
-                f'{analytics_entry.concept_mastery_score:.3f}' if analytics_entry.concept_mastery_score else '',
-                f'{analytics_entry.recommended_difficulty:.3f}' if analytics_entry.recommended_difficulty else ''
-            ])
-        
-        # Convert to bytes
-        csv_content = text_stream.getvalue()
-        output.write(csv_content.encode('utf-8-sig'))
-        output.seek(0)
-        
-        # Log the export
-        AdminSecurityService.log_admin_action(
-            admin_user=current_user,
-            action='ml_analytics_export',
-            additional_info=json.dumps({
-                'records_exported': len(analytics)
-            })
-        )
-        
-        return send_file(
-            output,
-            mimetype='text/csv',
-            as_attachment=True,
-            download_name=f'ml_analytics_export_{datetime.now().strftime("%Y%m%d_%H%M%S")}.csv'
-        )
-        
-    except Exception as e:
-        flash(f'Error exporting ML analytics: {str(e)}', 'error')
-        return redirect(url_for('admin.ml_settings'))
-
-# ========================================
-# MARKETING EMAIL ROUTES
-# ========================================
+    subcategory_list = [sub[0] for sub in subcategories if sub[0]]
+    
+    return jsonify({'subcategories': subcategory_list})
 
 @admin_bp.route('/marketing-emails')
 @admin_required
@@ -1480,7 +1851,7 @@ def create_marketing_email():
                 # Save as draft
                 flash('Marketing email campaign saved as draft', 'success')
             
-            return redirect(url_for('admin.marketing_emails'))
+            return redirect(url_for('admin.admin_dashboard') + '#marketing')
             
         except Exception as e:
             flash(f'Error creating campaign: {str(e)}', 'error')
@@ -1507,140 +1878,175 @@ def view_marketing_email(id):
 @admin_required
 def edit_marketing_email(id):
     """Edit marketing email campaign (only drafts)"""
-    email = MarketingEmail.query.get_or_404(id)
-    
-    if email.status != 'draft':
-        flash('Only draft campaigns can be edited', 'error')
-        return redirect(url_for('admin.view_marketing_email', id=id))
-    
-    if request.method == 'POST':
-        email.title = request.form.get('title')
-        email.subject = request.form.get('subject')
-        email.html_content = request.form.get('html_content')
+    try:
+        email = MarketingEmail.query.get_or_404(id)
         
-        # Update targeting
-        email.target_free_users = bool(request.form.get('target_free_users'))
-        email.target_premium_users = bool(request.form.get('target_premium_users'))
-        email.target_pro_users = bool(request.form.get('target_pro_users'))
-        email.target_active_only = bool(request.form.get('target_active_only'))
+        if email.status != 'draft':
+            flash('Only draft campaigns can be edited', 'error')
+            return redirect(url_for('admin.view_marketing_email', id=id))
         
-        # Recalculate recipient count
-        recipients = MarketingEmailService.get_eligible_recipients(
-            email.target_free_users,
-            email.target_premium_users,
-            email.target_pro_users,
-            email.target_active_only
-        )
-        email.recipients_count = len(recipients)
+        if request.method == 'POST':
+            email.title = request.form.get('title')
+            email.subject = request.form.get('subject')
+            email.html_content = request.form.get('html_content')
+            
+            # Update targeting
+            email.target_free_users = bool(request.form.get('target_free_users'))
+            email.target_premium_users = bool(request.form.get('target_premium_users'))
+            email.target_pro_users = bool(request.form.get('target_pro_users'))
+            email.target_active_only = bool(request.form.get('target_active_only'))
+            
+            # Recalculate recipient count
+            recipients = MarketingEmailService.get_eligible_recipients(
+                email.target_free_users,
+                email.target_premium_users,
+                email.target_pro_users,
+                email.target_active_only
+            )
+            email.recipients_count = len(recipients)
+            
+            db.session.commit()
+            flash('Marketing email campaign updated', 'success')
+            return redirect(url_for('admin.view_marketing_email', id=id))
         
-        db.session.commit()
-        flash('Marketing email campaign updated', 'success')
-        return redirect(url_for('admin.view_marketing_email', id=id))
-    
-    templates = MarketingTemplate.query.filter_by(is_active=True).all()
-    return render_template('admin/edit_marketing_email.html', 
-                         email=email, 
-                         templates=templates, user=current_user)
+        templates = MarketingTemplate.query.filter_by(is_active=True).all()
+        return render_template('admin/edit_marketing_email.html', 
+                             email=email, 
+                             templates=templates, user=current_user)
+                             
+    except Exception as e:
+        current_app.logger.error(f'Error in edit_marketing_email: {str(e)}')
+        flash('Error updating marketing email campaign', 'error')
+        return redirect(url_for('admin.marketing_emails'))
+
+@admin_bp.route('/api/marketing-templates', methods=['GET'])
+@admin_required
+def api_marketing_templates():
+    """API endpoint for marketing templates"""
+    try:
+        templates = MarketingTemplate.query.filter_by(is_active=True).order_by(
+            MarketingTemplate.created_at.desc()
+        ).all()
+        
+        templates_data = []
+        for template in templates:
+            templates_data.append({
+                'id': template.id,
+                'name': template.name,
+                'description': template.description,
+                'category': template.category,
+                'html_content': template.html_content,
+                'created_at': template.created_at.strftime('%d.%m.%Y %H:%M') if template.created_at else '',
+                'created_by': {
+                    'id': template.created_by.id,
+                    'username': template.created_by.username
+                } if template.created_by else None
+            })
+        
+        return jsonify({
+            'success': True,
+            'templates': templates_data
+        })
+        
+    except Exception as e:
+        logger.error(f'Error in api_marketing_templates: {e}')
+        return jsonify({'success': False, 'error': str(e)}), 500
 
 @admin_bp.route('/api/marketing-recipients', methods=['GET', 'POST'])
 @admin_required
-def get_marketing_recipients():
-    """Get count of marketing email recipients"""
-    try:
-        print(f"[DEBUG] Request method: {request.method}")
-        print(f"[DEBUG] Request form data: {dict(request.form)}")
-        print(f"[DEBUG] Request args: {dict(request.args)}")
-        
-        if request.method == 'POST':
-            # Check if form data exists
-            print(f"[DEBUG] Form keys: {list(request.form.keys())}")
-            
-            # Proper boolean parsing - handle 'true'/'false' strings from JavaScript
-            target_free = request.form.get('target_free_users', '').lower() in ['true', 'on', '1']
-            target_premium = request.form.get('target_premium_users', '').lower() in ['true', 'on', '1']
-            target_pro = request.form.get('target_pro_users', '').lower() in ['true', 'on', '1']
-            target_active = request.form.get('target_active_only', '').lower() in ['true', 'on', '1']
-            
-            print(f"[DEBUG] Parsed form data: free={target_free}, premium={target_premium}, pro={target_pro}, active={target_active}")
-        else:
-            email_id = request.args.get('email_id')
-            if email_id:
-                email = MarketingEmail.query.get(email_id)
-                if email:
-                    target_free = email.target_free_users
-                    target_premium = email.target_premium_users
-                    target_pro = email.target_pro_users
-                    target_active = email.target_active_only
-                else:
-                    return jsonify({'success': False, 'error': 'Email not found', 'count': 0})
-            else:
-                target_free = target_premium = target_pro = True
-                target_active = False
-        
-        # Debug logging
-        print(f"[DEBUG] Final recipient query params: free={target_free}, premium={target_premium}, pro={target_pro}, active={target_active}")
-        
-        # Quick test: get all users first
-        all_users = User.query.filter(
-            User.is_active == True,
-            User.is_verified == True
-        ).all()
-        print(f"[DEBUG] Total active/verified users: {len(all_users)}")
-        
-        # Test notification preferences
-        from ..notification_models import UserNotificationPreferences
-        marketing_users = db.session.query(User).join(
-            UserNotificationPreferences, 
-            User.id == UserNotificationPreferences.user_id
-        ).filter(
-            User.is_active == True,
-            User.is_verified == True,
-            UserNotificationPreferences.marketing_emails == True
-        ).all()
-        print(f"[DEBUG] Users with marketing enabled: {len(marketing_users)}")
-        for u in marketing_users:
-            print(f"[DEBUG]   - {u.username} ({u.subscription_tier})")
-        
-        recipients = MarketingEmailService.get_eligible_recipients(
-            target_free, target_premium, target_pro, target_active
-        )
-        
-        count = len(recipients)
-        print(f"[DEBUG] Found {count} eligible recipients")
-        for r in recipients:
-            print(f"[DEBUG]   - {r.username} ({r.subscription_tier})")
-        
-        return jsonify({'success': True, 'count': count})
-        
-    except Exception as e:
-        print(f"[ERROR] get_marketing_recipients failed: {str(e)}")
-        import traceback
-        traceback.print_exc()
-        return jsonify({'success': False, 'error': str(e), 'count': 0})
+def get_marketing_recipients_count():
+   """Get count of marketing email recipients"""
+   try:
+       print(f"[DEBUG] Request method: {request.method}")
+       print(f"[DEBUG] Request form data: {dict(request.form)}")
+       print(f"[DEBUG] Request args: {dict(request.args)}")
+       
+       # Check for details parameter
+       details = request.args.get('details', '').lower() == 'true'
+       
+       if request.method == 'POST':
+           # Check if form data exists
+           print(f"[DEBUG] Form keys: {list(request.form.keys())}")
+           
+           # Proper boolean parsing - handle 'true'/'false' strings from JavaScript
+           target_free = request.form.get('target_free_users', '').lower() in ['true', 'on', '1']
+           target_premium = request.form.get('target_premium_users', '').lower() in ['true', 'on', '1']
+           target_pro = request.form.get('target_pro_users', '').lower() in ['true', 'on', '1']
+           target_active = request.form.get('target_active_only', '').lower() in ['true', 'on', '1']
+           
+           print(f"[DEBUG] Parsed form data: free={target_free}, premium={target_premium}, pro={target_pro}, active={target_active}")
+       else:
+           email_id = request.args.get('email_id')
+           if email_id:
+               email = MarketingEmail.query.get(email_id)
+               if email:
+                   target_free = email.target_free_users
+                   target_premium = email.target_premium_users
+                   target_pro = email.target_pro_users
+                   target_active = email.target_active_only
+               else:
+                   return jsonify({'success': False, 'error': 'Email not found', 'count': 0})
+           else:
+               target_free = target_premium = target_pro = True
+               target_active = False
+       
+       # Debug logging
+       print(f"[DEBUG] Final recipient query params: free={target_free}, premium={target_premium}, pro={target_pro}, active={target_active}")
+       
+       # Quick test: get all users first
+       all_users = User.query.filter(
+           User.is_active == True,
+           User.is_verified == True
+       ).all()
+       print(f"[DEBUG] Total active/verified users: {len(all_users)}")
+       
+       # Test notification preferences
+       from ..notification_models import UserNotificationPreferences
+       marketing_users = db.session.query(User).join(
+           UserNotificationPreferences, 
+           User.id == UserNotificationPreferences.user_id
+       ).filter(
+           User.is_active == True,
+           User.is_verified == True,
+           UserNotificationPreferences.marketing_emails == True
+       ).all()
+       print(f"[DEBUG] Users with marketing enabled: {len(marketing_users)}")
+       for u in marketing_users:
+           print(f"[DEBUG]   - {u.username} ({u.subscription_tier})")
+       
+       recipients = MarketingEmailService.get_eligible_recipients(
+           target_free, target_premium, target_pro, target_active
+       )
+       
+       count = len(recipients)
+       print(f"[DEBUG] Found {count} eligible recipients")
+       for r in recipients:
+           print(f"[DEBUG]   - {r.username} ({r.subscription_tier})")
+       
+       # Return detailed data if requested
+       if details:
+           return jsonify({
+               'success': True,
+               'recipients': [
+                   {
+                       'full_name': user.full_name,
+                       'email': user.email,
+                       'subscription': user.subscription_tier or 'free',
+                       'is_admin': user.is_admin
+                   }
+                   for user in recipients
+               ],
+               'count': count
+           })
+       
+       return jsonify({'success': True, 'count': count})
+       
+   except Exception as e:
+       print(f"[ERROR] get_marketing_recipients failed: {str(e)}")
+       import traceback
+       traceback.print_exc()
+       return jsonify({'success': False, 'error': str(e), 'count': 0})
 
-@admin_bp.route('/api/marketing-send', methods=['POST'])
-@admin_required
-def send_marketing_email():
-    """Send marketing email campaign"""
-    data = request.get_json()
-    email_id = data.get('email_id')
-    is_resend = data.get('resend', False)
-    
-    if not email_id:
-        return jsonify({'success': False, 'error': 'Email ID required'})
-    
-    # If it's a resend, reset the email status to draft first
-    if is_resend:
-        email = MarketingEmail.query.get(email_id)
-        if email and email.status in ['sent', 'failed', 'partially_sent']:
-            email.status = 'draft'
-            email.sent_count = 0
-            email.failed_count = 0
-            email.sent_at = None
-            db.session.commit()
-    
-    result = MarketingEmailService.send_marketing_email(email_id)
-    return jsonify(result)
 
 @admin_bp.route('/marketing-emails/<int:id>/logs')
 @admin_required
@@ -1721,3 +2127,1038 @@ def get_marketing_template():
         'name': template.name,
         'description': template.description
     })
+
+# ===========================
+# Enhanced Admin API Endpoints
+# ===========================
+
+@admin_bp.route('/api/reports')
+@admin_required
+def api_reports():
+    """API endpoint for reports with filtering, sorting, and pagination"""
+    try:
+        page = int(request.args.get('page', 1))
+        per_page = int(request.args.get('per_page', 20))
+        search = request.args.get('search', '')
+        report_type = request.args.get('type', '')
+        status = request.args.get('status', '')
+        priority = request.args.get('priority', '')
+        sort_by = request.args.get('sort_by', 'created_at')
+        sort_order = request.args.get('sort_order', 'desc')
+        
+        # Build query
+        query = AdminReport.query
+        
+        # Apply filters
+        if search:
+            query = query.filter(
+                AdminReport.title.contains(search) |
+                AdminReport.description.contains(search) |
+                AdminReport.additional_info.contains(search)
+            )
+        
+        if report_type:
+            query = query.filter(AdminReport.report_type == report_type)
+        
+        if status:
+            query = query.filter(AdminReport.status == status)
+        
+        if priority:
+            query = query.filter(AdminReport.priority == priority)
+        
+        # Apply sorting
+        if hasattr(AdminReport, sort_by):
+            if sort_order == 'desc':
+                query = query.order_by(getattr(AdminReport, sort_by).desc())
+            else:
+                query = query.order_by(getattr(AdminReport, sort_by))
+        
+        # Paginate
+        reports = query.paginate(
+            page=page, per_page=per_page, error_out=False
+        )
+        
+        # Format response
+        reports_data = []
+        for report in reports.items:
+            reports_data.append({
+                'id': report.id,
+                'title': report.title,
+                'description': report.description,
+                'report_type': report.report_type,
+                'priority': report.priority,
+                'status': report.status,
+                'created_at': report.created_at.isoformat(),
+                'additional_info': report.additional_info,
+                'reported_by': {
+                    'id': report.reported_by.id,
+                    'username': report.reported_by.username
+                } if report.reported_by else None,
+                'assigned_to': {
+                    'id': report.assigned_to.id,
+                    'username': report.assigned_to.username
+                } if report.assigned_to else None
+            })
+        
+        return jsonify({
+            'reports': reports_data,
+            'pagination': {
+                'page': reports.page,
+                'pages': reports.pages,
+                'per_page': reports.per_page,
+                'total': reports.total,
+                'has_next': reports.has_next,
+                'has_prev': reports.has_prev,
+                'next_num': reports.next_num,
+                'prev_num': reports.prev_num
+            }
+        })
+        
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
+# Marketing Email API Endpoints
+
+@admin_bp.route('/api/marketing-recipients')
+@admin_required
+def get_marketing_recipients():
+    """Get detailed recipient list for marketing email modal"""
+    try:
+        email_id = request.args.get('email_id')
+        search = request.args.get('search', '').strip()
+        subscription_filter = request.args.get('subscription', '')
+        admin_filter = request.args.get('admin_filter', '')
+        page = request.args.get('page', 1, type=int)
+        per_page = request.args.get('per_page', 20, type=int)
+        
+        if email_id:
+            # Get recipients for specific email campaign
+            email = MarketingEmail.query.get_or_404(email_id)
+            recipients = MarketingEmailService.get_eligible_recipients(
+                email.target_free_users,
+                email.target_premium_users,
+                email.target_pro_users,
+                email.target_active_only
+            )
+        else:
+            # Get all marketing-eligible recipients with basic targeting
+            recipients = MarketingEmailService.get_eligible_recipients(
+                target_free=True,
+                target_premium=True,
+                target_pro=True,
+                target_active_only=False
+            )
+        
+        # Apply additional filters
+        filtered_recipients = []
+        for user in recipients:
+            # Search filter
+            if search:
+                search_match = (
+                    search.lower() in (user.full_name or '').lower() or
+                    search.lower() in user.email.lower()
+                )
+                if not search_match:
+                    continue
+            
+            # Subscription filter
+            if subscription_filter:
+                user_subscription_tier = {
+                    1: 'free',
+                    2: 'premium',
+                    3: 'pro'
+                }.get(user.current_plan_id, 'free')
+                
+                if user_subscription_tier != subscription_filter:
+                    continue
+            
+            # Admin filter
+            if admin_filter:
+                if admin_filter == 'admin' and not user.is_admin:
+                    continue
+                elif admin_filter == 'user' and user.is_admin:
+                    continue
+            
+            filtered_recipients.append({
+                'id': user.id,
+                'full_name': user.full_name,
+                'email': user.email,
+                'subscription': {
+                    1: 'free',
+                    2: 'premium',
+                    3: 'pro'
+                }.get(user.current_plan_id, 'free'),
+                'is_admin': user.is_admin
+            })
+        
+        # If this is for the modal (no pagination requested), return all
+        if 'page' not in request.args:
+            return jsonify({
+                'recipients': filtered_recipients,
+                'count': len(filtered_recipients),
+                'total_count': len(filtered_recipients)
+            })
+        
+        # Pagination for API calls
+        total_count = len(filtered_recipients)
+        start_idx = (page - 1) * per_page
+        end_idx = start_idx + per_page
+        paginated_recipients = filtered_recipients[start_idx:end_idx]
+        
+        return jsonify({
+            'recipients': paginated_recipients,
+            'pagination': {
+                'page': page,
+                'per_page': per_page,
+                'total': total_count,
+                'pages': (total_count + per_page - 1) // per_page,
+                'has_next': end_idx < total_count,
+                'has_prev': page > 1
+            },
+            'total_count': total_count
+        })
+        
+    except Exception as e:
+        current_app.logger.error(f'Error in get_marketing_recipients: {str(e)}')
+        return jsonify({'error': str(e)}), 500
+
+@admin_bp.route('/api/marketing-recipients/export')
+@admin_required
+def export_marketing_recipients():
+    """Export marketing recipients as CSV or JSON"""
+    try:
+        email_id = request.args.get('email_id')
+        format_type = request.args.get('format', 'csv').lower()
+        search = request.args.get('search', '').strip()
+        subscription_filter = request.args.get('subscription', '')
+        admin_filter = request.args.get('admin_filter', '')
+        
+        if not email_id:
+            return jsonify({'error': 'Email ID required'}), 400
+        
+        # Get recipients using the same logic as the modal
+        email = MarketingEmail.query.get_or_404(email_id)
+        recipients = MarketingEmailService.get_eligible_recipients(
+            email.target_free_users,
+            email.target_premium_users,
+            email.target_pro_users,
+            email.target_active_only
+        )
+        
+        # Apply filters same as modal
+        filtered_recipients = []
+        for user in recipients:
+            # Search filter
+            if search:
+                search_match = (
+                    search.lower() in (user.full_name or '').lower() or
+                    search.lower() in user.email.lower()
+                )
+                if not search_match:
+                    continue
+            
+            # Subscription filter
+            if subscription_filter and user.subscription_tier != subscription_filter:
+                continue
+            
+            # Admin filter
+            if admin_filter:
+                if admin_filter == 'admin' and not user.is_admin:
+                    continue
+                elif admin_filter == 'user' and user.is_admin:
+                    continue
+            
+            filtered_recipients.append({
+                'full_name': user.full_name or 'N/A',
+                'email': user.email,
+                'subscription': user.subscription_tier or 'free',
+                'account_type': 'Admin' if user.is_admin else 'User'
+            })
+        
+        if format_type == 'csv':
+            # Generate CSV
+            output = StringIO()
+            writer = csv.DictWriter(output, fieldnames=['full_name', 'email', 'subscription', 'account_type'])
+            writer.writeheader()
+            for recipient in filtered_recipients:
+                writer.writerow(recipient)
+            
+            # Create response
+            csv_data = output.getvalue()
+            output.close()
+            
+            response = current_app.response_class(
+                csv_data,
+                mimetype='text/csv',
+                headers={
+                    'Content-Disposition': f'attachment; filename=marketing_recipients_{datetime.now().strftime("%Y%m%d_%H%M%S")}.csv'
+                }
+            )
+            return response
+            
+        elif format_type == 'json':
+            # Generate JSON
+            json_data = {
+                'export_date': datetime.now().isoformat(),
+                'email_campaign_id': email_id,
+                'total_recipients': len(filtered_recipients),
+                'filters_applied': {
+                    'search': search,
+                    'subscription': subscription_filter,
+                    'admin_filter': admin_filter
+                },
+                'recipients': filtered_recipients
+            }
+            
+            response = current_app.response_class(
+                json.dumps(json_data, indent=2),
+                mimetype='application/json',
+                headers={
+                    'Content-Disposition': f'attachment; filename=marketing_recipients_{datetime.now().strftime("%Y%m%d_%H%M%S")}.json'
+                }
+            )
+            return response
+        
+        else:
+            return jsonify({'error': 'Invalid format. Use csv or json'}), 400
+            
+    except Exception as e:
+        current_app.logger.error(f'Error in export_marketing_recipients: {str(e)}')
+        return jsonify({'error': str(e)}), 500
+
+@admin_bp.route('/api/marketing-stats', methods=['GET'])
+@admin_required
+def api_marketing_stats():
+    """API endpoint for marketing statistics"""
+    try:
+        stats = MarketingEmailService.get_marketing_statistics()
+        return jsonify({
+            'success': True,
+            'stats': stats
+        })
+    except Exception as e:
+        logger.error(f'Error in api_marketing_stats: {e}')
+        return jsonify({
+            'success': False,
+            'error': str(e)
+        }), 500
+
+@admin_bp.route('/api/marketing-send', methods=['POST'])
+@admin_required
+def send_marketing_email():
+    """Send marketing email campaign"""
+    try:
+        data = request.get_json()
+        email_id = data.get('email_id')
+        is_resend = data.get('resend', False)
+        
+        if not email_id:
+            return jsonify({'success': False, 'error': 'Email ID required'}), 400
+        
+        # If it's a resend, reset the email status to draft first
+        if is_resend:
+            email = MarketingEmail.query.get(email_id)
+            if email and email.status in ['sent', 'failed', 'partially_sent']:
+                email.status = 'draft'
+                email.sent_count = 0
+                email.failed_count = 0
+                email.sent_at = None
+                db.session.commit()
+        
+        result = MarketingEmailService.send_marketing_email(email_id)
+        return jsonify(result)
+        
+    except Exception as e:
+        current_app.logger.error(f'Error in send_marketing_email: {str(e)}')
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+@admin_bp.route('/api/marketing-email/<int:email_id>/delete', methods=['DELETE'])
+@admin_required
+def delete_marketing_email(email_id):
+    """Delete marketing email campaign"""
+    try:
+        email = MarketingEmail.query.get_or_404(email_id)
+        
+        # Store email info for logging
+        email_title = email.title
+        email_status = email.status
+        
+        # Check if email can be deleted
+        if email.status == 'sending':
+            return jsonify({
+                'success': False, 
+                'error': 'Cannot delete email that is currently being sent'
+            }), 400
+        
+        # Delete related email logs first (foreign key constraint)
+        MarketingEmailLog.query.filter_by(marketing_email_id=email_id).delete()
+        
+        # Delete the email
+        db.session.delete(email)
+        db.session.commit()
+        
+        # Log the deletion action
+        AdminSecurityService.log_admin_action(
+            admin_user=current_user,
+            action='marketing_email_delete',
+            additional_info=json.dumps({
+                'email_id': email_id,
+                'email_title': email_title,
+                'email_status': email_status
+            })
+        )
+        
+        return jsonify({
+            'success': True, 
+            'message': f'Marketing email "{email_title}" deleted successfully'
+        })
+        
+    except Exception as e:
+        db.session.rollback()
+        current_app.logger.error(f'Error deleting marketing email {email_id}: {str(e)}')
+        return jsonify({
+            'success': False, 
+            'error': 'Failed to delete marketing email'
+        }), 500
+# ========================================
+# MARKETING AJAX API ENDPOINTS
+# ========================================
+
+@admin_bp.route('/api/marketing-emails', methods=['GET'])
+@admin_required
+def api_marketing_emails():
+    """API endpoint for marketing emails with filtering, sorting, and pagination"""
+    try:
+        page = int(request.args.get('page', 1))
+        per_page = int(request.args.get('per_page', 20))
+        search = request.args.get('search', '')
+        status = request.args.get('status', '')
+        sort_by = request.args.get('sort_by', 'created_at')
+        sort_order = request.args.get('sort_order', 'desc')
+        
+        # Validate per_page options
+        if per_page not in [10, 20, 50, 100] and per_page != -1:
+            per_page = 20
+        
+        # Build query
+        query = MarketingEmail.query
+        
+        # Apply search filter
+        if search:
+            query = query.filter(
+                MarketingEmail.title.contains(search) |
+                MarketingEmail.subject.contains(search)
+            )
+        
+        # Apply status filter
+        if status:
+            query = query.filter(MarketingEmail.status == status)
+        
+        # Apply sorting
+        valid_sort_columns = ['id', 'title', 'subject', 'status', 'created_at', 'sent_at']
+        if sort_by in valid_sort_columns:
+            sort_column = getattr(MarketingEmail, sort_by)
+            if sort_order == 'desc':
+                query = query.order_by(sort_column.desc())
+            else:
+                query = query.order_by(sort_column.asc())
+        else:
+            query = query.order_by(MarketingEmail.created_at.desc())
+        
+        # Get total count for stats
+        total_count = query.count()
+        
+        # Apply pagination
+        if per_page == -1:  # Show all
+            emails = query.all()
+            pages = 1
+            has_prev = False
+            has_next = False
+            prev_num = None
+            next_num = None
+        else:
+            paginated = query.paginate(page=page, per_page=per_page, error_out=False)
+            emails = paginated.items
+            pages = paginated.pages
+            has_prev = paginated.has_prev
+            has_next = paginated.has_next
+            prev_num = paginated.prev_num
+            next_num = paginated.next_num
+        
+        # Format emails data
+        emails_data = []
+        for email in emails:
+            emails_data.append({
+                'id': email.id,
+                'title': email.title,
+                'subject': email.subject,
+                'status': email.status,
+                'recipients_count': email.recipients_count,
+                'sent_count': email.sent_count,
+                'failed_count': email.failed_count,
+                'success_rate': (email.sent_count / email.recipients_count * 100) if email.recipients_count > 0 else 0,
+                'created_at': email.created_at.strftime('%d.%m.%Y %H:%M') if email.created_at else '',
+                'sent_at': email.sent_at.strftime('%d.%m.%Y %H:%M') if email.sent_at else None,
+                'created_by': {
+                    'id': email.created_by.id,
+                    'username': email.created_by.username
+                } if email.created_by else None
+            })
+        
+        return jsonify({
+            'success': True,
+            'emails': emails_data,
+            'pagination': {
+                'page': page,
+                'pages': pages,
+                'per_page': per_page,
+                'total': total_count,
+                'has_next': has_next,
+                'has_prev': has_prev,
+                'next_num': next_num,
+                'prev_num': prev_num
+            }
+        })
+        
+    except Exception as e:
+        logger.error(f'Error in api_marketing_emails: {e}')
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+@admin_bp.route('/api/marketing-email/<int:email_id>', methods=['GET'])
+@admin_required
+def api_marketing_email_details(email_id):
+    """Get detailed marketing email information"""
+    try:
+        email = MarketingEmail.query.get_or_404(email_id)
+        
+        return jsonify({
+            'success': True,
+            'email': {
+                'id': email.id,
+                'title': email.title,
+                'subject': email.subject,
+                'html_content': email.html_content,
+                'status': email.status,
+                'recipients_count': email.recipients_count,
+                'sent_count': email.sent_count,
+                'failed_count': email.failed_count,
+                'target_free_users': email.target_free_users,
+                'target_premium_users': email.target_premium_users,
+                'target_pro_users': email.target_pro_users,
+                'target_active_only': email.target_active_only,
+                'created_at': email.created_at.isoformat() if email.created_at else None,
+                'sent_at': email.sent_at.isoformat() if email.sent_at else None,
+                'created_by': {
+                    'id': email.created_by.id,
+                    'username': email.created_by.username
+                } if email.created_by else None
+            }
+        })
+        
+    except Exception as e:
+        logger.error(f'Error in api_marketing_email_details: {e}')
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+@admin_bp.route('/api/marketing-email/<int:email_id>/delete', methods=['DELETE'])
+@admin_required
+def api_delete_marketing_email(email_id):
+    """Delete a marketing email campaign"""
+    try:
+        email = MarketingEmail.query.get_or_404(email_id)
+        
+        # Only allow deletion of drafts and failed campaigns
+        if email.status not in ['draft', 'failed']:
+            return jsonify({
+                'success': False,
+                'error': 'Only draft and failed campaigns can be deleted'
+            }), 400
+        
+        # Delete associated logs first
+        MarketingEmailLog.query.filter_by(marketing_email_id=email_id).delete()
+        
+        # Delete the email
+        db.session.delete(email)
+        db.session.commit()
+        
+        # Log the action
+        AdminSecurityService.log_admin_action(
+            admin_user=current_user,
+            action='marketing_email_delete',
+            additional_info=json.dumps({
+                'email_id': email_id,
+                'title': email.title
+            })
+        )
+        
+        return jsonify({
+            'success': True,
+            'message': 'Marketing email deleted successfully'
+        })
+        
+    except Exception as e:
+        db.session.rollback()
+        logger.error(f'Error in api_delete_marketing_email: {e}')
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+
+@admin_bp.route('/api/reports/<int:report_id>')
+@admin_required
+def api_report_details(report_id):
+    """Get detailed report information"""
+    try:
+        report = AdminReport.query.get_or_404(report_id)
+        
+        return jsonify({
+            'report': {
+                'id': report.id,
+                'title': report.title,
+                'description': report.description,
+                'report_type': report.report_type,
+                'priority': report.priority,
+                'status': report.status,
+                'created_at': report.created_at.isoformat(),
+                'additional_info': report.additional_info,
+                'reported_by': {
+                    'id': report.reported_by.id,
+                    'username': report.reported_by.username
+                } if report.reported_by else None,
+                'assigned_to': {
+                    'id': report.assigned_to.id,
+                    'username': report.assigned_to.username
+                } if report.assigned_to else None
+            }
+        })
+        
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
+
+
+@admin_bp.route('/api/reports/<int:report_id>/resolve', methods=['POST'])
+@admin_required
+def api_resolve_report(report_id):
+    """Mark report as resolved"""
+    try:
+        report = AdminReport.query.get_or_404(report_id)
+        report.status = 'resolved'
+        
+        db.session.commit()
+        
+        # Log the action
+        AdminSecurityService.log_admin_action(
+            admin_user=current_user,
+            action='report_resolve',
+            target_user=None,
+            additional_info=f'Report #{report_id}: {report.title}'
+        )
+        
+        return jsonify({'success': True, 'message': 'Report resolved successfully'})
+        
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
+@admin_bp.route('/api/users')
+@admin_required
+def api_users():
+    """API endpoint for users with filtering, sorting, and pagination"""
+    try:
+        page = int(request.args.get('page', 1))
+        per_page = int(request.args.get('per_page', 20))
+        search = request.args.get('search', '')
+        admin_status = request.args.get('admin_status', '')
+        status = request.args.get('status', '')
+        sort_by = request.args.get('sort_by', 'created_at')
+        sort_order = request.args.get('sort_order', 'desc')
+        
+        # Build query
+        query = User.query
+        
+        # Apply filters
+        if search:
+            query = query.filter(
+                User.username.contains(search) |
+                User.email.contains(search) |
+                User.full_name.contains(search)
+            )
+        
+        if admin_status == 'admin':
+            query = query.filter(User.is_admin == True)
+        elif admin_status == 'user':
+            query = query.filter(User.is_admin == False)
+        
+        if status == 'active':
+            query = query.filter(User.is_active == True)
+        elif status == 'inactive':
+            query = query.filter(User.is_active == False)
+        
+        # Apply sorting
+        if hasattr(User, sort_by):
+            if sort_order == 'desc':
+                query = query.order_by(getattr(User, sort_by).desc())
+            else:
+                query = query.order_by(getattr(User, sort_by))
+        
+        # Paginate
+        users = query.paginate(
+            page=page, per_page=per_page, error_out=False
+        )
+        
+        # Format response
+        users_data = []
+        for user in users.items:
+            users_data.append({
+                'id': user.id,
+                'username': user.username,
+                'email': user.email,
+                'full_name': user.full_name,
+                'is_active': user.is_active,
+                'is_admin': user.is_admin,
+                'is_verified': user.is_verified,
+                'created_at': user.created_at.isoformat() if user.created_at else None,
+                'last_login': user.last_login.isoformat() if user.last_login else None,
+                'is_current_user': user.id == current_user.id
+            })
+        
+        return jsonify({
+            'users': users_data,
+            'pagination': {
+                'page': users.page,
+                'pages': users.pages,
+                'per_page': users.per_page,
+                'total': users.total,
+                'has_next': users.has_next,
+                'has_prev': users.has_prev,
+                'next_num': users.next_num,
+                'prev_num': users.prev_num
+            }
+        })
+        
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
+@admin_bp.route('/api/users/<int:user_id>/grant-admin', methods=['POST'])
+@admin_required
+def api_grant_admin(user_id):
+    """Grant admin privileges to user"""
+    try:
+        user = User.query.get_or_404(user_id)
+        
+        if user.id == current_user.id:
+            return jsonify({'error': 'Cannot modify own privileges'}), 400
+        
+        if user.is_admin:
+            return jsonify({'error': 'User already has admin privileges'}), 400
+        
+        user.is_admin = True
+        db.session.commit()
+        
+        # Log the action
+        AdminSecurityService.log_admin_action(
+            admin_user=current_user,
+            action='grant_admin',
+            additional_info=f'Admin privileges granted to {user.username}'
+        )
+        
+        return jsonify({'success': True, 'message': f'Admin privileges granted to {user.username}'})
+        
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
+@admin_bp.route('/api/users/<int:user_id>/revoke-admin', methods=['POST'])
+@admin_required
+def api_revoke_admin(user_id):
+    """Revoke admin privileges from user"""
+    try:
+        user = User.query.get_or_404(user_id)
+        
+        if user.id == current_user.id:
+            return jsonify({'error': 'Cannot modify own privileges'}), 400
+        
+        if not user.is_admin:
+            return jsonify({'error': 'User does not have admin privileges'}), 400
+        
+        user.is_admin = False
+        db.session.commit()
+        
+        # Log the action
+        AdminSecurityService.log_admin_action(
+            admin_user=current_user,
+            action='revoke_admin',
+            additional_info=f'Admin privileges revoked from {user.username}'
+        )
+        
+        return jsonify({'success': True, 'message': f'Admin privileges revoked from {user.username}'})
+        
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
+@admin_bp.route('/api/users/<int:user_id>')
+@admin_required
+def api_user_details(user_id):
+    """API endpoint for getting detailed user information"""
+    try:
+        user = User.query.get_or_404(user_id)
+        
+        # Get user progress if available
+        user_progress = None
+        try:
+            from ..models import UserProgress
+            user_progress = UserProgress.query.filter_by(user_id=user.id).first()
+        except:
+            pass
+        
+        # Format user data
+        user_data = {
+            'id': user.id,
+            'username': user.username,
+            'email': user.email,
+            'full_name': user.full_name,
+            'date_of_birth': user.date_of_birth.isoformat() if user.date_of_birth else None,
+            'is_active': user.is_active,
+            'is_verified': user.is_verified,
+            'is_admin': user.is_admin,
+            'created_at': user.created_at.isoformat() if user.created_at else None,
+            'last_login': user.last_login.isoformat() if user.last_login else None,
+            'total_xp': user.total_xp,
+            'subscription_tier': user.subscription_tier,
+            'current_plan_id': user.current_plan_id,
+            'subscription_status': user.subscription_status,
+            'profile_picture': user.profile_picture,
+            'preferred_language': user.preferred_language,
+            'is_current_user': user.id == current_user.id
+        }
+        
+        # Add progress data if available
+        if user_progress:
+            user_data['progress'] = {
+                'total_quizzes_taken': user_progress.total_quizzes_taken,
+                'total_questions_answered': user_progress.total_questions_answered,
+                'correct_answers': user_progress.correct_answers,
+                'current_streak_days': user_progress.current_streak_days,
+                'longest_streak_days': user_progress.longest_streak_days,
+                'last_activity_date': user_progress.last_activity_date.isoformat() if user_progress.last_activity_date else None
+            }
+        
+        return jsonify(user_data)
+        
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
+
+
+@admin_bp.route('/api/activity-logs')
+@admin_required
+def api_activity_logs():
+    """API endpoint for activity logs with filtering, sorting, and pagination"""
+    try:
+        page = int(request.args.get('page', 1))
+        per_page = int(request.args.get('per_page', 50))
+        search = request.args.get('search', '')
+        search_column = request.args.get('search_column', 'all')
+        action = request.args.get('action', '')
+        time_range = request.args.get('time_range', '')
+        sort_by = request.args.get('sort_by', 'created_at')
+        sort_order = request.args.get('sort_order', 'desc')
+        
+        # Validate per_page
+        if per_page not in [20, 50, 100] and per_page != -1:
+            per_page = 50
+            
+        # Build query
+        query = AdminAuditLog.query
+        
+        # Apply search filters
+        if search:
+            search_filter = None
+            if search_column == 'action':
+                search_filter = AdminAuditLog.action.contains(search)
+            elif search_column == 'target_user':
+                query = query.join(User, AdminAuditLog.target_user_id == User.id, isouter=True)
+                search_filter = User.username.contains(search)
+            elif search_column == 'admin_user':
+                query = query.join(User, AdminAuditLog.admin_user_id == User.id, isouter=True)
+                search_filter = User.username.contains(search)
+            elif search_column == 'ip_address':
+                search_filter = AdminAuditLog.ip_address.contains(search)
+            else:  # 'all'
+                admin_user_alias = db.aliased(User)
+                target_user_alias = db.aliased(User)
+                query = query.join(admin_user_alias, AdminAuditLog.admin_user_id == admin_user_alias.id, isouter=True)
+                query = query.join(target_user_alias, AdminAuditLog.target_user_id == target_user_alias.id, isouter=True)
+                search_filter = (
+                    AdminAuditLog.action.contains(search) |
+                    AdminAuditLog.additional_info.contains(search) |
+                    AdminAuditLog.ip_address.contains(search) |
+                    admin_user_alias.username.contains(search) |
+                    target_user_alias.username.contains(search)
+                )
+            
+            if search_filter is not None:
+                query = query.filter(search_filter)
+        
+        # Apply action filter
+        if action:
+            query = query.filter(AdminAuditLog.action == action)
+        
+        # Apply time range filter
+        if time_range:
+            from datetime import datetime, timedelta
+            now = datetime.utcnow()
+            if time_range == 'today':
+                start_date = now.replace(hour=0, minute=0, second=0, microsecond=0)
+                query = query.filter(AdminAuditLog.created_at >= start_date)
+            elif time_range == 'week':
+                start_date = now - timedelta(days=7)
+                query = query.filter(AdminAuditLog.created_at >= start_date)
+            elif time_range == 'month':
+                start_date = now - timedelta(days=30)
+                query = query.filter(AdminAuditLog.created_at >= start_date)
+        
+        # Apply sorting
+        if hasattr(AdminAuditLog, sort_by):
+            if sort_order == 'desc':
+                query = query.order_by(getattr(AdminAuditLog, sort_by).desc())
+            else:
+                query = query.order_by(getattr(AdminAuditLog, sort_by))
+        
+        # Handle "All" option for per_page
+        if per_page == -1:
+            logs = query.all()
+            # Create a mock pagination object
+            class MockPagination:
+                def __init__(self, items):
+                    self.items = items
+                    self.page = 1
+                    self.pages = 1
+                    self.per_page = len(items)
+                    self.total = len(items)
+                    self.has_next = False
+                    self.has_prev = False
+                    self.next_num = None
+                    self.prev_num = None
+            
+            logs = MockPagination(logs)
+        else:
+            # Paginate
+            logs = query.paginate(
+                page=page, per_page=per_page, error_out=False
+            )
+        
+        # Format response
+        logs_data = []
+        for log in logs.items:
+            logs_data.append({
+                'id': log.id,
+                'action': log.action,
+                'created_at': log.created_at.strftime('%d.%m.%Y %H:%M:%S') if log.created_at else '',
+                'ip_address': log.ip_address or '-',
+                'user_agent': log.user_agent or '',
+                'additional_info': log.additional_info or '',
+                'admin_user': {
+                    'id': log.admin_user.id,
+                    'username': log.admin_user.username
+                } if log.admin_user else {'id': None, 'username': 'System'},
+                'target_user': {
+                    'id': log.target_user.id,
+                    'username': log.target_user.username
+                } if log.target_user else {'id': None, 'username': 'Unknown'}
+            })
+        
+        return jsonify({
+            'logs': logs_data,
+            'pagination': {
+                'page': logs.page,
+                'pages': logs.pages,
+                'per_page': logs.per_page,
+                'total': logs.total,
+                'has_next': logs.has_next,
+                'has_prev': logs.has_prev,
+                'next_num': logs.next_num,
+                'prev_num': logs.prev_num
+            }
+        })
+        
+    except Exception as e:
+        current_app.logger.error(f'Error in api_activity_logs: {str(e)}')
+        return jsonify({'error': str(e)}), 500
+
+@admin_bp.route('/api/audit-logs')
+@admin_required
+def api_audit_logs():
+    """API endpoint for audit logs with filtering, sorting, and pagination"""
+    try:
+        page = int(request.args.get('page', 1))
+        per_page = int(request.args.get('per_page', 50))
+        search = request.args.get('search', '')
+        action = request.args.get('action', '')
+        ip = request.args.get('ip', '')
+        sort_by = request.args.get('sort_by', 'created_at')
+        sort_order = request.args.get('sort_order', 'desc')
+        
+        # Build query
+        query = AdminAuditLog.query
+        
+        # Apply filters
+        if search:
+            query = query.join(User, AdminAuditLog.admin_user_id == User.id, isouter=True)
+            query = query.filter(
+                AdminAuditLog.action.contains(search) |
+                AdminAuditLog.additional_info.contains(search) |
+                User.username.contains(search)
+            )
+        
+        if action:
+            query = query.filter(AdminAuditLog.action == action)
+        
+        if ip:
+            query = query.filter(AdminAuditLog.ip_address.contains(ip))
+        
+        # Apply sorting
+        if hasattr(AdminAuditLog, sort_by):
+            if sort_order == 'desc':
+                query = query.order_by(getattr(AdminAuditLog, sort_by).desc())
+            else:
+                query = query.order_by(getattr(AdminAuditLog, sort_by))
+        
+        # Paginate
+        logs = query.paginate(
+            page=page, per_page=per_page, error_out=False
+        )
+        
+        # Format response
+        logs_data = []
+        for log in logs.items:
+            logs_data.append({
+                'id': log.id,
+                'action': log.action,
+                'created_at': log.created_at.isoformat(),
+                'ip_address': log.ip_address,
+                'user_agent': log.user_agent,
+                'additional_info': log.additional_info,
+                'admin_user': {
+                    'id': log.admin_user.id,
+                    'username': log.admin_user.username,
+                    'is_current_user': log.admin_user.id == current_user.id
+                } if log.admin_user else None,
+                'target_user': {
+                    'id': log.target_user.id,
+                    'username': log.target_user.username
+                } if log.target_user else None
+            })
+        
+        return jsonify({
+            'logs': logs_data,
+            'pagination': {
+                'page': logs.page,
+                'pages': logs.pages,
+                'per_page': logs.per_page,
+                'total': logs.total,
+                'has_next': logs.has_next,
+                'has_prev': logs.has_prev,
+                'next_num': logs.next_num,
+                'prev_num': logs.prev_num
+            }
+        })
+        
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500

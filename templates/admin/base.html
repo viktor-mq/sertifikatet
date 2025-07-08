@@ -23,8 +23,9 @@
             <h1 style="font-size: 1.5rem; margin: 0; color: rgb(251, 191, 36)">Adminpanelet</h1>
         </div>
         <nav style="display: flex; gap: 20px; align-items: center;">
-            <a href="{{ url_for('admin.admin_dashboard') }}" style="color: rgba(255, 255, 255, 0.885); text-decoration: none;">Dashboard</a>
-            <a href="{{ url_for('admin.marketing_emails') }}" style="color: rgba(255, 255, 255, 0.885); text-decoration: none;">Marketing</a>
+            <a href="{{ url_for('admin.admin_dashboard') }}#marketing" style="color: rgba(255, 255, 255, 0.885); text-decoration: none; display: flex; align-items: center; gap: 6px;">
+                <i class="fas fa-arrow-left" style="font-size: 0.9rem;"></i> Back to Dashboard
+            </a>
             <a href="{{ url_for('admin.marketing_templates') }}" style="color: rgba(255, 255, 255, 0.885); text-decoration: none;">Templates</a>
             <a href="{{ url_for('auth.logout') }}" style="color: rgba(255, 255, 255, 0.885); text-decoration: none; font-weight: bold;">
                 Logg ut

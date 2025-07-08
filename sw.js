@@ -3,7 +3,7 @@
  * Phase 10: Offline Support and PWA
  */
 
-const CACHE_NAME = 'sertifikatet-v1.0.0';
+const CACHE_NAME = 'sertifikatet-v1.0.1'; // Updated to force service worker refresh
 const OFFLINE_PAGE = '/offline';
 
 // Files to cache for offline functionality
@@ -94,6 +94,12 @@ self.addEventListener('fetch', (event) => {
         return;
     }
     
+    // CRITICAL: Skip ALL admin and auth requests to prevent interference
+    if (url.pathname.startsWith('/admin/') || url.pathname.startsWith('/auth/')) {
+        console.log('Service Worker: Skipping ALL admin and auth requests:', url.pathname);
+        return; // Let the request go through normally without any service worker intervention
+    }
+    
     // Handle different types of requests
     if (request.method === 'GET') {
         event.respondWith(handleGetRequest(request));
@@ -136,8 +142,9 @@ async function handlePostRequest(request) {
     const url = new URL(request.url);
     
     try {
-        // Try network first
-        const response = await fetch(request);
+        // Clone the request before attempting to read its body
+        const clonedRequest = request.clone();
+        const response = await fetch(clonedRequest);
         
         if (response.ok) {
             return response;
