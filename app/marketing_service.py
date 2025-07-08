@@ -265,6 +265,18 @@ class MarketingEmailService:
             '{{user.full_name}}', 
             user.full_name or user.username
         )
+        personalized = personalized.replace(
+            '{{user.email}}', 
+            user.email
+        )
+        
+        # Map subscription plan ID to readable name
+        plan_names = {1: 'Free', 2: 'Premium', 3: 'Pro'}
+        current_plan = plan_names.get(user.current_plan_id, 'Free')
+        personalized = personalized.replace(
+            '{{user.current_plan}}', 
+            current_plan
+        )
         
         # Replace URL variables using the same URL generation as footer
         personalized = personalized.replace(

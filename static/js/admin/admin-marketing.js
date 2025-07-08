@@ -101,7 +101,6 @@
                 .replace(/\{\{user\.email\}\}/g, 'ola@example.com')
                 .replace(/\{\{user\.current_plan\}\}/g, 'Premium')
                 .replace(/\{\{unsubscribe_url\}\}/g, '#unsubscribe')
-                .replace(/\{\{settings_url\}\}/g, '#settings');
             
             // Display the processed content with proper modal styling
             content.innerHTML = `
@@ -167,7 +166,6 @@
             .replace(/\{\{user\.email\}\}/g, 'ola@example.com')
             .replace(/\{\{user\.current_plan\}\}/g, 'Premium')
             .replace(/\{\{unsubscribe_url\}\}/g, '#unsubscribe')
-            .replace(/\{\{settings_url\}\}/g, '#settings');
         
         // Load content into iframe
         const iframe = document.getElementById('templatePreviewFrame');
