@@ -1,0 +1,40 @@
+id: 5
+module_number: 5
+title: "Øvingskjøring og Avsluttende Test"
+description: "Denne modulen forbereder deg på veien til førerkortet. Lær alt om reglene for øvingskjøring, hvordan du best forbereder deg til teoriprøven og oppkjøringen, og hva du kan forvente på selve testdagen."
+estimated_hours: 2.5
+prerequisites: ["4"]
+learning_objectives:
+  - "Forstå regler og ansvar under øvingskjøring."
+  - "Kjenne til de ulike stegene i føreropplæringen."
+  - "Mestre strategier for effektiv eksamenstrening til teoriprøven."
+  - "Vite hva som skjer på teoriprøven og oppkjøringen."
+  - "Forstå viktigheten av kontinuerlig læring etter bestått prøve."
+content_directory: "5.practice_driving_and_final_test"
+is_active: true
+ai_generated: true
+submodules:
+  - id: 5.1
+    title: "Ansvar og regler under øvingskjøring"
+    description: "Lær hvem som kan øvingskjøre, hvem som kan være ledsager, og hvilke regler som gjelder for en trygg og lovlig øvelse."
+    estimated_minutes: 40
+    has_quiz: true
+    has_video_shorts: true
+  - id: 5.2
+    title: "Oppsummeringsquiz"
+    description: "Test din kunnskap fra alle tidligere moduler med en omfattende oppsummeringsquiz."
+    estimated_minutes: 30
+    has_quiz: true
+    has_video_shorts: false
+  - id: 5.3
+    title: "Eksamenstrening med tidspress"
+    description: "Øv deg på å besvare spørsmål under tidspress, akkurat som på den virkelige teoriprøven."
+    estimated_minutes: 45
+    has_quiz: true
+    has_video_shorts: false
+  - id: 5.4
+    title: "Hva skjer på teoriprøven?"
+    description: "Få en detaljert gjennomgang av teoriprøven, fra bestilling til resultat, og tips for å lykkes."
+    estimated_minutes: 40
+    has_quiz: true
+    has_video_shorts: true

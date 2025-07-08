@@ -1,0 +1,58 @@
+submodule_id: 3.1
+title: "Bremselengde og reaksjonstid"
+module_id: 3
+content_version: "1.0"
+last_updated: "2025-07-08"
+ai_generated: true
+difficulty_level: 3
+estimated_minutes: 45
+tags:
+  - "bremselengde"
+  - "reaksjonstid"
+  - "stopplengde"
+  - "fysikk"
+  - "sikkerhet"
+  - "hastighet"
+learning_objectives:
+  - "Forstå definisjonen av reaksjonstid og bremselengde."
+  - "Kjenne til faktorer som påvirker reaksjonstid og bremselengde."
+  - "Kunne beregne omtrentlig reaksjonslengde og bremselengde ved ulike hastigheter."
+  - "Forstå sammenhengen mellom hastighet og stopplengde."
+  - "Anvende kunnskapen om stopplengde for å holde riktig avstand."
+prerequisites: ["2.5"]
+linked_questions:
+  - "Reaksjonstid faktorer"
+  - "Bremselengde faktorer"
+  - "Stopplengde beregning"
+  - "Hastighetens innvirkning"
+quiz_topics:
+  - "Beregning av reaksjonslengde"
+  - "Faktorer som påvirker bremselengde"
+  - "Forholdet mellom hastighet og stopplengde"
+  - "Definisjoner av stopplengdekomponenter"
+video_shorts_planned:
+  - sequence: 1
+    title: "Hvor langt kjører du før du rekker å blunke?"
+    duration: "40s"
+    topics: ["reaksjonstid", "reaksjonslengde", "distraksjoner"]
+  - sequence: 2  
+    title: "Hastighetens hemmelighet: Dobbel fart, firedobbel brems!"
+    duration: "55s"
+    topics: ["bremselengde", "hastighet", "fysikk", "kinetisk energi"]
+  - sequence: 3
+    title: "Stopplengde: Den ENESTE avstanden som teller"
+    duration: "60s"
+    topics: ["total stopplengde", "eksempler", "føreforhold", "dekk"]
+  - sequence: 4
+    title: "ABS: Redder deg, men stopper deg ikke alltid raskere!"
+    duration: "35s"
+    topics: ["ABS", "styring", "bremselengde myter"]
+engagement_metrics:
+  target_completion_rate: 75
+  target_time_minutes: 45
+  difficulty_rating: "Middels"
+content_structure:
+  word_count_content: 1489
+  word_count_summary: 298
+  sections: 5
+  subsections: 15

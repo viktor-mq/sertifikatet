@@ -1,0 +1,46 @@
+id: 2
+module_number: 2
+title: "Skilt og Oppmerking"
+description: "Lær å tolke og forstå alle typer trafikkskilt og vegoppmerking i Norge. Fra fareskilt til serviceskilt, gir denne modulen deg kunnskapen du trenger for å navigere trygt og effektivt."
+estimated_hours: 3.0
+prerequisites: ["1"]
+learning_objectives:
+  - "Gjenkjenne og forstå betydningen av alle hovedkategorier av trafikkskilt."
+  - "Tolke ulike typer vegoppmerking og deres betydning for plassering og handling."
+  - "Anvende kunnskap om skilt og oppmerking i praktiske kjøresituasjoner."
+  - "Forstå samspillet mellom skilt, trafikkregler og vegoppmerking."
+  - "Identifisere fareskilt basert på form og symbol."
+content_directory: "2.road_signs_and_markings"
+is_active: true
+ai_generated: true
+submodules:
+  - id: 2.1
+    title: "Fareskilt – lær mønstrene"
+    description: "Forstå fareskiltene som varsler om spesielle farer, og lær hvordan du skal reagere."
+    estimated_minutes: 30
+    has_quiz: true
+    has_video_shorts: true
+  - id: 2.2
+    title: "Forbudsskilt – hva du IKKE kan gjøre"
+    description: "Lær deg forbudsskiltene som setter begrensninger for trafikken."
+    estimated_minutes: 30
+    has_quiz: true
+    has_video_shorts: true
+  - id: 2.3
+    title: "Påbudsskilt – følg instruksjonen"
+    description: "Forstå påbudsskiltene som gir deg obligatoriske instrukser."
+    estimated_minutes: 30
+    has_quiz: true
+    has_video_shorts: true
+  - id: 2.4
+    title: "Opplysningsskilt og serviceskilt"
+    description: "Lær deg skiltene som gir deg nyttig informasjon og viser vei til tjenester."
+    estimated_minutes: 30
+    has_quiz: true
+    has_video_shorts: true
+  - id: 2.5
+    title: "Vegoppmerking – linjer og symboler"
+    description: "Forstå de ulike linjene og symbolene på veien og hva de betyr for din kjøring."
+    estimated_minutes: 45
+    has_quiz: true
+    has_video_shorts: true

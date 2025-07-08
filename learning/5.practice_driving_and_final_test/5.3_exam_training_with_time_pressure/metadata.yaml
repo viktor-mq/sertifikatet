@@ -1,0 +1,41 @@
+submodule_id: 5.3
+title: "Eksamenstrening med tidspress"
+module_id: 5
+content_version: "1.0"
+last_updated: "2025-07-08"
+ai_generated: true
+difficulty_level: 4
+estimated_minutes: 45
+tags:
+  - "eksamenstrening"
+  - "tidspress"
+  - "teoriprøve"
+  - "strategi"
+  - "stressmestring"
+  - "simulering"
+learning_objectives:
+  - "Forstå viktigheten av å øve under tidspress for teoriprøven."
+  - "Lære strategier for effektiv tidsstyring under eksamen."
+  - "Kunne identifisere og unngå vanlige feil under tidspress."
+  - "Bygge mental styrke og selvtillit for å prestere under press."
+prerequisites: ["5.2"]
+linked_questions:
+  - "Tidsstyring på teoriprøven"
+  - "Hoppe over spørsmål"
+  - "Stressmestring eksamen"
+  - "Simulering av prøve"
+quiz_topics:
+  - "Taktikker for tidsbegrenset test"
+  - "Håndtering av vanskelige spørsmål"
+  - "Mentale forberedelser til eksamen"
+  - "Analyse av prestasjon under tidspress"
+video_shorts_planned: []
+engagement_metrics:
+  target_completion_rate: 80
+  target_time_minutes: 45
+  difficulty_rating: "Vanskelig"
+content_structure:
+  word_count_content: 1499
+  word_count_summary: 299
+  sections: 4
+  subsections: 12

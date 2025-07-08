@@ -1,0 +1,58 @@
+submodule_id: 4.1
+title: "Alkohol, rus og reaksjonsevne"
+module_id: 4
+content_version: "1.0"
+last_updated: "2025-07-08"
+ai_generated: true
+difficulty_level: 4
+estimated_minutes: 45
+tags:
+  - "alkohol"
+  - "rusmidler"
+  - "reaksjonsevne"
+  - "promille"
+  - "trafikksikkerhet"
+  - "lovverk"
+learning_objectives:
+  - "Forstå hvordan alkohol påvirker reaksjonsevne, dømmekraft og syn."
+  - "Kjenne til promillegrensen i Norge og konsekvensene av å overskride den."
+  - "Forstå hvordan ulike rusmidler og medisiner påvirker kjøreevnen."
+  - "Vite om den farlige kombinasjonseffekten av rusmidler."
+  - "Kjenne til de juridiske og sosiale konsekvensene av ruspåvirket kjøring."
+prerequisites: ["3.5"]
+linked_questions:
+  - "Promillegrense"
+  - "Alkoholens effekt på kjøring"
+  - "Rusmidler og trafikk"
+  - "Konsekvenser av ruskjøring"
+quiz_topics:
+  - "Promille og dens virkning"
+  - "Forskjellige rusmidlers innvirkning"
+  - "Medisiner og kjøreevne"
+  - "Straffereaksjoner ved ruskjøring"
+video_shorts_planned:
+  - sequence: 1
+    title: "0,2 Promille: Hvorfor er det så strengt?"
+    duration: "40s"
+    topics: ["promillegrense", "effekt", "sikkerhet"]
+  - sequence: 2  
+    title: "Alkoholens 5 farligste effekter på kjøring"
+    duration: "60s"
+    topics: ["reaksjonstid", "dømmekraft", "syn", "koordinasjon", "selvkritikk"]
+  - sequence: 3
+    title: "Medisiner og rus: Den skjulte faren"
+    duration: "50s"
+    topics: ["medisiner", "rusmidler", "cocktaileffekt", "pakningsvedlegg"]
+  - sequence: 4
+    title: "Ruskjøring: Hva koster det deg?"
+    duration: "35s"
+    topics: ["bøter", "fengsel", "førerkortbeslag", "forsikring"]
+engagement_metrics:
+  target_completion_rate: 70
+  target_time_minutes: 45
+  difficulty_rating: "Vanskelig"
+content_structure:
+  word_count_content: 1499
+  word_count_summary: 299
+  sections: 4
+  subsections: 13

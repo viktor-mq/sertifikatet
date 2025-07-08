@@ -1,0 +1,58 @@
+submodule_id: 3.4
+title: "Kontrollrutiner før kjøring"
+module_id: 3
+content_version: "1.0"
+last_updated: "2025-07-08"
+ai_generated: true
+difficulty_level: 2
+estimated_minutes: 30
+tags:
+  - "kontrollrutiner"
+  - "sikkerhetssjekk"
+  - "dekk"
+  - "lys"
+  - "væsker"
+  - "vedlikehold"
+learning_objectives:
+  - "Forstå viktigheten av daglige kontrollrutiner før kjøring."
+  - "Kunne utføre visuell sjekk av dekk og hjul."
+  - "Vite hvordan man sjekker at alle lys fungerer."
+  - "Forstå viktigheten av rene ruter og speil."
+  - "Kjenne til de viktigste væskenivåene som bør sjekkes."
+prerequisites: ["3.3"]
+linked_questions:
+  - "Dekk sjekk"
+  - "Lys sjekk"
+  - "Væskenivåer"
+  - "Varsellamper"
+quiz_topics:
+  - "Sjekk av mønsterdybde og lufttrykk"
+  - "Funksjonstest av lys"
+  - "Viktigheten av spylervæske og vindusviskere"
+  - "Hva varsellamper indikerer"
+video_shorts_planned:
+  - sequence: 1
+    title: "Din 2-minutters sjekk før hver tur!"
+    duration: "45s"
+    topics: ["rutine", "sikkerhet", "ansvar"]
+  - sequence: 2  
+    title: "Dekk, lys, sikt: De 3 viktigste sjekkene"
+    duration: "60s"
+    topics: ["dekk", "lys", "ruter", "speil", "viskere"]
+  - sequence: 3
+    title: "Varsellamper: Hva betyr de, og hva gjør du?"
+    duration: "50s"
+    topics: ["motorolje", "bremsevæske", "kjølevæske", "symboler"]
+  - sequence: 4
+    title: "Den glemte sjekken: Baklysene!"
+    duration: "30s"
+    topics: ["baklys", "automatisk kjørelys", "synlighet"]
+engagement_metrics:
+  target_completion_rate: 85
+  target_time_minutes: 30
+  difficulty_rating: "Lett"
+content_structure:
+  word_count_content: 1499
+  word_count_summary: 299
+  sections: 5
+  subsections: 14

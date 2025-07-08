@@ -1,0 +1,58 @@
+submodule_id: 4.3
+title: "Risikoforståelse og kjørestrategi"
+module_id: 4
+content_version: "1.0"
+last_updated: "2025-07-08"
+ai_generated: true
+difficulty_level: 4
+estimated_minutes: 45
+tags:
+  - "risikoforståelse"
+  - "kjørestrategi"
+  - "defensiv kjøring"
+  - "sikkerhet"
+  - "trafikkpsykologi"
+  - "avstand"
+learning_objectives:
+  - "Forstå de tre hovedkategoriene av risikofaktorer i trafikken."
+  - "Kunne vurdere sannsynlighet og konsekvens av farer."
+  - "Utvikle en defensiv kjørestrategi basert på proaktivitet."
+  - "Mestre teknikker som å se langt frem, holde god avstand og tilpasse fart."
+  - "Forstå viktigheten av kommunikasjon og å forvente det uventede."
+prerequisites: ["4.2"]
+linked_questions:
+  - "Risikofaktorer i trafikk"
+  - "Defensiv kjøring prinsipper"
+  - "3-sekundersregelen"
+  - "Kommunikasjon i trafikk"
+quiz_topics:
+  - "Identifisering av risikofaktorer"
+  - "Anvendelse av defensiv kjørestrategi"
+  - "Beregning av sikker avstand"
+  - "Viktigheten av blikkbruk og speilkontroll"
+video_shorts_planned:
+  - sequence: 1
+    title: "Risiko: Hva er det, og hvordan ser du det?"
+    duration: "40s"
+    topics: ["menneskelige faktorer", "kjøretøyfaktorer", "miljøfaktorer", "risikovurdering"]
+  - sequence: 2  
+    title: "Defensiv kjøring: Din beste forsikring!"
+    duration: "60s"
+    topics: ["se langt frem", "god avstand", "fartstilpasning", "kommunikasjon"]
+  - sequence: 3
+    title: "3-sekundersregelen: Enkel, men livreddende!"
+    duration: "35s"
+    topics: ["avstand", "beregning", "våt vei", "glatt vei"]
+  - sequence: 4
+    title: "Forvent det uventede: Ha alltid en plan B!"
+    duration: "50s"
+    topics: ["mentalt forberedt", "escape route", "andres feil"]
+engagement_metrics:
+  target_completion_rate: 75
+  target_time_minutes: 45
+  difficulty_rating: "Vanskelig"
+content_structure:
+  word_count_content: 1499
+  word_count_summary: 299
+  sections: 4
+  subsections: 13

@@ -1,0 +1,59 @@
+submodule_id: 3.2
+title: "Sikt, lysbruk og vær"
+module_id: 3
+content_version: "1.0"
+last_updated: "2025-07-08"
+ai_generated: true
+difficulty_level: 3
+estimated_minutes: 40
+tags:
+  - "sikt"
+  - "lys"
+  - "vær"
+  - "kjørelys"
+  - "fjernlys"
+  - "tåkelys"
+  - "sikkerhet"
+learning_objectives:
+  - "Forstå hvordan ulike værforhold påvirker sikt og veigrep."
+  - "Mestre riktig bruk av kjørelys, fjernlys og tåkelys."
+  - "Kjenne til reglene for bruk av blinklys og nødblink."
+  - "Forstå viktigheten av rene ruter og lykter."
+  - "Kunne tilpasse fart og avstand til siktforholdene."
+prerequisites: ["3.1"]
+linked_questions:
+  - "Lysbruk i tåke"
+  - "Vannplaning"
+  - "Sikt i mørket"
+  - "Kjøring i snø"
+quiz_topics:
+  - "Regler for kjørelys"
+  - "Bruk av tåkelys foran og bak"
+  - "Tilpasning av fart i dårlig sikt"
+  - "Faktorer som påvirker sikt"
+video_shorts_planned:
+  - sequence: 1
+    title: "Vær-guide: Slik kjører du trygt i regn, tåke og snø!"
+    duration: "60s"
+    topics: ["regn", "tåke", "snø", "vannplaning", "tilpasning"]
+  - sequence: 2  
+    title: "Lys-guide: Hvilke lys skal du bruke, og når?"
+    duration: "55s"
+    topics: ["kjørelys", "fjernlys", "tåkelys", "baklys", "automatikk"]
+  - sequence: 3
+    title: "Den største feilen med tåkelys bak!"
+    duration: "30s"
+    topics: ["tåkelys bak", "blending", "regler"]
+  - sequence: 4
+    title: "Sikt = Sikkerhet: Hvor langt ser du, hvor fort kan du kjøre?"
+    duration: "45s"
+    topics: ["siktstrekning", "stopplengde", "fartstilpasning"]
+engagement_metrics:
+  target_completion_rate: 80
+  target_time_minutes: 40
+  difficulty_rating: "Middels"
+content_structure:
+  word_count_content: 1498
+  word_count_summary: 299
+  sections: 4
+  subsections: 13

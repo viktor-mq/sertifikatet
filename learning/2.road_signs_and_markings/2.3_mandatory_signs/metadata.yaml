@@ -1,0 +1,56 @@
+submodule_id: 2.3
+title: "Påbudsskilt – følg instruksjonen"
+module_id: 2
+content_version: "1.0"
+last_updated: "2025-07-08"
+ai_generated: true
+difficulty_level: 2
+estimated_minutes: 25
+tags:
+  - "påbudsskilt"
+  - "trafikkskilt"
+  - "kjøreretning"
+  - "rundkjøring"
+  - "gang- og sykkelvei"
+learning_objectives:
+  - "Identifisere og forstå de vanligste påbudsskiltene."
+  - "Forstå den obligatoriske naturen til påbudsskilt."
+  - "Vite hvordan man skal handle i henhold til påbud om kjøreretning og kjørefelt."
+  - "Forstå betydningen av opphør av påbud."
+prerequisites: ["2.2"]
+linked_questions:
+  - "Påbudsskilt generelt"
+  - "Påbudt kjøreretning"
+  - "Rundkjøring"
+  - "Gang- og sykkelvei"
+quiz_topics:
+  - "Tolkning av påbudssymboler"
+  - "Påbudt kjøreretning i kryss"
+  - "Regler for påbudt rundkjøring"
+  - "Skilting for myke trafikanter"
+video_shorts_planned:
+  - sequence: 1
+    title: "Blå og Rund? Dette MÅ du gjøre!"
+    duration: "30s"
+    topics: ["design", "betydning", "obligatorisk handling"]
+  - sequence: 2  
+    title: "Påbudt kjøreretning: Ikke ditt valg!"
+    duration: "40s"
+    topics: ["piler", "kryss", "konsekvenser"]
+  - sequence: 3
+    title: "Rundkjøring: Påbudsskiltet alle møter"
+    duration: "45s"
+    topics: ["skilt", "vikeplikt", "plassering"]
+  - sequence: 4
+    title: "Når påbudet tar slutt: Se opp for den røde streken!"
+    duration: "35s"
+    topics: ["opphørsskilt", "endring", "nye regler"]
+engagement_metrics:
+  target_completion_rate: 85
+  target_time_minutes: 25
+  difficulty_rating: "Lett"
+content_structure:
+  word_count_content: 1056
+  word_count_summary: 269
+  sections: 5
+  subsections: 10

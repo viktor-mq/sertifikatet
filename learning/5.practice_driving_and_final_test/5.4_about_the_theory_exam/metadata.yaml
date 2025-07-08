@@ -1,0 +1,58 @@
+submodule_id: 5.4
+title: "Hva skjer på teoriprøven?"
+module_id: 5
+content_version: "1.0"
+last_updated: "2025-07-08"
+ai_generated: true
+difficulty_level: 3
+estimated_minutes: 40
+tags:
+  - "teoriprøve"
+  - "eksamen"
+  - "Statens vegvesen"
+  - "førerkort"
+  - "forberedelse"
+  - "gjennomføring"
+learning_objectives:
+  - "Kjenne til kravene for å kunne ta teoriprøven."
+  - "Forstå prosessen for bestilling og gjennomføring av prøven."
+  - "Vite hva som er tillatt og ikke tillatt under prøven."
+  - "Forstå hva som skjer ved bestått og ikke bestått prøve."
+  - "Kunne forberede seg optimalt til prøvedagen."
+prerequisites: ["5.3"]
+linked_questions:
+  - "Krav til teoriprøven"
+  - "Bestilling av prøve"
+  - "Gjennomføring av teoriprøven"
+  - "Resultat og karantene"
+quiz_topics:
+  - "Alderskrav og kurskrav for teoriprøven"
+  - "Prosedyre på trafikkstasjonen"
+  - "Regler for hjelpemidler under prøven"
+  - "Konsekvenser av ikke bestått prøve"
+video_shorts_planned:
+  - sequence: 1
+    title: "Teoriprøven: Slik bestiller du!"
+    duration: "40s"
+    topics: ["vegvesen.no", "bestilling", "krav"]
+  - sequence: 2  
+    title: "På prøvedagen: Hva skjer inne på trafikkstasjonen?"
+    duration: "55s"
+    topics: ["registrering", "betaling", "gjennomføring", "datamaskin"]
+  - sequence: 3
+    title: "Juks på teoriprøven? Ikke gjør det!"
+    duration: "30s"
+    topics: ["mobilforbud", "hjelpemidler", "konsekvenser"]
+  - sequence: 4
+    title: "Bestått eller Ikke Bestått: Hva nå?"
+    duration: "45s"
+    topics: ["bestått", "ikke bestått", "oppkjøring", "karantene", "gyldighet"]
+engagement_metrics:
+  target_completion_rate: 90
+  target_time_minutes: 40
+  difficulty_rating: "Middels"
+content_structure:
+  word_count_content: 1499
+  word_count_summary: 299
+  sections: 4
+  subsections: 13

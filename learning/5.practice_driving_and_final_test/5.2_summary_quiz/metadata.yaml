@@ -1,0 +1,41 @@
+submodule_id: 5.2
+title: "Oppsummeringsquiz"
+module_id: 5
+content_version: "1.0"
+last_updated: "2025-07-08"
+ai_generated: true
+difficulty_level: 3
+estimated_minutes: 30
+tags:
+  - "quiz"
+  - "oppsummering"
+  - "teoriprøve"
+  - "gamification"
+  - "læring"
+  - "selvevaluering"
+learning_objectives:
+  - "Forstå formålet med en oppsummeringsquiz som læringsverktøy."
+  - "Kunne bruke quizresultater til å identifisere svake kunnskapsområder."
+  - "Forstå hvordan gamification-elementer (poeng, prestasjoner, leaderboards) motiverer læring."
+  - "Kjenne til strategier for effektiv quiz-trening."
+prerequisites: ["5.1"]
+linked_questions:
+  - "Quizstrategier"
+  - "Gamification i læring"
+  - "Teoriprøve forberedelse"
+  - "Feilanalyse"
+quiz_topics:
+  - "Formål med oppsummeringsquiz"
+  - "Analyse av quizresultater"
+  - "Motivasjon gjennom gamification"
+  - "Effektive øvingsmetoder"
+video_shorts_planned: []
+engagement_metrics:
+  target_completion_rate: 90
+  target_time_minutes: 30
+  difficulty_rating: "Lett"
+content_structure:
+  word_count_content: 1499
+  word_count_summary: 299
+  sections: 4
+  subsections: 13

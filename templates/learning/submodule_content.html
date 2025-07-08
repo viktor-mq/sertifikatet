@@ -20,13 +20,7 @@
                 <li class="text-blue-300">/</li>
                 <li>
                     <a href="{{ url_for('learning.theory_dashboard') }}" class="text-blue-200 hover:text-white">
-                        Teoristudie
-                    </a>
-                </li>
-                <li class="text-blue-300">/</li>
-                <li>
-                    <a href="{{ url_for('learning.theory_module_overview', module_id=module.id) }}" class="text-blue-200 hover:text-white">
-                        {{ module.title }}
+                        Teorioversikt
                     </a>
                 </li>
                 <li class="text-blue-300">/</li>
@@ -176,10 +170,10 @@
 
         <!-- Navigation -->
         <div class="flex justify-between items-center mt-8">
-            <a href="{{ url_for('learning.theory_module_overview', module_id=module.id) }}" 
+            <a href="{{ url_for('learning.theory_dashboard') }}" 
                class="inline-flex items-center px-6 py-3 bg-white/10 backdrop-blur-lg rounded-lg text-white hover:bg-white/20 transition-all duration-300">
                 <i class="fas fa-arrow-left mr-2"></i>
-                Tilbake til modul
+                Tilbake til teorioversikt
             </a>
             
             <div class="flex space-x-4">
@@ -295,8 +289,7 @@ function markAsComplete() {
         fetch('{{ url_for("learning.api_complete_content") }}', {
             method: 'POST',
             headers: {
-                'Content-Type': 'application/json',
-                'X-CSRFToken': '{{ csrf_token() }}'
+                'Content-Type': 'application/json'
             },
             body: JSON.stringify({
                 content_type: 'submodule',

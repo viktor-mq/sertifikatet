@@ -1,0 +1,58 @@
+submodule_id: 3.5
+title: "Elbil, hybrid og moderne hjelpemidler"
+module_id: 3
+content_version: "1.0"
+last_updated: "2025-07-08"
+ai_generated: true
+difficulty_level: 3
+estimated_minutes: 40
+tags:
+  - "elbil"
+  - "hybrid"
+  - "ADAS"
+  - "førerstøttesystemer"
+  - "teknologi"
+  - "sikkerhet"
+learning_objectives:
+  - "Forstå grunnleggende forskjeller og egenskaper ved elbiler og hybridbiler."
+  - "Kjenne til fordeler og utfordringer ved elektrifiserte kjøretøy."
+  - "Forstå funksjonen til vanlige førerstøttesystemer (ADAS)."
+  - "Vite begrensningene til ADAS-systemer og førerens ansvar."
+  - "Kunne tilpasse kjørestil til stillegående kjøretøy."
+prerequisites: ["3.4"]
+linked_questions:
+  - "Elbil egenskaper"
+  - "ADAS funksjoner"
+  - "Føreransvar med teknologi"
+  - "Lading av elbil"
+quiz_topics:
+  - "Forskjeller mellom elbil og hybrid"
+  - "Bruk og begrensninger av ACC og LKA"
+  - "Viktigheten av AEB og BSM"
+  - "Sikkerhet ved stillegående kjøretøy"
+video_shorts_planned:
+  - sequence: 1
+    title: "Elbil vs. Hybrid: Hva er forskjellen?"
+    duration: "45s"
+    topics: ["elbil", "hybrid", "fordeler", "utfordringer"]
+  - sequence: 2  
+    title: "ADAS: Din digitale co-pilot – men hvem styrer?"
+    duration: "60s"
+    topics: ["ACC", "LKA", "AEB", "BSM", "føreransvar"]
+  - sequence: 3
+    title: "Elbil: Den usynlige faren for fotgjengere"
+    duration: "30s"
+    topics: ["stillegående", "sikkerhet", "lydsystem"]
+  - sequence: 4
+    title: "Ikke stol blindt på bilen! ADAS har sine grenser"
+    duration: "50s"
+    topics: ["begrensninger", "vær", "sikt", "sensorer"]
+engagement_metrics:
+  target_completion_rate: 75
+  target_time_minutes: 40
+  difficulty_rating: "Middels"
+content_structure:
+  word_count_content: 1499
+  word_count_summary: 299
+  sections: 4
+  subsections: 13

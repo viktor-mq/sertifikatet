@@ -1,0 +1,58 @@
+submodule_id: 4.2
+title: "Trøtthet og distraksjoner"
+module_id: 4
+content_version: "1.0"
+last_updated: "2025-07-08"
+ai_generated: true
+difficulty_level: 3
+estimated_minutes: 40
+tags:
+  - "trøtthet"
+  - "distraksjoner"
+  - "mobilbruk"
+  - "sikkerhet"
+  - "reaksjonsevne"
+  - "konsentrasjon"
+learning_objectives:
+  - "Forstå hvordan trøtthet påvirker kjøreevnen og risikoen for ulykker."
+  - "Kjenne igjen tegn på trøtthet og vite hvordan man skal handle."
+  - "Forstå de ulike typene distraksjoner (visuelle, manuelle, kognitive)."
+  - "Kjenne til lovverket rundt mobilbruk under kjøring og dens farer."
+  - "Utvikle strategier for å unngå trøtthet og distraksjoner."
+prerequisites: ["4.1"]
+linked_questions:
+  - "Trøtthet og kjøring"
+  - "Mobilbruk i bil"
+  - "Distraksjoner i trafikk"
+  - "Mikrosøvn"
+quiz_topics:
+  - "Effekter av trøtthet på kjøreevne"
+  - "Forbud mot håndholdt mobil"
+  - "Ulike typer distraksjoner"
+  - "Tiltak mot trøtthet"
+video_shorts_planned:
+  - sequence: 1
+    title: "Trøtt bak rattet? Like farlig som promille!"
+    duration: "45s"
+    topics: ["trøtthet", "effekter", "mikrosøvn", "risiko"]
+  - sequence: 2  
+    title: "Mobilen: Din største fiende i trafikken?"
+    duration: "60s"
+    topics: ["mobilbruk", "håndholdt", "teksting", "distraksjoner", "lovverk"]
+  - sequence: 3
+    title: "De 3 typene distraksjoner du må unngå"
+    duration: "50s"
+    topics: ["visuell", "manuell", "kognitiv", "eksempler"]
+  - sequence: 4
+    title: "Power nap: Redningen på langtur?"
+    duration: "35s"
+    topics: ["power nap", "kaffe", "frisk luft", "effektive tiltak mot trøtthet"]
+engagement_metrics:
+  target_completion_rate: 80
+  target_time_minutes: 40
+  difficulty_rating: "Middels"
+content_structure:
+  word_count_content: 1499
+  word_count_summary: 299
+  sections: 4
+  subsections: 13

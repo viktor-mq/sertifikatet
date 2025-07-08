@@ -1,0 +1,57 @@
+submodule_id: 2.2
+title: "Forbudsskilt – hva du IKKE kan gjøre"
+module_id: 2
+content_version: "1.0"
+last_updated: "2025-07-08"
+ai_generated: true
+difficulty_level: 2
+estimated_minutes: 30
+tags:
+  - "forbudsskilt"
+  - "trafikkskilt"
+  - "fartsgrense"
+  - "parkering forbudt"
+  - "stans forbudt"
+  - "trafikkregler"
+learning_objectives:
+  - "Identifisere og forstå de vanligste forbudsskiltene."
+  - "Skille mellom stans forbudt og parkering forbudt."
+  - "Forstå konsekvensene av å ignorere forbudsskilt."
+  - "Vite hva som opphever et forbudsskilt."
+prerequisites: ["2.1"]
+linked_questions:
+  - "Forbudsskilt generelt"
+  - "Fartsgrenser"
+  - "Stans og parkering"
+  - "Forbikjøring"
+quiz_topics:
+  - "Tolkning av forbudsskilt-symboler"
+  - "Forskjellen på stans og parkering"
+  - "Betydningen av fartsgrenseskilt"
+  - "Forståelse av manøvreringsforbud"
+video_shorts_planned:
+  - sequence: 1
+    title: "Rød sirkel betyr NEI!"
+    duration: "30s"
+    topics: ["design", "betydning", "regel"]
+  - sequence: 2  
+    title: "Stans vs. Parkering: Ikke gjør denne feilen!"
+    duration: "45s"
+    topics: ["stans forbudt", "parkering forbudt", "forskjeller", "eksempler"]
+  - sequence: 3
+    title: "Fartsgrenser: Mer enn bare et tall"
+    duration: "50s"
+    topics: ["maksgrense", "generell fartsgrense", "tilpasse farten"]
+  - sequence: 4
+    title: "De farligste forbudsskiltene å ignorere"
+    duration: "40s"
+    topics: ["innkjøring forbudt", "forbikjøring forbudt"]
+engagement_metrics:
+  target_completion_rate: 80
+  target_time_minutes: 30
+  difficulty_rating: "Middels"
+content_structure:
+  word_count_content: 1152
+  word_count_summary: 289
+  sections: 6
+  subsections: 15
