@@ -41,6 +41,23 @@ def dashboard():
         return redirect(url_for('main.index'))
 
 
+@learning_bp.route('/module/<int:module_id>/enroll', methods=['POST'])
+@login_required
+def enroll_in_module(module_id):
+    """Enroll user in a module"""
+    try:
+        success = LearningService.enroll_user_in_module(current_user, module_id)
+        if success:
+            flash('Du er nå påmeldt modulen!', 'success')
+        else:
+            flash('Du er allerede påmeldt denne modulen', 'info')
+        return redirect(url_for('learning.module_overview', module_id=module_id))
+    except Exception as e:
+        logger.error(f"Error enrolling in module {module_id}: {str(e)}")
+        flash('Det oppstod en feil ved påmelding', 'error')
+        return redirect(url_for('learning.dashboard'))
+
+
 @learning_bp.route('/module/<int:module_id>')
 @login_required
 def module_overview(module_id):

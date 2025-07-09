@@ -4,6 +4,8 @@ from app.learning.models import TheoryService
 from datetime import datetime, date, timedelta
 from sqlalchemy import func
 import logging
+import yaml
+import os
 
 logger = logging.getLogger(__name__)
 
@@ -12,82 +14,194 @@ class LearningService:
     """Service class for learning-related business logic"""
     
     @staticmethod
-    def get_user_modules_progress(user):
-        """Get all modules with user progress information"""
+    def _get_submodule_count(module_id):
+        """Get submodule count from module.yaml file"""
         try:
-            # Return mock data for now to get the system working
-            modules_data = [
-                {
-                    'id': 1,
-                    'title': 'Grunnleggende Trafikklære',
-                    'description': 'Lær grunnleggende trafikkskilt og regler',
-                    'estimated_hours': 3,
-                    'difficulty_level': 1,
-                    'is_recommended': True,
-                    'completion_percentage': 0,
-                    'progress': 0,
-                    'status': 'not_started',
-                    'total_items': 5,
-                    'is_enrolled': False
-                },
-                {
-                    'id': 2,
-                    'title': 'Skilt og Oppmerking',
-                    'description': 'Gjenkjenn og forstå trafikkskilt',
-                    'estimated_hours': 3,
-                    'difficulty_level': 2,
-                    'is_recommended': False,
-                    'completion_percentage': 0,
-                    'progress': 0,
-                    'status': 'not_started',
-                    'total_items': 5,
-                    'is_enrolled': False
-                },
-                {
-                    'id': 3,
-                    'title': 'Kjøretøy og Teknologi',
-                    'description': 'Forstå bremselengde, sikt og kjøretøyets tekniske aspekter',
-                    'estimated_hours': 2,
-                    'difficulty_level': 3,
-                    'is_recommended': False,
-                    'completion_percentage': 0,
-                    'progress': 0,
-                    'status': 'not_started',
-                    'total_items': 5,
-                    'is_enrolled': False
-                },
-                {
-                    'id': 4,
-                    'title': 'Mennesket i Trafikken',
-                    'description': 'Lær om alkohol, rus, trøtthet og menneskelige faktorer',
-                    'estimated_hours': 2,
-                    'difficulty_level': 3,
-                    'is_recommended': False,
-                    'completion_percentage': 0,
-                    'progress': 0,
-                    'status': 'not_started',
-                    'total_items': 4,
-                    'is_enrolled': False
-                },
-                {
-                    'id': 5,
-                    'title': 'Øvingskjøring og Avsluttende Test',
-                    'description': 'Øvingskjøring, eksamenstrening og forberedelse til teoriprøven',
-                    'estimated_hours': 2,
-                    'difficulty_level': 4,
-                    'is_recommended': False,
-                    'completion_percentage': 0,
-                    'progress': 0,
-                    'status': 'not_started',
-                    'total_items': 4,
-                    'is_enrolled': False
-                }
+            module_dirs = [
+                "1.basic_traffic_theory",
+                "2.road_signs_and_markings", 
+                "3.vehicles_and_technology",
+                "4.human_factors_in_traffic",
+                "5.practice_driving_and_final_test"
             ]
+            
+            if 1 <= module_id <= len(module_dirs):
+                module_dir = module_dirs[module_id - 1]
+                module_path = f"learning/{module_dir}/module.yaml"
+                
+                if os.path.exists(module_path):
+                    with open(module_path, 'r', encoding='utf-8') as f:
+                        module_data = yaml.safe_load(f)
+                        return len(module_data.get('submodules', []))
+            
+            return 5  # Default fallback
+        except Exception as e:
+            logger.warning(f"Could not get submodule count for module {module_id}: {e}")
+            return 5
+    
+    @staticmethod
+    def enroll_user_in_module(user, module_id):
+        """Enroll user in a module (create UserLearningPath record)"""
+        try:
+            from app.models import UserLearningPath
+            
+            # Check if already enrolled
+            existing = UserLearningPath.query.filter_by(
+                user_id=user.id,
+                path_id=module_id
+            ).first()
+            
+            if not existing:
+                # Create new enrollment
+                user_path = UserLearningPath(
+                    user_id=user.id,
+                    path_id=module_id,
+                    progress_percentage=0,
+                    started_at=datetime.utcnow()
+                )
+                db.session.add(user_path)
+                db.session.commit()
+                
+                logger.info(f"User {user.id} enrolled in module {module_id}")
+                return True
+            
+            return False  # Already enrolled
+        except Exception as e:
+            logger.error(f"Error enrolling user {user.id} in module {module_id}: {str(e)}")
+            db.session.rollback()
+            return False
+    
+    @staticmethod
+    def get_user_modules_progress(user):
+        """Get all modules with user progress information from database"""
+        try:
+            from app.models import LearningPath, UserLearningPath
+            
+            # Get all learning paths (theory modules) from database
+            if hasattr(LearningPath, 'path_type'):
+                modules = LearningPath.query.filter_by(path_type='theory').order_by(LearningPath.id).all()
+            else:
+                # If no path_type field, get all learning paths (assuming they're all theory modules)
+                modules = LearningPath.query.order_by(LearningPath.id).all()
+            
+            modules_data = []
+            for module in modules:
+                # Get user progress for this module
+                user_progress = UserLearningPath.query.filter_by(
+                    user_id=user.id,
+                    path_id=module.id
+                ).first()
+                
+                # Calculate progress percentage and status
+                completion_percentage = 0
+                status = 'not_started'
+                is_enrolled = False
+                
+                if user_progress:
+                    completion_percentage = user_progress.progress_percentage
+                    is_enrolled = True
+                    if completion_percentage == 0:
+                        status = 'not_started'
+                    elif completion_percentage == 100:
+                        status = 'completed'
+                    else:
+                        status = 'in_progress'
+                
+                # Load submodule count from file or use default
+                total_items = LearningService._get_submodule_count(module.id)
+                
+                module_data = {
+                    'id': module.id,
+                    'title': module.name,
+                    'description': module.description,
+                    'estimated_hours': module.estimated_hours,
+                    'difficulty_level': module.difficulty_level,
+                    'is_recommended': module.is_recommended,
+                    'completion_percentage': completion_percentage,
+                    'progress': completion_percentage,
+                    'status': status,
+                    'total_items': total_items,
+                    'is_enrolled': is_enrolled
+                }
+                
+                modules_data.append(module_data)
             
             return modules_data
         except Exception as e:
             logger.error(f"Error getting user modules progress: {str(e)}")
-            return []
+            # Return mock data as fallback
+            return LearningService._get_mock_modules_data()
+    
+    @staticmethod
+    def _get_mock_modules_data():
+        """Fallback mock data if database fails"""
+        return [
+            {
+                'id': 1,
+                'title': 'Grunnleggende Trafikklære',
+                'description': 'Lær grunnleggende trafikkskilt og regler',
+                'estimated_hours': 3,
+                'difficulty_level': 1,
+                'is_recommended': True,
+                'completion_percentage': 0,
+                'progress': 0,
+                'status': 'not_started',
+                'total_items': 5,
+                'is_enrolled': False
+            },
+            {
+                'id': 2,
+                'title': 'Skilt og Oppmerking',
+                'description': 'Gjenkjenn og forstå trafikkskilt',
+                'estimated_hours': 3,
+                'difficulty_level': 2,
+                'is_recommended': False,
+                'completion_percentage': 0,
+                'progress': 0,
+                'status': 'not_started',
+                'total_items': 5,
+                'is_enrolled': False
+            },
+            {
+                'id': 3,
+                'title': 'Kjøretøy og Teknologi',
+                'description': 'Forstå bremselengde, sikt og kjøretøyets tekniske aspekter',
+                'estimated_hours': 2,
+                'difficulty_level': 3,
+                'is_recommended': False,
+                'completion_percentage': 0,
+                'progress': 0,
+                'status': 'not_started',
+                'total_items': 5,
+                'is_enrolled': False
+            },
+            {
+                'id': 4,
+                'title': 'Mennesket i Trafikken',
+                'description': 'Lær om alkohol, rus, trøtthet og menneskelige faktorer',
+                'estimated_hours': 2,
+                'difficulty_level': 3,
+                'is_recommended': False,
+                'completion_percentage': 0,
+                'progress': 0,
+                'status': 'not_started',
+                'total_items': 4,
+                'is_enrolled': False
+            },
+            {
+                'id': 5,
+                'title': 'Øvingskjøring og Avsluttende Test',
+                'description': 'Øvingskjøring, eksamenstrening og forberedelse til teoriprøven',
+                'estimated_hours': 2,
+                'difficulty_level': 4,
+                'is_recommended': False,
+                'completion_percentage': 0,
+                'progress': 0,
+                'status': 'not_started',
+                'total_items': 4,
+                'is_enrolled': False
+            }
+        ]
     
     @staticmethod
     def get_user_learning_stats(user):
