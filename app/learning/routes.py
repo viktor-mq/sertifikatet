@@ -32,7 +32,7 @@ def dashboard():
         recommendations = LearningService.get_recommendations(current_user)
         
         return render_template('learning/index.html',
-                             paths=modules_data,
+                             modules=modules_data,
                              stats=learning_stats,
                              recommendations=recommendations)
     except Exception as e:
@@ -432,28 +432,28 @@ def theory_shorts_player(submodule_id):
 
 
 # Additional routes required by the template
-@learning_bp.route('/path/<int:path_id>')
+@learning_bp.route('/module/<int:module_id>>')
 @login_required
-def view_path(path_id):
-    """View a specific learning path"""
+def view_module(module_id):
+    """View a specific learning module"""
     try:
         # For now, redirect to module overview
-        return redirect(url_for('learning.module_overview', module_id=path_id))
+        return redirect(url_for('learning.module_overview', module_id=module_id))
     except Exception as e:
-        logger.error(f"Error viewing path {path_id}: {str(e)}")
+        logger.error(f"Error viewing module {module_id}: {str(e)}")
         flash('Læringsveien ble ikke funnet', 'error')
         return redirect(url_for('learning.index'))
 
 
-@learning_bp.route('/my-paths')
+@learning_bp.route('/my-modules')
 @login_required
-def my_paths():
-    """Show user's enrolled learning paths"""
+def my_modules():
+    """Show user's enrolled learning modules"""
     try:
         # For now, show empty state
-        return render_template('learning/my_paths.html', paths=[])
+        return render_template('learning/my_modules.html', modules=[])
     except Exception as e:
-        logger.error(f"Error loading my paths: {str(e)}")
+        logger.error(f"Error loading my modules: {str(e)}")
         flash('Kunne ikke laste dine læringsveier', 'error')
         return redirect(url_for('learning.index'))
 
@@ -474,3 +474,104 @@ def get_recommendations():
             'success': False,
             'error': 'Kunne ikke hente anbefalinger'
         }), 400
+
+
+# Video Shorts API Endpoints
+@learning_bp.route('/api/shorts/<int:shorts_id>/progress', methods=['POST'])
+@login_required
+def update_shorts_progress(shorts_id):
+    """Update user progress for watching a video short"""
+    try:
+        watch_data = request.get_json()
+        if not watch_data:
+            return jsonify({
+                'success': False,
+                'error': 'Ingen data mottatt'
+            }), 400
+        
+        # Validate watch data
+        allowed_fields = ['watch_percentage', 'watch_time_seconds', 'watch_status']
+        filtered_data = {k: v for k, v in watch_data.items() if k in allowed_fields}
+        
+        if not filtered_data:
+            return jsonify({
+                'success': False,
+                'error': 'Ugyldig data format'
+            }), 400
+        
+        # Update progress using service
+        result = LearningService.update_shorts_progress(current_user, shorts_id, filtered_data)
+        
+        if result.get('success'):
+            return jsonify(result)
+        else:
+            return jsonify(result), 400
+            
+    except Exception as e:
+        logger.error(f"Error updating shorts progress for {shorts_id}: {str(e)}")
+        return jsonify({
+            'success': False,
+            'error': 'Kunne ikke oppdatere fremgang'
+        }), 500
+
+
+@learning_bp.route('/api/shorts/<int:shorts_id>/like', methods=['POST'])
+@login_required
+def toggle_shorts_like(shorts_id):
+    """Toggle like status for a video short"""
+    try:
+        result = LearningService.toggle_shorts_like(current_user, shorts_id)
+        
+        if result.get('success'):
+            return jsonify(result)
+        else:
+            return jsonify(result), 400
+            
+    except Exception as e:
+        logger.error(f"Error toggling shorts like for {shorts_id}: {str(e)}")
+        return jsonify({
+            'success': False,
+            'error': 'Kunne ikke oppdatere like-status'
+        }), 500
+
+
+@learning_bp.route('/api/shorts/<int:shorts_id>/analytics', methods=['GET'])
+@login_required
+def get_shorts_analytics(shorts_id):
+    """Get analytics data for a video short"""
+    try:
+        from app.models import VideoShorts, UserShortsProgress
+        
+        # Get video short
+        video_short = VideoShorts.query.get_or_404(shorts_id)
+        
+        # Get user progress
+        progress = UserShortsProgress.query.filter_by(
+            user_id=current_user.id,
+            shorts_id=shorts_id
+        ).first()
+        
+        analytics_data = {
+            'total_views': video_short.view_count,
+            'total_likes': video_short.like_count,
+            'completion_rate': video_short.completion_rate,
+            'average_watch_time': video_short.average_watch_time,
+            'user_progress': {
+                'watch_status': progress.watch_status if progress else 'not_watched',
+                'watch_percentage': progress.watch_percentage if progress else 0,
+                'liked': progress.liked if progress else False,
+                'watch_time': progress.watch_time_seconds if progress else 0
+            }
+        }
+        
+        return jsonify({
+            'success': True,
+            'analytics': analytics_data
+        })
+        
+    except Exception as e:
+        logger.error(f"Error getting shorts analytics for {shorts_id}: {str(e)}")
+        return jsonify({
+            'success': False,
+            'error': 'Kunne ikke hente analytics'
+        }), 500

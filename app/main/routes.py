@@ -139,7 +139,7 @@ def quiz():
     quiz_type = request.args.get('type', 'practice')
     category = request.args.get('category')
     limit = request.args.get('limit', type=int)
-    learning_path_id = request.args.get('learning_path_id', type=int)
+    learning_module_id = request.args.get('learning_module_id', type=int)
     
     # Check subscription limits
     from ..services.payment_service import SubscriptionService, UsageLimitService
@@ -150,8 +150,8 @@ def quiz():
         return redirect(url_for('subscription.plans'))
     
     # If from learning path, set quiz_type
-    if learning_path_id:
-        quiz_type = 'learning_path'
+    if learning_module_id:
+        quiz_type = 'learning_module'
     
     # For exam mode, always use 45 questions
     if quiz_type == 'exam':
@@ -243,7 +243,7 @@ def quiz():
     return render_template('quiz.html', 
                          questions=questions, 
                          quiz_type=quiz_type, 
-                         learning_path_id=learning_path_id,
+                         learning_module_id=learning_module_id,
                          seo=seo_data,
                          structured_data=structured_data)
 
@@ -325,12 +325,12 @@ def submit_quiz():
     achievement_service = AchievementService()
     new_achievements = achievement_service.check_achievements(user_id)
     
-    # If this was a learning path quiz and passed (>= 80%), update learning path progress
-    if quiz_type == 'learning_path' and score >= 80:
+    # If this was a learning module quiz and passed (>= 80%), update learning module progress
+    if quiz_type == 'learning_module' and score >= 80:
         from ..services.learning_service import LearningService
-        learning_path_id = request.form.get('learning_path_id', type=int)
-        if learning_path_id:
-            LearningService.update_path_progress(user_id, learning_path_id)
+        learning_module_id = request.form.get('learning_module_id', type=int)
+        if learning_module_id:
+            LearningService.update_module_progress(user_id, learning_module_id)
     
     # Update leaderboards
     leaderboard_service = LeaderboardService()

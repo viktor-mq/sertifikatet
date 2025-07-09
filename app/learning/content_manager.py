@@ -44,7 +44,7 @@ class ContentManager:
             logger.info(f"ContentManager: Loading content for submodule {submodule_id}")
             
             # Parse submodule_id to get module and submodule numbers
-            module_id = int(submodule_id)
+            submodule_id = float(submodule_id)
             
             # Find the submodule directory
             submodule_path = cls._find_submodule_path(submodule_id)
@@ -64,7 +64,7 @@ class ContentManager:
             logger.info(f"ContentManager: Found submodule path: {submodule_path}")
             content_data = {}
             
-            # Load long.md (detailed content)
+            # Load long.md (detailed content) - UPDATED to match actual file structure
             long_file = submodule_path / "long.md"
             content_file = submodule_path / "content.md"  # Fallback to old naming
             

@@ -23,7 +23,7 @@ project:
           contains: ["module.yaml", "submodules/"]
         submodules:
           path: "modules/{module_id}-{slug}/{submodule_id}-{slug}/"
-          contains: ["content.md", "summary.md", "shorts/", "metadata.yaml"]
+          contains: ["long.md", "short.md", "shorts/", "metadata.yaml"]
         shorts:
           path: "modules/{module_id}-{slug}/{submodule_id}-{slug}/shorts/"
           format: "vertical_video_mp4"
@@ -401,29 +401,18 @@ database:
       - category
       - image_filename
       
-    # LEARNING SYSTEM (CURRENT IMPLEMENTATION)
-    learning_paths:
+    learning_module_items:
       - id
-      - name
-      - description
-      - estimated_hours
-      - difficulty_level
-      - icon_filename
-      - is_recommended
-      # Note: May have additional fields like path_type, module_number, content_file_path in some implementations
-      
-    learning_path_items:
-      - id
-      - path_id
+      - module_id
       - item_type
       - item_id
       - order_index
       - is_mandatory
       
-    user_learning_paths:
+    user_learning_modules:
       - id
       - user_id
-      - path_id
+      - module_id
       - progress_percentage
       - started_at
       - completed_at
@@ -1178,8 +1167,8 @@ file_structure:
       - "1-grunnleggende-trafikklare/"
         - module.yaml
         - "1.1-trafikkregler/"
-          - content.md
-          - summary.md
+          - long.md
+          - short.md
           - metadata.yaml
           - shorts/
             - "001-vikeplikt-intro.mp4"
@@ -1405,9 +1394,9 @@ future_enhancements:
     completed_integration:
       database_population:
         status: "✅ COMPLETED"
-        description: "learning_paths table populated with real module data from module.yaml files"
+        description: "learning_modules table populated with real module data from module.yaml files"
         source: "learning/*/module.yaml files"
-        tables_used: ["learning_paths", "user_learning_paths", "learning_path_items"]
+        tables_used: ["learning_modules", "user_learning_modules", "learning_module_items"]
         
       module_management:
         status: "✅ COMPLETED"
@@ -1424,7 +1413,7 @@ future_enhancements:
         description: "LearningService updated to use database with fallback to mock data"
         methods_implemented:
           - "get_user_modules_progress() - reads from database"
-          - "enroll_user_in_module() - creates UserLearningPath records"
+          - "enroll_user_in_module() - creates UserLearningModule records"
           - "get_module_details() - combines database + file data"
           - "_get_submodule_count() - reads from module.yaml files"
         
@@ -1458,7 +1447,7 @@ future_enhancements:
           - "Submodule metadata from module.yaml files"
           - "User enrollment and module progress tracking"
         not_working:
-          - "Detailed submodule content loading (content.md, summary.md)"
+          - "Detailed submodule content loading (long.md, short.md)"
           - "Video shorts integration with file system"
           - "Content versioning and update tracking"
     
@@ -1490,7 +1479,7 @@ future_enhancements:
         - "Add video upload and processing pipeline"
         
       phase_18_content_management:
-        - "Implement content.md and summary.md loading"
+        - "Implement long.md and short.md loading"
         - "Add content versioning and update tracking"
         - "Create admin interface for content management"
     

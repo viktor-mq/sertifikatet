@@ -1,6 +1,7 @@
 # app/models.py
 from datetime import datetime
 from flask_sqlalchemy import SQLAlchemy
+from sqlalchemy import func  
 from flask_login import UserMixin
 from . import db
 
@@ -32,7 +33,11 @@ class User(UserMixin, db.Model):
     quiz_sessions = db.relationship('QuizSession', backref='user', cascade='all, delete-orphan')
     game_sessions = db.relationship('GameSession', backref='user', cascade='all, delete-orphan')
     video_progress = db.relationship('VideoProgress', backref='user', cascade='all, delete-orphan')
-    learning_paths = db.relationship('UserLearningPath', backref='user', cascade='all, delete-orphan')
+    learning_modules = db.relationship('UserLearningModule', 
+                                primaryjoin='User.id == UserLearningModule.user_id',
+                                backref='user', 
+                                cascade='all, delete-orphan')
+    shorts_progress = db.relationship('UserShortsProgress', backref='user', cascade='all, delete-orphan')
     leaderboard_entries = db.relationship('LeaderboardEntry', backref='user', cascade='all, delete-orphan')
     feedback = db.relationship('UserFeedback', backref='user', cascade='all, delete-orphan')
     
@@ -274,45 +279,28 @@ class VideoProgress(db.Model):
     
     __table_args__ = (db.UniqueConstraint('user_id', 'video_id', name='_user_video_uc'),)
 
-
-class LearningPath(db.Model):
-    __tablename__ = 'learning_paths'
+class LearningModuleItem(db.Model):
+    __tablename__ = 'learning_module_items'
     
     id = db.Column(db.Integer, primary_key=True)
-    name = db.Column(db.String(255), nullable=False)
-    description = db.Column(db.Text)
-    estimated_hours = db.Column(db.Integer)
-    difficulty_level = db.Column(db.Integer, default=1)
-    icon_filename = db.Column(db.String(255))
-    is_recommended = db.Column(db.Boolean, default=False)
-    
-    # Relationships
-    items = db.relationship('LearningPathItem', backref='path', cascade='all, delete-orphan')
-    user_paths = db.relationship('UserLearningPath', backref='path')
-
-
-class LearningPathItem(db.Model):
-    __tablename__ = 'learning_path_items'
-    
-    id = db.Column(db.Integer, primary_key=True)
-    path_id = db.Column(db.Integer, db.ForeignKey('learning_paths.id'), nullable=False)
+    module_id = db.Column(db.Integer, db.ForeignKey('learning_modules.id'), nullable=False)
     item_type = db.Column(db.String(50))  # 'quiz', 'video', 'game'
     item_id = db.Column(db.Integer)  # ID of the quiz/video/game
     order_index = db.Column(db.Integer)
     is_mandatory = db.Column(db.Boolean, default=True)
 
 
-class UserLearningPath(db.Model):
-    __tablename__ = 'user_learning_paths'
+class UserLearningModule(db.Model):
+    __tablename__ = 'user_learning_modules'
     
     id = db.Column(db.Integer, primary_key=True)
     user_id = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=False)
-    path_id = db.Column(db.Integer, db.ForeignKey('learning_paths.id'), nullable=False)
+    module_id = db.Column(db.Integer, db.ForeignKey('learning_modules.id'), nullable=False)
     progress_percentage = db.Column(db.Integer, default=0)
     started_at = db.Column(db.DateTime, default=datetime.utcnow)
     completed_at = db.Column(db.DateTime)
     
-    __table_args__ = (db.UniqueConstraint('user_id', 'path_id', name='_user_path_uc'),)
+    __table_args__ = (db.UniqueConstraint('user_id', 'module_id', name='_user_module_uc'),)
 
 
 class LeaderboardEntry(db.Model):
@@ -548,3 +536,282 @@ class SystemSettings(db.Model):
     def get_public_settings(cls):
         """Get all public settings (viewable by non-admins)"""
         return cls.query.filter_by(is_public=True).all()
+
+
+class VideoShorts(db.Model):
+    """Short-form educational videos (TikTok-style)"""
+    __tablename__ = 'video_shorts'
+    
+    id = db.Column(db.Integer, primary_key=True)
+    submodule_id = db.Column(db.String(10))  # e.g., '1.1', '1.2' 
+    title = db.Column(db.String(255), nullable=False)
+    description = db.Column(db.Text)
+    filename = db.Column(db.String(255), nullable=False)
+    file_path = db.Column(db.String(500), nullable=False)
+    duration_seconds = db.Column(db.Integer)
+    sequence_order = db.Column(db.Integer, default=1)
+    aspect_ratio = db.Column(db.String(10), default='9:16')  # TikTok-style
+    resolution = db.Column(db.String(20))
+    file_size_mb = db.Column(db.Float)
+    thumbnail_path = db.Column(db.String(500))
+    has_captions = db.Column(db.Boolean, default=False)
+    caption_file_path = db.Column(db.String(500))
+    topic_tags = db.Column(db.Text)  # JSON string
+    difficulty_level = db.Column(db.Integer, default=1)
+    engagement_score = db.Column(db.Float, default=0.0)
+    view_count = db.Column(db.Integer, default=0)
+    completion_rate = db.Column(db.Float, default=0.0)
+    average_watch_time = db.Column(db.Float, default=0.0)
+    like_count = db.Column(db.Integer, default=0)
+    ai_generated = db.Column(db.Boolean, default=False)
+    is_active = db.Column(db.Boolean, default=True)
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+    updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+    
+    # Relationships
+    user_progress = db.relationship('UserShortsProgress', backref='video_short', cascade='all, delete-orphan')
+    
+    def __repr__(self):
+        return f'<VideoShorts {self.submodule_id}: {self.title}>'
+    
+    def get_topic_tags_list(self):
+        """Parse topic_tags JSON string to list"""
+        if self.topic_tags:
+            try:
+                import json
+                return json.loads(self.topic_tags)
+            except:
+                return []
+        return []
+    
+    def set_topic_tags_list(self, tags_list):
+        """Set topic_tags from list"""
+        import json
+        self.topic_tags = json.dumps(tags_list)
+
+
+class UserShortsProgress(db.Model):
+    """User progress tracking for video shorts"""
+    __tablename__ = 'user_shorts_progress'
+    
+    id = db.Column(db.Integer, primary_key=True)
+    user_id = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=False)
+    shorts_id = db.Column(db.Integer, db.ForeignKey('video_shorts.id'), nullable=False)
+    watch_status = db.Column(db.Enum('not_watched', 'started', 'completed', 'skipped'), default='not_watched')
+    watch_percentage = db.Column(db.Float, default=0.0)
+    watch_time_seconds = db.Column(db.Float, default=0.0)
+    replay_count = db.Column(db.Integer, default=0)
+    liked = db.Column(db.Boolean, default=False)
+    swipe_direction = db.Column(db.Enum('up', 'down', 'left', 'right'))
+    interaction_quality = db.Column(db.Float, default=0.0)
+    first_watched_at = db.Column(db.DateTime)
+    last_watched_at = db.Column(db.DateTime)
+    completed_at = db.Column(db.DateTime)
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+    updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+    
+    # Composite unique constraint - one progress record per user per video
+    __table_args__ = (db.UniqueConstraint('user_id', 'shorts_id', name='unique_user_short_progress'),)
+    
+    def __repr__(self):
+        return f'<UserShortsProgress user:{self.user_id} short:{self.shorts_id} status:{self.watch_status}>'
+
+class LearningSubmodules(db.Model):
+    __tablename__ = 'learning_submodules'
+    
+    id = db.Column(db.Integer, primary_key=True)
+    # Change this line:
+    module_id = db.Column(db.Integer, db.ForeignKey('learning_modules.id'), nullable=False)
+    submodule_number = db.Column(db.Float, nullable=False)
+    title = db.Column(db.String(200), nullable=False)
+    description = db.Column(db.Text)
+    content_file_path = db.Column(db.String(500))
+    summary_file_path = db.Column(db.String(500))
+    shorts_directory = db.Column(db.String(500))
+    estimated_minutes = db.Column(db.Integer)
+    difficulty_level = db.Column(db.Integer)
+    has_quiz = db.Column(db.Boolean)
+    quiz_question_count = db.Column(db.Integer)
+    has_video_shorts = db.Column(db.Boolean)
+    shorts_count = db.Column(db.Integer)
+    is_active = db.Column(db.Boolean, default=True)
+    ai_generated_content = db.Column(db.Boolean, default=False)
+    ai_generated_summary = db.Column(db.Boolean, default=False)
+    content_version = db.Column(db.String(50))
+    last_content_update = db.Column(db.DateTime)
+    engagement_score = db.Column(db.Float)
+    completion_rate = db.Column(db.Float)
+    average_study_time = db.Column(db.Integer)
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+    updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+    
+    # Relationships - Remove the old Learninmodule relationship
+    # The 'module' backref will be created by LearningModules.submodules relationship
+    video_shorts = db.relationship('VideoShorts', 
+        primaryjoin="LearningSubmodules.submodule_number == foreign(func.cast(VideoShorts.submodule_id, Float))",
+        backref='submodule')
+    
+class LearningModules(db.Model):
+    """
+    Comprehensive learning modules table - replaces learning_modules with advanced features
+    Designed for AI content generation, analytics, and professional learning management
+    """
+    __tablename__ = 'learning_modules'
+    
+    # Primary identification
+    id = db.Column(db.Integer, primary_key=True)
+    module_number = db.Column(db.Float, nullable=False, unique=True)  # 1, 2, 3, 4, 5
+    title = db.Column(db.String(200), nullable=False)
+    description = db.Column(db.Text)
+    estimated_hours = db.Column(db.Integer)
+    
+    # Learning structure
+    prerequisites = db.Column(db.Text)  # JSON array of prerequisite module numbers
+    learning_objectives = db.Column(db.Text)  # JSON array of learning objectives
+    content_directory = db.Column(db.String(500))  # Module to content files
+    
+    # Status and management
+    is_active = db.Column(db.Boolean, default=True, nullable=False)
+    ai_generated = db.Column(db.Boolean, default=False, nullable=False)
+    last_content_update = db.Column(db.DateTime)
+    
+    # Analytics and performance
+    completion_rate = db.Column(db.Float, default=0.0)  # Percentage of users who complete
+    average_time_spent = db.Column(db.Integer, default=0)  # Average minutes spent
+    
+    # Timestamps
+    created_at = db.Column(db.DateTime, default=datetime.utcnow, nullable=False)
+    updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow, nullable=False)
+    
+    # Relationships
+    submodules = db.relationship('LearningSubmodules', backref='module', cascade='all, delete-orphan')
+    user_modules = db.relationship('UserLearningModule', 
+                               primaryjoin='LearningModules.id == UserLearningModule.module_id',
+                               backref='learning_module')
+    # Indexes for performance
+    __table_args__ = (
+        db.Index('idx_module_number', 'module_number'),
+        db.Index('idx_is_active', 'is_active'),
+    )
+    
+    def __repr__(self):
+        return f'<LearningModule {self.module_number}: {self.title}>'
+    
+    def get_prerequisites_list(self):
+        """Parse prerequisites JSON string to list"""
+        if self.prerequisites:
+            try:
+                import json
+                return json.loads(self.prerequisites)
+            except (json.JSONDecodeError, TypeError):
+                return []
+        return []
+    
+    def set_prerequisites_list(self, prerequisites_list):
+        """Set prerequisites from list"""
+        import json
+        self.prerequisites = json.dumps(prerequisites_list) if prerequisites_list else None
+    
+    def get_learning_objectives_list(self):
+        """Parse learning objectives JSON string to list"""
+        if self.learning_objectives:
+            try:
+                import json
+                return json.loads(self.learning_objectives)
+            except (json.JSONDecodeError, TypeError):
+                return []
+        return []
+    
+    def set_learning_objectives_list(self, objectives_list):
+        """Set learning objectives from list"""
+        import json
+        self.learning_objectives = json.dumps(objectives_list) if objectives_list else None
+    
+    def get_submodule_count(self):
+        """Get count of active submodules"""
+        return len([sub for sub in self.submodules if sub.is_active])
+    
+    def get_completion_stats(self):
+        """Get completion statistics for this module"""
+        total_enrolled = UserLearningModule.query.filter_by(module_id=self.id).count()
+        completed = UserLearningModule.query.filter_by(
+            module_id=self.id
+        ).filter(UserLearningModule.progress_percentage >= 100).count()
+        
+        return {
+            'total_enrolled': total_enrolled,
+            'completed': completed,
+            'completion_rate': (completed / total_enrolled * 100) if total_enrolled > 0 else 0
+        }
+    
+    def update_analytics(self):
+        """Update completion rate and average time spent from user data"""
+        stats = self.get_completion_stats()
+        self.completion_rate = stats['completion_rate']
+        
+        # Calculate average time spent (simplified - could be enhanced)
+        # This is a placeholder - you'd implement based on your time tracking
+        self.average_time_spent = (self.estimated_hours or 0) * 60
+        
+        self.updated_at = datetime.utcnow()
+    
+    def to_dict(self):
+        """Convert to dictionary for API responses"""
+        return {
+            'id': self.id,
+            'module_number': self.module_number,
+            'title': self.title,
+            'description': self.description,
+            'estimated_hours': self.estimated_hours,
+            'prerequisites': self.get_prerequisites_list(),
+            'learning_objectives': self.get_learning_objectives_list(),
+            'content_directory': self.content_directory,
+            'is_active': self.is_active,
+            'ai_generated': self.ai_generated,
+            'last_content_update': self.last_content_update.isoformat() if self.last_content_update else None,
+            'completion_rate': self.completion_rate,
+            'average_time_spent': self.average_time_spent,
+            'submodule_count': self.get_submodule_count(),
+            'created_at': self.created_at.isoformat() if self.created_at else None,
+            'updated_at': self.updated_at.isoformat() if self.updated_at else None
+        }
+    
+    @classmethod
+    def get_active_modules(cls):
+        """Get all active learning modules ordered by module number"""
+        return cls.query.filter_by(is_active=True).order_by(cls.module_number).all()
+    
+    @classmethod
+    def get_module_by_number(cls, module_number):
+        """Get module by number (e.g., 1, 2, 3)"""
+        return cls.query.filter_by(module_number=module_number, is_active=True).first()
+    
+    @classmethod
+    def get_modules_for_user(cls, user):
+        """Get all modules with user progress information"""
+        modules = cls.get_active_modules()
+        
+        # Add user progress information
+        for module in modules:
+            user_progress = UserLearningModule.query.filter_by(
+                user_id=user.id,
+                module_id=module.id
+            ).first()
+            
+            # Add progress attributes
+            module.user_enrolled = user_progress is not None
+            module.user_progress_percentage = user_progress.progress_percentage if user_progress else 0
+            module.user_started_at = user_progress.started_at if user_progress else None
+            module.user_completed_at = user_progress.completed_at if user_progress else None
+            
+            # Determine status
+            if not user_progress:
+                module.user_status = 'not_started'
+            elif user_progress.progress_percentage >= 100:
+                module.user_status = 'completed'
+            elif user_progress.progress_percentage > 0:
+                module.user_status = 'in_progress'
+            else:
+                module.user_status = 'enrolled'
+        
+        return modules

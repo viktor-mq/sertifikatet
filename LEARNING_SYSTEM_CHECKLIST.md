@@ -86,8 +86,8 @@
 - [x] Create `content/modules/1-grunnleggende-trafikklare/module.yaml` ✅ COMPLETED
 - [x] Create submodule directories: ✅ COMPLETED
   - [x] `1.1-trafikkregler/` ✅ COMPLETED
-    - [x] `content.md` (detailed theory) ✅ COMPLETED
-    - [x] `summary.md` (quick reference) ✅ COMPLETED
+    - [x] `long.md` (detailed theory) ✅ COMPLETED
+    - [x] `short.md` (quick reference) ✅ COMPLETED
     - [x] `metadata.yaml` (content metadata) ✅ COMPLETED
     - [x] `shorts/` (video directory) ✅ COMPLETED
   - [x] `1.2-vikeplikt/` ✅ COMPLETED
@@ -282,8 +282,8 @@
 
 #### Initial Content Creation
 - [ ] Write content for Module 1.1 (Trafikkregler)
-  - [ ] Create detailed `content.md` (1000-1500 words)
-  - [ ] Write concise `summary.md` (200-300 words)
+  - [ ] Create detailed `long.md` (1000-1500 words)
+  - [ ] Write concise `short.md` (200-300 words)
   - [ ] Create `metadata.yaml` with tags and objectives
 - [ ] Plan video shorts for Module 1.1
   - [ ] Script 4-5 short videos (15-60 seconds each)

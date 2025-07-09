@@ -10,18 +10,18 @@ class TheoryService:
     
     @staticmethod
     def get_theory_modules():
-        """Get all theory learning paths"""
+        """Get all theory learning modules"""
         # Import here to avoid circular imports
-        from app.models import LearningPath
+        from app.models import LearningModules
         
-        return LearningPath.query.order_by(LearningPath.id).all()
+        return LearningModules.query.order_by(LearningModules.id).all()
     
     @staticmethod
     def get_module_by_number(module_number):
         """Get theory module by number (e.g., 1.1)"""
-        from app.models import LearningPath
+        from app.models import LearningModules
         
-        return LearningPath.query.filter_by(id=int(module_number)).first()
+        return LearningModules.query.filter_by(id=int(module_number)).first()
     
     @staticmethod
     def get_theory_shorts(module_number):
@@ -35,15 +35,15 @@ class TheoryService:
     @staticmethod
     def get_user_progress(user_id, module_number):
         """Get user progress for a theory module"""
-        from app.models import UserLearningPath
+        from app.models import UserLearningModule
         
-        path = TheoryService.get_module_by_number(module_number)
-        if not path:
+        module = TheoryService.get_module_by_number(module_number)
+        if not module:
             return None
             
-        return UserLearningPath.query.filter_by(
+        return UserLearningModule.query.filter_by(
             user_id=user_id,
-            path_id=path.id
+            model_id=module.id
         ).first()
     
     @staticmethod
