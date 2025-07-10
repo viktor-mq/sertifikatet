@@ -1,0 +1,463 @@
+<!-- Learning Modules Section - Integrated into Admin Dashboard -->
+<div id="learningModulesSection" class="section">
+    <!-- Statistics Cards -->
+    <div class="stats-container">
+        <div class="stat-card">
+            <h3 data-stat="total_modules">0</h3>
+            <p>Total Modules</p>
+        </div>
+        <div class="stat-card">
+            <h3 data-stat="total_submodules">0</h3>
+            <p>Submodules</p>
+        </div>
+        <div class="stat-card">
+            <h3 data-stat="total_videos">0</h3>
+            <p>Video Shorts</p>
+        </div>
+        <div class="stat-card">
+            <h3 data-stat="completion_rate">0%</h3>
+            <p>Avg. Completion</p>
+        </div>
+    </div>
+
+    <!-- Main Content Container -->
+    <div style="max-width: 1200px; margin: 0 auto; padding: 20px; background: white; border-radius: 8px; box-shadow: 0 2px 4px rgba(0,0,0,0.1);">
+        <!-- Header -->
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 30px;">
+            <h2 style="margin: 0; color: #333; font-size: 1.8rem;">🎓 Learning Modules Management</h2>
+            <div>
+                <button onclick="createNewModule()" class="btn" style="
+                    background: #007bff; 
+                    color: white; 
+                    padding: 8px 16px; 
+                    border: none; 
+                    border-radius: 4px; 
+                    text-decoration: none;
+                    cursor: pointer;
+                    margin-right: 10px;
+                ">
+                    <i class="fas fa-plus"></i> Create Module
+                </button>
+                <button onclick="uploadVideoModal()" class="btn" style="
+                    background: #28a745; 
+                    color: white; 
+                    padding: 8px 16px; 
+                    border: none; 
+                    border-radius: 4px; 
+                    text-decoration: none;
+                    cursor: pointer;
+                ">
+                    <i class="fas fa-video"></i> Upload Video
+                </button>
+            </div>
+        </div>
+
+        <!-- Loading Indicator -->
+        <div id="learning-loading" style="display: none; text-align: center; padding: 20px;">
+            <i class="fas fa-spinner fa-spin fa-2x text-muted"></i>
+            <p class="text-muted mt-2">Loading learning modules...</p>
+        </div>
+
+        <!-- Filters and Controls -->
+        <div style="border: 1px solid #e0e0e0; border-radius: 8px; margin-bottom: 20px; background: white; box-shadow: 0 2px 4px rgba(0,0,0,0.05);">
+            <div style="background: #f8f9fa; padding: 15px; border-bottom: 1px solid #e0e0e0; border-radius: 8px 8px 0 0;">
+                <h6 style="margin: 0; font-weight: bold; color: #007bff;">Filters & Controls</h6>
+            </div>
+            <div style="padding: 20px;">
+                <!-- Filters Row -->
+                <div style="display: grid; grid-template-columns: 1fr 1fr 1fr auto; gap: 15px; align-items: end; margin-bottom: 20px;">
+                    <div>
+                        <label style="font-weight: bold; margin-bottom: 5px; display: block;">Status</label>
+                        <select id="module-status-filter" style="width: 100%; padding: 8px; border: 1px solid #ccc; border-radius: 4px;">
+                            <option value="">All Statuses</option>
+                            <option value="active">Active</option>
+                            <option value="inactive">Inactive</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label for="module-search" style="font-weight: bold; margin-bottom: 5px; display: block;">Search</label>
+                        <input type="text" id="module-search" placeholder="Search modules..." 
+                               style="width: 100%; padding: 8px; border: 1px solid #ccc; border-radius: 4px;">
+                    </div>
+                    <div>
+                        <button type="button" onclick="applyModuleFilters()" style="
+                            background: #007bff; 
+                            color: white; 
+                            padding: 8px 16px; 
+                            border: none; 
+                            border-radius: 4px; 
+                            cursor: pointer;
+                        ">Filter</button>
+                    </div>
+                    <div>
+                        <button type="button" onclick="clearModuleFilters()" style="
+                            background: #6c757d; 
+                            color: white; 
+                            padding: 8px 16px; 
+                            border: none; 
+                            border-radius: 4px; 
+                            cursor: pointer;
+                        ">Clear</button>
+                    </div>
+                </div>
+                
+                <!-- Table Controls Row -->
+                <div style="display: flex; align-items: center; gap: 15px; padding-top: 15px; border-top: 1px solid #e0e0e0;">
+                    <div>
+                        <label style="font-weight: bold; margin: 0; display: block;">📏 Table Density</label>
+                        <p style="margin: 0; font-size: 12px; color: #6c757d;">Adjust table row spacing</p>
+                    </div>
+                    <select id="moduleTableDensitySelector" class="density-selector" onchange="changeModuleTableDensity()" style="min-width: 150px; padding: 8px; border: 1px solid #ccc; border-radius: 4px;">
+                        <option value="comfortable">Comfortable</option>
+                        <option value="compact">Compact</option>
+                        <option value="spacious">Spacious</option>
+                    </select>
+                </div>
+            </div>
+        </div>
+
+        <!-- Modules Table -->
+        <div style="border: 1px solid #e0e0e0; border-radius: 8px; background: white; box-shadow: 0 2px 4px rgba(0,0,0,0.05);" id="modules-table">
+            <div style="background: #f8f9fa; padding: 15px; border-bottom: 1px solid #e0e0e0; border-radius: 8px 8px 0 0;">
+                <h6 style="margin: 0; font-weight: bold; color: #007bff;">Learning Modules</h6>
+            </div>
+            <div style="padding: 20px;">
+                <div style="overflow-x: auto;" class="table-container modules-table comfortable">
+                    <table id="modules-table-enhanced" style="width: 100%; border-collapse: collapse; background: white; border-radius: 8px; overflow: hidden; box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);">
+                        <thead>
+                            <tr>
+                                <th style="background: linear-gradient(135deg, #3b82f6 0%, #1d4ed8 100%) !important; color: white !important; font-weight: 600; text-align: left; padding: 12px 16px !important; border-bottom: 2px solid #1e40af !important;">Module</th>
+                                <th style="background: linear-gradient(135deg, #3b82f6 0%, #1d4ed8 100%) !important; color: white !important; font-weight: 600; text-align: left; padding: 12px 16px !important; border-bottom: 2px solid #1e40af !important;">Title</th>
+                                <th style="background: linear-gradient(135deg, #3b82f6 0%, #1d4ed8 100%) !important; color: white !important; font-weight: 600; text-align: left; padding: 12px 16px !important; border-bottom: 2px solid #1e40af !important;">Submodules</th>
+                                <th style="background: linear-gradient(135deg, #3b82f6 0%, #1d4ed8 100%) !important; color: white !important; font-weight: 600; text-align: left; padding: 12px 16px !important; border-bottom: 2px solid #1e40af !important;">Videos</th>
+                                <th style="background: linear-gradient(135deg, #3b82f6 0%, #1d4ed8 100%) !important; color: white !important; font-weight: 600; text-align: left; padding: 12px 16px !important; border-bottom: 2px solid #1e40af !important;">Status</th>
+                                <th style="background: linear-gradient(135deg, #3b82f6 0%, #1d4ed8 100%) !important; color: white !important; font-weight: 600; text-align: left; padding: 12px 16px !important; border-bottom: 2px solid #1e40af !important;">Completion</th>
+                                <th style="background: linear-gradient(135deg, #3b82f6 0%, #1d4ed8 100%) !important; color: white !important; font-weight: 600; text-align: left; padding: 12px 16px !important; border-bottom: 2px solid #1e40af !important;">Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody id="modules-tbody">
+                            <!-- Dynamic content loaded via AJAX -->
+                        </tbody>
+                    </table>
+                </div>
+                
+                <!-- Pagination -->
+                <div class="pagination-controls" style="margin-top: 20px; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 15px;">
+                    <div class="pagination-info" style="color: #374151; font-size: 14px;">
+                        <span id="modules-pagination-info">Showing modules</span>
+                    </div>
+                    <div class="pagination-center" style="display: flex; justify-content: center; flex: 1;">
+                        <div class="pagination-buttons" id="modules-pagination" style="display: inline-flex; gap: 5px; align-items: center;">
+                            <!-- Dynamic pagination loaded via AJAX -->
+                        </div>
+                    </div>
+                    <div class="pagination-per-page" style="display: flex; align-items: center; gap: 8px; color: #374151; font-size: 14px;">
+                        <label>Show per page:</label>
+                        <select style="padding: 6px 10px; border: 1px solid #d1d5db; border-radius: 4px; background: white; font-size: 14px;">
+                            <option value="20" selected>20</option>
+                            <option value="50">50</option>
+                            <option value="100">100</option>
+                        </select>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+<!-- End of Learning Modules Section -->
+
+<!-- Learning Modules Modals -->
+
+<!-- Create Module Modal -->
+<div id="createModuleModal" style="
+    display: none;
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: rgba(0,0,0,0.5);
+    z-index: 10000;
+    justify-content: center;
+    align-items: center;
+">
+    <div style="
+        background: white;
+        border-radius: 8px;
+        width: 90%;
+        max-width: 600px;
+        max-height: 90%;
+        overflow: auto;
+        position: relative;
+    ">
+        <div style="
+            background: #f8f9fa;
+            padding: 20px;
+            border-bottom: 1px solid #e0e0e0;
+            border-radius: 8px 8px 0 0;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        ">
+            <h3 style="margin: 0; color: #333;">Create Learning Module</h3>
+            <button onclick="closeCreateModuleModal()" style="
+                background: none;
+                border: none;
+                font-size: 1.5rem;
+                cursor: pointer;
+                color: #666;
+            ">&times;</button>
+        </div>
+        <div style="padding: 20px;">
+            <form id="createModuleForm">
+                <div style="margin-bottom: 15px;">
+                    <label style="display: block; margin-bottom: 5px; font-weight: bold;">Module Number</label>
+                    <input type="number" id="moduleNumber" step="0.1" min="1" required style="width: 100%; padding: 8px; border: 1px solid #ccc; border-radius: 4px;">
+                </div>
+                <div style="margin-bottom: 15px;">
+                    <label style="display: block; margin-bottom: 5px; font-weight: bold;">Title</label>
+                    <input type="text" id="moduleTitle" required style="width: 100%; padding: 8px; border: 1px solid #ccc; border-radius: 4px;">
+                </div>
+                <div style="margin-bottom: 15px;">
+                    <label style="display: block; margin-bottom: 5px; font-weight: bold;">Description</label>
+                    <textarea id="moduleDescription" rows="3" style="width: 100%; padding: 8px; border: 1px solid #ccc; border-radius: 4px;"></textarea>
+                </div>
+                <div style="margin-bottom: 15px;">
+                    <label style="display: block; margin-bottom: 5px; font-weight: bold;">Estimated Hours</label>
+                    <input type="number" id="moduleHours" step="0.5" min="0" style="width: 100%; padding: 8px; border: 1px solid #ccc; border-radius: 4px;">
+                </div>
+                <div style="text-align: right; margin-top: 20px;">
+                    <button type="button" onclick="closeCreateModuleModal()" style="
+                        background: #6c757d; 
+                        color: white; 
+                        padding: 8px 16px; 
+                        border: none; 
+                        border-radius: 4px; 
+                        cursor: pointer;
+                        margin-right: 10px;
+                    ">Cancel</button>
+                    <button type="submit" style="
+                        background: #007bff; 
+                        color: white; 
+                        padding: 8px 16px; 
+                        border: none; 
+                        border-radius: 4px; 
+                        cursor: pointer;
+                    ">Create Module</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<!-- Upload Video Modal -->
+<div id="uploadVideoModal" style="
+    display: none;
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: rgba(0,0,0,0.5);
+    z-index: 10000;
+    justify-content: center;
+    align-items: center;
+">
+    <div style="
+        background: white;
+        border-radius: 8px;
+        width: 90%;
+        max-width: 700px;
+        max-height: 90%;
+        overflow: auto;
+        position: relative;
+    ">
+        <div style="
+            background: #f8f9fa;
+            padding: 20px;
+            border-bottom: 1px solid #e0e0e0;
+            border-radius: 8px 8px 0 0;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        ">
+            <h3 style="margin: 0; color: #333;">Upload Video Short</h3>
+            <button onclick="closeUploadVideoModal()" style="
+                background: none;
+                border: none;
+                font-size: 1.5rem;
+                cursor: pointer;
+                color: #666;
+            ">&times;</button>
+        </div>
+        <div style="padding: 20px;">
+            <form id="uploadVideoForm" enctype="multipart/form-data">
+                <div style="margin-bottom: 15px;">
+                    <label style="display: block; margin-bottom: 5px; font-weight: bold;">Select Module</label>
+                    <select id="videoModule" required style="width: 100%; padding: 8px; border: 1px solid #ccc; border-radius: 4px;">
+                        <option value="">Select a module...</option>
+                        <!-- Options loaded dynamically -->
+                    </select>
+                </div>
+                <div style="margin-bottom: 15px;">
+                    <label style="display: block; margin-bottom: 5px; font-weight: bold;">Select Submodule</label>
+                    <select id="videoSubmodule" required style="width: 100%; padding: 8px; border: 1px solid #ccc; border-radius: 4px;">
+                        <option value="">First select a module...</option>
+                    </select>
+                </div>
+                <div style="margin-bottom: 15px;">
+                    <label style="display: block; margin-bottom: 5px; font-weight: bold;">Video Title</label>
+                    <input type="text" id="videoTitle" required style="width: 100%; padding: 8px; border: 1px solid #ccc; border-radius: 4px;">
+                </div>
+                <div style="margin-bottom: 15px;">
+                    <label style="display: block; margin-bottom: 5px; font-weight: bold;">Video Description</label>
+                    <textarea id="videoDescription" rows="3" style="width: 100%; padding: 8px; border: 1px solid #ccc; border-radius: 4px;"></textarea>
+                </div>
+                <div style="margin-bottom: 15px;">
+                    <label style="display: block; margin-bottom: 5px; font-weight: bold;">Sequence Order</label>
+                    <input type="number" id="videoSequence" min="1" value="1" required style="width: 100%; padding: 8px; border: 1px solid #ccc; border-radius: 4px;">
+                </div>
+                <div style="margin-bottom: 15px;">
+                    <label style="display: block; margin-bottom: 5px; font-weight: bold;">Video File</label>
+                    <div id="video-drop-zone" style="
+                        border: 2px dashed #ccc;
+                        border-radius: 8px;
+                        padding: 40px;
+                        text-align: center;
+                        cursor: pointer;
+                        transition: border-color 0.3s;
+                    ">
+                        <i class="fas fa-cloud-upload-alt fa-3x" style="color: #ccc; margin-bottom: 15px;"></i>
+                        <p style="margin: 0; color: #666;">Drag and drop video file here or click to browse</p>
+                        <p style="margin: 5px 0 0 0; font-size: 12px; color: #999;">Supported formats: MP4 (max 100MB)</p>
+                        <input type="file" id="videoFile" accept=".mp4" style="display: none;" required>
+                    </div>
+                    <div id="upload-progress" style="display: none; margin-top: 15px;">
+                        <div style="background: #f0f0f0; border-radius: 4px; overflow: hidden;">
+                            <div id="progress-bar" style="
+                                background: #007bff;
+                                height: 20px;
+                                width: 0%;
+                                transition: width 0.3s;
+                                display: flex;
+                                align-items: center;
+                                justify-content: center;
+                                color: white;
+                                font-size: 12px;
+                            ">0%</div>
+                        </div>
+                    </div>
+                </div>
+                <div style="text-align: right; margin-top: 20px;">
+                    <button type="button" onclick="closeUploadVideoModal()" style="
+                        background: #6c757d; 
+                        color: white; 
+                        padding: 8px 16px; 
+                        border: none; 
+                        border-radius: 4px; 
+                        cursor: pointer;
+                        margin-right: 10px;
+                    ">Cancel</button>
+                    <button type="submit" style="
+                        background: #28a745; 
+                        color: white; 
+                        padding: 8px 16px; 
+                        border: none; 
+                        border-radius: 4px; 
+                        cursor: pointer;
+                    ">Upload Video</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<!-- Edit Module Modal -->
+<div id="editModuleModal" style="
+    display: none;
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: rgba(0,0,0,0.5);
+    z-index: 10000;
+    justify-content: center;
+    align-items: center;
+">
+    <div style="
+        background: white;
+        border-radius: 8px;
+        width: 90%;
+        max-width: 600px;
+        max-height: 90%;
+        overflow: auto;
+        position: relative;
+    ">
+        <div style="
+            background: #f8f9fa;
+            padding: 20px;
+            border-bottom: 1px solid #e0e0e0;
+            border-radius: 8px 8px 0 0;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        ">
+            <h3 style="margin: 0; color: #333;">Edit Learning Module</h3>
+            <button onclick="closeEditModuleModal()" style="
+                background: none;
+                border: none;
+                font-size: 1.5rem;
+                cursor: pointer;
+                color: #666;
+            ">&times;</button>
+        </div>
+        <div style="padding: 20px;">
+            <form id="editModuleForm">
+                <input type="hidden" id="editModuleId">
+                <div style="margin-bottom: 15px;">
+                    <label style="display: block; margin-bottom: 5px; font-weight: bold;">Module Number</label>
+                    <input type="number" id="editModuleNumber" step="0.1" min="1" required style="width: 100%; padding: 8px; border: 1px solid #ccc; border-radius: 4px;">
+                </div>
+                <div style="margin-bottom: 15px;">
+                    <label style="display: block; margin-bottom: 5px; font-weight: bold;">Title</label>
+                    <input type="text" id="editModuleTitle" required style="width: 100%; padding: 8px; border: 1px solid #ccc; border-radius: 4px;">
+                </div>
+                <div style="margin-bottom: 15px;">
+                    <label style="display: block; margin-bottom: 5px; font-weight: bold;">Description</label>
+                    <textarea id="editModuleDescription" rows="3" style="width: 100%; padding: 8px; border: 1px solid #ccc; border-radius: 4px;"></textarea>
+                </div>
+                <div style="margin-bottom: 15px;">
+                    <label style="display: block; margin-bottom: 5px; font-weight: bold;">Estimated Hours</label>
+                    <input type="number" id="editModuleHours" step="0.5" min="0" style="width: 100%; padding: 8px; border: 1px solid #ccc; border-radius: 4px;">
+                </div>
+                <div style="margin-bottom: 15px;">
+                    <label style="display: block; margin-bottom: 5px; font-weight: bold;">Status</label>
+                    <select id="editModuleStatus" style="width: 100%; padding: 8px; border: 1px solid #ccc; border-radius: 4px;">
+                        <option value="1">Active</option>
+                        <option value="0">Inactive</option>
+                    </select>
+                </div>
+                <div style="text-align: right; margin-top: 20px;">
+                    <button type="button" onclick="closeEditModuleModal()" style="
+                        background: #6c757d; 
+                        color: white; 
+                        padding: 8px 16px; 
+                        border: none; 
+                        border-radius: 4px; 
+                        cursor: pointer;
+                        margin-right: 10px;
+                    ">Cancel</button>
+                    <button type="submit" style="
+                        background: #007bff; 
+                        color: white; 
+                        padding: 8px 16px; 
+                        border: none; 
+                        border-radius: 4px; 
+                        cursor: pointer;
+                    ">Update Module</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>

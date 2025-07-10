@@ -124,6 +124,7 @@
             <a href="#" class="btn" onclick="showSection('auditLog')" id="auditLogTab">📜 Audit Log</a>
             <a href="#" class="btn" onclick="showSection('mlSettings2')" id="mlSettings2Tab">🤖 ML Settings</a>
             <a href="#" class="btn" onclick="showSection('marketing')" id="marketingTab">📧 Marketing</a>
+            <a href="#" class="btn" onclick="showSection('learningModules')" id="learningModulesTab">🎓 Læringsmoduler</a>
         </div>
 
         <!-- Questions Section -->
@@ -146,6 +147,9 @@
         
         <!-- Marketing Section -->
         {% include 'admin/marketing_section.html' %}
+        
+        <!-- Learning Modules Section -->
+        {% include 'admin/learning_modules_section.html' %}
         
     </div>
     
@@ -183,6 +187,7 @@
             // Hide all sections
             document.querySelectorAll('.section').forEach(section => {
                 section.classList.remove('active');
+                section.style.display = 'none';
             });
             
             // Remove active class from all tabs
@@ -194,6 +199,7 @@
             const selectedSection = document.getElementById(sectionName + 'Section');
             if (selectedSection) {
                 selectedSection.classList.add('active');
+                selectedSection.style.display = 'block';
             }
             
             // Add active class to selected tab
@@ -248,6 +254,13 @@
                     if (typeof initializeMarketing === 'function') {
                         initializeMarketing();
                         console.log('Marketing section initialized');
+                    }
+                    break;
+                    
+                case 'learningModules':
+                    if (typeof initializeLearningModules === 'function') {
+                        initializeLearningModules();
+                        console.log('Learning Modules section initialized');
                     }
                     break;
                     
@@ -318,7 +331,7 @@
             if (window.location.hash) {
                 const hashSection = window.location.hash.substring(1); // remove '#'
                 // Validate that the section exists
-                const validSections = ['questions', 'database', 'reports', 'manageUsers', 'auditLog', 'mlSettings2', 'marketing'];
+                const validSections = ['questions', 'database', 'reports', 'manageUsers', 'auditLog', 'mlSettings2', 'marketing', 'learningModules'];
                 if (validSections.includes(hashSection)) {
                     sectionToShow = hashSection;
                 }
@@ -375,5 +388,8 @@
     
     <!-- Include Marketing JavaScript -->
     <script src="{{ url_for('static', filename='js/admin/admin-marketing.js') }}"></script>
+    
+    <!-- Include Learning Modules JavaScript -->
+    <script src="{{ url_for('static', filename='js/admin/admin-learning.js') }}"></script>
 </body>
 </html>
