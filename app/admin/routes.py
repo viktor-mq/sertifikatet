@@ -15,6 +15,7 @@ from ..models import Question, Option, TrafficSign, QuizImage, User, AdminAuditL
 from ..marketing_models import MarketingEmail, MarketingTemplate, MarketingEmailLog
 from ..marketing_service import MarketingEmailService
 from ..security.admin_security import AdminSecurityService
+from ..services.file_upload import FileUploadService
 import json
 from datetime import datetime, timedelta
 
@@ -2500,123 +2501,6 @@ def get_module_submodules(module_id):
         logger.error(f"Error getting submodules for module {module_id}: {str(e)}")
         return jsonify({'error': str(e)}), 500
 
-
-@admin_bp.route('/api/upload-video', methods=['POST'])
-@admin_required
-def upload_video():
-    """Upload a video short to a submodule"""
-    try:
-        # Check if video file is present
-        if 'video_file' not in request.files:
-            return jsonify({'error': 'No video file provided'}), 400
-            
-        video_file = request.files['video_file']
-        if video_file.filename == '':
-            return jsonify({'error': 'No video file selected'}), 400
-        
-        # Get form data
-        module_id = request.form.get('module_id')
-        submodule_id = request.form.get('submodule_id')
-        title = request.form.get('title', '').strip()
-        description = request.form.get('description', '').strip()
-        sequence_order = request.form.get('sequence_order', 1)
-        
-        # Validation
-        if not module_id or not submodule_id:
-            return jsonify({'error': 'Module and submodule selection required'}), 400
-            
-        if not title:
-            return jsonify({'error': 'Video title is required'}), 400
-        
-        # Verify module and submodule exist
-        module = LearningModules.query.get(module_id)
-        if not module:
-            return jsonify({'error': 'Module not found'}), 404
-            
-        submodule = LearningSubmodules.query.get(submodule_id)
-        if not submodule or submodule.module_id != int(module_id):
-            return jsonify({'error': 'Submodule not found or does not belong to module'}), 404
-        
-        # Validate file type
-        if not video_file.filename.lower().endswith('.mp4'):
-            return jsonify({'error': 'Only MP4 video files are supported'}), 400
-        
-        # Create upload directory
-        upload_dir = os.path.join(
-            current_app.config.get('UPLOAD_FOLDER', 'uploads'),
-            'learning',
-            f'{module.module_number}-{module.title.replace(" ", "_").lower()}',
-            f'{submodule.submodule_number}-{submodule.title.replace(" ", "_").lower()}',
-            'videos'
-        )
-        os.makedirs(upload_dir, exist_ok=True)
-        
-        # Generate secure filename
-        original_filename = secure_filename(video_file.filename)
-        timestamp = datetime.utcnow().strftime('%Y%m%d_%H%M%S')
-        filename = f"{timestamp}_{original_filename}"
-        file_path = os.path.join(upload_dir, filename)
-        
-        # Save file
-        video_file.save(file_path)
-        
-        # Get file size
-        file_size_mb = os.path.getsize(file_path) / (1024 * 1024)
-        
-        # Create video record
-        video_short = VideoShorts(
-            submodule_id=str(submodule.submodule_number),
-            title=title,
-            description=description or None,
-            filename=filename,
-            file_path=file_path,
-            sequence_order=int(sequence_order),
-            file_size_mb=file_size_mb,
-            aspect_ratio='9:16',  # Default for shorts
-            is_active=True,
-            created_at=datetime.utcnow(),
-            updated_at=datetime.utcnow()
-        )
-        
-        db.session.add(video_short)
-        
-        # Update submodule to indicate it has video shorts
-        submodule.has_video_shorts = True
-        submodule.shorts_count = VideoShorts.query.filter(
-            func.cast(VideoShorts.submodule_id, db.Float) == submodule.submodule_number
-        ).count() + 1  # +1 for the one we're adding
-        
-        db.session.commit()
-        
-        # Log admin action
-        AdminSecurityService.log_admin_action(
-            current_user,
-            f"Uploaded video: {title} to module {module.title}, submodule {submodule.title}"
-        )
-        
-        return jsonify({
-            'success': True,
-            'message': 'Video uploaded successfully',
-            'video': {
-                'id': video_short.id,
-                'title': video_short.title,
-                'filename': video_short.filename,
-                'file_size_mb': video_short.file_size_mb
-            }
-        })
-        
-    except Exception as e:
-        db.session.rollback()
-        # Clean up uploaded file if database operation failed
-        if 'file_path' in locals() and os.path.exists(file_path):
-            try:
-                os.remove(file_path)
-            except OSError:
-                pass
-        
-        logger.error(f"Error uploading video: {str(e)}")
-        return jsonify({'error': str(e)}), 500
-
 # Learning Modules API Routes
 @admin_bp.route('/api/learning-modules')
 @admin_required
@@ -4476,3 +4360,77 @@ def export_learning_content():
     except Exception as e:
         logger.error(f"Error exporting learning content: {str(e)}")
         return jsonify({'error': str(e)}), 500
+
+# Video Upload API Endpoint
+@admin_bp.route('/api/upload-video', methods=['POST'])
+@admin_required
+def upload_video():
+    """API endpoint for uploading video files with progress tracking"""
+    try:
+        # Validate required fields
+        if 'video_file' not in request.files:
+            return jsonify({'success': False, 'message': 'No video file provided'}), 400
+        
+        if 'submodule_id' not in request.form:
+            return jsonify({'success': False, 'message': 'Submodule ID is required'}), 400
+        
+        video_file = request.files['video_file']
+        submodule_id = request.form.get('submodule_id')
+        
+        # Validate file selection
+        if video_file.filename == '':
+            return jsonify({'success': False, 'message': 'No file selected'}), 400
+        
+        # Validate file type
+        if not FileUploadService.allowed_file(video_file.filename, 'video'):
+            return jsonify({
+                'success': False, 
+                'message': 'Invalid file format. Only MP4, MOV, AVI, and MKV files are allowed.'
+            }), 400
+        
+        # Validate file size
+        if not FileUploadService.validate_file_size(video_file, 'video'):
+            return jsonify({
+                'success': False, 
+                'message': 'File too large. Maximum size is 300MB.'
+            }), 400
+        
+        # Get video metadata from form
+        video_metadata = {
+            'title': request.form.get('video_title', 'Untitled Video'),
+            'description': request.form.get('video_description', ''),
+            'sequence_order': int(request.form.get('video_sequence', 1)),
+            'duration_seconds': int(request.form.get('duration_seconds', 60)),
+            'difficulty_level': int(request.form.get('difficulty_level', 1))
+        }
+        
+        # Upload video using FileUploadService
+        video_id = FileUploadService.upload_video_short(
+            submodule_id=submodule_id,
+            video_file=video_file,
+            video_metadata=video_metadata
+        )
+        
+        # Log successful upload
+        AdminSecurityService.log_admin_action(
+            current_user,
+            f"Uploaded video: {video_file.filename} for submodule {submodule_id}"
+        )
+        
+        return jsonify({
+            'success': True,
+            'message': 'Video uploaded successfully',
+            'video_id': video_id,
+            'filename': video_file.filename
+        })
+        
+    except ValueError as e:
+        logger.error(f"Validation error during video upload: {str(e)}")
+        return jsonify({'success': False, 'message': str(e)}), 400
+        
+    except Exception as e:
+        logger.error(f"Error uploading video: {str(e)}")
+        return jsonify({
+            'success': False, 
+            'message': f'Upload failed: {str(e)}'
+        }), 500

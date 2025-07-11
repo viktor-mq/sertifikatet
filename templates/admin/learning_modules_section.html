@@ -1,4 +1,35 @@
 <!-- Learning Modules Section - Integrated into Admin Dashboard -->
+<style>
+/* Upload Progress Animations */
+@keyframes spin {
+    0% { transform: rotate(0deg); }
+    100% { transform: rotate(360deg); }
+}
+
+@keyframes shimmer {
+    0% { transform: translateX(-100%); }
+    100% { transform: translateX(100%); }
+}
+
+.upload-step.active {
+    color: #007bff !important;
+}
+
+.upload-step.completed {
+    color: #28a745 !important;
+}
+
+.upload-step.active .step-icon {
+    background: #007bff !important;
+    color: white !important;
+}
+
+.upload-step.completed .step-icon {
+    background: #28a745 !important;
+    color: white !important;
+}
+</style>
+
 <div id="learningModulesSection" class="section">
     <!-- Statistics Cards -->
     <div class="stats-container">
@@ -676,6 +707,250 @@ learning_path:
         </div>
     </div>
 </div>
+
+<script>
+// Professional Video Upload Progress System
+function setupVideoUploadProgress() {
+    const form = document.getElementById('uploadVideoForm');
+    const fileInput = document.getElementById('videoFile');
+    const progressContainer = document.getElementById('upload-progress');
+    const progressBar = document.getElementById('progress-bar');
+    const statusText = document.getElementById('upload-status-text');
+    const spinner = document.getElementById('upload-spinner');
+    
+    if (!form || !fileInput || !progressContainer) {
+        console.warn('Video upload elements not found');
+        return;
+    }
+    
+    // File input change handler
+    fileInput.addEventListener('change', function(e) {
+        const file = e.target.files[0];
+        if (file) {
+            // Show file info
+            const fileSize = (file.size / (1024 * 1024)).toFixed(2);
+            statusText.textContent = `Selected: ${file.name} (${fileSize} MB)`;
+        }
+    });
+    
+    // Form submission with progress tracking
+    form.addEventListener('submit', function(e) {
+        e.preventDefault();
+        
+        const formData = new FormData(form);
+        const file = fileInput.files[0];
+        
+        if (!file) {
+            alert('Please select a video file');
+            return;
+        }
+        
+        // Validate file size (300MB limit)
+        if (file.size > 300 * 1024 * 1024) {
+            alert('File too large. Maximum size is 300MB.');
+            return;
+        }
+        
+        // Start upload process
+        startUploadProcess(formData);
+    });
+}
+
+function startUploadProcess(formData) {
+    const progressContainer = document.getElementById('upload-progress');
+    const progressBar = document.getElementById('progress-bar');
+    const statusText = document.getElementById('upload-status-text');
+    const submitBtn = document.querySelector('#uploadVideoForm button[type="submit"]');
+    
+    // Show progress container
+    progressContainer.style.display = 'block';
+    submitBtn.disabled = true;
+    submitBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Uploading...';
+    
+    // Reset all steps
+    resetUploadSteps();
+    
+    // Step 1: Start upload
+    updateUploadStep(1, 'active');
+    statusText.textContent = 'Uploading video file...';
+    
+    // Create XMLHttpRequest for progress tracking
+    const xhr = new XMLHttpRequest();
+    
+    // Upload progress handler
+    xhr.upload.addEventListener('progress', function(e) {
+        if (e.lengthComputable) {
+            const percentComplete = (e.loaded / e.total) * 100;
+            updateProgressBar(percentComplete);
+            
+            if (percentComplete >= 95) {
+                updateUploadStep(1, 'completed');
+                updateUploadStep(2, 'active');
+                statusText.textContent = 'Processing video and generating thumbnail...';
+            }
+        }
+    });
+    
+    // Response handler
+    xhr.addEventListener('load', function() {
+        if (xhr.status === 200) {
+            try {
+                const response = JSON.parse(xhr.responseText);
+                if (response.success) {
+                    handleUploadSuccess(response);
+                } else {
+                    handleUploadError(response.message || 'Upload failed');
+                }
+            } catch (e) {
+                handleUploadError('Invalid server response');
+            }
+        } else {
+            handleUploadError(`Server error: ${xhr.status}`);
+        }
+    });
+    
+    // Error handler
+    xhr.addEventListener('error', function() {
+        handleUploadError('Network error during upload');
+    });
+    
+    // Send the request
+    xhr.open('POST', '/api/upload-video');
+    xhr.send(formData);
+}
+
+function updateProgressBar(percentage) {
+    const progressBar = document.getElementById('progress-bar');
+    const roundedPercentage = Math.round(percentage);
+    
+    progressBar.style.width = roundedPercentage + '%';
+    progressBar.textContent = roundedPercentage + '%';
+}
+
+function updateUploadStep(stepNumber, status) {
+    const step = document.getElementById(`step-${stepNumber}`);
+    const stepIcon = step.querySelector('.step-icon');
+    
+    // Remove all status classes
+    step.classList.remove('active', 'completed');
+    
+    // Add new status
+    if (status === 'active') {
+        step.classList.add('active');
+        stepIcon.innerHTML = '<i class="fas fa-spinner fa-spin"></i>';
+    } else if (status === 'completed') {
+        step.classList.add('completed');
+        stepIcon.innerHTML = '<i class="fas fa-check"></i>';
+    } else {
+        stepIcon.textContent = stepNumber;
+    }
+}
+
+function resetUploadSteps() {
+    for (let i = 1; i <= 4; i++) {
+        const step = document.getElementById(`step-${i}`);
+        const stepIcon = step.querySelector('.step-icon');
+        
+        step.classList.remove('active', 'completed');
+        stepIcon.textContent = i;
+    }
+}
+
+function handleUploadSuccess(response) {
+    const statusText = document.getElementById('upload-status-text');
+    const submitBtn = document.querySelector('#uploadVideoForm button[type="submit"]');
+    
+    // Complete all steps
+    updateUploadStep(2, 'completed');
+    updateUploadStep(3, 'active');
+    statusText.textContent = 'Saving to database...';
+    
+    setTimeout(() => {
+        updateUploadStep(3, 'completed');
+        updateUploadStep(4, 'completed');
+        updateProgressBar(100);
+        statusText.textContent = 'Upload completed successfully!';
+        
+        // Hide spinner
+        document.getElementById('upload-spinner').style.display = 'none';
+        
+        // Show success and reset form
+        setTimeout(() => {
+            alert('Video uploaded successfully!');
+            resetUploadForm();
+            if (typeof loadLearningModules === 'function') {
+                loadLearningModules(); // Refresh the modules list
+            }
+        }, 1000);
+    }, 1000);
+}
+
+function handleUploadError(errorMessage) {
+    const statusText = document.getElementById('upload-status-text');
+    const submitBtn = document.querySelector('#uploadVideoForm button[type="submit"]');
+    const progressContainer = document.getElementById('upload-progress');
+    
+    // Show error state
+    statusText.textContent = `Error: ${errorMessage}`;
+    statusText.style.color = '#dc3545';
+    
+    // Hide spinner
+    document.getElementById('upload-spinner').style.display = 'none';
+    
+    // Reset button
+    submitBtn.disabled = false;
+    submitBtn.innerHTML = '<i class="fas fa-upload"></i> Upload Video';
+    
+    // Show error message
+    alert(`Upload failed: ${errorMessage}`);
+    
+    // Hide progress after delay
+    setTimeout(() => {
+        resetUploadForm();
+    }, 3000);
+}
+
+function resetUploadForm() {
+    const form = document.getElementById('uploadVideoForm');
+    const progressContainer = document.getElementById('upload-progress');
+    const statusText = document.getElementById('upload-status-text');
+    const submitBtn = document.querySelector('#uploadVideoForm button[type="submit"]');
+    const spinner = document.getElementById('upload-spinner');
+    
+    // Reset form
+    form.reset();
+    
+    // Hide progress
+    progressContainer.style.display = 'none';
+    
+    // Reset UI elements
+    statusText.textContent = 'Preparing upload...';
+    statusText.style.color = '#495057';
+    spinner.style.display = 'block';
+    
+    // Reset button
+    submitBtn.disabled = false;
+    submitBtn.innerHTML = '<i class="fas fa-upload"></i> Upload Video';
+    
+    // Reset progress bar
+    updateProgressBar(0);
+    resetUploadSteps();
+}
+
+// Initialize when DOM is loaded
+document.addEventListener('DOMContentLoaded', function() {
+    setupVideoUploadProgress();
+});
+
+// Also initialize when the learning modules section is shown
+if (typeof window.initializeLearningModules !== 'undefined') {
+    const originalInit = window.initializeLearningModules;
+    window.initializeLearningModules = function() {
+        originalInit();
+        setupVideoUploadProgress();
+    };
+}
+</script>
 <!-- End of Learning Modules Section -->
 
 <!-- Learning Modules Modals -->
@@ -907,19 +1182,137 @@ learning_path:
                             <p style="margin: 5px 0 0 0; font-size: 12px; color: #999;">Supported formats: MP4 (max 300MB)</p>
                             <input type="file" id="videoFile" accept=".mp4" style="display: none;" required>
                         </div>
-                        <div id="upload-progress" style="display: none; margin-top: 15px;">
-                            <div style="background: #f0f0f0; border-radius: 4px; overflow: hidden;">
-                                <div id="progress-bar" style="
-                                    background: #007bff;
+                        <div id="upload-progress" style="display: none; margin-top: 15px; padding: 15px; background: #f8f9fa; border-radius: 8px; border: 1px solid #e9ecef;">
+                            <!-- Upload Status -->
+                            <div style="display: flex; align-items: center; gap: 10px; margin-bottom: 15px;">
+                                <div id="upload-spinner" style="
+                                    width: 20px;
                                     height: 20px;
+                                    border: 2px solid #e9ecef;
+                                    border-top: 2px solid #007bff;
+                                    border-radius: 50%;
+                                    animation: spin 1s linear infinite;
+                                "></div>
+                                <span id="upload-status-text" style="font-weight: 500; color: #495057;">Preparing upload...</span>
+                            </div>
+                            
+                            <!-- Progress Bar -->
+                            <div style="background: #e9ecef; border-radius: 10px; overflow: hidden; margin-bottom: 15px;">
+                                <div id="progress-bar" style="
+                                    background: linear-gradient(90deg, #28a745, #20c997);
+                                    height: 25px;
                                     width: 0%;
-                                    transition: width 0.3s;
+                                    transition: width 0.3s ease;
                                     display: flex;
                                     align-items: center;
                                     justify-content: center;
                                     color: white;
-                                    font-size: 12px;
-                                ">0%</div>
+                                    font-size: 14px;
+                                    font-weight: bold;
+                                    position: relative;
+                                ">0%
+                                    <div style="
+                                        position: absolute;
+                                        top: 0;
+                                        left: 0;
+                                        height: 100%;
+                                        width: 100%;
+                                        background: linear-gradient(90deg, transparent, rgba(255,255,255,0.3), transparent);
+                                        animation: shimmer 2s infinite;
+                                    "></div>
+                                </div>
+                            </div>
+                            
+                            <!-- Upload Steps -->
+                            <div style="margin-top: 15px;">
+                                <div id="step-1" class="upload-step" style="
+                                    display: flex;
+                                    align-items: center;
+                                    gap: 10px;
+                                    margin: 8px 0;
+                                    padding: 8px 0;
+                                    color: #6c757d;
+                                ">
+                                    <span class="step-icon" style="
+                                        width: 24px;
+                                        height: 24px;
+                                        border-radius: 50%;
+                                        display: flex;
+                                        align-items: center;
+                                        justify-content: center;
+                                        font-size: 12px;
+                                        font-weight: bold;
+                                        background: #e9ecef;
+                                        color: #6c757d;
+                                    ">1</span>
+                                    <span>Uploading video file...</span>
+                                </div>
+                                <div id="step-2" class="upload-step" style="
+                                    display: flex;
+                                    align-items: center;
+                                    gap: 10px;
+                                    margin: 8px 0;
+                                    padding: 8px 0;
+                                    color: #6c757d;
+                                ">
+                                    <span class="step-icon" style="
+                                        width: 24px;
+                                        height: 24px;
+                                        border-radius: 50%;
+                                        display: flex;
+                                        align-items: center;
+                                        justify-content: center;
+                                        font-size: 12px;
+                                        font-weight: bold;
+                                        background: #e9ecef;
+                                        color: #6c757d;
+                                    ">2</span>
+                                    <span>Generating thumbnail...</span>
+                                </div>
+                                <div id="step-3" class="upload-step" style="
+                                    display: flex;
+                                    align-items: center;
+                                    gap: 10px;
+                                    margin: 8px 0;
+                                    padding: 8px 0;
+                                    color: #6c757d;
+                                ">
+                                    <span class="step-icon" style="
+                                        width: 24px;
+                                        height: 24px;
+                                        border-radius: 50%;
+                                        display: flex;
+                                        align-items: center;
+                                        justify-content: center;
+                                        font-size: 12px;
+                                        font-weight: bold;
+                                        background: #e9ecef;
+                                        color: #6c757d;
+                                    ">3</span>
+                                    <span>Saving to database...</span>
+                                </div>
+                                <div id="step-4" class="upload-step" style="
+                                    display: flex;
+                                    align-items: center;
+                                    gap: 10px;
+                                    margin: 8px 0;
+                                    padding: 8px 0;
+                                    color: #6c757d;
+                                ">
+                                    <span class="step-icon" style="
+                                        width: 24px;
+                                        height: 24px;
+                                        border-radius: 50%;
+                                        display: flex;
+                                        align-items: center;
+                                        justify-content: center;
+                                        font-size: 12px;
+                                        font-weight: bold;
+                                        background: #e9ecef;
+                                        color: #6c757d;
+                                    ">4</span>
+                                    <span>Upload complete!</span>
+                                </div>
                             </div>
                         </div>
                     </div>
