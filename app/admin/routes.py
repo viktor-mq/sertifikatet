@@ -3820,3 +3820,322 @@ def api_audit_logs():
         
     except Exception as e:
         return jsonify({'error': str(e)}), 500
+
+# ===== LEARNING MODULES ADMIN API ROUTES =====
+# Add this section to the very end of app/admin/routes.py
+
+@admin_bp.route('/api/learning-modules')
+@admin_required
+def admin_api_learning_modules():
+    """Get all learning modules with statistics for admin interface"""
+    try:
+        modules = LearningModules.query.order_by(LearningModules.module_number).all()
+        
+        modules_data = []
+        for module in modules:
+            # Get submodule count
+            submodule_count = LearningSubmodules.query.filter_by(
+                module_id=module.id, is_active=True
+            ).count()
+            
+            # Get video shorts count
+            video_count = db.session.query(VideoShorts).join(
+                LearningSubmodules, 
+                VideoShorts.submodule_id == LearningSubmodules.submodule_number
+            ).filter(
+                LearningSubmodules.module_id == module.id,
+                VideoShorts.is_active == True
+            ).count()
+            
+            modules_data.append({
+                'id': module.id,
+                'module_number': module.module_number,
+                'title': module.title,
+                'description': module.description,
+                'estimated_hours': module.estimated_hours,
+                'submodule_count': submodule_count,
+                'video_count': video_count,
+                'completion_rate': module.completion_rate or 0,
+                'is_active': module.is_active,
+                'has_content_directory': bool(module.content_directory),
+                'last_updated': module.last_content_update.isoformat() if module.last_content_update else None,
+                'created_at': module.created_at.isoformat() if module.created_at else None
+            })
+        
+        # Calculate statistics
+        total_modules = len(modules_data)
+        total_submodules = sum(m['submodule_count'] for m in modules_data)
+        total_videos = sum(m['video_count'] for m in modules_data)
+        avg_completion = sum(m['completion_rate'] for m in modules_data) / total_modules if total_modules > 0 else 0
+        
+        return jsonify({
+            'modules': modules_data,
+            'stats': {
+                'total_modules': total_modules,
+                'total_submodules': total_submodules,
+                'total_videos': total_videos,
+                'avg_completion_rate': avg_completion
+            }
+        })
+        
+    except Exception as e:
+        logger.error(f'Error in admin_api_learning_modules: {str(e)}')
+        return jsonify({'error': str(e)}), 500
+
+@admin_bp.route('/api/learning-modules', methods=['POST'])
+@admin_required
+def admin_create_learning_module():
+    """Create a new learning module"""
+    try:
+        data = request.get_json()
+        
+        # Validate required fields
+        required_fields = ['title']
+        for field in required_fields:
+            if field not in data or not data[field].strip():
+                return jsonify({'error': f'Missing required field: {field}'}), 400
+        
+        # Get next module number if not provided
+        module_number = data.get('module_number')
+        if not module_number:
+            last_module = LearningModules.query.order_by(LearningModules.module_number.desc()).first()
+            module_number = (last_module.module_number if last_module else 0) + 1
+        
+        # Create module
+        module = LearningModules(
+            module_number=float(module_number),
+            title=data['title'].strip(),
+            description=data.get('description', '').strip(),
+            estimated_hours=float(data.get('estimated_hours', 0)) if data.get('estimated_hours') else None,
+            prerequisites=json.dumps(data.get('prerequisites', [])),
+            learning_objectives=json.dumps(data.get('learning_objectives', [])),
+            is_active=True,
+            ai_generated=False,
+            created_at=datetime.utcnow(),
+            updated_at=datetime.utcnow()
+        )
+        
+        db.session.add(module)
+        db.session.commit()
+        
+        # Log admin action
+        AdminSecurityService.log_admin_action(
+            current_user, 'create_learning_module', 
+            additional_info=f'Created module: {module.title}'
+        )
+        
+        return jsonify({
+            'success': True, 
+            'module_id': module.id,
+            'message': f'Module "{module.title}" created successfully'
+        })
+        
+    except Exception as e:
+        logger.error(f'Error creating learning module: {str(e)}')
+        db.session.rollback()
+        return jsonify({'error': str(e)}), 500
+
+@admin_bp.route('/api/learning-modules/<int:module_id>')
+@admin_required
+def admin_get_learning_module(module_id):
+    """Get a specific learning module"""
+    try:
+        module = LearningModules.query.get_or_404(module_id)
+        
+        return jsonify({
+            'id': module.id,
+            'module_number': module.module_number,
+            'title': module.title,
+            'description': module.description,
+            'estimated_hours': module.estimated_hours,
+            'prerequisites': module.get_prerequisites_list() if hasattr(module, 'get_prerequisites_list') else [],
+            'learning_objectives': module.get_learning_objectives_list() if hasattr(module, 'get_learning_objectives_list') else [],
+            'is_active': module.is_active,
+            'content_directory': module.content_directory,
+            'created_at': module.created_at.isoformat() if module.created_at else None,
+            'updated_at': module.updated_at.isoformat() if module.updated_at else None
+        })
+        
+    except Exception as e:
+        logger.error(f'Error getting learning module {module_id}: {str(e)}')
+        return jsonify({'error': str(e)}), 500
+
+@admin_bp.route('/api/learning-modules/<int:module_id>', methods=['PUT'])
+@admin_required
+def admin_update_learning_module(module_id):
+    """Update an existing learning module"""
+    try:
+        module = LearningModules.query.get_or_404(module_id)
+        data = request.get_json()
+        
+        # Update fields if provided
+        if 'title' in data and data['title'].strip():
+            module.title = data['title'].strip()
+        if 'description' in data:
+            module.description = data['description'].strip()
+        if 'estimated_hours' in data:
+            module.estimated_hours = float(data['estimated_hours']) if data['estimated_hours'] else None
+        if 'module_number' in data:
+            module.module_number = float(data['module_number'])
+        if 'prerequisites' in data:
+            module.prerequisites = json.dumps(data['prerequisites'])
+        if 'learning_objectives' in data:
+            module.learning_objectives = json.dumps(data['learning_objectives'])
+        if 'is_active' in data:
+            module.is_active = bool(data['is_active'])
+        
+        module.updated_at = datetime.utcnow()
+        db.session.commit()
+        
+        # Log admin action
+        AdminSecurityService.log_admin_action(
+            current_user, 'update_learning_module',
+            additional_info=f'Updated module: {module.title}'
+        )
+        
+        return jsonify({
+            'success': True,
+            'message': f'Module "{module.title}" updated successfully'
+        })
+        
+    except Exception as e:
+        logger.error(f'Error updating learning module {module_id}: {str(e)}')
+        db.session.rollback()
+        return jsonify({'error': str(e)}), 500
+
+@admin_bp.route('/api/learning-modules/<int:module_id>', methods=['DELETE'])
+@admin_required
+def admin_delete_learning_module(module_id):
+    """Delete a learning module and its content"""
+    try:
+        from ..services.file_upload import FileUploadService
+        
+        module = LearningModules.query.get_or_404(module_id)
+        module_title = module.title
+        
+        # Delete content files and directories
+        FileUploadService.delete_content('module', module_id)
+        
+        # Log admin action
+        AdminSecurityService.log_admin_action(
+            current_user, 'delete_learning_module',
+            additional_info=f'Deleted module: {module_title}'
+        )
+        
+        return jsonify({
+            'success': True,
+            'message': f'Module "{module_title}" deleted successfully'
+        })
+        
+    except Exception as e:
+        logger.error(f'Error deleting learning module {module_id}: {str(e)}')
+        db.session.rollback()
+        return jsonify({'error': str(e)}), 500
+
+@admin_bp.route('/api/learning-modules/<int:module_id>/submodules')
+@admin_required
+def admin_get_module_submodules(module_id):
+    """Get all submodules for a specific module"""
+    try:
+        module = LearningModules.query.get_or_404(module_id)
+        submodules = LearningSubmodules.query.filter_by(
+            module_id=module_id
+        ).order_by(LearningSubmodules.submodule_number).all()
+        
+        submodules_data = []
+        for submodule in submodules:
+            # Count video shorts for this submodule
+            video_count = VideoShorts.query.filter_by(
+                submodule_id=submodule.submodule_number,
+                is_active=True
+            ).count()
+            
+            submodules_data.append({
+                'id': submodule.id,
+                'submodule_number': submodule.submodule_number,
+                'title': submodule.title,
+                'description': submodule.description,
+                'estimated_minutes': submodule.estimated_minutes,
+                'difficulty_level': submodule.difficulty_level,
+                'has_quiz': submodule.has_quiz,
+                'has_video_shorts': submodule.has_video_shorts,
+                'video_count': video_count,
+                'is_active': submodule.is_active,
+                'has_content': bool(submodule.content_file_path),
+                'has_summary': bool(submodule.summary_file_path),
+                'last_updated': submodule.last_content_update.isoformat() if submodule.last_content_update else None
+            })
+        
+        return jsonify({
+            'module': {
+                'id': module.id,
+                'title': module.title,
+                'module_number': module.module_number
+            },
+            'submodules': submodules_data
+        })
+        
+    except Exception as e:
+        logger.error(f'Error getting submodules for module {module_id}: {str(e)}')
+        return jsonify({'error': str(e)}), 500
+
+@admin_bp.route('/api/upload-video', methods=['POST'])
+@admin_required
+def admin_upload_video():
+    """Upload video file for learning modules"""
+    try:
+        from ..services.file_upload import FileUploadService
+        
+        if 'video_file' not in request.files:
+            return jsonify({'error': 'No video file provided'}), 400
+        
+        video_file = request.files['video_file']
+        if video_file.filename == '':
+            return jsonify({'error': 'No file selected'}), 400
+        
+        # Get form data
+        submodule_id = request.form.get('submodule_id')
+        if not submodule_id:
+            return jsonify({'error': 'Submodule ID is required'}), 400
+        
+        try:
+            submodule_id = int(submodule_id)
+        except (ValueError, TypeError):
+            return jsonify({'error': 'Invalid submodule ID'}), 400
+        
+        if not FileUploadService.allowed_file(video_file.filename, 'video'):
+            return jsonify({'error': 'Invalid video format. Only MP4, MOV, AVI, MKV allowed.'}), 400
+        
+        if not FileUploadService.validate_file_size(video_file, 'video'):
+            return jsonify({'error': 'Video file too large. Maximum size is 300MB.'}), 400
+        
+        # Get video metadata from form
+        video_metadata = {
+            'title': request.form.get('title', 'Untitled Video').strip(),
+            'description': request.form.get('description', '').strip(),
+            'duration_seconds': int(request.form.get('duration_seconds', 60)),
+            'difficulty_level': int(request.form.get('difficulty_level', 1))
+        }
+        
+        if not video_metadata['title']:
+            return jsonify({'error': 'Video title is required'}), 400
+        
+        # Upload video
+        video_id = FileUploadService.upload_video_short(submodule_id, video_file, video_metadata)
+        
+        # Log admin action
+        submodule = LearningSubmodules.query.get(submodule_id)
+        AdminSecurityService.log_admin_action(
+            current_user, 'upload_learning_video',
+            additional_info=f'Uploaded video "{video_metadata["title"]}" for submodule: {submodule.title if submodule else submodule_id}'
+        )
+        
+        return jsonify({
+            'success': True,
+            'video_id': video_id,
+            'message': 'Video uploaded successfully'
+        })
+        
+    except Exception as e:
+        logger.error(f'Error uploading video: {str(e)}')
+        return jsonify({'error': str(e)}), 500

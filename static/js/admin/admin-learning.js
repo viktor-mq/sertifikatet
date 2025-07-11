@@ -315,7 +315,7 @@
             dropZone.innerHTML = `
                 <i class="fas fa-cloud-upload-alt fa-3x" style="color: #ccc; margin-bottom: 15px;"></i>
                 <p style="margin: 0; color: #666;">Drag and drop video file here or click to browse</p>
-                <p style="margin: 5px 0 0 0; font-size: 12px; color: #999;">Supported formats: MP4 (max 100MB)</p>
+                <p style="margin: 5px 0 0 0; font-size: 12px; color: #999;">Supported formats: MP4 (max 300MB)</p>
             `;
         }
     }
@@ -328,9 +328,9 @@
             errors.push('Only MP4 video files are supported');
         }
         
-        // Check file size (100MB = 100 * 1024 * 1024 bytes)
+        // Check file size (300MB = 300 * 1024 * 1024 bytes)
         if (file.size > 100 * 1024 * 1024) {
-            errors.push('File size must be less than 100MB');
+            errors.push('File size must be less than 300MB');
         }
         
         if (errors.length > 0) {

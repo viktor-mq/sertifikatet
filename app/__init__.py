@@ -148,7 +148,6 @@ def create_app(config_class=None):
     with app.app_context():
         try:
             ml_service.initialize()
-            app.logger.info("ML Service initialized successfully")
         except Exception as e:
             app.logger.error(f"Failed to initialize ML Service: {e}")
             # Continue without ML - graceful degradation
