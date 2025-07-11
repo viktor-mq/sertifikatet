@@ -8,6 +8,9 @@ from werkzeug.utils import secure_filename
 from flask import current_app
 from .. import db
 from ..models import LearningModules, LearningSubmodules, VideoShorts
+import subprocess
+from PIL import Image
+import tempfile
 
 logger = logging.getLogger(__name__)
 
@@ -253,8 +256,72 @@ class FileUploadService:
             raise
 
     @staticmethod
+    def generate_video_thumbnail(video_path, thumbnail_path):
+        """Generate thumbnail from video using ffmpeg with fallback to PIL"""
+        try:
+            # Try using ffmpeg first (most reliable)
+            try:
+                # Extract frame at 3 seconds (or 10% of video duration)
+                ffmpeg_cmd = [
+                    'ffmpeg', '-i', video_path, '-ss', '00:00:03', '-vframes', '1',
+                    '-vf', 'scale=320:180', '-y', thumbnail_path
+                ]
+                
+                result = subprocess.run(ffmpeg_cmd, capture_output=True, text=True, timeout=30)
+                
+                if result.returncode == 0 and os.path.exists(thumbnail_path):
+                    logger.info(f"Generated thumbnail using ffmpeg: {thumbnail_path}")
+                    return True
+                else:
+                    logger.warning(f"ffmpeg failed: {result.stderr}")
+                    
+            except (subprocess.TimeoutExpired, FileNotFoundError) as e:
+                logger.warning(f"ffmpeg not available or timed out: {str(e)}")
+            
+            # Fallback: Create a simple placeholder thumbnail
+            try:
+                from PIL import Image, ImageDraw, ImageFont
+                
+                # Create a simple placeholder thumbnail
+                img = Image.new('RGB', (320, 180), color='#667eea')
+                draw = ImageDraw.Draw(img)
+                
+                # Add play button icon
+                play_button_size = 40
+                center_x, center_y = 160, 90
+                
+                # Draw play button triangle
+                triangle_points = [
+                    (center_x - play_button_size//2, center_y - play_button_size//2),
+                    (center_x - play_button_size//2, center_y + play_button_size//2),
+                    (center_x + play_button_size//2, center_y)
+                ]
+                draw.polygon(triangle_points, fill='white')
+                
+                # Add "Video" text
+                try:
+                    # Try to use a basic font
+                    font = ImageFont.load_default()
+                    draw.text((center_x - 20, center_y + 30), "Video", fill='white', font=font)
+                except:
+                    # If font fails, just draw text without font
+                    draw.text((center_x - 20, center_y + 30), "Video", fill='white')
+                
+                img.save(thumbnail_path, 'JPEG', quality=85)
+                logger.info(f"Generated placeholder thumbnail: {thumbnail_path}")
+                return True
+                
+            except Exception as e:
+                logger.error(f"Failed to create placeholder thumbnail: {str(e)}")
+                return False
+                
+        except Exception as e:
+            logger.error(f"Error generating thumbnail: {str(e)}")
+            return False
+    
+    @staticmethod
     def upload_video_short(submodule_id, video_file, video_metadata):
-        """Upload video short file"""
+        """Upload video short file with thumbnail generation"""
         try:
             # Get submodule from database
             submodule = LearningSubmodules.query.get(submodule_id)
@@ -292,6 +359,12 @@ class FileUploadService:
             video_path = os.path.join(video_dir, safe_filename)
             video_file.save(video_path)
             
+            # Generate thumbnail
+            thumbnail_filename = f"{os.path.splitext(safe_filename)[0]}_thumb.jpg"
+            thumbnail_path = os.path.join(video_dir, thumbnail_filename)
+            
+            thumbnail_generated = FileUploadService.generate_video_thumbnail(video_path, thumbnail_path)
+            
             # Create database record for video short
             next_sequence = VideoShorts.query.filter_by(
                 submodule_id=submodule.submodule_number
@@ -307,6 +380,7 @@ class FileUploadService:
                 sequence_order=next_sequence,
                 aspect_ratio='9:16',  # Default for shorts
                 difficulty_level=video_metadata.get('difficulty_level', 1),
+                thumbnail_path=os.path.join(submodule.shorts_directory, thumbnail_filename) if thumbnail_generated else None,
                 is_active=True
             )
             

@@ -632,10 +632,11 @@ class LearningService:
     
     @staticmethod
     def get_submodule_shorts(submodule_id, user):
-        """Get video shorts for a submodule with user progress from database"""
+        """Get video shorts for a submodule with user progress from database with mock fallback"""
         try:
             # Import models from main models file
             from app.models import VideoShorts, UserShortsProgress
+            from flask import current_app
             
             # Query database for shorts matching this submodule
             # Convert submodule_id to match database format (decimal number)
@@ -644,9 +645,9 @@ class LearningService:
                 is_active=True
             ).order_by(VideoShorts.sequence_order).all()
             
+            # If no database videos exist, provide mock videos for testing
             if not shorts:
-                logger.info(f"No video shorts found for submodule {submodule_id} in database, using fallback")
-                # Return fallback mock data if no database records exist
+                logger.info(f"No video shorts found for submodule {submodule_id} in database, using mock videos")
                 return LearningService._get_mock_shorts_data(submodule_id, user)
             
             # Build response with user progress - flatten structure for JavaScript
@@ -658,15 +659,51 @@ class LearningService:
                     shorts_id=short.id
                 ).first()
                 
+                # Build video file path - check if file exists, fallback to mock if not
+                video_file_path = short.file_path
+                thumbnail_file_path = short.thumbnail_path
+                
+                # Check if actual video file exists
+                try:
+                    learning_base = os.path.join(current_app.root_path, '..', 'learning')
+                    full_video_path = os.path.join(learning_base, short.file_path) if short.file_path else None
+                    
+                    if full_video_path and os.path.exists(full_video_path):
+                        # Use actual uploaded video
+                        video_file_path = f"/static/learning/{short.file_path}"
+                        
+                        # Check for thumbnail
+                        if short.thumbnail_path:
+                            full_thumb_path = os.path.join(learning_base, short.thumbnail_path)
+                            if os.path.exists(full_thumb_path):
+                                thumbnail_file_path = f"/static/learning/{short.thumbnail_path}"
+                            else:
+                                thumbnail_file_path = None
+                    else:
+                        # Fallback to mock video if file doesn't exist
+                        logger.warning(f"Video file not found: {short.file_path}, using mock video")
+                        mock_videos = [
+                            'https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/BigBuckBunny.mp4',
+                            'https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/ElephantsDream.mp4',
+                            'https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/ForBiggerBlazes.mp4'
+                        ]
+                        video_file_path = mock_videos[short.sequence_order % len(mock_videos)]
+                        thumbnail_file_path = None
+                        
+                except Exception as file_check_error:
+                    logger.warning(f"Error checking video file: {str(file_check_error)}, using mock video")
+                    video_file_path = 'https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/BigBuckBunny.mp4'
+                    thumbnail_file_path = None
+                
                 # Build flattened video data with progress included at top level
                 video_data = {
                     # Video properties at top level for JavaScript compatibility
                     'id': short.id,
                     'title': short.title,
                     'description': short.description,
-                    'file_path': short.file_path,
+                    'file_path': video_file_path,
+                    'thumbnail_path': thumbnail_file_path,
                     'duration_seconds': short.duration_seconds,
-                    'thumbnail_path': short.thumbnail_path,
                     'view_count': short.view_count,
                     'like_count': short.like_count,
                     'sequence_order': short.sequence_order,
