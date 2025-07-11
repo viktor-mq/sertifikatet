@@ -46,8 +46,20 @@
                     border-radius: 4px; 
                     text-decoration: none;
                     cursor: pointer;
+                    margin-right: 10px;
                 ">
-                    <i class="fas fa-video"></i> Upload Video
+                    <i class="fas fa-upload"></i> Upload Content
+                </button>
+                <button onclick="exportContentModal()" class="btn" style="
+                    background: #17a2b8; 
+                    color: white; 
+                    padding: 8px 16px; 
+                    border: none; 
+                    border-radius: 4px; 
+                    text-decoration: none;
+                    cursor: pointer;
+                ">
+                    <i class="fas fa-download"></i> Export Content
                 </button>
             </div>
         </div>
@@ -164,6 +176,158 @@
         </div>
     </div>
 </div>
+
+<!-- Export Content Modal -->
+<div id="exportContentModal" style="
+    display: none;
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: rgba(0,0,0,0.5);
+    z-index: 10000;
+    justify-content: center;
+    align-items: center;
+">
+    <div style="
+        background: white;
+        border-radius: 8px;
+        width: 90%;
+        max-width: 600px;
+        max-height: 90%;
+        overflow: auto;
+        position: relative;
+    ">
+        <div style="
+            background: #f8f9fa;
+            padding: 20px;
+            border-bottom: 1px solid #e0e0e0;
+            border-radius: 8px 8px 0 0;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        ">
+            <h3 style="margin: 0; color: #333;">Export Learning Content</h3>
+            <button onclick="closeExportContentModal()" style="
+                background: none;
+                border: none;
+                font-size: 1.5rem;
+                cursor: pointer;
+                color: #666;
+            ">&times;</button>
+        </div>
+        <div style="padding: 20px;">
+            <div style="margin-bottom: 20px;">
+                <h4 style="margin: 0 0 15px 0; color: #333; display: flex; align-items: center; gap: 10px;">
+                    <i class="fas fa-download" style="color: #17a2b8;"></i>
+                    Export Options
+                </h4>
+                <p style="margin: 0 0 15px 0; color: #666;">Choose what content to export and in which format.</p>
+            </div>
+            
+            <form id="exportContentForm">
+                <!-- Export Type Selection -->
+                <div style="margin-bottom: 20px;">
+                    <label style="display: block; margin-bottom: 8px; font-weight: bold;">Export Type</label>
+                    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px;">
+                        <label style="display: flex; align-items: center; padding: 12px; border: 2px solid #e0e0e0; border-radius: 8px; cursor: pointer; transition: all 0.3s;" for="export-all">
+                            <input type="radio" id="export-all" name="export_type" value="all" checked style="margin-right: 10px;">
+                            <div>
+                                <div style="font-weight: bold;">All Content</div>
+                                <div style="font-size: 12px; color: #666;">Export everything</div>
+                            </div>
+                        </label>
+                        <label style="display: flex; align-items: center; padding: 12px; border: 2px solid #e0e0e0; border-radius: 8px; cursor: pointer; transition: all 0.3s;" for="export-module">
+                            <input type="radio" id="export-module" name="export_type" value="module" style="margin-right: 10px;">
+                            <div>
+                                <div style="font-weight: bold;">Single Module</div>
+                                <div style="font-size: 12px; color: #666;">Export one module</div>
+                            </div>
+                        </label>
+                    </div>
+                </div>
+                
+                <!-- Module Selection (hidden by default) -->
+                <div id="module-selection" style="display: none; margin-bottom: 20px;">
+                    <label style="display: block; margin-bottom: 5px; font-weight: bold;">Select Module</label>
+                    <select id="exportModule" style="width: 100%; padding: 8px; border: 1px solid #ccc; border-radius: 4px;">
+                        <option value="">Select a module...</option>
+                        <!-- Options loaded dynamically -->
+                    </select>
+                </div>
+                
+                <!-- Format Selection -->
+                <div style="margin-bottom: 20px;">
+                    <label style="display: block; margin-bottom: 8px; font-weight: bold;">Export Format</label>
+                    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px;">
+                        <label style="display: flex; align-items: center; padding: 12px; border: 2px solid #e0e0e0; border-radius: 8px; cursor: pointer; transition: all 0.3s;" for="format-zip">
+                            <input type="radio" id="format-zip" name="export_format" value="zip" checked style="margin-right: 10px;">
+                            <div>
+                                <div style="font-weight: bold;">ZIP Archive</div>
+                                <div style="font-size: 12px; color: #666;">Complete file structure</div>
+                            </div>
+                        </label>
+                        <label style="display: flex; align-items: center; padding: 12px; border: 2px solid #e0e0e0; border-radius: 8px; cursor: pointer; transition: all 0.3s;" for="format-json">
+                            <input type="radio" id="format-json" name="export_format" value="json" style="margin-right: 10px;">
+                            <div>
+                                <div style="font-weight: bold;">JSON Data</div>
+                                <div style="font-size: 12px; color: #666;">Database export</div>
+                            </div>
+                        </label>
+                    </div>
+                </div>
+                
+                <!-- Include Options -->
+                <div style="margin-bottom: 20px;">
+                    <label style="display: block; margin-bottom: 8px; font-weight: bold;">Include in Export</label>
+                    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px;">
+                        <label style="display: flex; align-items: center; padding: 8px;">
+                            <input type="checkbox" id="include-videos" checked style="margin-right: 8px;">
+                            <span>Video Files</span>
+                        </label>
+                        <label style="display: flex; align-items: center; padding: 8px;">
+                            <input type="checkbox" id="include-markdown" checked style="margin-right: 8px;">
+                            <span>Markdown Content</span>
+                        </label>
+                        <label style="display: flex; align-items: center; padding: 8px;">
+                            <input type="checkbox" id="include-yaml" checked style="margin-right: 8px;">
+                            <span>YAML Files</span>
+                        </label>
+                        <label style="display: flex; align-items: center; padding: 8px;">
+                            <input type="checkbox" id="include-progress" style="margin-right: 8px;">
+                            <span>User Progress Data</span>
+                        </label>
+                    </div>
+                </div>
+                
+                <div style="text-align: right; padding-top: 20px; border-top: 1px solid #e0e0e0;">
+                    <button type="button" onclick="closeExportContentModal()" style="
+                        background: #6c757d; 
+                        color: white; 
+                        padding: 10px 20px; 
+                        border: none; 
+                        border-radius: 4px; 
+                        cursor: pointer;
+                        margin-right: 10px;
+                    ">
+                        <i class="fas fa-times"></i> Cancel
+                    </button>
+                    <button type="submit" style="
+                        background: #17a2b8; 
+                        color: white; 
+                        padding: 10px 20px; 
+                        border: none; 
+                        border-radius: 4px; 
+                        cursor: pointer;
+                    ">
+                        <i class="fas fa-download"></i> Export Content
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
 <!-- End of Learning Modules Section -->
 
 <!-- Learning Modules Modals -->
@@ -250,7 +414,7 @@
     </div>
 </div>
 
-<!-- Upload Video Modal -->
+<!-- Upload Content Modal (Videos + Files) -->
 <div id="uploadVideoModal" style="
     display: none;
     position: fixed;
@@ -267,7 +431,7 @@
         background: white;
         border-radius: 8px;
         width: 90%;
-        max-width: 700px;
+        max-width: 900px;
         max-height: 90%;
         overflow: auto;
         position: relative;
@@ -281,7 +445,7 @@
             justify-content: space-between;
             align-items: center;
         ">
-            <h3 style="margin: 0; color: #333;">Upload Video Short</h3>
+            <h3 style="margin: 0; color: #333;">Upload Learning Content</h3>
             <button onclick="closeUploadVideoModal()" style="
                 background: none;
                 border: none;
@@ -290,84 +454,266 @@
                 color: #666;
             ">&times;</button>
         </div>
+        
+        <!-- Tab Navigation -->
+        <div style="padding: 0 20px; border-bottom: 1px solid #e0e0e0; background: #f8f9fa;">
+            <div style="display: flex; gap: 0;">
+                <button onclick="switchUploadTab('video')" id="upload-tab-video" class="upload-tab active" style="
+                    background: white;
+                    border: 1px solid #e0e0e0;
+                    border-bottom: none;
+                    padding: 12px 20px;
+                    cursor: pointer;
+                    border-radius: 8px 8px 0 0;
+                    margin-bottom: -1px;
+                    position: relative;
+                    z-index: 1;
+                ">
+                    <i class="fas fa-video"></i> Video Shorts
+                </button>
+                <button onclick="switchUploadTab('content')" id="upload-tab-content" class="upload-tab" style="
+                    background: #f8f9fa;
+                    border: 1px solid #e0e0e0;
+                    border-bottom: 1px solid #e0e0e0;
+                    padding: 12px 20px;
+                    cursor: pointer;
+                    border-radius: 8px 8px 0 0;
+                    margin-left: -1px;
+                ">
+                    <i class="fas fa-file-alt"></i> YAML & Markdown
+                </button>
+            </div>
+        </div>
+        
         <div style="padding: 20px;">
-            <form id="uploadVideoForm" enctype="multipart/form-data">
-                <div style="margin-bottom: 15px;">
-                    <label style="display: block; margin-bottom: 5px; font-weight: bold;">Select Module</label>
-                    <select id="videoModule" required style="width: 100%; padding: 8px; border: 1px solid #ccc; border-radius: 4px;">
-                        <option value="">Select a module...</option>
-                        <!-- Options loaded dynamically -->
-                    </select>
-                </div>
-                <div style="margin-bottom: 15px;">
-                    <label style="display: block; margin-bottom: 5px; font-weight: bold;">Select Submodule</label>
-                    <select id="videoSubmodule" required style="width: 100%; padding: 8px; border: 1px solid #ccc; border-radius: 4px;">
-                        <option value="">First select a module...</option>
-                    </select>
-                </div>
-                <div style="margin-bottom: 15px;">
-                    <label style="display: block; margin-bottom: 5px; font-weight: bold;">Video Title</label>
-                    <input type="text" id="videoTitle" required style="width: 100%; padding: 8px; border: 1px solid #ccc; border-radius: 4px;">
-                </div>
-                <div style="margin-bottom: 15px;">
-                    <label style="display: block; margin-bottom: 5px; font-weight: bold;">Video Description</label>
-                    <textarea id="videoDescription" rows="3" style="width: 100%; padding: 8px; border: 1px solid #ccc; border-radius: 4px;"></textarea>
-                </div>
-                <div style="margin-bottom: 15px;">
-                    <label style="display: block; margin-bottom: 5px; font-weight: bold;">Sequence Order</label>
-                    <input type="number" id="videoSequence" min="1" value="1" required style="width: 100%; padding: 8px; border: 1px solid #ccc; border-radius: 4px;">
-                </div>
-                <div style="margin-bottom: 15px;">
-                    <label style="display: block; margin-bottom: 5px; font-weight: bold;">Video File</label>
-                    <div id="video-drop-zone" style="
-                        border: 2px dashed #ccc;
-                        border-radius: 8px;
-                        padding: 40px;
-                        text-align: center;
-                        cursor: pointer;
-                        transition: border-color 0.3s;
-                    ">
-                        <i class="fas fa-cloud-upload-alt fa-3x" style="color: #ccc; margin-bottom: 15px;"></i>
-                        <p style="margin: 0; color: #666;">Drag and drop video file here or click to browse</p>
-                        <p style="margin: 5px 0 0 0; font-size: 12px; color: #999;">Supported formats: MP4 (max 300MB)</p>
-                        <input type="file" id="videoFile" accept=".mp4" style="display: none;" required>
-                    </div>
-                    <div id="upload-progress" style="display: none; margin-top: 15px;">
-                        <div style="background: #f0f0f0; border-radius: 4px; overflow: hidden;">
-                            <div id="progress-bar" style="
-                                background: #007bff;
-                                height: 20px;
-                                width: 0%;
-                                transition: width 0.3s;
-                                display: flex;
-                                align-items: center;
-                                justify-content: center;
-                                color: white;
-                                font-size: 12px;
-                            ">0%</div>
+            <!-- Video Upload Section -->
+            <div id="upload-section-video" class="upload-section" style="display: block;">
+                <h4 style="margin: 0 0 20px 0; color: #333; display: flex; align-items: center; gap: 10px;">
+                    <i class="fas fa-video" style="color: #28a745;"></i>
+                    Upload Video Short
+                </h4>
+                
+                <form id="uploadVideoForm" enctype="multipart/form-data">
+                    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 15px; margin-bottom: 15px;">
+                        <div>
+                            <label style="display: block; margin-bottom: 5px; font-weight: bold;">Select Module</label>
+                            <select id="videoModule" required style="width: 100%; padding: 8px; border: 1px solid #ccc; border-radius: 4px;">
+                                <option value="">Select a module...</option>
+                                <!-- Options loaded dynamically -->
+                            </select>
+                        </div>
+                        <div>
+                            <label style="display: block; margin-bottom: 5px; font-weight: bold;">Select Submodule</label>
+                            <select id="videoSubmodule" required style="width: 100%; padding: 8px; border: 1px solid #ccc; border-radius: 4px;">
+                                <option value="">First select a module...</option>
+                            </select>
                         </div>
                     </div>
+                    
+                    <div style="display: grid; grid-template-columns: 2fr 1fr; gap: 15px; margin-bottom: 15px;">
+                        <div>
+                            <label style="display: block; margin-bottom: 5px; font-weight: bold;">Video Title</label>
+                            <input type="text" id="videoTitle" required style="width: 100%; padding: 8px; border: 1px solid #ccc; border-radius: 4px;">
+                        </div>
+                        <div>
+                            <label style="display: block; margin-bottom: 5px; font-weight: bold;">Sequence Order</label>
+                            <input type="number" id="videoSequence" min="1" value="1" required style="width: 100%; padding: 8px; border: 1px solid #ccc; border-radius: 4px;">
+                        </div>
+                    </div>
+                    
+                    <div style="margin-bottom: 15px;">
+                        <label style="display: block; margin-bottom: 5px; font-weight: bold;">Video Description</label>
+                        <textarea id="videoDescription" rows="2" style="width: 100%; padding: 8px; border: 1px solid #ccc; border-radius: 4px;"></textarea>
+                    </div>
+                    
+                    <div style="margin-bottom: 15px;">
+                        <label style="display: block; margin-bottom: 5px; font-weight: bold;">Video File</label>
+                        <div id="video-drop-zone" style="
+                            border: 2px dashed #ccc;
+                            border-radius: 8px;
+                            padding: 40px;
+                            text-align: center;
+                            cursor: pointer;
+                            transition: border-color 0.3s;
+                        ">
+                            <i class="fas fa-cloud-upload-alt fa-3x" style="color: #ccc; margin-bottom: 15px;"></i>
+                            <p style="margin: 0; color: #666;">Drag and drop video file here or click to browse</p>
+                            <p style="margin: 5px 0 0 0; font-size: 12px; color: #999;">Supported formats: MP4 (max 300MB)</p>
+                            <input type="file" id="videoFile" accept=".mp4" style="display: none;" required>
+                        </div>
+                        <div id="upload-progress" style="display: none; margin-top: 15px;">
+                            <div style="background: #f0f0f0; border-radius: 4px; overflow: hidden;">
+                                <div id="progress-bar" style="
+                                    background: #007bff;
+                                    height: 20px;
+                                    width: 0%;
+                                    transition: width 0.3s;
+                                    display: flex;
+                                    align-items: center;
+                                    justify-content: center;
+                                    color: white;
+                                    font-size: 12px;
+                                ">0%</div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div style="text-align: right; margin-top: 20px;">
+                        <button type="submit" style="
+                            background: #28a745; 
+                            color: white; 
+                            padding: 10px 20px; 
+                            border: none; 
+                            border-radius: 4px; 
+                            cursor: pointer;
+                        ">
+                            <i class="fas fa-upload"></i> Upload Video
+                        </button>
+                    </div>
+                </form>
+            </div>
+            
+            <!-- Content Upload Section -->
+            <div id="upload-section-content" class="upload-section" style="display: none;">
+                <h4 style="margin: 0 0 20px 0; color: #333; display: flex; align-items: center; gap: 10px;">
+                    <i class="fas fa-file-alt" style="color: #6f42c1;"></i>
+                    Upload YAML & Markdown Files
+                </h4>
+                
+                <!-- Module YAML Upload -->
+                <div style="border: 1px solid #e0e0e0; border-radius: 8px; margin-bottom: 20px; background: #f8f9ff;">
+                    <div style="background: #6f42c1; color: white; padding: 12px; border-radius: 8px 8px 0 0;">
+                        <h5 style="margin: 0; display: flex; align-items: center; gap: 8px;">
+                            <i class="fas fa-cog"></i> Module Configuration (module.yaml)
+                        </h5>
+                    </div>
+                    <div style="padding: 20px;">
+                        <form id="uploadModuleYamlForm">
+                            <div style="margin-bottom: 15px;">
+                                <label style="display: block; margin-bottom: 5px; font-weight: bold;">Select Module</label>
+                                <select id="yamlModule" required style="width: 100%; padding: 8px; border: 1px solid #ccc; border-radius: 4px;">
+                                    <option value="">Select a module...</option>
+                                    <!-- Options loaded dynamically -->
+                                </select>
+                            </div>
+                            
+                            <div style="margin-bottom: 15px;">
+                                <label style="display: block; margin-bottom: 5px; font-weight: bold;">Module YAML File</label>
+                                <div id="yaml-drop-zone" class="file-drop-zone" style="
+                                    border: 2px dashed #6f42c1;
+                                    border-radius: 8px;
+                                    padding: 30px;
+                                    text-align: center;
+                                    cursor: pointer;
+                                    transition: all 0.3s;
+                                    background: #f8f9ff;
+                                ">
+                                    <i class="fas fa-file-code fa-2x" style="color: #6f42c1; margin-bottom: 10px;"></i>
+                                    <p style="margin: 0; color: #6f42c1; font-weight: bold;">Drop module.yaml here or click to browse</p>
+                                    <p style="margin: 5px 0 0 0; font-size: 12px; color: #888;">Supported: .yaml, .yml files</p>
+                                    <input type="file" id="yamlFile" accept=".yaml,.yml" style="display: none;" required>
+                                </div>
+                            </div>
+                            
+                            <div style="text-align: right;">
+                                <button type="submit" style="
+                                    background: #6f42c1; 
+                                    color: white; 
+                                    padding: 8px 16px; 
+                                    border: none; 
+                                    border-radius: 4px; 
+                                    cursor: pointer;
+                                ">
+                                    <i class="fas fa-upload"></i> Upload YAML
+                                </button>
+                            </div>
+                        </form>
+                    </div>
                 </div>
-                <div style="text-align: right; margin-top: 20px;">
-                    <button type="button" onclick="closeUploadVideoModal()" style="
-                        background: #6c757d; 
-                        color: white; 
-                        padding: 8px 16px; 
-                        border: none; 
-                        border-radius: 4px; 
-                        cursor: pointer;
-                        margin-right: 10px;
-                    ">Cancel</button>
-                    <button type="submit" style="
-                        background: #28a745; 
-                        color: white; 
-                        padding: 8px 16px; 
-                        border: none; 
-                        border-radius: 4px; 
-                        cursor: pointer;
-                    ">Upload Video</button>
+                
+                <!-- Markdown Content Upload -->
+                <div style="border: 1px solid #e0e0e0; border-radius: 8px; background: #f0f8ff;">
+                    <div style="background: #007bff; color: white; padding: 12px; border-radius: 8px 8px 0 0;">
+                        <h5 style="margin: 0; display: flex; align-items: center; gap: 8px;">
+                            <i class="fas fa-markdown"></i> Submodule Content (long.md / short.md)
+                        </h5>
+                    </div>
+                    <div style="padding: 20px;">
+                        <form id="uploadMarkdownForm">
+                            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 15px; margin-bottom: 15px;">
+                                <div>
+                                    <label style="display: block; margin-bottom: 5px; font-weight: bold;">Select Module</label>
+                                    <select id="markdownModule" required style="width: 100%; padding: 8px; border: 1px solid #ccc; border-radius: 4px;">
+                                        <option value="">Select a module...</option>
+                                        <!-- Options loaded dynamically -->
+                                    </select>
+                                </div>
+                                <div>
+                                    <label style="display: block; margin-bottom: 5px; font-weight: bold;">Select Submodule</label>
+                                    <select id="markdownSubmodule" required style="width: 100%; padding: 8px; border: 1px solid #ccc; border-radius: 4px;">
+                                        <option value="">First select a module...</option>
+                                    </select>
+                                </div>
+                            </div>
+                            
+                            <div style="margin-bottom: 15px;">
+                                <label style="display: block; margin-bottom: 5px; font-weight: bold;">Content Type</label>
+                                <select id="markdownType" required style="width: 100%; padding: 8px; border: 1px solid #ccc; border-radius: 4px;">
+                                    <option value="">Select content type...</option>
+                                    <option value="long">Long Content (long.md) - Detailed explanations</option>
+                                    <option value="short">Short Content (short.md) - Quick summary</option>
+                                    <option value="metadata">Metadata (metadata.yaml) - Configuration</option>
+                                </select>
+                            </div>
+                            
+                            <div style="margin-bottom: 15px;">
+                                <label style="display: block; margin-bottom: 5px; font-weight: bold;">Content File</label>
+                                <div id="markdown-drop-zone" class="file-drop-zone" style="
+                                    border: 2px dashed #007bff;
+                                    border-radius: 8px;
+                                    padding: 30px;
+                                    text-align: center;
+                                    cursor: pointer;
+                                    transition: all 0.3s;
+                                    background: #f0f8ff;
+                                ">
+                                    <i class="fas fa-file-alt fa-2x" style="color: #007bff; margin-bottom: 10px;"></i>
+                                    <p style="margin: 0; color: #007bff; font-weight: bold;">Drop content file here or click to browse</p>
+                                    <p style="margin: 5px 0 0 0; font-size: 12px; color: #888;">Supported: .md, .yaml, .yml files</p>
+                                    <input type="file" id="markdownFile" accept=".md,.yaml,.yml" style="display: none;" required>
+                                </div>
+                            </div>
+                            
+                            <div style="text-align: right;">
+                                <button type="submit" style="
+                                    background: #007bff; 
+                                    color: white; 
+                                    padding: 8px 16px; 
+                                    border: none; 
+                                    border-radius: 4px; 
+                                    cursor: pointer;
+                                ">
+                                    <i class="fas fa-upload"></i> Upload Content
+                                </button>
+                            </div>
+                        </form>
+                    </div>
                 </div>
-            </form>
+            </div>
+            
+            <!-- Close Button -->
+            <div style="text-align: center; margin-top: 20px; padding-top: 20px; border-top: 1px solid #e0e0e0;">
+                <button type="button" onclick="closeUploadVideoModal()" style="
+                    background: #6c757d; 
+                    color: white; 
+                    padding: 10px 20px; 
+                    border: none; 
+                    border-radius: 4px; 
+                    cursor: pointer;
+                ">
+                    <i class="fas fa-times"></i> Close
+                </button>
+            </div>
         </div>
     </div>
 </div>

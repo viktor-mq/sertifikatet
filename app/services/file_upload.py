@@ -202,6 +202,57 @@ class FileUploadService:
             raise
     
     @staticmethod
+    def upload_submodule_metadata(submodule_id, metadata_content):
+        """Upload metadata.yaml file for a submodule"""
+        try:
+            # Get submodule from database
+            submodule = LearningSubmodules.query.get(submodule_id)
+            if not submodule:
+                raise ValueError(f"Submodule {submodule_id} not found")
+            
+            # Get module
+            module = LearningModules.query.get(submodule.module_id)
+            if not module or not module.content_directory:
+                raise ValueError("Module directory not found")
+            
+            # Parse YAML content
+            try:
+                yaml_data = yaml.safe_load(metadata_content)
+            except yaml.YAMLError as e:
+                raise ValueError(f"Invalid YAML format: {str(e)}")
+            
+            # Create submodule directory if needed
+            if not submodule.content_file_path:
+                submodule_path, submodule_dir_name = FileUploadService.create_submodule_directory(
+                    module.content_directory, submodule.submodule_number, submodule.title
+                )
+                # Update submodule paths
+                submodule.content_file_path = f"{submodule_dir_name}/long.md"
+                submodule.summary_file_path = f"{submodule_dir_name}/short.md"
+                submodule.shorts_directory = f"{submodule_dir_name}/videos"
+            else:
+                learning_base = os.path.join(current_app.root_path, '..', 'learning')
+                submodule_dir = os.path.dirname(submodule.content_file_path)
+                submodule_path = os.path.join(learning_base, module.content_directory, submodule_dir)
+            
+            # Save metadata.yaml file
+            metadata_file_path = os.path.join(submodule_path, 'metadata.yaml')
+            with open(metadata_file_path, 'w', encoding='utf-8') as f:
+                yaml.dump(yaml_data, f, default_flow_style=False, allow_unicode=True)
+            
+            # Update submodule metadata
+            submodule.last_content_update = datetime.utcnow()
+            db.session.commit()
+            
+            logger.info(f"Uploaded metadata.yaml for submodule {submodule_id}")
+            return True
+            
+        except Exception as e:
+            logger.error(f"Error uploading submodule metadata: {str(e)}")
+            db.session.rollback()
+            raise
+
+    @staticmethod
     def upload_video_short(submodule_id, video_file, video_metadata):
         """Upload video short file"""
         try:

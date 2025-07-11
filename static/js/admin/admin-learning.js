@@ -615,12 +615,411 @@
         }, 5000);
     }
 
+    // NEW FUNCTIONS FOR ENHANCED UPLOAD & EXPORT FUNCTIONALITY
+    
+    function exportContentModal() {
+        const modal = document.getElementById('exportContentModal');
+        if (modal) {
+            modal.style.display = 'flex';
+            loadModulesForExport();
+            setupExportFormHandlers();
+        }
+    }
+
+    function closeExportContentModal() {
+        const modal = document.getElementById('exportContentModal');
+        if (modal) modal.style.display = 'none';
+    }
+
+    function switchUploadTab(tabName) {
+        // Hide all sections
+        const sections = document.querySelectorAll('.upload-section');
+        sections.forEach(section => section.style.display = 'none');
+        
+        // Show selected section
+        const targetSection = document.getElementById(`upload-section-${tabName}`);
+        if (targetSection) targetSection.style.display = 'block';
+        
+        // Update tab appearance
+        const tabs = document.querySelectorAll('.upload-tab');
+        tabs.forEach(tab => {
+            tab.style.background = '#f8f9fa';
+            tab.style.borderBottom = '1px solid #e0e0e0';
+            tab.style.zIndex = '0';
+        });
+        
+        const activeTab = document.getElementById(`upload-tab-${tabName}`);
+        if (activeTab) {
+            activeTab.style.background = 'white';
+            activeTab.style.borderBottom = 'none';
+            activeTab.style.zIndex = '1';
+        }
+        
+        // Load data for content tab if needed
+        if (tabName === 'content') {
+            loadModulesForContentUpload();
+        }
+    }
+
+    function loadModulesForExport() {
+        fetch('/admin/api/learning-modules')
+            .then(response => response.json())
+            .then(data => {
+                const select = document.getElementById('exportModule');
+                if (select && data.modules) {
+                    select.innerHTML = '<option value="">Select a module...</option>' +
+                        data.modules.filter(module => module.is_active).map(module => 
+                            `<option value="${module.id}">${module.module_number} - ${escapeHtml(module.title)}</option>`
+                        ).join('');
+                }
+            })
+            .catch(error => console.error('Error loading modules for export:', error));
+    }
+
+    function loadModulesForContentUpload() {
+        fetch('/admin/api/learning-modules')
+            .then(response => response.json())
+            .then(data => {
+                if (data.modules) {
+                    // Load modules for YAML upload
+                    const yamlSelect = document.getElementById('yamlModule');
+                    if (yamlSelect) {
+                        yamlSelect.innerHTML = '<option value="">Select a module...</option>' +
+                            data.modules.filter(module => module.is_active).map(module => 
+                                `<option value="${module.id}">${module.module_number} - ${escapeHtml(module.title)}</option>`
+                            ).join('');
+                    }
+                    
+                    // Load modules for markdown upload
+                    const markdownSelect = document.getElementById('markdownModule');
+                    if (markdownSelect) {
+                        markdownSelect.innerHTML = '<option value="">Select a module...</option>' +
+                            data.modules.filter(module => module.is_active).map(module => 
+                                `<option value="${module.id}">${module.module_number} - ${escapeHtml(module.title)}</option>`
+                            ).join('');
+                        
+                        // Setup change handler for markdown module
+                        markdownSelect.addEventListener('change', loadSubmodulesForMarkdown);
+                    }
+                }
+            })
+            .catch(error => console.error('Error loading modules for content upload:', error));
+    }
+
+    function loadSubmodulesForMarkdown() {
+        const moduleSelect = document.getElementById('markdownModule');
+        const submoduleSelect = document.getElementById('markdownSubmodule');
+        
+        if (!moduleSelect || !submoduleSelect) return;
+        
+        const moduleId = moduleSelect.value;
+        
+        if (!moduleId) {
+            submoduleSelect.innerHTML = '<option value="">First select a module...</option>';
+            return;
+        }
+        
+        fetch(`/admin/api/learning-modules/${moduleId}/submodules`)
+            .then(response => response.json())
+            .then(data => {
+                if (data.submodules && data.submodules.length > 0) {
+                    submoduleSelect.innerHTML = '<option value="">Select a submodule...</option>' +
+                        data.submodules.map(submodule => 
+                            `<option value="${submodule.id}">${submodule.submodule_number} - ${escapeHtml(submodule.title)}</option>`
+                        ).join('');
+                } else {
+                    submoduleSelect.innerHTML = '<option value="">No submodules available</option>';
+                }
+            })
+            .catch(error => {
+                console.error('Error loading submodules:', error);
+                submoduleSelect.innerHTML = '<option value="">Error loading submodules</option>';
+            });
+    }
+
+    function setupExportFormHandlers() {
+        // Handle export type change
+        const exportTypeRadios = document.querySelectorAll('input[name="export_type"]');
+        exportTypeRadios.forEach(radio => {
+            radio.addEventListener('change', function() {
+                const moduleSelection = document.getElementById('module-selection');
+                if (this.value === 'module') {
+                    moduleSelection.style.display = 'block';
+                } else {
+                    moduleSelection.style.display = 'none';
+                }
+            });
+        });
+        
+        // Handle export form submission
+        const exportForm = document.getElementById('exportContentForm');
+        if (exportForm) {
+            exportForm.addEventListener('submit', function(e) {
+                e.preventDefault();
+                handleExportSubmission();
+            });
+        }
+    }
+
+    function handleExportSubmission() {
+        const exportType = document.querySelector('input[name="export_type"]:checked').value;
+        const exportFormat = document.querySelector('input[name="export_format"]:checked').value;
+        const moduleId = document.getElementById('exportModule').value;
+        
+        // Get include options
+        const includeVideos = document.getElementById('include-videos').checked;
+        const includeMarkdown = document.getElementById('include-markdown').checked;
+        const includeYaml = document.getElementById('include-yaml').checked;
+        const includeProgress = document.getElementById('include-progress').checked;
+        
+        // Validation
+        if (exportType === 'module' && !moduleId) {
+            showError('Please select a module to export');
+            return;
+        }
+        
+        // Build export URL
+        const params = new URLSearchParams({
+            type: exportType,
+            format: exportFormat,
+            include_videos: includeVideos,
+            include_markdown: includeMarkdown,
+            include_yaml: includeYaml,
+            include_progress: includeProgress
+        });
+        
+        if (exportType === 'module' && moduleId) {
+            params.append('module_id', moduleId);
+        }
+        
+        // Start download
+        const downloadUrl = `/admin/api/export-content?${params.toString()}`;
+        window.open(downloadUrl, '_blank');
+        
+        showSuccess('Export started - download will begin shortly');
+        closeExportContentModal();
+    }
+
+    function setupContentUploadDropZones() {
+        // Setup YAML drop zone
+        setupDropZone('yaml-drop-zone', 'yamlFile', ['.yaml', '.yml'], updateYamlDropZoneText);
+        
+        // Setup Markdown drop zone
+        setupDropZone('markdown-drop-zone', 'markdownFile', ['.md', '.yaml', '.yml'], updateMarkdownDropZoneText);
+    }
+
+    function setupDropZone(dropZoneId, fileInputId, acceptedExtensions, updateTextCallback) {
+        const dropZone = document.getElementById(dropZoneId);
+        const fileInput = document.getElementById(fileInputId);
+        
+        if (dropZone && fileInput) {
+            dropZone.addEventListener('click', () => fileInput.click());
+            
+            dropZone.addEventListener('dragover', (e) => {
+                e.preventDefault();
+                dropZone.style.borderColor = '#007bff';
+                dropZone.style.transform = 'scale(1.02)';
+            });
+            
+            dropZone.addEventListener('dragleave', (e) => {
+                e.preventDefault();
+                dropZone.style.borderColor = dropZone.style.borderColor.includes('6f42c1') ? '#6f42c1' : '#007bff';
+                dropZone.style.transform = 'scale(1)';
+            });
+            
+            dropZone.addEventListener('drop', (e) => {
+                e.preventDefault();
+                dropZone.style.borderColor = dropZone.style.borderColor.includes('6f42c1') ? '#6f42c1' : '#007bff';
+                dropZone.style.transform = 'scale(1)';
+                
+                const files = e.dataTransfer.files;
+                if (files.length > 0) {
+                    if (validateFileType(files[0], acceptedExtensions)) {
+                        fileInput.files = files;
+                        updateTextCallback(files[0].name);
+                    }
+                }
+            });
+            
+            fileInput.addEventListener('change', (e) => {
+                if (e.target.files.length > 0) {
+                    if (validateFileType(e.target.files[0], acceptedExtensions)) {
+                        updateTextCallback(e.target.files[0].name);
+                    }
+                }
+            });
+        }
+    }
+
+    function validateFileType(file, acceptedExtensions) {
+        const extension = '.' + file.name.split('.').pop().toLowerCase();
+        if (!acceptedExtensions.includes(extension)) {
+            showError(`Invalid file type. Accepted types: ${acceptedExtensions.join(', ')}`);
+            return false;
+        }
+        return true;
+    }
+
+    function updateYamlDropZoneText(filename) {
+        const dropZone = document.getElementById('yaml-drop-zone');
+        if (dropZone) {
+            dropZone.innerHTML = `
+                <i class="fas fa-file-code fa-2x" style="color: #6f42c1; margin-bottom: 10px;"></i>
+                <p style="margin: 0; color: #6f42c1; font-weight: bold;">${escapeHtml(filename)}</p>
+                <p style="margin: 5px 0 0 0; font-size: 12px; color: #888;">Click to change file</p>
+            `;
+        }
+    }
+
+    function updateMarkdownDropZoneText(filename) {
+        const dropZone = document.getElementById('markdown-drop-zone');
+        if (dropZone) {
+            dropZone.innerHTML = `
+                <i class="fas fa-file-alt fa-2x" style="color: #007bff; margin-bottom: 10px;"></i>
+                <p style="margin: 0; color: #007bff; font-weight: bold;">${escapeHtml(filename)}</p>
+                <p style="margin: 5px 0 0 0; font-size: 12px; color: #888;">Click to change file</p>
+            `;
+        }
+    }
+
+    function setupContentUploadForms() {
+        // Module YAML Upload Form
+        const yamlForm = document.getElementById('uploadModuleYamlForm');
+        if (yamlForm) {
+            yamlForm.addEventListener('submit', function(e) {
+                e.preventDefault();
+                handleModuleYamlUpload();
+            });
+        }
+        
+        // Markdown Content Upload Form
+        const markdownForm = document.getElementById('uploadMarkdownForm');
+        if (markdownForm) {
+            markdownForm.addEventListener('submit', function(e) {
+                e.preventDefault();
+                handleMarkdownUpload();
+            });
+        }
+    }
+
+    function handleModuleYamlUpload() {
+        const moduleId = document.getElementById('yamlModule').value;
+        const fileInput = document.getElementById('yamlFile');
+        
+        if (!moduleId) {
+            showError('Please select a module');
+            return;
+        }
+        
+        if (!fileInput.files[0]) {
+            showError('Please select a YAML file');
+            return;
+        }
+        
+        const formData = new FormData();
+        formData.append('yaml_file', fileInput.files[0]);
+        
+        fetch(`/admin/api/learning-modules/${moduleId}/upload-yaml`, {
+            method: 'POST',
+            headers: {
+                'X-CSRFToken': getCSRFToken()
+            },
+            body: formData
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                showSuccess('Module YAML uploaded successfully');
+                document.getElementById('uploadModuleYamlForm').reset();
+                resetYamlDropZone();
+            } else {
+                showError(data.message || 'Failed to upload YAML file');
+            }
+        })
+        .catch(error => {
+            console.error('Error uploading YAML:', error);
+            showError('Failed to upload YAML file');
+        });
+    }
+
+    function handleMarkdownUpload() {
+        const moduleId = document.getElementById('markdownModule').value;
+        const submoduleId = document.getElementById('markdownSubmodule').value;
+        const contentType = document.getElementById('markdownType').value;
+        const fileInput = document.getElementById('markdownFile');
+        
+        if (!moduleId || !submoduleId || !contentType) {
+            showError('Please fill in all required fields');
+            return;
+        }
+        
+        if (!fileInput.files[0]) {
+            showError('Please select a content file');
+            return;
+        }
+        
+        const formData = new FormData();
+        formData.append('content_file', fileInput.files[0]);
+        formData.append('content_type', contentType);
+        
+        const endpoint = contentType === 'metadata' 
+            ? `/admin/api/learning-submodules/${submoduleId}/upload-metadata`
+            : `/admin/api/learning-submodules/${submoduleId}/upload-content`;
+        
+        fetch(endpoint, {
+            method: 'POST',
+            headers: {
+                'X-CSRFToken': getCSRFToken()
+            },
+            body: formData
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                showSuccess(`${contentType.charAt(0).toUpperCase() + contentType.slice(1)} content uploaded successfully`);
+                document.getElementById('uploadMarkdownForm').reset();
+                resetMarkdownDropZone();
+            } else {
+                showError(data.message || 'Failed to upload content file');
+            }
+        })
+        .catch(error => {
+            console.error('Error uploading content:', error);
+            showError('Failed to upload content file');
+        });
+    }
+
+    function resetYamlDropZone() {
+        const dropZone = document.getElementById('yaml-drop-zone');
+        if (dropZone) {
+            dropZone.innerHTML = `
+                <i class="fas fa-file-code fa-2x" style="color: #6f42c1; margin-bottom: 10px;"></i>
+                <p style="margin: 0; color: #6f42c1; font-weight: bold;">Drop module.yaml here or click to browse</p>
+                <p style="margin: 5px 0 0 0; font-size: 12px; color: #888;">Supported: .yaml, .yml files</p>
+            `;
+        }
+    }
+
+    function resetMarkdownDropZone() {
+        const dropZone = document.getElementById('markdown-drop-zone');
+        if (dropZone) {
+            dropZone.innerHTML = `
+                <i class="fas fa-file-alt fa-2x" style="color: #007bff; margin-bottom: 10px;"></i>
+                <p style="margin: 0; color: #007bff; font-weight: bold;">Drop content file here or click to browse</p>
+                <p style="margin: 5px 0 0 0; font-size: 12px; color: #888;">Supported: .md, .yaml, .yml files</p>
+            `;
+        }
+    }
+
     // Expose functions globally for HTML onclick handlers
     window.initializeLearningModules = initializeLearningModules;
     window.createNewModule = createNewModule;
     window.closeCreateModuleModal = closeCreateModuleModal;
     window.uploadVideoModal = uploadVideoModal;
     window.closeUploadVideoModal = closeUploadVideoModal;
+    window.exportContentModal = exportContentModal;
+    window.closeExportContentModal = closeExportContentModal;
+    window.switchUploadTab = switchUploadTab;
     window.editModule = editModule;
     window.closeEditModuleModal = closeEditModuleModal;
     window.deleteModule = deleteModule;

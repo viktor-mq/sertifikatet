@@ -4139,3 +4139,340 @@ def admin_upload_video():
     except Exception as e:
         logger.error(f'Error uploading video: {str(e)}')
         return jsonify({'error': str(e)}), 500
+    
+# Add these routes to your app/admin/routes.py file
+
+@admin_bp.route('/api/learning-modules/<int:module_id>/upload-yaml', methods=['POST'])
+@admin_required
+def upload_module_yaml(module_id):
+    """Upload module.yaml file for a learning module"""
+    try:
+        # Check if YAML file is present
+        if 'yaml_file' not in request.files:
+            return jsonify({'error': 'No YAML file provided'}), 400
+            
+        yaml_file = request.files['yaml_file']
+        if yaml_file.filename == '':
+            return jsonify({'error': 'No YAML file selected'}), 400
+        
+        # Validate file type
+        if not yaml_file.filename.lower().endswith(('.yaml', '.yml')):
+            return jsonify({'error': 'Only YAML files (.yaml, .yml) are supported'}), 400
+        
+        # Verify module exists
+        module = LearningModules.query.get_or_404(module_id)
+        
+        # Read and validate YAML content
+        try:
+            yaml_content = yaml_file.read().decode('utf-8')
+        except UnicodeDecodeError:
+            return jsonify({'error': 'Invalid file encoding. Please use UTF-8'}), 400
+        
+        # Use FileUploadService to upload YAML
+        from ..services.file_upload import FileUploadService
+        FileUploadService.upload_module_yaml(module_id, yaml_content)
+        
+        # Log admin action
+        AdminSecurityService.log_admin_action(
+            current_user,
+            f"Uploaded module.yaml for module: {module.title} (#{module.module_number})"
+        )
+        
+        return jsonify({
+            'success': True,
+            'message': 'Module YAML uploaded successfully'
+        })
+        
+    except Exception as e:
+        logger.error(f"Error uploading module YAML for module {module_id}: {str(e)}")
+        return jsonify({'error': str(e)}), 500
+
+
+@admin_bp.route('/api/learning-submodules/<int:submodule_id>/upload-content', methods=['POST'])
+@admin_required
+def upload_submodule_content(submodule_id):
+    """Upload long.md or short.md content for a submodule"""
+    try:
+        # Check if content file is present
+        if 'content_file' not in request.files:
+            return jsonify({'error': 'No content file provided'}), 400
+            
+        content_file = request.files['content_file']
+        if content_file.filename == '':
+            return jsonify({'error': 'No content file selected'}), 400
+        
+        # Get content type from form data
+        content_type = request.form.get('content_type')
+        if content_type not in ['long', 'short']:
+            return jsonify({'error': 'Content type must be "long" or "short"'}), 400
+        
+        # Validate file type
+        if not content_file.filename.lower().endswith('.md'):
+            return jsonify({'error': 'Only Markdown files (.md) are supported'}), 400
+        
+        # Verify submodule exists
+        submodule = LearningSubmodules.query.get_or_404(submodule_id)
+        
+        # Read markdown content
+        try:
+            markdown_content = content_file.read().decode('utf-8')
+        except UnicodeDecodeError:
+            return jsonify({'error': 'Invalid file encoding. Please use UTF-8'}), 400
+        
+        # Use FileUploadService to upload markdown content
+        from ..services.file_upload import FileUploadService
+        FileUploadService.upload_markdown_content(submodule_id, content_type, markdown_content)
+        
+        # Log admin action
+        AdminSecurityService.log_admin_action(
+            current_user,
+            f"Uploaded {content_type}.md for submodule: {submodule.title} (#{submodule.submodule_number})"
+        )
+        
+        return jsonify({
+            'success': True,
+            'message': f'{content_type.capitalize()} content uploaded successfully'
+        })
+        
+    except Exception as e:
+        logger.error(f"Error uploading content for submodule {submodule_id}: {str(e)}")
+        return jsonify({'error': str(e)}), 500
+
+
+@admin_bp.route('/api/learning-submodules/<int:submodule_id>/upload-metadata', methods=['POST'])
+@admin_required
+def upload_submodule_metadata(submodule_id):
+    """Upload metadata.yaml file for a submodule"""
+    try:
+        # Check if metadata file is present
+        if 'content_file' not in request.files:
+            return jsonify({'error': 'No metadata file provided'}), 400
+            
+        metadata_file = request.files['content_file']
+        if metadata_file.filename == '':
+            return jsonify({'error': 'No metadata file selected'}), 400
+        
+        # Validate file type
+        if not metadata_file.filename.lower().endswith(('.yaml', '.yml')):
+            return jsonify({'error': 'Only YAML files (.yaml, .yml) are supported'}), 400
+        
+        # Verify submodule exists
+        submodule = LearningSubmodules.query.get_or_404(submodule_id)
+        
+        # Read and validate YAML content
+        try:
+            metadata_content = metadata_file.read().decode('utf-8')
+        except UnicodeDecodeError:
+            return jsonify({'error': 'Invalid file encoding. Please use UTF-8'}), 400
+        
+        # Use FileUploadService to upload metadata
+        from ..services.file_upload import FileUploadService
+        FileUploadService.upload_submodule_metadata(submodule_id, metadata_content)
+        
+        # Log admin action
+        AdminSecurityService.log_admin_action(
+            current_user,
+            f"Uploaded metadata.yaml for submodule: {submodule.title} (#{submodule.submodule_number})"
+        )
+        
+        return jsonify({
+            'success': True,
+            'message': 'Metadata uploaded successfully'
+        })
+        
+    except Exception as e:
+        logger.error(f"Error uploading metadata for submodule {submodule_id}: {str(e)}")
+        return jsonify({'error': str(e)}), 500
+
+
+@admin_bp.route('/api/export-content', methods=['GET'])
+@admin_required
+def export_learning_content():
+    """Export learning content in various formats"""
+    try:
+        # Get export parameters
+        export_type = request.args.get('type', 'all')  # 'all' or 'module'
+        export_format = request.args.get('format', 'zip')  # 'zip' or 'json'
+        module_id = request.args.get('module_id')
+        
+        # Get include options
+        include_videos = request.args.get('include_videos', 'false').lower() == 'true'
+        include_markdown = request.args.get('include_markdown', 'false').lower() == 'true'
+        include_yaml = request.args.get('include_yaml', 'false').lower() == 'true'
+        include_progress = request.args.get('include_progress', 'false').lower() == 'true'
+        
+        # Validation
+        if export_type == 'module' and not module_id:
+            return jsonify({'error': 'Module ID required for module export'}), 400
+        
+        if export_type == 'module':
+            module = LearningModules.query.get_or_404(module_id)
+            modules = [module]
+            export_name = f"module_{module.module_number}_{module.title}"
+        else:
+            modules = LearningModules.query.filter_by(is_active=True).all()
+            export_name = "all_learning_content"
+        
+        # Sanitize export name for filename
+        import re
+        export_name = re.sub(r'[^\w\-_.]', '_', export_name)
+        
+        if export_format == 'json':
+            # JSON Export - Database data only
+            export_data = {
+                'export_info': {
+                    'exported_at': datetime.utcnow().isoformat(),
+                    'exported_by': current_user.username,
+                    'export_type': export_type,
+                    'include_options': {
+                        'videos': include_videos,
+                        'markdown': include_markdown,
+                        'yaml': include_yaml,
+                        'progress': include_progress
+                    }
+                },
+                'modules': []
+            }
+            
+            for module in modules:
+                module_data = {
+                    'id': module.id,
+                    'module_number': module.module_number,
+                    'title': module.title,
+                    'description': module.description,
+                    'estimated_hours': module.estimated_hours,
+                    'submodules': []
+                }
+                
+                # Get submodules
+                submodules = LearningSubmodules.query.filter_by(
+                    module_id=module.id, 
+                    is_active=True
+                ).all()
+                
+                for submodule in submodules:
+                    submodule_data = {
+                        'id': submodule.id,
+                        'submodule_number': submodule.submodule_number,
+                        'title': submodule.title,
+                        'description': submodule.description,
+                        'estimated_minutes': submodule.estimated_minutes
+                    }
+                    
+                    # Add video data if requested
+                    if include_videos:
+                        videos = VideoShorts.query.filter(
+                            func.cast(VideoShorts.submodule_id, db.Float) == submodule.submodule_number,
+                            VideoShorts.is_active == True
+                        ).all()
+                        submodule_data['videos'] = [{
+                            'id': video.id,
+                            'title': video.title,
+                            'description': video.description,
+                            'filename': video.filename,
+                            'duration_seconds': video.duration_seconds,
+                            'sequence_order': video.sequence_order
+                        } for video in videos]
+                    
+                    module_data['submodules'].append(submodule_data)
+                
+                export_data['modules'].append(module_data)
+            
+            # Add user progress if requested
+            if include_progress:
+                progress_data = UserShortsProgress.query.all()
+                export_data['user_progress'] = [{
+                    'user_id': p.user_id,
+                    'shorts_id': p.shorts_id,
+                    'watch_status': p.watch_status,
+                    'watch_percentage': p.watch_percentage,
+                    'completed_at': p.completed_at.isoformat() if p.completed_at else None
+                } for p in progress_data]
+            
+            # Create JSON response
+            output = BytesIO()
+            json_content = json.dumps(export_data, ensure_ascii=False, indent=2)
+            output.write(json_content.encode('utf-8'))
+            output.seek(0)
+            
+            # Log export action
+            AdminSecurityService.log_admin_action(
+                current_user,
+                f"Exported learning content (JSON): {export_type}"
+            )
+            
+            return send_file(
+                output,
+                mimetype='application/json',
+                as_attachment=True,
+                download_name=f'{export_name}.json'
+            )
+        
+        else:
+            # ZIP Export - Files and data
+            import zipfile
+            import tempfile
+            
+            # Create temporary file for ZIP
+            temp_zip = tempfile.NamedTemporaryFile(delete=False, suffix='.zip')
+            
+            with zipfile.ZipFile(temp_zip.name, 'w', zipfile.ZIP_DEFLATED) as zipf:
+                learning_base = os.path.join(current_app.root_path, '..', 'learning')
+                
+                for module in modules:
+                    if not module.content_directory:
+                        continue
+                    
+                    module_path = os.path.join(learning_base, module.content_directory)
+                    if not os.path.exists(module_path):
+                        continue
+                    
+                    # Add module files to ZIP
+                    for root, dirs, files in os.walk(module_path):
+                        for file in files:
+                            file_path = os.path.join(root, file)
+                            
+                            # Check include options
+                            if file.endswith('.yaml') and not include_yaml:
+                                continue
+                            if file.endswith('.md') and not include_markdown:
+                                continue
+                            if file.endswith('.mp4') and not include_videos:
+                                continue
+                            
+                            # Add file to ZIP with relative path
+                            arcname = os.path.relpath(file_path, learning_base)
+                            zipf.write(file_path, arcname)
+                
+                # Add database export as JSON
+                if include_progress or any([include_videos, include_markdown, include_yaml]):
+                    # Create simplified database export
+                    db_export = {
+                        'modules': [{
+                            'id': m.id,
+                            'module_number': m.module_number,
+                            'title': m.title,
+                            'description': m.description
+                        } for m in modules]
+                    }
+                    
+                    db_json = json.dumps(db_export, ensure_ascii=False, indent=2)
+                    zipf.writestr('database_export.json', db_json.encode('utf-8'))
+            
+            # Log export action
+            AdminSecurityService.log_admin_action(
+                current_user,
+                f"Exported learning content (ZIP): {export_type}"
+            )
+            
+            # Send ZIP file
+            return send_file(
+                temp_zip.name,
+                mimetype='application/zip',
+                as_attachment=True,
+                download_name=f'{export_name}.zip'
+            )
+        
+    except Exception as e:
+        logger.error(f"Error exporting learning content: {str(e)}")
+        return jsonify({'error': str(e)}), 500
