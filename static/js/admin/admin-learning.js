@@ -10,6 +10,49 @@
         setupFormHandlers();
     }
 
+    // HELP MODAL FUNCTIONS
+    
+    function showUploadHelp() {
+        const modal = document.getElementById('uploadHelpModal');
+        if (modal) {
+            modal.style.display = 'flex';
+            // Set initial active tab
+            switchHelpTab('module-yaml');
+        }
+    }
+
+    function closeUploadHelp() {
+        const modal = document.getElementById('uploadHelpModal');
+        if (modal) modal.style.display = 'none';
+    }
+
+    function switchHelpTab(tabName) {
+        // Hide all help sections
+        const sections = document.querySelectorAll('.help-section');
+        sections.forEach(section => section.style.display = 'none');
+        
+        // Show selected section
+        const targetSection = document.getElementById(`help-section-${tabName}`);
+        if (targetSection) targetSection.style.display = 'block';
+        
+        // Update tab appearance
+        const tabs = document.querySelectorAll('.help-tab');
+        tabs.forEach(tab => {
+            tab.style.background = '#f8f9fa';
+            tab.style.borderBottom = '3px solid transparent';
+            tab.style.color = '#666';
+            tab.style.fontWeight = 'normal';
+        });
+        
+        const activeTab = document.getElementById(`help-tab-${tabName}`);
+        if (activeTab) {
+            activeTab.style.background = 'white';
+            activeTab.style.borderBottom = '3px solid #17a2b8';
+            activeTab.style.color = '#17a2b8';
+            activeTab.style.fontWeight = 'bold';
+        }
+    }
+
     function loadModulesData() {
         const loadingDiv = document.getElementById('learning-loading');
         const tableContainer = document.getElementById('modules-table');
@@ -1020,6 +1063,9 @@
     window.exportContentModal = exportContentModal;
     window.closeExportContentModal = closeExportContentModal;
     window.switchUploadTab = switchUploadTab;
+    window.showUploadHelp = showUploadHelp;
+    window.closeUploadHelp = closeUploadHelp;
+    window.switchHelpTab = switchHelpTab;
     window.editModule = editModule;
     window.closeEditModuleModal = closeEditModuleModal;
     window.deleteModule = deleteModule;
