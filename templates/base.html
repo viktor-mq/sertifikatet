@@ -268,7 +268,9 @@
                     {% else %}
                         <a href="{{ url_for('main.quiz_preview') }}" class="hover:text-purple-400 transition">Quiz</a>
                     {% endif %}
+                    {% if config.REGULAR_VIDEOS_ENABLED %}
                     <a href="{{ url_for('video.index') }}" class="hover:text-purple-400 transition">Videoer</a>
+                    {% endif %}
                     <a href="{{ url_for('game.index') }}" class="hover:text-purple-400 transition">Spill</a>
                     <a href="{{ url_for('learning.index') }}" class="hover:text-purple-400 transition">Læringsveier</a>
                     

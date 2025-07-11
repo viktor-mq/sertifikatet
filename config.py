@@ -48,3 +48,6 @@ class Config:
     
     # Cookie policy version (GDPR compliance)
     COOKIE_POLICY_VERSION = os.getenv('COOKIE_POLICY_VERSION', '1.0')
+    
+    # Feature toggles
+    REGULAR_VIDEOS_ENABLED = os.getenv('REGULAR_VIDEOS_ENABLED', 'True').lower() in ('true', '1', 'yes')
