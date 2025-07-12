@@ -1,0 +1,14 @@
+<svg width="64" height="64" viewBox="0 0 64 64" xmlns="http://www.w3.org/2000/svg">
+  <!-- Background circle -->
+  <circle cx="32" cy="32" r="30" fill="#3b82f6" stroke="#ffffff" stroke-width="2"/>
+  
+  <!-- Video play symbol -->
+  <circle cx="32" cy="32" r="18" fill="#ffffff"/>
+  <polygon points="26,22 26,42 44,32" fill="#3b82f6"/>
+  
+  <!-- Progress bar -->
+  <rect x="16" y="46" width="32" height="4" rx="2" fill="#ffffff"/>
+  <rect x="16" y="46" width="20" height="4" rx="2" fill="#22c55e"/>
+  
+  <title>Video Lærer</title>
+</svg>

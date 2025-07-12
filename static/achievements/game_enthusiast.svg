@@ -1,0 +1,19 @@
+<svg width="64" height="64" viewBox="0 0 64 64" xmlns="http://www.w3.org/2000/svg">
+  <!-- Background circle -->
+  <circle cx="32" cy="32" r="30" fill="#8b5cf6" stroke="#ffffff" stroke-width="2"/>
+  
+  <!-- Game controller -->
+  <rect x="18" y="26" width="28" height="16" rx="8" fill="#ffffff"/>
+  
+  <!-- D-pad -->
+  <rect x="22" y="30" width="3" height="8" fill="#8b5cf6"/>
+  <rect x="20" y="32" width="7" height="3" fill="#8b5cf6"/>
+  
+  <!-- Action buttons -->
+  <circle cx="40" cy="30" r="2" fill="#ef4444"/>
+  <circle cx="44" cy="34" r="2" fill="#22c55e"/>
+  <circle cx="40" cy="38" r="2" fill="#3b82f6"/>
+  <circle cx="36" cy="34" r="2" fill="#fbbf24"/>
+  
+  <title>Spill Entusiast</title>
+</svg>

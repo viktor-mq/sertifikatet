@@ -575,10 +575,23 @@ def achievements():
     """Achievements page"""
     # Get achievement stats for template
     achievement_service = AchievementService()
-    achievements_data = achievement_service.get_user_achievements(current_user.id)
+    user_achievements = achievement_service.get_user_achievements(current_user.id)
     
-    total_earned = len([a for a in achievements_data if a['earned']])
-    total_available = len(achievements_data)
+    # Group achievements by category
+    achievements_by_category = {}
+    for achievement in user_achievements:
+        category = achievement['category'] or 'Generelt'
+        if category not in achievements_by_category:
+            achievements_by_category[category] = []
+        achievements_by_category[category].append(achievement)
+    
+    # Calculate progress
+    total_achievements = len(user_achievements)
+    earned_achievements = len([a for a in user_achievements if a['earned']])
+    progress_percentage = (earned_achievements / total_achievements * 100) if total_achievements > 0 else 0
+    
+    total_earned = earned_achievements
+    total_available = total_achievements
     
     # Generate SEO data for achievements page
     from ..utils.seo import SEOGenerator
@@ -590,9 +603,22 @@ def achievements():
     )
     
     return render_template('progress/achievements.html',
+                         achievements_by_category=achievements_by_category,
+                         total_achievements=total_achievements,
+                         earned_achievements=earned_achievements,
+                         progress_percentage=progress_percentage,
                          total_earned=total_earned,
                          total_available=total_available,
                          seo=seo_data)
+
+
+@main_bp.route('/api/clear-achievement-notifications', methods=['POST'])
+@login_required
+def clear_achievement_notifications():
+    """Clear achievement notifications from session after they've been shown"""
+    if 'new_achievements' in session:
+        session.pop('new_achievements', None)
+    return jsonify({'status': 'success'})
 
 
 @main_bp.route('/leaderboard')

@@ -76,36 +76,26 @@ def dashboard():
 @login_required
 def achievements():
     """View all achievements"""
-    # Get all achievements grouped by category
-    all_achievements = Achievement.query.order_by(
-        Achievement.category, Achievement.points
-    ).all()
+    from app.services.achievement_service import AchievementService
     
-    # Get user's earned achievements
-    earned_achievement_ids = [ua.achievement_id for ua in current_user.achievements]
+    # Use the updated AchievementService
+    achievement_service = AchievementService()
+    user_achievements = achievement_service.get_user_achievements(current_user.id)
     
     # Group achievements by category
     achievements_by_category = {}
-    for achievement in all_achievements:
-        category = achievement.category or 'Generelt'
+    for achievement in user_achievements:
+        category = achievement['category'] or 'Generelt'
         if category not in achievements_by_category:
             achievements_by_category[category] = []
-        
-        achievements_by_category[category].append({
-            'achievement': achievement,
-            'earned': achievement.id in earned_achievement_ids,
-            'earned_date': next(
-                (ua.earned_at for ua in current_user.achievements if ua.achievement_id == achievement.id),
-                None
-            )
-        })
+        achievements_by_category[category].append(achievement)
     
     # Calculate progress
-    total_achievements = len(all_achievements)
-    earned_achievements = len(earned_achievement_ids)
+    total_achievements = len(user_achievements)
+    earned_achievements = len([a for a in user_achievements if a['earned']])
     progress_percentage = (earned_achievements / total_achievements * 100) if total_achievements > 0 else 0
     
-    return render_template('gamification/achievements.html',
+    return render_template('progress/achievements.html',
                          achievements_by_category=achievements_by_category,
                          total_achievements=total_achievements,
                          earned_achievements=earned_achievements,

@@ -1,0 +1,12 @@
+<svg width="64" height="64" viewBox="0 0 64 64" xmlns="http://www.w3.org/2000/svg">
+  <!-- Background circle -->
+  <circle cx="32" cy="32" r="30" fill="#059669" stroke="#ffffff" stroke-width="2"/>
+  
+  <!-- Graduation cap -->
+  <ellipse cx="32" cy="35" rx="16" ry="4" fill="#000000"/>
+  <polygon points="16,35 32,25 48,35 45,33 32,30 19,33" fill="#000000"/>
+  <rect x="45" y="33" width="2" height="12" fill="#000000"/>
+  <polygon points="44,45 49,45 46.5,42" fill="#ffd700"/>
+  
+  <title>Eksamensklar</title>
+</svg>

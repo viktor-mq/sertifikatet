@@ -20,14 +20,14 @@
                 <div class="text-3xl text-green-400 mb-2">
                     <i class="fas fa-check-circle"></i>
                 </div>
-                <div class="text-2xl font-bold text-white" id="earned-count">{{ total_earned }}</div>
+                <div class="text-2xl font-bold text-white" id="earned-count">{{ earned_achievements }}</div>
                 <div class="text-gray-300">Oppnådd</div>
             </div>
             <div class="glass rounded-xl p-6 text-center hover-card">
                 <div class="text-3xl text-blue-400 mb-2">
                     <i class="fas fa-star"></i>
                 </div>
-                <div class="text-2xl font-bold text-white" id="total-count">{{ total_available }}</div>
+                <div class="text-2xl font-bold text-white" id="total-count">{{ total_achievements }}</div>
                 <div class="text-gray-300">Totalt</div>
             </div>
             <div class="glass rounded-xl p-6 text-center hover-card">
@@ -35,7 +35,7 @@
                     <i class="fas fa-percentage"></i>
                 </div>
                 <div class="text-2xl font-bold text-white" id="completion-rate">
-                    {{ ((total_earned / total_available * 100) | round(1)) if total_available > 0 else 0 }}%
+                    {{ progress_percentage|round(1) }}%
                 </div>
                 <div class="text-gray-300">Fullført</div>
             </div>
@@ -47,21 +47,62 @@
                 <button class="achievement-filter active px-6 py-2 rounded-full bg-purple-600 text-white transition" data-category="all">
                     Alle
                 </button>
-                <button class="achievement-filter px-6 py-2 rounded-full bg-gray-600 text-white transition" data-category="quiz">
-                    Quiz
+                {% for category in achievements_by_category.keys() %}
+                <button class="achievement-filter px-6 py-2 rounded-full bg-gray-600 text-white transition" data-category="{{ category }}">
+                    {{ category|title }}
                 </button>
-                <button class="achievement-filter px-6 py-2 rounded-full bg-gray-600 text-white transition" data-category="consistency">
-                    Kontinuitet
-                </button>
-                <button class="achievement-filter px-6 py-2 rounded-full bg-gray-600 text-white transition" data-category="mastery">
-                    Mestring
-                </button>
+                {% endfor %}
             </div>
         </div>
 
         <!-- Achievements Grid -->
         <div class="grid md:grid-cols-2 lg:grid-cols-3 gap-6" id="achievements-grid">
-            <!-- Achievements will be loaded here via JavaScript -->
+            {% for category, achievements in achievements_by_category.items() %}
+                {% for achievement in achievements %}
+                <div class="achievement-card glass rounded-xl p-6 hover-card cursor-pointer {{ 'earned' if achievement.earned else 'locked' }}" 
+                     data-category="{{ category }}"
+                     onclick="showAchievementDetails({
+                        name: '{{ achievement.name|e }}',
+                        description: '{{ achievement.description|e }}',
+                        icon: '{{ achievement.icon }}',
+                        points: {{ achievement.points }},
+                        category: '{{ category }}',
+                        earned: {{ achievement.earned|lower }},
+                        earned_at: '{{ achievement.earned_at.strftime('%Y-%m-%d') if achievement.earned_at else '' }}',
+                        progress_text: '{{ achievement.progress_text|e if achievement.progress_text else '' }}'
+                     })">
+                    <div class="text-center">
+                        <div class="text-4xl {{ 'text-green-400' if achievement.earned else 'text-gray-500' }} mb-4">
+                            {% if achievement.icon and not achievement.icon.startswith('fa-') %}
+                                <!-- Custom SVG icon -->
+                                <img src="{{ url_for('static', filename='achievements/' + achievement.icon) }}" 
+                                     alt="{{ achievement.name }}" 
+                                     class="w-16 h-16 mx-auto {{ 'brightness-0 invert' if not achievement.earned else '' }}">
+                            {% elif achievement.icon and achievement.icon.startswith('fa-') %}
+                                <!-- FontAwesome fallback -->
+                                <i class="fas {{ achievement.icon }}"></i>
+                            {% else %}
+                                <!-- Default icon -->
+                                <i class="fas {{ 'fa-trophy' if achievement.earned else 'fa-lock' }}"></i>
+                            {% endif %}
+                        </div>
+                        <h3 class="text-lg font-bold text-white mb-2">{{ achievement.name }}</h3>
+                        <p class="text-sm text-gray-300 mb-4">{{ achievement.description }}</p>
+                        <div class="flex justify-between items-center">
+                            <span class="text-sm text-gray-400">{{ achievement.points }} poeng</span>
+                            {% if achievement.earned %}
+                                <span class="text-green-400 text-sm"><i class="fas fa-check-circle mr-1"></i>Oppnådd</span>
+                            {% else %}
+                                <span class="text-gray-500 text-sm">
+                                    <i class="fas fa-lock mr-1"></i>
+                                    {{ achievement.progress_text if achievement.progress_text else 'Låst' }}
+                                </span>
+                            {% endif %}
+                        </div>
+                    </div>
+                </div>
+                {% endfor %}
+            {% endfor %}
         </div>
     </div>
 </div>
@@ -83,6 +124,10 @@
                     <div id="modal-category" class="text-white font-bold"></div>
                 </div>
             </div>
+            <div id="modal-progress" class="mt-4 text-gray-300 hidden">
+                <i class="fas fa-chart-line mr-2"></i>
+                <span id="progress-text"></span>
+            </div>
             <div id="modal-earned-date" class="mt-4 text-green-400 hidden">
                 <i class="fas fa-check-circle mr-2"></i>
                 <span>Oppnådd: <span id="earned-date"></span></span>
@@ -97,64 +142,10 @@
 
 {% block extra_js %}
 <script>
-let allAchievements = [];
-
-// Load achievements when page loads
+// Setup filters
 document.addEventListener('DOMContentLoaded', function() {
-    loadAchievements();
     setupFilters();
 });
-
-async function loadAchievements() {
-    try {
-        const response = await fetch('/api/achievements');
-        const data = await response.json();
-        allAchievements = data.achievements;
-        displayAchievements(allAchievements);
-        updateStats(data);
-    } catch (error) {
-        console.error('Error loading achievements:', error);
-    }
-}
-
-function displayAchievements(achievements) {
-    const grid = document.getElementById('achievements-grid');
-    grid.innerHTML = '';
-    
-    achievements.forEach(achievement => {
-        const card = createAchievementCard(achievement);
-        grid.appendChild(card);
-    });
-}
-
-function createAchievementCard(achievement) {
-    const card = document.createElement('div');
-    card.className = `achievement-card glass rounded-xl p-6 hover-card cursor-pointer ${achievement.earned ? 'earned' : 'locked'}`;
-    card.setAttribute('data-category', achievement.category);
-    card.onclick = () => showAchievementDetails(achievement);
-    
-    const earnedClass = achievement.earned ? 'text-green-400' : 'text-gray-500';
-    const iconClass = achievement.earned ? achievement.icon : 'fa-lock';
-    
-    card.innerHTML = `
-        <div class="text-center">
-            <div class="text-4xl ${earnedClass} mb-4">
-                <i class="fas ${iconClass}"></i>
-            </div>
-            <h3 class="text-lg font-bold text-white mb-2">${achievement.name}</h3>
-            <p class="text-sm text-gray-300 mb-4">${achievement.description}</p>
-            <div class="flex justify-between items-center">
-                <span class="text-sm text-gray-400">${achievement.points} poeng</span>
-                ${achievement.earned ? 
-                    '<span class="text-green-400 text-sm"><i class="fas fa-check-circle mr-1"></i>Oppnådd</span>' : 
-                    '<span class="text-gray-500 text-sm"><i class="fas fa-lock mr-1"></i>Låst</span>'
-                }
-            </div>
-        </div>
-    `;
-    
-    return card;
-}
 
 function setupFilters() {
     const filters = document.querySelectorAll('.achievement-filter');
@@ -169,29 +160,54 @@ function setupFilters() {
             
             // Filter achievements
             const category = this.getAttribute('data-category');
-            const filtered = category === 'all' ? 
-                allAchievements : 
-                allAchievements.filter(a => a.category === category);
+            const achievements = document.querySelectorAll('.achievement-card');
             
-            displayAchievements(filtered);
+            achievements.forEach(card => {
+                const cardCategory = card.getAttribute('data-category');
+                if (category === 'all' || cardCategory === category) {
+                    card.style.display = 'block';
+                } else {
+                    card.style.display = 'none';
+                }
+            });
         });
     });
 }
 
 function showAchievementDetails(achievement) {
-    document.getElementById('modal-icon').innerHTML = `<i class="fas ${achievement.earned ? achievement.icon : 'fa-lock'} ${achievement.earned ? 'text-yellow-400' : 'text-gray-500'}"></i>`;
+    // Set modal icon
+    const modalIcon = document.getElementById('modal-icon');
+    if (achievement.icon && !achievement.icon.startsWith('fa-')) {
+        // Custom SVG icon
+        modalIcon.innerHTML = `<img src="/static/achievements/${achievement.icon}" alt="${achievement.name}" class="w-16 h-16 mx-auto ${achievement.earned ? '' : 'brightness-0 invert opacity-50'}">`;
+    } else {
+        // FontAwesome or default icon
+        const iconClass = achievement.earned ? (achievement.icon || 'fa-trophy') : 'fa-lock';
+        const colorClass = achievement.earned ? 'text-yellow-400' : 'text-gray-500';
+        modalIcon.innerHTML = `<i class="fas ${iconClass} ${colorClass}"></i>`;
+    }
+    
     document.getElementById('modal-title').textContent = achievement.name;
     document.getElementById('modal-description').textContent = achievement.description;
     document.getElementById('modal-points').textContent = achievement.points;
-    document.getElementById('modal-category').textContent = getCategoryName(achievement.category);
+    document.getElementById('modal-category').textContent = achievement.category.charAt(0).toUpperCase() + achievement.category.slice(1);
     
+    // Show progress or earned date
     const earnedDateElement = document.getElementById('modal-earned-date');
+    const progressElement = document.getElementById('modal-progress');
+    
     if (achievement.earned && achievement.earned_at) {
         const date = new Date(achievement.earned_at).toLocaleDateString('nb-NO');
         document.getElementById('earned-date').textContent = date;
         earnedDateElement.classList.remove('hidden');
+        progressElement.classList.add('hidden');
+    } else if (achievement.progress_text) {
+        document.getElementById('progress-text').textContent = achievement.progress_text;
+        progressElement.classList.remove('hidden');
+        earnedDateElement.classList.add('hidden');
     } else {
         earnedDateElement.classList.add('hidden');
+        progressElement.classList.add('hidden');
     }
     
     document.getElementById('achievement-modal').classList.remove('hidden');
@@ -199,22 +215,6 @@ function showAchievementDetails(achievement) {
 
 function closeModal() {
     document.getElementById('achievement-modal').classList.add('hidden');
-}
-
-function getCategoryName(category) {
-    const names = {
-        'quiz': 'Quiz',
-        'consistency': 'Kontinuitet',
-        'mastery': 'Mestring'
-    };
-    return names[category] || category;
-}
-
-function updateStats(data) {
-    document.getElementById('earned-count').textContent = data.total_earned;
-    document.getElementById('total-count').textContent = data.total_available;
-    const rate = data.total_available > 0 ? (data.total_earned / data.total_available * 100).toFixed(1) : 0;
-    document.getElementById('completion-rate').textContent = rate + '%';
 }
 
 // Close modal when clicking outside
@@ -236,6 +236,21 @@ document.getElementById('achievement-modal').addEventListener('click', function(
 
 .achievement-filter.active {
     transform: scale(1.05);
+}
+
+.hover-card {
+    transition: all 0.3s ease;
+}
+
+.hover-card:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 10px 25px rgba(0, 0, 0, 0.3);
+}
+
+.glass {
+    background: rgba(255, 255, 255, 0.1);
+    backdrop-filter: blur(10px);
+    border: 1px solid rgba(255, 255, 255, 0.2);
 }
 </style>
 {% endblock %}
