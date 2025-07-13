@@ -426,3 +426,20 @@ def get_level_info():
         'total_xp': user_level.total_xp,
         'progress_percentage': int((user_level.current_xp / user_level.next_level_xp) * 100) if user_level.next_level_xp > 0 else 0
     })
+
+
+@gamification_bp.route('/api/calculate-xp')
+@login_required 
+def calculate_xp():
+    """Calculate XP for given parameters (for testing/preview)"""
+    correct_answers = request.args.get('correct', type=int, default=0)
+    total_questions = request.args.get('total', type=int, default=1)
+    score = request.args.get('score', type=int, default=0)
+    
+    calculation = GamificationService.calculate_quiz_xp(correct_answers, total_questions, score)
+    
+    return jsonify({
+        'total_xp': calculation['total_xp'],
+        'breakdown': calculation['breakdown'],
+        'example_url': f'/gamification/api/calculate-xp?correct=5&total=5&score=100'
+    })

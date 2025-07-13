@@ -5,7 +5,7 @@ from app import db
 from app.models import User, Achievement, UserAchievement, QuizSession
 from app.gamification_models import (
     UserLevel, XPTransaction, DailyChallenge, UserDailyChallenge,
-    WeeklyTournament, TournamentParticipant, StreakReward
+    WeeklyTournament, TournamentParticipant, StreakReward, XPReward
 )
 from app.utils.email import send_badge_notification, send_streak_lost_email
 import math
@@ -14,8 +14,8 @@ import math
 class GamificationService:
     """Service for handling all gamification logic"""
     
-    # XP rewards configuration
-    XP_REWARDS = {
+    # Fallback XP rewards (if database is unavailable)
+    FALLBACK_XP_REWARDS = {
         'quiz_complete': 10,
         'quiz_perfect': 50,
         'question_correct': 2,
@@ -23,7 +23,7 @@ class GamificationService:
         'question_streak_10': 25,
         'daily_login': 5,
         'daily_challenge': 50,
-        'achievement_unlock': 0,  # Variable based on achievement
+        'achievement_unlock': 0,
         'tournament_participation': 20,
         'tournament_top3': 100,
         'tournament_win': 250,
@@ -31,6 +31,71 @@ class GamificationService:
         'video_complete': 15,
         'learning_path_complete': 100,
     }
+    
+    @classmethod
+    def get_xp_reward(cls, reward_type, **kwargs):
+        """Get XP reward from database with optional scaling"""
+        try:
+            xp_reward = XPReward.query.filter_by(reward_type=reward_type).first()
+            if not xp_reward:
+                # Fallback to hardcoded values
+                return cls.FALLBACK_XP_REWARDS.get(reward_type, 0)
+            
+            base_xp = xp_reward.base_value
+            
+            # Apply scaling based on reward type
+            if reward_type == 'quiz_complete':
+                question_count = kwargs.get('question_count', 1)
+                scaled_xp = base_xp + (question_count * float(xp_reward.scaling_factor))
+            
+            elif reward_type == 'quiz_perfect':
+                question_count = kwargs.get('question_count', 1)
+                scaled_xp = question_count * float(xp_reward.scaling_factor)
+            
+            elif reward_type == 'video_complete':
+                duration_minutes = kwargs.get('duration_minutes', 1)
+                scaled_xp = duration_minutes * float(xp_reward.scaling_factor)
+            
+            else:
+                # No scaling, use base value
+                scaled_xp = base_xp
+            
+            # Apply max value limit if set
+            if xp_reward.max_value and scaled_xp > xp_reward.max_value:
+                scaled_xp = xp_reward.max_value
+            
+            return int(scaled_xp)
+            
+        except Exception as e:
+            print(f"Error getting XP reward for {reward_type}: {e}")
+            return cls.FALLBACK_XP_REWARDS.get(reward_type, 0)
+    
+    @classmethod
+    def calculate_quiz_xp(cls, correct_answers, total_questions, score):
+        """Calculate total XP for a quiz completion (for preview/testing)"""
+        total_xp = 0
+        breakdown = {}
+        
+        # Correct answers XP
+        correct_xp = correct_answers * cls.get_xp_reward('question_correct')
+        total_xp += correct_xp
+        breakdown['correct_answers'] = correct_xp
+        
+        # Completion XP
+        completion_xp = cls.get_xp_reward('quiz_complete', question_count=total_questions)
+        total_xp += completion_xp
+        breakdown['completion'] = completion_xp
+        
+        # Perfect score bonus
+        if score == 100:
+            perfect_xp = cls.get_xp_reward('quiz_perfect', question_count=total_questions)
+            total_xp += perfect_xp
+            breakdown['perfect_bonus'] = perfect_xp
+        
+        return {
+            'total_xp': total_xp,
+            'breakdown': breakdown
+        }
     
     # Level progression formula
     @staticmethod
@@ -504,7 +569,7 @@ class GamificationService:
         # Award participation XP
         cls.award_xp(
             user,
-            cls.XP_REWARDS['tournament_participation'],
+            cls.get_xp_reward('tournament_participation'),
             'tournament_participation',
             f"Deltok i: {tournament.name}",
             tournament.id

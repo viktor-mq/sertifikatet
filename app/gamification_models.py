@@ -187,3 +187,15 @@ class BadgeCategory(db.Model):
     description = db.Column(db.Text)
     icon = db.Column(db.String(100))
     order_index = db.Column(db.Integer, default=0)
+
+
+class XPReward(db.Model):
+    """Configurable XP rewards from database"""
+    __tablename__ = 'xp_rewards'
+    
+    id = db.Column(db.Integer, primary_key=True)
+    reward_type = db.Column(db.String(50), unique=True, nullable=False)
+    base_value = db.Column(db.Integer, nullable=False)
+    scaling_factor = db.Column(db.Numeric(3, 2), default=1.0)
+    max_value = db.Column(db.Integer)
+    description = db.Column(db.Text)
