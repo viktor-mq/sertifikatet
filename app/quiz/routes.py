@@ -341,6 +341,15 @@ def submit_session(session_id):
                 # Log ML error but don't fail the quiz submission
                 print(f"ML update error: {ml_error}")
         
+        # GAMIFICATION INTEGRATION: Process rewards and achievements
+        gamification_rewards = {'xp_earned': 0, 'achievements': [], 'level_ups': [], 'daily_challenges': []}
+        try:
+            from ..gamification.quiz_integration import process_quiz_completion
+            gamification_rewards = process_quiz_completion(current_user, quiz_session)
+        except Exception as gamification_error:
+            # Log gamification error but don't fail the quiz submission
+            print(f"Gamification integration error: {gamification_error}")
+        
         # Calculate performance metrics
         accuracy = (correct_count / len(responses)) * 100
         avg_time_per_question = total_time / len(responses) if responses else 0
@@ -365,6 +374,7 @@ def submit_session(session_id):
                 'avg_time_per_question': avg_time_per_question,
                 'score': quiz_session.score
             },
+            'gamification': gamification_rewards,  # Add gamification rewards
             'ml_insights': updated_insights,
             'ml_enabled': ml_service.is_ml_enabled(),
             'analytics_data': {

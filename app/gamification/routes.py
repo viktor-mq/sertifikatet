@@ -17,12 +17,32 @@ from app.gamification_models import (
 @login_required
 def dashboard():
     """Gamification dashboard"""
-    # Get user's level info
+    # Get user's level info and sync with user's total XP
     user_level = UserLevel.query.filter_by(user_id=current_user.id).first()
     if not user_level:
-        user_level = UserLevel(user_id=current_user.id)
+        user_level = UserLevel(
+            user_id=current_user.id,
+            current_xp=current_user.total_xp or 0,
+            total_xp=current_user.total_xp or 0
+        )
+        # Calculate correct level and next level XP
+        user_level.current_level = GamificationService.calculate_level_from_xp(user_level.total_xp)
+        user_level.next_level_xp = GamificationService.calculate_xp_for_level(user_level.current_level + 1)
+        # Adjust current_xp to be within level bounds
+        previous_level_total = sum(GamificationService.calculate_xp_for_level(i) for i in range(1, user_level.current_level))
+        user_level.current_xp = user_level.total_xp - previous_level_total
         db.session.add(user_level)
         db.session.commit()
+    else:
+        # Sync existing UserLevel with User's total_xp if they're out of sync
+        if user_level.total_xp != (current_user.total_xp or 0):
+            user_level.total_xp = current_user.total_xp or 0
+            user_level.current_level = GamificationService.calculate_level_from_xp(user_level.total_xp)
+            user_level.next_level_xp = GamificationService.calculate_xp_for_level(user_level.current_level + 1)
+            # Recalculate current_xp within level
+            previous_level_total = sum(GamificationService.calculate_xp_for_level(i) for i in range(1, user_level.current_level))
+            user_level.current_xp = user_level.total_xp - previous_level_total
+            db.session.commit()
     
     # Get daily challenges
     daily_challenges = GamificationService.get_daily_challenges(current_user)
@@ -367,4 +387,42 @@ def check_achievements():
             }
             for achievement in new_achievements
         ]
+    })
+
+
+@gamification_bp.route('/api/level-info')
+@login_required
+def get_level_info():
+    """Get current user level and XP info for real-time updates"""
+    # Get or create user level info (same logic as dashboard)
+    user_level = UserLevel.query.filter_by(user_id=current_user.id).first()
+    if not user_level:
+        user_level = UserLevel(
+            user_id=current_user.id,
+            current_xp=current_user.total_xp or 0,
+            total_xp=current_user.total_xp or 0
+        )
+        user_level.current_level = GamificationService.calculate_level_from_xp(user_level.total_xp)
+        user_level.next_level_xp = GamificationService.calculate_xp_for_level(user_level.current_level + 1)
+        # Calculate current_xp within level
+        previous_level_total = sum(GamificationService.calculate_xp_for_level(i) for i in range(1, user_level.current_level))
+        user_level.current_xp = user_level.total_xp - previous_level_total
+        db.session.add(user_level)
+        db.session.commit()
+    else:
+        # Sync with user's actual total_xp
+        if user_level.total_xp != (current_user.total_xp or 0):
+            user_level.total_xp = current_user.total_xp or 0
+            user_level.current_level = GamificationService.calculate_level_from_xp(user_level.total_xp)
+            user_level.next_level_xp = GamificationService.calculate_xp_for_level(user_level.current_level + 1)
+            previous_level_total = sum(GamificationService.calculate_xp_for_level(i) for i in range(1, user_level.current_level))
+            user_level.current_xp = user_level.total_xp - previous_level_total
+            db.session.commit()
+    
+    return jsonify({
+        'current_level': user_level.current_level,
+        'current_xp': user_level.current_xp,
+        'next_level_xp': user_level.next_level_xp,
+        'total_xp': user_level.total_xp,
+        'progress_percentage': int((user_level.current_xp / user_level.next_level_xp) * 100) if user_level.next_level_xp > 0 else 0
     })

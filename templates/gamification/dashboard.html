@@ -2,8 +2,12 @@
 
 {% block title %}Gamification - Sertifikatet{% endblock %}
 
+{% block head %}
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/gamification.css') }}">
+{% endblock %}
+
 {% block content %}
-<section class="py-12">
+<section class="py-12 gamification-dashboard" data-gamification="true">
     <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <!-- Level & XP Header -->
         <div class="glass rounded-2xl p-8 mb-8">
@@ -12,7 +16,7 @@
                     <!-- Level Badge -->
                     <div class="relative">
                         <div class="w-24 h-24 rounded-full bg-gradient-to-r from-purple-600 to-pink-600 flex items-center justify-center">
-                            <div class="text-3xl font-bold">{{ user_level.current_level }}</div>
+                            <div class="text-3xl font-bold level-badge">{{ user_level.current_level }}</div>
                         </div>
                         <div class="absolute -bottom-2 left-0 right-0 text-center">
                             <span class="px-3 py-1 bg-gray-800 rounded-full text-xs">Nivå</span>
@@ -24,15 +28,15 @@
                         <h1 class="text-2xl font-bold mb-2">{{ current_user.full_name or current_user.username }}</h1>
                         <div class="mb-2">
                             <div class="flex justify-between text-sm text-gray-400 mb-1">
-                                <span>{{ user_level.current_xp }} / {{ user_level.next_level_xp }} XP</span>
-                                <span>{{ ((user_level.current_xp / user_level.next_level_xp) * 100)|round|int }}%</span>
+                                <span class="xp-text">{{ user_level.current_xp }} / {{ user_level.next_level_xp }} XP</span>
+                                <span class="xp-percentage">{{ ((user_level.current_xp / user_level.next_level_xp) * 100)|round|int }}%</span>
                             </div>
                             <div class="h-4 bg-gray-700 rounded-full overflow-hidden">
-                                <div class="h-full bg-gradient-to-r from-purple-600 to-pink-600 transition-all duration-500"
+                                <div class="h-full bg-gradient-to-r from-purple-600 to-pink-600 transition-all duration-500 xp-progress-bar"
                                      style="width: {{ ((user_level.current_xp / user_level.next_level_xp) * 100)|round|int }}%"></div>
                             </div>
                         </div>
-                        <p class="text-gray-400">Total XP: <span class="text-white font-semibold">{{ current_user.total_xp }}</span></p>
+                        <p class="text-gray-400">Total XP: <span class="text-white font-semibold total-xp">{{ current_user.total_xp }}</span></p>
                     </div>
                 </div>
                 
@@ -362,4 +366,6 @@ document.addEventListener('DOMContentLoaded', () => {
     checkAchievements();
 });
 </script>
+
+<script src="{{ url_for('static', filename='js/gamification.js') }}"></script>
 {% endblock %}

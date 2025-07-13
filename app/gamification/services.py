@@ -42,14 +42,24 @@ class GamificationService:
     @staticmethod
     def calculate_level_from_xp(total_xp):
         """Calculate level based on total XP"""
+        if total_xp < 100:
+            return 1
+            
         level = 1
-        xp_threshold = 0
+        xp_accumulated = 0
         
-        while xp_threshold <= total_xp:
+        while True:
+            xp_for_next_level = GamificationService.calculate_xp_for_level(level + 1)
+            if xp_accumulated + xp_for_next_level > total_xp:
+                break
+            xp_accumulated += xp_for_next_level
             level += 1
-            xp_threshold += GamificationService.calculate_xp_for_level(level)
+            
+            # Safety check to prevent infinite loops
+            if level > 100:
+                break
         
-        return level - 1
+        return level
     
     @classmethod
     def award_xp(cls, user, amount, transaction_type, description=None, reference_id=None):
