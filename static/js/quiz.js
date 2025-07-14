@@ -500,9 +500,158 @@ class QuizMobileEnhancer {
                 if (this.timerInterval) {
                     clearInterval(this.timerInterval);
                 }
-                form.submit();
+                
+                // Use AJAX submission instead of form.submit() to integrate with modal system
+                this.submitQuizAjax(form);
             }
         });
+    }
+    
+    async submitQuizAjax(form) {
+        // Add data-quiz-form attribute for quiz-gamification integration
+        form.setAttribute('data-quiz-form', 'true');
+        
+        // Get session ID from form or URL
+        const sessionId = form.dataset.sessionId || this.getSessionIdFromUrl();
+        if (!sessionId) {
+            console.error('No session ID found for quiz submission');
+            alert('Kunne ikke finne quiz-økt ID. Prøv å laste siden på nytt.');
+            return;
+        }
+        
+        // Show loading state
+        this.showQuizLoadingState();
+        
+        try {
+            // Trigger the quiz-gamification integration
+            const event = new CustomEvent('submit', { 
+                target: form,
+                preventDefault: () => {} // Mock preventDefault
+            });
+            
+            // Set session ID if not already set
+            form.dataset.sessionId = sessionId;
+            
+            // Dispatch to quiz-gamification.js handler
+            if (window.QuizGamificationIntegration) {
+                // Create a mock event that quiz-gamification expects
+                await window.QuizGamificationIntegration.prototype.handleQuizSubmission.call(
+                    new window.QuizGamificationIntegration(), 
+                    { target: form, preventDefault: () => {} }
+                );
+            } else {
+                // Fallback to direct submission
+                await this.directAjaxSubmission(form, sessionId);
+            }
+            
+        } catch (error) {
+            console.error('Quiz submission error:', error);
+            alert('En feil oppstod under innsending av quiz. Prøv igjen.');
+            this.hideQuizLoadingState();
+        }
+    }
+    
+    async directAjaxSubmission(form, sessionId) {
+        // Collect quiz responses
+        const responses = this.collectQuizResponses(form);
+        
+        // Submit via AJAX
+        const response = await fetch(`/quiz/session/${sessionId}/submit`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRFToken': this.getCSRFToken()
+            },
+            body: JSON.stringify({ responses })
+        });
+
+        if (!response.ok) {
+            throw new Error(`HTTP error! status: ${response.status}`);
+        }
+
+        const result = await response.json();
+        
+        if (result.success) {
+            // Trigger modal system
+            const event = new CustomEvent('quiz-ajax-complete', {
+                detail: result
+            });
+            document.dispatchEvent(event);
+        } else {
+            throw new Error(result.error || 'Quiz submission failed');
+        }
+    }
+    
+    collectQuizResponses(form) {
+        const responses = [];
+        const questions = form.querySelectorAll('[data-question-id]');
+        
+        questions.forEach(questionEl => {
+            const questionId = questionEl.dataset.questionId;
+            const selectedAnswer = questionEl.querySelector('input[type="radio"]:checked');
+            
+            if (selectedAnswer) {
+                responses.push({
+                    question_id: parseInt(questionId),
+                    user_answer: selectedAnswer.value,
+                    time_spent: this.getQuestionTimeSpent(questionId) || 30
+                });
+            }
+        });
+        
+        return responses;
+    }
+    
+    getQuestionTimeSpent(questionId) {
+        // Try to get time spent from quiz timer if available
+        if (window.quizTimer && window.quizTimer.getQuestionTime) {
+            return window.quizTimer.getQuestionTime(questionId);
+        }
+        return null;
+    }
+    
+    getCSRFToken() {
+        const tokenEl = document.querySelector('meta[name="csrf-token"]');
+        return tokenEl ? tokenEl.getAttribute('content') : '';
+    }
+    
+    getSessionIdFromUrl() {
+        // Extract session ID from URL if available
+        const urlParams = new URLSearchParams(window.location.search);
+        return urlParams.get('session_id') || null;
+    }
+    
+    showQuizLoadingState() {
+        const submitBtn = document.querySelector('#submitBtn, button[type="submit"]');
+        if (submitBtn) {
+            submitBtn.disabled = true;
+            submitBtn.innerHTML = '<i class="fas fa-spinner fa-spin mr-2"></i>Sender inn...';
+        }
+        
+        // Show loading overlay
+        const loadingOverlay = document.createElement('div');
+        loadingOverlay.id = 'quiz-loading-overlay';
+        loadingOverlay.className = 'fixed inset-0 bg-black bg-opacity-50 z-50 flex items-center justify-center';
+        loadingOverlay.innerHTML = `
+            <div class="bg-white bg-opacity-20 rounded-lg p-8 text-center">
+                <i class="fas fa-spinner fa-spin text-4xl text-white mb-4"></i>
+                <p class="text-white font-semibold">Sender inn quiz...</p>
+            </div>
+        `;
+        document.body.appendChild(loadingOverlay);
+    }
+    
+    hideQuizLoadingState() {
+        const submitBtn = document.querySelector('#submitBtn, button[type="submit"]');
+        if (submitBtn) {
+            submitBtn.disabled = false;
+            submitBtn.innerHTML = 'Send inn quiz';
+        }
+        
+        const loadingOverlay = document.getElementById('quiz-loading-overlay');
+        if (loadingOverlay) {
+            loadingOverlay.remove();
+        }
     }
 
     submitQuiz() {

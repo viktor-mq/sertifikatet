@@ -126,6 +126,18 @@ class GamificationService:
         
         return level
     
+    @staticmethod
+    def calculate_total_xp_for_level(level):
+        """Calculate total cumulative XP needed to reach a specific level"""
+        if level <= 1:
+            return 0
+        
+        total_xp = 0
+        for lvl in range(2, level + 1):
+            total_xp += GamificationService.calculate_xp_for_level(lvl)
+        
+        return total_xp
+    
     @classmethod
     def award_xp(cls, user, amount, transaction_type, description=None, reference_id=None):
         """Award XP to a user and handle level progression"""
@@ -149,23 +161,245 @@ class GamificationService:
             db.session.add(user_level)
         
         # Update current XP and check for level up
-        user_level.current_xp += amount
+        # Update total XP
         user_level.total_xp += amount
-        
+
+        # Recalculate level and progress from total XP
+        old_level = user_level.current_level
+        new_level = cls.calculate_level_from_xp(user_level.total_xp)
+
+        # Calculate XP progress within current level
+        xp_for_current_level = cls.calculate_total_xp_for_level(new_level)
+        xp_for_next_level = cls.calculate_total_xp_for_level(new_level + 1)
+        user_level.current_xp = user_level.total_xp - xp_for_current_level
+        user_level.next_level_xp = xp_for_next_level - xp_for_current_level
+
+        # Update level and check for level ups
         level_ups = []
-        while user_level.current_xp >= user_level.next_level_xp:
-            # Level up!
-            user_level.current_xp -= user_level.next_level_xp
-            user_level.current_level += 1
-            user_level.next_level_xp = cls.calculate_xp_for_level(user_level.current_level + 1)
+        if new_level > old_level:
+            user_level.current_level = new_level
             user_level.last_level_up = datetime.utcnow()
-            level_ups.append(user_level.current_level)
             
-            # Check for level-based achievements
-            cls.check_level_achievements(user, user_level.current_level)
-        
+            # Record all level ups
+            for level in range(old_level + 1, new_level + 1):
+                level_ups.append(level)
+                # Check for level-based achievements
+                cls.check_level_achievements(user, level)
+                
         db.session.commit()
         return level_ups
+    
+    @classmethod
+    def sync_user_level(cls, user):
+        """Manually sync user level with their total XP - fixes corrupted progress data"""
+        # Get or create user level
+        user_level = UserLevel.query.filter_by(user_id=user.id).first()
+        if not user_level:
+            user_level = UserLevel(user_id=user.id)
+            db.session.add(user_level)
+        
+        # Recalculate everything from user.total_xp
+        total_xp = user.total_xp or 0
+        new_level = cls.calculate_level_from_xp(total_xp)
+        
+        # Calculate XP progress within current level
+        xp_for_current_level = cls.calculate_total_xp_for_level(new_level)
+        xp_for_next_level = cls.calculate_total_xp_for_level(new_level + 1)
+        
+        # Update user level data
+        user_level.current_level = new_level
+        user_level.total_xp = total_xp
+        user_level.current_xp = total_xp - xp_for_current_level
+        user_level.next_level_xp = xp_for_next_level - xp_for_current_level
+        
+        db.session.commit()
+        
+        print(f"✅ Synced user {user.username}: Level {new_level}, {user_level.current_xp}/{user_level.next_level_xp} XP")
+        return user_level
+    
+    @classmethod
+    def update_daily_challenge_progress(cls, user, challenge_type, progress_amount, category=None):
+        """Update progress on daily challenges"""
+        completed_challenges = []
+        today = date.today()
+        
+        # Get active daily challenges of the specified type
+        active_challenges = DailyChallenge.query.filter_by(
+            challenge_type=challenge_type,
+            is_active=True,
+            date=today
+        ).all()
+        
+        if category:
+            # Filter by category if specified
+            active_challenges = [c for c in active_challenges if category in (c.category or '')]
+        
+        for challenge in active_challenges:
+            # Get or create user challenge progress
+            user_challenge = UserDailyChallenge.query.filter_by(
+                user_id=user.id,
+                challenge_id=challenge.id
+            ).first()
+            
+            if not user_challenge:
+                user_challenge = UserDailyChallenge(
+                    user_id=user.id,
+                    challenge_id=challenge.id,
+                    progress=0,
+                    completed=False
+                )
+                db.session.add(user_challenge)
+            
+            # Update progress
+            if not user_challenge.completed:
+                user_challenge.progress += progress_amount
+                
+                # Check if challenge is completed
+                if user_challenge.progress >= challenge.requirement_value:
+                    user_challenge.completed = True
+                    user_challenge.completed_at = datetime.utcnow()
+                    user_challenge.xp_earned = challenge.xp_reward
+                    
+                    # Award XP
+                    cls.award_xp(
+                        user,
+                        challenge.xp_reward,
+                        'daily_challenge',
+                        f"Fullførte: {challenge.title}",
+                        challenge.id
+                    )
+                    
+                    completed_challenges.append({
+                        'title': challenge.title,
+                        'description': challenge.description,
+                        'xp_reward': challenge.xp_reward
+                    })
+        
+        db.session.commit()
+        return completed_challenges
+    
+    @classmethod
+    def check_and_update_streak(cls, user):
+        """Check and update user's activity streak"""
+        from app.models import UserProgress
+        
+        # Get or create user progress
+        progress = UserProgress.query.filter_by(user_id=user.id).first()
+        if not progress:
+            progress = UserProgress(user_id=user.id)
+            db.session.add(progress)
+        
+        today = date.today()
+        last_activity = progress.last_activity_date
+        
+        if not last_activity:
+            # First activity
+            progress.current_streak_days = 1
+            progress.longest_streak_days = 1
+            progress.last_activity_date = today
+            db.session.commit()
+            return True
+        
+        days_since_last = (today - last_activity).days
+        
+        if days_since_last == 0:
+            # Already active today
+            return True
+        elif days_since_last == 1:
+            # Consecutive day - extend streak
+            progress.current_streak_days += 1
+            progress.last_activity_date = today
+            
+            # Update longest streak if needed
+            if progress.current_streak_days > progress.longest_streak_days:
+                progress.longest_streak_days = progress.current_streak_days
+            
+            # Check for streak rewards
+            cls.check_streak_rewards(user, progress.current_streak_days)
+            
+            db.session.commit()
+            return True
+        else:
+            # Streak broken
+            lost_streak = progress.current_streak_days
+            progress.current_streak_days = 1
+            progress.last_activity_date = today
+            
+            # Send streak lost notification for significant streaks
+            if lost_streak >= 3:
+                try:
+                    send_streak_lost_email(user, lost_streak)
+                except Exception as e:
+                    print(f"Failed to send streak lost email: {e}")
+            
+            db.session.commit()
+            return False
+    
+    @classmethod
+    def check_level_achievements(cls, user, level):
+        """Check for level-based achievements"""
+        level_milestones = [5, 10, 15, 20, 25, 30, 40, 50, 75, 100]
+        
+        if level in level_milestones:
+            # Check if achievement exists for this level
+            achievement = Achievement.query.filter_by(
+                requirement_type='user_level',
+                requirement_value=level
+            ).first()
+            
+            if achievement:
+                # Check if user already has this achievement
+                existing = UserAchievement.query.filter_by(
+                    user_id=user.id,
+                    achievement_id=achievement.id
+                ).first()
+                
+                if not existing:
+                    # Award achievement
+                    user_achievement = UserAchievement(
+                        user_id=user.id,
+                        achievement_id=achievement.id
+                    )
+                    db.session.add(user_achievement)
+                    
+                    # Award achievement XP
+                    if achievement.points > 0:
+                        cls.award_xp(
+                            user,
+                            achievement.points,
+                            'achievement_unlock',
+                            f"Låst opp: {achievement.name}",
+                            achievement.id
+                        )
+    
+    @classmethod
+    def _check_achievement_criteria(cls, user, achievement, context=None):
+        """Check if user meets criteria for a specific achievement"""
+        # Implementation depends on achievement requirements
+        # This is a simplified version - you may need to expand based on your achievement types
+        
+        if achievement.requirement_type == 'quiz_perfect_score':
+            if context and context.get('score') == 100:
+                return True
+        
+        elif achievement.requirement_type == 'quiz_speed':
+            if context and context.get('quiz_time', 0) <= achievement.requirement_value:
+                return True
+        
+        elif achievement.requirement_type == 'quiz_count':
+            # Count user's completed quizzes
+            quiz_count = QuizSession.query.filter_by(
+                user_id=user.id,
+                completed_at=db.not_(None)
+            ).count()
+            return quiz_count >= achievement.requirement_value
+        
+        elif achievement.requirement_type == 'user_level':
+            user_level = UserLevel.query.filter_by(user_id=user.id).first()
+            if user_level and user_level.current_level >= achievement.requirement_value:
+                return True
+        
+        return False
     
     @classmethod
     def check_achievements(cls, user, context=None):
@@ -605,3 +839,42 @@ class GamificationService:
             participant.rank = i
         
         db.session.commit()
+
+    # Add this method to your GamificationService class in services.py
+
+    @classmethod
+    def sync_user_level(cls, user):
+        """Manually sync user level with their total XP - one-time fix"""
+        # Get or create user level
+        user_level = UserLevel.query.filter_by(user_id=user.id).first()
+        if not user_level:
+            user_level = UserLevel(user_id=user.id)
+            db.session.add(user_level)
+        
+        # Recalculate everything from user.total_xp
+        total_xp = user.total_xp or 0
+        new_level = cls.calculate_level_from_xp(total_xp)
+        
+        # Calculate XP progress within current level
+        xp_for_current_level = cls.calculate_total_xp_for_level(new_level)
+        xp_for_next_level = cls.calculate_total_xp_for_level(new_level + 1)
+        
+        # Update user level data
+        user_level.current_level = new_level
+        user_level.total_xp = total_xp
+        user_level.current_xp = total_xp - xp_for_current_level
+        user_level.next_level_xp = xp_for_next_level - xp_for_current_level
+        
+        db.session.commit()
+        
+        print(f"✅ Synced user {user.username}:")
+        print(f"   Level: {new_level}")
+        print(f"   Progress: {user_level.current_xp}/{user_level.next_level_xp} XP")
+        print(f"   Total XP: {total_xp}")
+        return user_level
+
+    # Run this in Flask shell to fix your user:
+    # from app.gamification.services import GamificationService
+    # from app.models import User
+    # user = User.query.filter_by(username='Administrator').first()  # or your username
+    # GamificationService.sync_user_level(user)

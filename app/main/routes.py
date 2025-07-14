@@ -350,8 +350,22 @@ def submit_quiz():
                 'icon': ach.icon_filename
             } for ach in new_achievements
         ]
+
+    # If the request is AJAX, return JSON
+    if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
+        return jsonify({
+            'success': True,
+            'message': 'Quiz submitted successfully.',
+            'redirect_url': url_for('main.quiz_results', session_id=quiz_session.id),
+            'session_id': quiz_session.id,
+            'results': {
+                'score': score,
+                'correct_answers': correct_count,
+                'total_questions': total_questions
+            }
+        })
     
-    # Redirect to results page
+    # Otherwise, redirect as usual
     return redirect(url_for('main.quiz_results', session_id=quiz_session.id))
 
 
@@ -722,3 +736,6 @@ def deploy_webhook():
     except Exception as e:
         current_app.logger.error(f'Webhook error: {str(e)}')
         return jsonify({'error': 'Webhook processing failed'}), 500
+
+
+

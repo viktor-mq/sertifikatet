@@ -12,6 +12,7 @@
     
     <div class="glass rounded-2xl p-8">
         <form action="{{ url_for('quiz.start_practice') }}" method="POST">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
             <!-- Category Selection -->
             <div class="mb-8">
                 <label class="block text-lg font-semibold mb-4">Velg Kategori</label>

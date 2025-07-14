@@ -28,17 +28,18 @@ def process_quiz_completion(user, quiz_session):
     question_count = quiz_session.total_questions
     
     # Base XP for completing a quiz (scaled by question count)
-    base_xp = GamificationService.get_xp_reward('quiz_complete', question_count=question_count)
+    base_xp = GamificationService.get_xp_reward('quiz_complete', question_count=question_count) or 0
     rewards['xp_earned'] += base_xp
     
     # XP for correct answers
-    correct_xp = quiz_session.correct_answers * GamificationService.get_xp_reward('question_correct')
+    correct_xp = (quiz_session.correct_answers * GamificationService.get_xp_reward('question_correct')) or 0
     rewards['xp_earned'] += correct_xp
     
     # Perfect score bonus (scaled by question count)
     if quiz_session.score == 100:
-        perfect_xp = GamificationService.get_xp_reward('quiz_perfect', question_count=question_count)
+        perfect_xp = GamificationService.get_xp_reward('quiz_perfect', question_count=question_count) or 0
         rewards['xp_earned'] += perfect_xp
+
     
     # Award XP
     level_ups = GamificationService.award_xp(

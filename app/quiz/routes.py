@@ -178,6 +178,146 @@ def adaptive_practice():
         return redirect(url_for('main.dashboard'))
 
 
+@quiz_bp.route('/start-practice', methods=['POST'])
+@login_required
+@quiz_limit_check('practice')
+def start_practice():
+    """Start a practice quiz session and redirect to quiz interface"""
+    try:
+        # Get form data
+        category = request.form.get('category', 'all')
+        num_questions = int(request.form.get('num_questions', 20))
+        
+        # Validate inputs
+        if num_questions not in [10, 20, 30, 45]:
+            num_questions = 20
+        
+        if category == 'all':
+            category = None
+        
+        # Check subscription limits
+        can_take, message = SubscriptionService.can_user_take_quiz(current_user.id, 'practice')
+        if not can_take:
+            flash(message, 'error')
+            return redirect(url_for('quiz.practice', category=category or 'all'))
+        
+        # Create new quiz session
+        quiz_session = QuizSession(
+            user_id=current_user.id,
+            quiz_type='practice',
+            category=category,
+            total_questions=num_questions,
+            started_at=datetime.utcnow()
+        )
+        
+        db.session.add(quiz_session)
+        db.session.flush()  # Get the session ID
+        
+        # Record quiz usage for limits tracking
+        UsageLimitService.record_quiz_taken(current_user.id, 'practice')
+        
+        db.session.commit()
+        
+        # Redirect to quiz interface
+        return redirect(url_for('quiz.take_quiz', session_id=quiz_session.id))
+    
+    except Exception as e:
+        db.session.rollback()
+        logger.error(f'Error starting practice quiz: {e}')
+        flash(f'Feil ved start av quiz: {str(e)}', 'error')
+        return redirect(url_for('main.dashboard'))
+
+
+@quiz_bp.route('/session/<int:session_id>')
+@login_required
+def take_quiz(session_id):
+    """Display quiz interface for taking a quiz"""
+    try:
+        # Get session and validate ownership
+        quiz_session = QuizSession.query.get_or_404(session_id)
+        if quiz_session.user_id != current_user.id:
+            flash('Uautorisert tilgang til quiz-økt', 'error')
+            return redirect(url_for('main.dashboard'))
+        
+        # Check if session is already completed
+        if quiz_session.completed_at:
+            flash('Denne quiz-økten er allerede fullført', 'info')
+            return redirect(url_for('quiz.view_results', session_id=session_id))
+        
+        # Get questions for this session
+        questions = []
+        if ml_service.is_ml_enabled():
+            try:
+                questions = ml_service.get_session_questions(session_id)
+            except Exception as e:
+                logger.warning(f'Could not get ML questions for session {session_id}: {e}')
+        
+        # Fallback to random questions if ML fails or is disabled
+        if not questions:
+            query = Question.query.filter_by(is_active=True)
+            if quiz_session.category:
+                query = query.filter_by(category=quiz_session.category)
+            questions = query.order_by(db.func.random()).limit(quiz_session.total_questions).all()
+        
+        if not questions:
+            flash('Ingen spørsmål funnet for denne kategorien', 'error')
+            return redirect(url_for('main.dashboard'))
+        
+        return render_template('quiz/quiz_session.html',
+                             session=quiz_session,
+                             questions=questions,
+                             category=quiz_session.category or 'Generell')
+    
+    except Exception as e:
+        logger.error(f'Error loading quiz session {session_id}: {e}')
+        flash(f'Feil ved lasting av quiz: {str(e)}', 'error')
+        return redirect(url_for('main.dashboard'))
+
+
+@quiz_bp.route('/test-xp-integration')
+@login_required
+def test_xp_integration():
+    """Test endpoint to verify XP integration is working"""
+    try:
+        from ..gamification.quiz_integration import process_quiz_completion
+        from ..gamification.services import GamificationService
+        
+        # Test XP calculation
+        test_xp = GamificationService.calculate_quiz_xp(
+            correct_answers=15,
+            total_questions=20, 
+            score=75
+        )
+        
+        return jsonify({
+            'success': True,
+            'message': 'XP integration working correctly',
+            'test_calculation': test_xp,
+            'current_user_xp': current_user.total_xp,
+            'gamification_methods_available': {
+                'get_xp_reward': hasattr(GamificationService, 'get_xp_reward'),
+                'award_xp': hasattr(GamificationService, 'award_xp'),
+                'check_achievements': hasattr(GamificationService, 'check_achievements'),
+                'update_daily_challenge_progress': hasattr(GamificationService, 'update_daily_challenge_progress'),
+                'check_and_update_streak': hasattr(GamificationService, 'check_and_update_streak')
+            }
+        })
+    except Exception as e:
+        return jsonify({
+            'success': False,
+            'error': str(e),
+            'message': 'XP integration has issues'
+        }), 500
+
+
+@quiz_bp.route('/test-modal')
+@login_required
+def test_modal():
+    """Test route to demonstrate the quiz results modal system"""
+    # This is a test route to demonstrate the modal functionality
+    return render_template('quiz/test_modal.html')
+
+
 @quiz_bp.route('/session/start', methods=['POST'])
 @login_required
 def start_session():
@@ -393,6 +533,65 @@ def submit_session(session_id):
     
     except Exception as e:
         db.session.rollback()
+        return jsonify({'error': str(e), 'success': False}), 500
+
+
+@quiz_bp.route('/session/<int:session_id>/review')
+@login_required
+def review_session(session_id):
+    """Get detailed review data for quiz session (for modal system)"""
+    try:
+        # Validate session ownership
+        quiz_session = QuizSession.query.get_or_404(session_id)
+        if quiz_session.user_id != current_user.id:
+            return jsonify({'error': 'Unauthorized', 'success': False}), 403
+        
+        # Get all responses with question details
+        responses = db.session.query(
+            QuizResponse,
+            Question
+        ).join(
+            Question, QuizResponse.question_id == Question.id
+        ).filter(
+            QuizResponse.session_id == session_id
+        ).all()
+        
+        questions_data = []
+        for response, question in responses:
+            # Get question options
+            options = [{
+                'letter': opt.option_letter,
+                'text': opt.option_text
+            } for opt in question.options]
+            
+            question_data = {
+                'question_id': question.id,
+                'question_text': question.question,
+                'image_filename': question.image_filename,
+                'options': options,
+                'correct_answer': question.correct_option,
+                'user_answer': response.user_answer,
+                'is_correct': response.is_correct,
+                'time_spent': response.time_spent_seconds,
+                'explanation': question.explanation,
+                'category': question.category
+            }
+            questions_data.append(question_data)
+        
+        return jsonify({
+            'success': True,
+            'questions': questions_data,
+            'session_info': {
+                'id': quiz_session.id,
+                'total_questions': quiz_session.total_questions,
+                'correct_answers': quiz_session.correct_answers,
+                'score': quiz_session.score,
+                'time_spent': quiz_session.time_spent_seconds
+            }
+        })
+    
+    except Exception as e:
+        logger.error(f'Error loading review data: {e}')
         return jsonify({'error': str(e), 'success': False}), 500
 
 

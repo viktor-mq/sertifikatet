@@ -187,14 +187,22 @@ class QuizGamificationIntegration {
     }
 
     handleQuizSuccess(result) {
-        // You can customize this based on your quiz flow
-        if (result.redirect_url) {
-            window.location.href = result.redirect_url;
-        } else {
-            // Show success message or redirect to results
-            const message = `Quiz completed! Score: ${result.results.score}% (${result.results.correct_answers}/${result.results.total_questions})`;
-            if (confirm(message + '\\n\\nWould you like to view detailed results?')) {
-                window.location.href = `/quiz/results/${result.session_id}`;
+        // Trigger the new modal-based results system
+        const event = new CustomEvent('quiz-ajax-complete', {
+            detail: result
+        });
+        document.dispatchEvent(event);
+        
+        // Legacy fallback if modal system isn't available
+        if (!window.QuizResultsModal) {
+            console.warn('Modal system not available, using fallback');
+            if (result.redirect_url) {
+                window.location.href = result.redirect_url;
+            } else {
+                const message = `Quiz completed! Score: ${result.results.score}% (${result.results.correct_answers}/${result.results.total_questions})`;
+                if (confirm(message + '\\n\\nWould you like to view detailed results?')) {
+                    window.location.href = `/quiz/results/${result.session_id}`;
+                }
             }
         }
     }
