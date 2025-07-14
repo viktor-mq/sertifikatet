@@ -1,0 +1,64 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Script Loading Test</title>
+</head>
+<body>
+    <h1>Script Loading Test</h1>
+    <div id="test-results"></div>
+    
+    <!-- Test if script loads when added dynamically -->
+    <script>
+        console.log('🧪 Test script started');
+        
+        // Test 1: Try loading gamification.js dynamically
+        const script = document.createElement('script');
+        script.src = '/static/js/gamification.js';
+        script.onload = function() {
+            console.log('✅ Gamification.js loaded successfully via dynamic injection');
+            document.getElementById('test-results').innerHTML += '<p style="color: green;">✅ gamification.js loaded dynamically</p>';
+        };
+        script.onerror = function() {
+            console.log('❌ Gamification.js failed to load via dynamic injection');
+            document.getElementById('test-results').innerHTML += '<p style="color: red;">❌ gamification.js failed to load dynamically</p>';
+        };
+        document.head.appendChild(script);
+        
+        // Test 2: Try fetch API
+        fetch('/static/js/gamification.js')
+            .then(response => {
+                if (response.ok) {
+                    console.log('✅ Gamification.js accessible via fetch');
+                    document.getElementById('test-results').innerHTML += '<p style="color: green;">✅ gamification.js accessible via fetch</p>';
+                    return response.text();
+                } else {
+                    throw new Error(`HTTP ${response.status}`);
+                }
+            })
+            .then(content => {
+                console.log('📄 File content length:', content.length);
+                document.getElementById('test-results').innerHTML += `<p>📄 File content length: ${content.length} characters</p>`;
+            })
+            .catch(error => {
+                console.log('❌ Fetch failed:', error);
+                document.getElementById('test-results').innerHTML += `<p style="color: red;">❌ Fetch failed: ${error}</p>`;
+            });
+    </script>
+    
+    <!-- Test 3: Normal script tag -->
+    <script src="/static/js/gamification.js"></script>
+    
+    <script>
+        // Check if it loaded
+        setTimeout(() => {
+            if (window.GamificationUpdater) {
+                console.log('✅ GamificationUpdater available');
+                document.getElementById('test-results').innerHTML += '<p style="color: green;">✅ GamificationUpdater class available</p>';
+            } else {
+                console.log('❌ GamificationUpdater NOT available');
+                document.getElementById('test-results').innerHTML += '<p style="color: red;">❌ GamificationUpdater class NOT available</p>';
+            }
+        }, 1000);
+    </script>
+</body>
+</html>

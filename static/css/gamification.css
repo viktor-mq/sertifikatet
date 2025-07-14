@@ -7,6 +7,24 @@
     pointer-events: none;
 }
 
+/* Loading Animation */
+@keyframes spin {
+    from {
+        transform: rotate(0deg);
+    }
+    to {
+        transform: rotate(360deg);
+    }
+}
+
+.level-badge {
+    transition: all 0.3s ease;
+}
+
+.level-badge:empty {
+    min-height: 1.5rem;
+}
+
 .gamification-notification {
     background: rgba(17, 24, 39, 0.95);
     backdrop-filter: blur(10px);

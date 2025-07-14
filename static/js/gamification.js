@@ -1,7 +1,23 @@
+console.log('🔧 GAMIFICATION.JS LOADED!');
 // Gamification real-time updates
 class GamificationUpdater {
     constructor() {
+        this.showLoadingState();
+        this.updateLevelDisplay(); // Load data immediately on page load
         this.initializeEventListeners();
+    }
+    
+    showLoadingState() {
+        // Show loading animation while fetching data
+        const levelBadge = document.querySelector('.level-badge');
+        if (levelBadge) {
+            levelBadge.innerHTML = '<div style="animation: spin 1s linear infinite; font-size: 1.5rem;">⟳</div>';
+        }
+        
+        const xpText = document.querySelector('.xp-text');
+        if (xpText) {
+            xpText.textContent = 'Loading...';
+        }
     }
 
     initializeEventListeners() {
@@ -14,18 +30,23 @@ class GamificationUpdater {
             }
         });
 
-        // Auto-refresh level info every 30 seconds
+        // Auto-refresh level info every 10 seconds
         setInterval(() => {
             this.updateLevelDisplay();
-        }, 30000);
+        }, 10000);
     }
 
     async updateLevelDisplay() {
         try {
             const response = await fetch('/gamification/api/level-info');
+            
+            if (!response.ok) {
+                throw new Error(`HTTP ${response.status}`);
+            }
+            
             const data = await response.json();
             
-            // Update level badge
+            // Update level badge (remove loading spinner)
             const levelBadge = document.querySelector('.level-badge');
             if (levelBadge) {
                 levelBadge.textContent = data.current_level;
@@ -57,6 +78,17 @@ class GamificationUpdater {
 
         } catch (error) {
             console.error('Error updating level display:', error);
+            
+            // Show error state
+            const levelBadge = document.querySelector('.level-badge');
+            if (levelBadge) {
+                levelBadge.textContent = '?';
+            }
+            
+            const xpText = document.querySelector('.xp-text');
+            if (xpText) {
+                xpText.textContent = 'Error loading';
+            }
         }
     }
 
@@ -182,12 +214,21 @@ class GamificationUpdater {
 }
 
 // Initialize when DOM is loaded
-document.addEventListener('DOMContentLoaded', () => {
+function initGamification() {
     if (document.querySelector('.gamification-dashboard') || 
         document.querySelector('[data-gamification="true"]')) {
         new GamificationUpdater();
     }
-});
+}
+
+// Handle both cases: DOM already loaded OR still loading
+if (document.readyState === 'loading') {
+    // DOM not ready yet, wait for it
+    document.addEventListener('DOMContentLoaded', initGamification);
+} else {
+    // DOM already ready, initialize immediately
+    initGamification();
+}
 
 // Export for use in quiz system
 window.GamificationUpdater = GamificationUpdater;

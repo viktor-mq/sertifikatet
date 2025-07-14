@@ -16,7 +16,7 @@
                     <!-- Level Badge -->
                     <div class="relative">
                         <div class="w-24 h-24 rounded-full bg-gradient-to-r from-purple-600 to-pink-600 flex items-center justify-center">
-                            <div class="text-3xl font-bold level-badge">{{ user_level.current_level }}</div>
+                            <div class="text-3xl font-bold level-badge">...</div>
                         </div>
                         <div class="absolute -bottom-2 left-0 right-0 text-center">
                             <span class="px-3 py-1 bg-gray-800 rounded-full text-xs">Nivå</span>
@@ -28,12 +28,12 @@
                         <h1 class="text-2xl font-bold mb-2">{{ current_user.full_name or current_user.username }}</h1>
                         <div class="mb-2">
                             <div class="flex justify-between text-sm text-gray-400 mb-1">
-                                <span class="xp-text">{{ user_level.current_xp }} / {{ user_level.next_level_xp }} XP</span>
-                                <span class="xp-percentage">{{ ((user_level.current_xp / user_level.next_level_xp) * 100)|round|int }}%</span>
+                                <span class="xp-text">... / ... XP</span>
+                                <span class="xp-percentage">...%</span>
                             </div>
                             <div class="h-4 bg-gray-700 rounded-full overflow-hidden">
                                 <div class="h-full bg-gradient-to-r from-purple-600 to-pink-600 transition-all duration-500 xp-progress-bar"
-                                     style="width: {{ ((user_level.current_xp / user_level.next_level_xp) * 100)|round|int }}%"></div>
+                                     style="width: 0%"></div>
                             </div>
                         </div>
                         <p class="text-gray-400">Total XP: <span class="text-white font-semibold total-xp">{{ current_user.total_xp }}</span></p>
@@ -361,11 +361,35 @@ function closeAchievementModal() {
     }, 300);
 }
 
-// Check achievements on page load
-document.addEventListener('DOMContentLoaded', () => {
-    checkAchievements();
+// Instead of immediate execution, wait for script to load
+document.addEventListener('DOMContentLoaded', function() {
+    function waitForGamification() {
+        if (window.GamificationUpdater) {
+            console.log('✅ GamificationUpdater available, initializing...');
+            new GamificationUpdater();
+        } else {
+            console.log('⏳ Waiting for GamificationUpdater...');
+            setTimeout(waitForGamification, 300);
+        }
+    }
+    waitForGamification();
 });
-</script>
 
-<script src="{{ url_for('static', filename='js/gamification.js') }}"></script>
+// Force gamification initialization after all scripts load
+document.addEventListener('DOMContentLoaded', function() {
+        // Wait a brief moment for all scripts to settle
+        setTimeout(function() {
+            if (window.GamificationUpdater) {
+                if (document.querySelector('.gamification-dashboard') || 
+                    document.querySelector('[data-gamification="true"]')) {
+                    console.log('🎯 Force-initializing gamification...');
+                    new GamificationUpdater();
+                    console.log('✅ Gamification force-initialized successfully');
+                }
+            } else {
+                console.log('❌ GamificationUpdater still not available after timeout');
+            }
+        }, 100); // Small delay to ensure script execution order
+    });
+</script>
 {% endblock %}

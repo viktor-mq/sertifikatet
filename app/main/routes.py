@@ -41,6 +41,12 @@ def offline():
     return render_template('offline.html')
 
 
+@main_bp.route('/script-test')
+def script_test():
+    """Test script loading for debugging"""
+    return render_template('script_test.html')
+
+
 @main_bp.route('/')
 def index():
     """Home page with dynamic subscription plans and dashboard for logged-in users"""
@@ -317,6 +323,21 @@ def submit_quiz():
     
     db.session.commit()
     
+    # 🎯 GAMIFICATION INTEGRATION - Award XP for quiz completion
+    gamification_rewards = {
+        'xp_earned': 0,
+        'achievements': [],
+        'level_ups': [],
+        'daily_challenges': []
+    }
+    
+    try:
+        from ..gamification.quiz_integration import process_quiz_completion
+        gamification_rewards = process_quiz_completion(current_user, quiz_session)
+    except Exception as e:
+        current_app.logger.error(f'Gamification error: {e}')
+        # Continue without gamification if it fails
+    
     # Update user progress using the service
     progress_service = ProgressService()
     progress_service.update_user_progress(user_id, quiz_session)
@@ -362,7 +383,8 @@ def submit_quiz():
                 'score': score,
                 'correct_answers': correct_count,
                 'total_questions': total_questions
-            }
+            },
+            'gamification': gamification_rewards  # 🎯 Include gamification rewards
         })
     
     # Otherwise, redirect as usual

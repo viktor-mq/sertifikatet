@@ -16,21 +16,10 @@ from app.gamification_models import (
 @gamification_bp.route('/dashboard')
 @login_required
 def dashboard():
-    """Gamification dashboard"""
+    """Gamification dashboard - now fully AJAX-based"""
     
-    # Calculate everything directly from total_xp (single source of truth)
-    total_xp = current_user.total_xp or 0
-    current_level = GamificationService.calculate_level_from_xp(total_xp)
-    xp_for_current_level = GamificationService.calculate_total_xp_for_level(current_level)
-    xp_for_next_level = GamificationService.calculate_total_xp_for_level(current_level + 1)
-    
-    # Create user_level object for template
-    user_level = type('UserLevel', (), {
-        'current_level': current_level,
-        'current_xp': total_xp - xp_for_current_level,
-        'next_level_xp': xp_for_next_level - xp_for_current_level,
-        'total_xp': total_xp
-    })()
+    # Don't calculate user_level server-side - let JavaScript handle it via API
+    # This eliminates the conflict between template and AJAX values
     
     # Get daily challenges
     daily_challenges = GamificationService.get_daily_challenges(current_user)
@@ -69,7 +58,6 @@ def dashboard():
     ).order_by(XPTransaction.created_at.desc()).limit(10).all()
     
     return render_template('gamification/dashboard.html',
-                         user_level=user_level,
                          daily_challenges=daily_challenges,
                          active_tournaments=active_tournaments,
                          user_tournaments=user_tournaments,
@@ -354,6 +342,136 @@ def xp_progress():
         'daily_xp': daily_xp,
         'total_xp': current_user.total_xp,
         'current_level': current_user.level_info.current_level if current_user.level_info else 1
+    })
+
+
+@gamification_bp.route('/debug/create-transactions')
+@login_required
+def create_missing_transactions():
+    """Create XP transactions for existing XP (one-time fix)"""
+    
+    # Only run for admin users or the specific user
+    if not (current_user.username == 'Administrator' or current_user.is_admin or current_user.id == 1):
+        return jsonify({'error': 'Not authorized'}), 403
+    
+    # Check if transactions already exist
+    existing_transactions = XPTransaction.query.filter_by(user_id=current_user.id).count()
+    if existing_transactions > 0:
+        return jsonify({'message': 'Transactions already exist', 'count': existing_transactions})
+    
+    # Create a transaction for the user's current total XP
+    total_xp = current_user.total_xp or 0
+    if total_xp > 0:
+        transaction = XPTransaction(
+            user_id=current_user.id,
+            amount=total_xp,
+            transaction_type='manual_import',
+            description=f'Initial XP import: {total_xp} XP',
+            created_at=datetime.utcnow()
+        )
+        db.session.add(transaction)
+        db.session.commit()
+        
+        return jsonify({
+            'success': True,
+            'message': f'Created transaction for {total_xp} XP',
+            'transaction_id': transaction.id
+        })
+    
+    return jsonify({'message': 'No XP to import'})
+
+
+@gamification_bp.route('/debug/user-info')
+@login_required
+def debug_user_info():
+    """Check current user info for debugging"""
+    return jsonify({
+        'user_id': current_user.id,
+        'username': current_user.username,
+        'is_admin': getattr(current_user, 'is_admin', False),
+        'total_xp': current_user.total_xp,
+        'full_name': getattr(current_user, 'full_name', None)
+    })
+
+
+@gamification_bp.route('/debug/test-quiz-xp')
+@login_required  
+def test_quiz_xp():
+    """Test gamification integration with a fake quiz session"""
+    
+    # Only run for admin users or the specific user
+    if not (current_user.username == 'Administrator' or current_user.is_admin or current_user.id == 1):
+        return jsonify({'error': 'Not authorized'}), 403
+    
+    try:
+        from app.gamification.quiz_integration import process_quiz_completion
+        from app.models import QuizSession
+        from datetime import datetime
+        
+        # Create a fake quiz session for testing
+        fake_quiz_session = type('FakeQuizSession', (), {
+            'id': 999,
+            'user_id': current_user.id,
+            'total_questions': 5,
+            'correct_answers': 4,
+            'score': 80,
+            'time_spent_seconds': 120,
+            'category': 'Trafikkregler',
+            'quiz_type': 'practice'
+        })()
+        
+        # Process gamification rewards
+        rewards = process_quiz_completion(current_user, fake_quiz_session)
+        
+        return jsonify({
+            'success': True,
+            'fake_quiz': {
+                'total_questions': 5,
+                'correct_answers': 4,
+                'score': 80
+            },
+            'rewards': rewards,
+            'user_xp_before': current_user.total_xp,
+            'user_xp_after': 'Check /debug/xp-data for updated value'
+        })
+        
+    except Exception as e:
+        return jsonify({
+            'success': False,
+            'error': str(e),
+            'traceback': str(e.__class__.__name__)
+        })
+
+
+@gamification_bp.route('/debug/xp-data')
+@login_required
+def debug_xp_data():
+    """Debug endpoint to check XP data"""
+    total_xp = current_user.total_xp or 0
+    
+    # XP transactions
+    transactions = XPTransaction.query.filter_by(user_id=current_user.id).all()
+    
+    # Calculated level info
+    current_level = GamificationService.calculate_level_from_xp(total_xp)
+    xp_for_current = GamificationService.calculate_total_xp_for_level(current_level)
+    xp_for_next = GamificationService.calculate_total_xp_for_level(current_level + 1)
+    
+    return jsonify({
+        'user_total_xp': total_xp,
+        'calculated_level': current_level,
+        'progress_xp': total_xp - xp_for_current,
+        'next_level_xp': xp_for_next - xp_for_current,
+        'progress_percentage': int(((total_xp - xp_for_current) / (xp_for_next - xp_for_current)) * 100),
+        'transaction_count': len(transactions),
+        'transactions': [
+            {
+                'amount': t.amount,
+                'type': t.transaction_type,
+                'description': t.description,
+                'created_at': t.created_at.isoformat()
+            } for t in transactions[-5:]  # Last 5
+        ]
     })
 
 
