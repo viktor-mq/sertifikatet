@@ -8,7 +8,7 @@ from app import db
 from app.models import User, Achievement, UserAchievement
 from app.gamification_models import (
     UserLevel, DailyChallenge, UserDailyChallenge,
-    WeeklyTournament, TournamentParticipant, PowerUp, UserPowerUp,
+    WeeklyTournament, TournamentParticipant,
     FriendChallenge, XPTransaction
 )
 
@@ -45,13 +45,6 @@ def dashboard():
     # Get leaderboard rankings
     rankings = GamificationService.get_user_ranking(current_user, 'weekly')
     
-    # Get available power-ups
-    power_ups = PowerUp.query.filter_by(is_active=True).all()
-    user_powerups = UserPowerUp.query.filter_by(
-        user_id=current_user.id,
-        used_at=None
-    ).all()
-    
     # Get recent XP transactions
     recent_xp = XPTransaction.query.filter_by(
         user_id=current_user.id
@@ -63,8 +56,6 @@ def dashboard():
                          user_tournaments=user_tournaments,
                          recent_achievements=recent_achievements,
                          rankings=rankings,
-                         power_ups=power_ups,
-                         user_powerups=user_powerups,
                          recent_xp=recent_xp)
 
 
@@ -254,69 +245,6 @@ def daily_challenges():
                          challenge_history=challenge_history,
                          total_completed=total_completed,
                          total_xp_earned=total_xp_earned)
-
-
-@gamification_bp.route('/power-ups')
-@login_required
-def power_ups():
-    """View and purchase power-ups"""
-    # Get all available power-ups
-    available_power_ups = PowerUp.query.filter_by(is_active=True).all()
-    
-    # Get user's power-ups
-    user_powerups = UserPowerUp.query.filter_by(
-        user_id=current_user.id
-    ).all()
-    
-    # Group user's power-ups
-    owned_powerups = {}
-    active_powerups = []
-    
-    for up in user_powerups:
-        if up.used_at is None:
-            if up.power_up_id not in owned_powerups:
-                owned_powerups[up.power_up_id] = 0
-            owned_powerups[up.power_up_id] += up.quantity
-        elif up.expires_at and up.expires_at > datetime.utcnow():
-            active_powerups.append(up)
-    
-    return render_template('gamification/power_ups.html',
-                         available_power_ups=available_power_ups,
-                         owned_powerups=owned_powerups,
-                         active_powerups=active_powerups,
-                         user_xp=current_user.total_xp)
-
-
-@gamification_bp.route('/power-up/<int:power_up_id>/buy', methods=['POST'])
-@login_required
-def buy_power_up(power_up_id):
-    """Purchase a power-up"""
-    power_up = PowerUp.query.get_or_404(power_up_id)
-    
-    # Check if user has enough XP
-    if current_user.total_xp < power_up.cost_xp:
-        flash(f'Du trenger {power_up.cost_xp} XP for å kjøpe {power_up.name}', 'error')
-        return redirect(url_for('gamification.power_ups'))
-    
-    # Deduct XP
-    GamificationService.award_xp(
-        current_user,
-        -power_up.cost_xp,
-        'power_up_purchase',
-        f'Kjøpte: {power_up.name}',
-        power_up.id
-    )
-    
-    # Add power-up to user's inventory
-    user_power_up = UserPowerUp(
-        user_id=current_user.id,
-        power_up_id=power_up.id
-    )
-    db.session.add(user_power_up)
-    db.session.commit()
-    
-    flash(f'{power_up.name} kjøpt!', 'success')
-    return redirect(url_for('gamification.power_ups'))
 
 
 @gamification_bp.route('/api/xp-progress')

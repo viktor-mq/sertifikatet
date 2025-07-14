@@ -154,7 +154,7 @@
             <div>
                 <div class="flex items-center justify-between mb-4">
                     <h2 class="text-xl font-bold">Ukentlig toppliste</h2>
-                    <a href="{{ url_for('gamification.leaderboard') }}" class="text-purple-400 hover:text-purple-300">
+                    <a href="{{ url_for('main.leaderboard') }}" class="text-purple-400 hover:text-purple-300">
                         Full toppliste <i class="fas fa-arrow-right ml-1"></i>
                     </a>
                 </div>
@@ -254,38 +254,6 @@
                         {% endfor %}
                     </div>
                 </div>
-            </div>
-        </div>
-
-        <!-- Power-ups -->
-        <div class="mt-8">
-            <div class="flex items-center justify-between mb-4">
-                <h2 class="text-xl font-bold">Dine power-ups</h2>
-                <a href="{{ url_for('gamification.power_ups') }}" class="text-purple-400 hover:text-purple-300">
-                    Kjøp flere <i class="fas fa-arrow-right ml-1"></i>
-                </a>
-            </div>
-            
-            <div class="grid grid-cols-2 md:grid-cols-4 gap-4">
-                {% for powerup in user_powerups[:4] %}
-                <div class="glass rounded-lg p-4 text-center hover-card">
-                    <div class="w-12 h-12 bg-gradient-to-r from-green-600 to-blue-600 rounded-lg mx-auto mb-2 flex items-center justify-center">
-                        <i class="fas fa-bolt text-xl"></i>
-                    </div>
-                    <h3 class="font-semibold text-sm">{{ powerup.powerup.name }}</h3>
-                    <p class="text-xs text-gray-400">x{{ powerup.quantity }}</p>
-                </div>
-                {% endfor %}
-                
-                {% if not user_powerups %}
-                <div class="col-span-full text-center py-8 text-gray-400">
-                    <i class="fas fa-bolt text-4xl mb-2 opacity-20"></i>
-                    <p>Ingen power-ups ennå</p>
-                    <a href="{{ url_for('gamification.power_ups') }}" class="text-purple-400 hover:text-purple-300 text-sm">
-                        Kjøp din første →
-                    </a>
-                </div>
-                {% endif %}
             </div>
         </div>
     </div>

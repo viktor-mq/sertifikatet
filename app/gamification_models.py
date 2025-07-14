@@ -122,39 +122,6 @@ class XPTransaction(db.Model):
     user = db.relationship('User', backref='xp_transactions')
 
 
-class PowerUp(db.Model):
-    """Power-ups that can be purchased with XP"""
-    __tablename__ = 'power_ups'
-    
-    id = db.Column(db.Integer, primary_key=True)
-    name = db.Column(db.String(100), nullable=False)
-    description = db.Column(db.Text)
-    icon = db.Column(db.String(100))
-    cost_xp = db.Column(db.Integer, nullable=False)
-    effect_type = db.Column(db.String(50))  # 'double_xp', 'streak_freeze', 'hint', 'time_extend'
-    effect_duration = db.Column(db.Integer)  # Duration in minutes, 0 for instant
-    is_active = db.Column(db.Boolean, default=True)
-    
-    # Relationships
-    user_powerups = db.relationship('UserPowerUp', backref='powerup', cascade='all, delete-orphan')
-
-
-class UserPowerUp(db.Model):
-    """Track user's owned power-ups"""
-    __tablename__ = 'user_power_ups'
-    
-    id = db.Column(db.Integer, primary_key=True)
-    user_id = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=False)
-    power_up_id = db.Column(db.Integer, db.ForeignKey('power_ups.id'), nullable=False)
-    quantity = db.Column(db.Integer, default=1)
-    purchased_at = db.Column(db.DateTime, default=datetime.utcnow)
-    used_at = db.Column(db.DateTime)
-    expires_at = db.Column(db.DateTime)
-    
-    # Relationships
-    user = db.relationship('User', backref='power_ups')
-
-
 class FriendChallenge(db.Model):
     """Friend challenges"""
     __tablename__ = 'friend_challenges'
