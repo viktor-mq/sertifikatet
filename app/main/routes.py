@@ -341,6 +341,7 @@ def submit_quiz():
             session_id=quiz_session.id,
             question_id=result['question'].id,
             category=result['question'].category,  # Store actual question category
+            subcategory=result['question'].subcategory,  # Store granular subcategory
             user_answer=result['user_answer'],
             is_correct=result['is_correct']
         )

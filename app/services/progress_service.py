@@ -22,6 +22,12 @@ class ProgressService:
         # Get category performance
         category_performance = self._calculate_category_performance(user_id)
         
+        # Get subcategory performance for granular insights
+        subcategory_performance = self._calculate_subcategory_performance(user_id)
+        
+        # Create hierarchical category structure
+        hierarchical_categories = self._create_hierarchical_categories(category_performance, subcategory_performance)
+        
         # Get recent activity (last 30 days)
         activity_timeline = self._get_activity_timeline(user_id, days=30)
         
@@ -34,6 +40,8 @@ class ProgressService:
         return {
             'basic_stats': stats,
             'category_performance': category_performance,
+            'subcategory_performance': subcategory_performance,
+            'hierarchical_categories': hierarchical_categories,  # New nested structure
             'activity_timeline': activity_timeline,
             'weak_areas': weak_areas,
             'mastery_levels': mastery_levels,
@@ -134,6 +142,91 @@ class ProgressService:
             })
         
         return sorted(category_performance, key=lambda x: x['avg_score'], reverse=True)
+    
+    def _calculate_subcategory_performance(self, user_id: int) -> List[Dict]:
+        """Calculate performance by subcategory for granular insights"""
+        # Use quiz_responses to get accurate subcategory performance
+        results = db.session.query(
+            QuizResponse.category,
+            QuizResponse.subcategory,
+            func.count(func.distinct(QuizResponse.session_id)).label('sessions'),
+            func.count(QuizResponse.id).label('total_questions'),
+            func.sum(func.cast(QuizResponse.is_correct, db.Integer)).label('correct_answers')
+        ).join(
+            QuizSession, QuizResponse.session_id == QuizSession.id
+        ).filter(
+            QuizSession.user_id == user_id,
+            QuizSession.completed_at.isnot(None),
+            QuizResponse.subcategory.isnot(None)
+        ).group_by(QuizResponse.category, QuizResponse.subcategory).all()
+        
+        subcategory_performance = []
+        for result in results:
+            accuracy = 0
+            avg_score = 0
+            if result.total_questions and result.correct_answers:
+                accuracy = (result.correct_answers / result.total_questions) * 100
+                avg_score = accuracy  # Since we're calculating from individual responses
+            
+            mastery_level = self._calculate_mastery_level(
+                result.sessions, avg_score, accuracy
+            )
+            
+            subcategory_performance.append({
+                'category': str(result.category),
+                'subcategory': str(result.subcategory),
+                'sessions': int(result.sessions),
+                'avg_score': round(float(avg_score), 1),
+                'accuracy': round(float(accuracy), 1),
+                'mastery_level': str(mastery_level),
+                'total_questions': int(result.total_questions or 0)
+            })
+        
+        return sorted(subcategory_performance, key=lambda x: x['avg_score'], reverse=True)
+    
+    def _create_hierarchical_categories(self, category_performance: List[Dict], subcategory_performance: List[Dict]) -> List[Dict]:
+        """Create hierarchical category structure with subcategories nested under categories"""
+        hierarchical = []
+        
+        # Group subcategories by category
+        subcategories_by_category = {}
+        for sub in subcategory_performance:
+            category = sub['category']
+            if category not in subcategories_by_category:
+                subcategories_by_category[category] = []
+            subcategories_by_category[category].append(sub)
+        
+        # Create hierarchical structure
+        for category in category_performance:
+            category_name = category['category']
+            
+            # Get subcategories for this category
+            subcategories = subcategories_by_category.get(category_name, [])
+            
+            # If subcategories exist, recalculate category average from subcategory data
+            if subcategories:
+                # Calculate weighted average based on question counts
+                total_questions = sum(sub['total_questions'] for sub in subcategories)
+                if total_questions > 0:
+                    weighted_avg = sum(
+                        sub['avg_score'] * sub['total_questions'] 
+                        for sub in subcategories
+                    ) / total_questions
+                    category['avg_score'] = round(weighted_avg, 1)
+                
+                # Sort subcategories by performance (worst first for easy identification)
+                subcategories.sort(key=lambda x: x['avg_score'])
+            
+            # Add subcategories to category
+            category_data = category.copy()
+            category_data['subcategories'] = subcategories
+            category_data['has_subcategories'] = len(subcategories) > 0
+            category_data['subcategory_count'] = len(subcategories)
+            
+            hierarchical.append(category_data)
+        
+        # Sort categories by average score (best first)
+        return sorted(hierarchical, key=lambda x: x['avg_score'], reverse=True)
     
     def _calculate_mastery_level(self, sessions: int, avg_score: float, accuracy: float) -> str:
         """Calculate mastery level based on performance metrics"""

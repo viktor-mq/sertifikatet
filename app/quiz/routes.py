@@ -450,6 +450,7 @@ def submit_session(session_id):
                 session_id=session_id,
                 question_id=question_id,
                 category=question.category,  # Store actual question category
+                subcategory=question.subcategory,  # Store granular subcategory
                 user_answer=user_answer,
                 is_correct=is_correct,
                 time_spent_seconds=time_spent

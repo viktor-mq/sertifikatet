@@ -192,6 +192,7 @@ class QuizResponse(db.Model):
     session_id = db.Column(db.Integer, db.ForeignKey('quiz_sessions.id'), nullable=False)
     question_id = db.Column(db.Integer, db.ForeignKey('questions.id'), nullable=False)
     category = db.Column(db.String(100))  # Track actual question category
+    subcategory = db.Column(db.String(100))  # Track specific subcategory for granular analytics
     user_answer = db.Column(db.String(1))
     is_correct = db.Column(db.Boolean)
     time_spent_seconds = db.Column(db.Integer)

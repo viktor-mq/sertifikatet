@@ -5,6 +5,32 @@
 
 {% block extra_css %}
 <link rel="stylesheet" href="{{ url_for('static', filename='css/pwa-banner.css') }}">
+<style>
+/* Custom scrollbar styling for category section */
+.category-scroll::-webkit-scrollbar {
+    width: 6px;
+}
+
+.category-scroll::-webkit-scrollbar-track {
+    background: #1f2937;
+    border-radius: 3px;
+}
+
+.category-scroll::-webkit-scrollbar-thumb {
+    background: #4b5563;
+    border-radius: 3px;
+}
+
+.category-scroll::-webkit-scrollbar-thumb:hover {
+    background: #6b7280;
+}
+
+/* Firefox scrollbar */
+.category-scroll {
+    scrollbar-width: thin;
+    scrollbar-color: #4b5563 #1f2937;
+}
+</style>
 {% endblock %}
 
 {% block content %}
@@ -123,7 +149,7 @@
                     <i class="fas fa-compass text-blue-400 text-xl"></i>
                 </div>
                 <h3 class="text-lg font-semibold mb-2">Teorikurs</h3>
-                <p class="text-gray-400 text-sm">Lær teorien gjennom kort-videor eller tekst</p>
+                <p class="text-gray-400 text-sm">Lær teorien gjennom kort-videoer eller tekst</p>
             </a>
 
             <a href="{{ url_for('main.achievements') }}" class="glass rounded-xl p-6 hover-card group">
@@ -155,22 +181,75 @@
             <!-- Category Performance -->
             <div class="glass rounded-2xl p-8">
                 <h2 class="text-2xl font-bold mb-6">Kategoriresultater</h2>
-                <div class="space-y-4">
-                    {% if dashboard_data and dashboard_data.category_performance %}
-                        {% for category in dashboard_data.category_performance[:5] %}
-                        <div>
-                            <div class="flex justify-between mb-1">
-                                <span class="text-sm font-medium">{{ category.category }}</span>
-                                <span class="text-sm text-purple-400">{{ category.avg_score }}%</span>
+                <div class="space-y-4 max-h-96 overflow-y-auto pr-2 category-scroll">
+                    {% if dashboard_data and dashboard_data.hierarchical_categories %}
+                        {% for category in dashboard_data.hierarchical_categories %}
+                        <div class="category-container">
+                            <!-- Main Category -->
+                            <div class="category-header {% if category.has_subcategories %}cursor-pointer{% endif %}" 
+                                 {% if category.has_subcategories %}onclick="toggleSubcategories('{{ loop.index }}')"{% endif %}>
+                                <div class="flex justify-between mb-1">
+                                    <span class="text-sm font-medium flex items-center">
+                                        {% if category.has_subcategories %}
+                                            <i class="fas fa-chevron-right transition-transform duration-200" id="chevron-{{ loop.index }}"></i>
+                                        {% endif %}
+                                        <span class="ml-2">{{ category.category }}</span>
+                                        {% if category.has_subcategories %}
+                                            <span class="ml-2 text-xs text-gray-400">({{ category.subcategory_count }} underkategorier)</span>
+                                        {% endif %}
+                                    </span>
+                                    <span class="text-sm font-semibold
+                                        {% if category.avg_score >= 80 %}text-green-400
+                                        {% elif category.avg_score >= 60 %}text-yellow-400
+                                        {% else %}text-red-400{% endif %}">
+                                        {{ category.avg_score }}%
+                                    </span>
+                                </div>
+                                <div class="bg-gray-700 rounded-full h-2">
+                                    <div class="h-2 rounded-full 
+                                        {% if category.avg_score >= 80 %}bg-gradient-to-r from-green-600 to-green-400
+                                        {% elif category.avg_score >= 60 %}bg-gradient-to-r from-yellow-600 to-yellow-400
+                                        {% else %}bg-gradient-to-r from-red-600 to-red-400{% endif %}" 
+                                         style="width: {{ category.avg_score }}%"></div>
+                                </div>
+                                <div class="flex justify-between mt-1">
+                                    <span class="text-xs text-gray-400">{{ category.sessions }} quiz{{ 'zer' if category.sessions != 1 else '' }}</span>
+                                    <span class="text-xs text-gray-400">{{ category.mastery_level }}</span>
+                                </div>
                             </div>
-                            <div class="bg-gray-700 rounded-full h-2">
-                                <div class="bg-gradient-to-r from-purple-600 to-pink-600 h-2 rounded-full" 
-                                     style="width: {{ category.avg_score }}%"></div>
+                            
+                            <!-- Subcategories (initially hidden) -->
+                            {% if category.has_subcategories %}
+                            <div class="subcategories mt-3 ml-6 space-y-2 hidden" id="subcategories-{{ loop.index }}">
+                                {% for subcategory in category.subcategories %}
+                                <div class="subcategory-item">
+                                    <div class="flex justify-between mb-1">
+                                        <span class="text-xs font-medium text-gray-300">
+                                            <i class="fas fa-arrow-right text-gray-500 mr-2"></i>
+                                            {{ subcategory.subcategory }}
+                                        </span>
+                                        <span class="text-xs font-semibold
+                                            {% if subcategory.avg_score >= 80 %}text-green-400
+                                            {% elif subcategory.avg_score >= 60 %}text-yellow-400
+                                            {% else %}text-red-400{% endif %}">
+                                            {{ subcategory.avg_score }}%
+                                        </span>
+                                    </div>
+                                    <div class="bg-gray-800 rounded-full h-1.5">
+                                        <div class="h-1.5 rounded-full 
+                                            {% if subcategory.avg_score >= 80 %}bg-gradient-to-r from-green-600 to-green-400
+                                            {% elif subcategory.avg_score >= 60 %}bg-gradient-to-r from-yellow-600 to-yellow-400
+                                            {% else %}bg-gradient-to-r from-red-600 to-red-400{% endif %}" 
+                                             style="width: {{ subcategory.avg_score }}%"></div>
+                                    </div>
+                                    <div class="flex justify-between mt-1">
+                                        <span class="text-xs text-gray-500">{{ subcategory.sessions }} quiz{{ 'zer' if subcategory.sessions != 1 else '' }}</span>
+                                        <span class="text-xs text-gray-500">{{ subcategory.mastery_level }}</span>
+                                    </div>
+                                </div>
+                                {% endfor %}
                             </div>
-                            <div class="flex justify-between mt-1">
-                                <span class="text-xs text-gray-400">{{ category.sessions }} quiz{{ 'zer' if category.sessions != 1 else '' }}</span>
-                                <span class="text-xs text-gray-400">{{ category.mastery_level }}</span>
-                            </div>
+                            {% endif %}
                         </div>
                         {% endfor %}
                     {% else %}
@@ -531,6 +610,38 @@
 {% if current_user.is_authenticated %}
 <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 <script>
+// Toggle subcategories visibility
+function toggleSubcategories(categoryIndex) {
+    const subcategoriesDiv = document.getElementById(`subcategories-${categoryIndex}`);
+    const chevron = document.getElementById(`chevron-${categoryIndex}`);
+    
+    if (subcategoriesDiv.classList.contains('hidden')) {
+        // Show subcategories
+        subcategoriesDiv.classList.remove('hidden');
+        chevron.style.transform = 'rotate(90deg)';
+        
+        // Add smooth slide animation
+        subcategoriesDiv.style.maxHeight = '0';
+        subcategoriesDiv.style.overflow = 'hidden';
+        subcategoriesDiv.style.transition = 'max-height 0.3s ease-out';
+        
+        setTimeout(() => {
+            subcategoriesDiv.style.maxHeight = subcategoriesDiv.scrollHeight + 'px';
+        }, 10);
+    } else {
+        // Hide subcategories
+        subcategoriesDiv.style.maxHeight = '0';
+        chevron.style.transform = 'rotate(0deg)';
+        
+        setTimeout(() => {
+            subcategoriesDiv.classList.add('hidden');
+            subcategoriesDiv.style.maxHeight = '';
+            subcategoriesDiv.style.overflow = '';
+            subcategoriesDiv.style.transition = '';
+        }, 300);
+    }
+}
+
 // Progress Chart for authenticated users
 {% if dashboard_data and dashboard_data.activity_timeline %}
 const ctx = document.getElementById('progressChart');
