@@ -534,7 +534,7 @@ class GamificationService:
     
     @classmethod
     def get_daily_challenges(cls, user):
-        """Get today's daily challenges for a user"""
+        """Get today's daily challenges for a user, including ML-generated ones"""
         today = date.today()
         
         # Get today's challenges
@@ -542,6 +542,23 @@ class GamificationService:
             date=today,
             is_active=True
         ).all()
+        
+        # If no challenges exist for today, try to generate ML challenges
+        if not challenges:
+            try:
+                from .ml_challenge_service import ml_challenge_service
+                # Generate challenges for all users (including this user)
+                generation_results = ml_challenge_service.generate_daily_challenges_for_all_users(today)
+                print(f"Generated daily challenges: {generation_results}")
+                
+                # Refresh challenges query
+                challenges = DailyChallenge.query.filter_by(
+                    date=today,
+                    is_active=True
+                ).all()
+            except Exception as e:
+                print(f"Error generating ML challenges: {e}")
+                # Continue with empty challenges list
         
         # Get user's progress on these challenges
         user_challenges = []

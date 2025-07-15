@@ -6,15 +6,42 @@
 
   {% if challenges %}
     <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
-      {% for challenge in challenges %}
+      {% for user_challenge in challenges %}
       <div class="bg-white bg-opacity-5 backdrop-blur-md p-6 rounded-2xl shadow-md">
-        <h2 class="text-xl font-semibold text-white mb-2">{{ challenge.title }}</h2>
-        <p class="text-gray-300 mb-2">{{ challenge.description }}</p>
-        <p class="text-sm text-gray-400">Krav: <span class="font-medium text-white">{{ challenge.requirement_value }}</span></p>
-        <p class="text-sm text-gray-400">Type: <span class="font-medium text-white">{{ challenge.challenge_type }}</span></p>
-        <p class="text-sm text-gray-400">Belønning: <span class="text-green-300">{{ challenge.xp_reward }} XP</span></p>
-        {% if challenge.bonus_reward and challenge.bonus_reward > 0 %}
-          <p class="text-sm text-yellow-300">Bonus: +{{ challenge.bonus_reward }} XP</p>
+        <!-- Challenge Icon -->
+        <div class="flex items-center justify-between mb-4">
+          <div class="bg-gradient-to-r from-blue-500 to-purple-600 p-3 rounded-xl">
+            <svg class="w-6 h-6 text-white" fill="currentColor" viewBox="0 0 20 20">
+              <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-8.293l-3-3a1 1 0 00-1.414 0l-3 3a1 1 0 001.414 1.414L9 9.414V13a1 1 0 102 0V9.414l1.293 1.293a1 1 0 001.414-1.414z" clip-rule="evenodd"/>
+            </svg>
+          </div>
+          <div class="text-yellow-400 font-bold text-lg">+{{ user_challenge.challenge.xp_reward }} XP</div>
+        </div>
+        
+        <h2 class="text-xl font-semibold text-white mb-2">{{ user_challenge.challenge.title }}</h2>
+        <p class="text-gray-300 mb-2">{{ user_challenge.challenge.description }}</p>
+        
+        <!-- Progress bar -->
+        <div class="mb-3">
+          <div class="flex justify-between text-sm text-gray-400 mb-1">
+            <span>Fremgang</span>
+            <span>{{ user_challenge.progress }} / {{ user_challenge.challenge.requirement_value }}</span>
+          </div>
+          <div class="w-full bg-gray-700 rounded-full h-2">
+            {% set progress_percent = (user_challenge.progress / user_challenge.challenge.requirement_value * 100) if user_challenge.challenge.requirement_value > 0 else 0 %}
+            <div class="bg-blue-500 h-2 rounded-full" style="width: {{ progress_percent }}%"></div>
+          </div>
+        </div>
+        
+        <p class="text-sm text-gray-400">Krav: <span class="font-medium text-white">{{ user_challenge.challenge.requirement_value }}</span></p>
+        <p class="text-sm text-gray-400">Type: <span class="font-medium text-white">{{ user_challenge.challenge.challenge_type }}</span></p>
+        {% if user_challenge.challenge.bonus_reward and user_challenge.challenge.bonus_reward > 0 %}
+          <p class="text-sm text-yellow-300">Bonus: +{{ user_challenge.challenge.bonus_reward }} XP</p>
+        {% endif %}
+        
+        <!-- Completion status -->
+        {% if user_challenge.completed %}
+          <div class="mt-3 text-green-400 text-sm font-semibold">✅ Fullført!</div>
         {% endif %}
       </div>
       {% endfor %}
