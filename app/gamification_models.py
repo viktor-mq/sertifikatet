@@ -70,6 +70,7 @@ class WeeklyTournament(db.Model):
     is_active = db.Column(db.Boolean, default=True)
     entry_fee_xp = db.Column(db.Integer, default=0)  # Optional XP entry fee
     prize_pool_xp = db.Column(db.Integer, default=1000)
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
     
     # Relationships
     participants = db.relationship('TournamentParticipant', backref='tournament', cascade='all, delete-orphan')

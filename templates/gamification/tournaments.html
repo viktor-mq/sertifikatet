@@ -1,0 +1,198 @@
+{% extends "base.html" %}
+
+{% block title %}Turneringer - Sertifikatet{% endblock %}
+
+{% block content %}
+<section class="py-12">
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+        <!-- Header -->
+        <div class="mb-8">
+            <h1 class="text-4xl font-bold mb-4">Turneringer</h1>
+            <p class="text-xl text-gray-400">Konkurrer mot andre brukere og vinn XP-premier!</p>
+        </div>
+
+        <!-- Active Tournaments -->
+        <div class="mb-8">
+            <h2 class="text-2xl font-bold mb-6">Aktive turneringer</h2>
+            
+            {% if active_tournaments %}
+            <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                {% for tournament in active_tournaments %}
+                <div class="glass rounded-xl p-6 hover-card">
+                    <div class="flex items-center justify-between mb-4">
+                        <div class="w-12 h-12 bg-gradient-to-r from-yellow-600 to-orange-600 rounded-lg flex items-center justify-center">
+                            <i class="fas fa-trophy text-xl"></i>
+                        </div>
+                        <span class="px-3 py-1 bg-green-600 rounded-full text-xs font-semibold">Aktiv</span>
+                    </div>
+                    
+                    <h3 class="text-xl font-bold mb-2">{{ tournament.name }}</h3>
+                    <p class="text-gray-400 mb-4">{{ tournament.description }}</p>
+                    
+                    <div class="space-y-2 mb-4">
+                        <div class="flex justify-between text-sm">
+                            <span class="text-gray-400">Type:</span>
+                            <span class="capitalize">{{ tournament.tournament_type }}</span>
+                        </div>
+                        <div class="flex justify-between text-sm">
+                            <span class="text-gray-400">Slutter:</span>
+                            <span>{{ tournament.end_date.strftime('%d.%m kl %H:%M') }}</span>
+                        </div>
+                        <div class="flex justify-between text-sm">
+                            <span class="text-gray-400">Premiepott:</span>
+                            <span class="text-yellow-400 font-semibold">{{ tournament.prize_pool_xp }} XP</span>
+                        </div>
+                        {% if tournament.entry_fee_xp > 0 %}
+                        <div class="flex justify-between text-sm">
+                            <span class="text-gray-400">Påmeldingsavgift:</span>
+                            <span class="text-red-400">{{ tournament.entry_fee_xp }} XP</span>
+                        </div>
+                        {% endif %}
+                    </div>
+                    
+                    <div class="flex space-x-2">
+                        <a href="{{ url_for('gamification.tournament_detail', tournament_id=tournament.id) }}" 
+                           class="flex-1 px-4 py-2 bg-gradient-to-r from-purple-600 to-pink-600 rounded-lg text-center hover:from-purple-700 hover:to-pink-700 transition">
+                            Se detaljer
+                        </a>
+                        {% if tournament.entry_fee_xp == 0 or current_user.total_xp >= tournament.entry_fee_xp %}
+                        <form action="{{ url_for('gamification.join_tournament', tournament_id=tournament.id) }}" method="POST" class="flex-1">
+                            <button type="submit" class="w-full px-4 py-2 bg-gradient-to-r from-green-600 to-blue-600 rounded-lg hover:from-green-700 hover:to-blue-700 transition">
+                                Delta
+                            </button>
+                        </form>
+                        {% else %}
+                        <button disabled class="flex-1 px-4 py-2 bg-gray-600 rounded-lg opacity-50 cursor-not-allowed">
+                            Ikke nok XP
+                        </button>
+                        {% endif %}
+                    </div>
+                </div>
+                {% endfor %}
+            </div>
+            {% else %}
+            <div class="text-center py-12">
+                <i class="fas fa-trophy text-6xl text-gray-600 mb-4"></i>
+                <h3 class="text-xl font-bold mb-2">Ingen aktive turneringer</h3>
+                <p class="text-gray-400">Det er ingen turneringer som pågår akkurat nå. Sjekk tilbake senere!</p>
+            </div>
+            {% endif %}
+        </div>
+
+        <!-- Upcoming Tournaments -->
+        {% if upcoming_tournaments %}
+        <div class="mb-8">
+            <h2 class="text-2xl font-bold mb-6">Kommende turneringer</h2>
+            
+            <div class="space-y-4">
+                {% for tournament in upcoming_tournaments %}
+                <div class="glass rounded-lg p-4 flex items-center justify-between">
+                    <div class="flex items-center space-x-4">
+                        <div class="w-10 h-10 bg-gradient-to-r from-blue-600 to-purple-600 rounded-lg flex items-center justify-center">
+                            <i class="fas fa-clock text-sm"></i>
+                        </div>
+                        <div>
+                            <h3 class="font-semibold">{{ tournament.name }}</h3>
+                            <p class="text-sm text-gray-400">Starter {{ tournament.start_date.strftime('%d.%m kl %H:%M') }}</p>
+                        </div>
+                    </div>
+                    <div class="text-right">
+                        <div class="text-yellow-400 font-semibold">{{ tournament.prize_pool_xp }} XP</div>
+                        <span class="px-2 py-1 bg-blue-600 rounded text-xs">Kommende</span>
+                    </div>
+                </div>
+                {% endfor %}
+            </div>
+        </div>
+        {% endif %}
+
+        <!-- Recent Winners -->
+        {% if recent_winners %}
+        <div class="mb-8">
+            <h2 class="text-2xl font-bold mb-6">Nylige vinnere</h2>
+            
+            <div class="glass rounded-lg overflow-hidden">
+                <table class="w-full">
+                    <thead class="bg-gray-800/50">
+                        <tr>
+                            <th class="p-4 text-left">Turnering</th>
+                            <th class="p-4 text-left">Vinner</th>
+                            <th class="p-4 text-left">Dato</th>
+                            <th class="p-4 text-right">Premie</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for participant, user, tournament in recent_winners %}
+                        <tr class="border-b border-gray-700/50 hover:bg-gray-800/30 transition">
+                            <td class="p-4">{{ tournament.name }}</td>
+                            <td class="p-4">
+                                <div class="flex items-center space-x-2">
+                                    <i class="fas fa-crown text-yellow-400"></i>
+                                    <span class="{{ 'font-semibold text-purple-400' if user.id == current_user.id else '' }}">
+                                        {{ user.username }}
+                                    </span>
+                                </div>
+                            </td>
+                            <td class="p-4 text-gray-400">{{ tournament.end_date.strftime('%d.%m.%Y') }}</td>
+                            <td class="p-4 text-right text-yellow-400 font-semibold">{{ participant.prize_earned }} XP</td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+        {% endif %}
+
+        <!-- User's Tournament History -->
+        {% if user_tournaments %}
+        <div class="mb-8">
+            <h2 class="text-2xl font-bold mb-6">Din turnerings-historikk</h2>
+            
+            <div class="space-y-4">
+                {% for participant in user_tournaments %}
+                <div class="glass rounded-lg p-4 flex items-center justify-between">
+                    <div class="flex items-center space-x-4">
+                        <div class="w-10 h-10 rounded-lg flex items-center justify-center
+                                    {% if participant.rank == 1 %}bg-gradient-to-r from-yellow-600 to-orange-600
+                                    {% elif participant.rank == 2 %}bg-gradient-to-r from-gray-400 to-gray-600
+                                    {% elif participant.rank == 3 %}bg-gradient-to-r from-orange-600 to-yellow-700
+                                    {% else %}bg-gradient-to-r from-gray-600 to-gray-800{% endif %}">
+                            {% if participant.rank <= 3 %}
+                                <i class="fas fa-medal text-sm"></i>
+                            {% else %}
+                                <span class="text-sm font-bold">#{{ participant.rank }}</span>
+                            {% endif %}
+                        </div>
+                        <div>
+                            <h3 class="font-semibold">{{ participant.tournament.name }}</h3>
+                            <p class="text-sm text-gray-400">
+                                {{ participant.tournament.start_date.strftime('%d.%m.%Y') }} - 
+                                {{ participant.tournament.end_date.strftime('%d.%m.%Y') }}
+                            </p>
+                        </div>
+                    </div>
+                    <div class="text-right">
+                        <div class="text-lg font-semibold">{{ participant.score }} poeng</div>
+                        {% if participant.prize_earned > 0 %}
+                        <div class="text-yellow-400 text-sm">+{{ participant.prize_earned }} XP</div>
+                        {% endif %}
+                    </div>
+                </div>
+                {% endfor %}
+            </div>
+        </div>
+        {% endif %}
+
+        <!-- Call to Action -->
+        {% if not active_tournaments and not upcoming_tournaments %}
+        <div class="text-center py-12">
+            <h3 class="text-2xl font-bold mb-4">Bli med i turneringer!</h3>
+            <p class="text-gray-400 mb-6">Turneringer er en flott måte å teste ferdighetene dine mot andre brukere.</p>
+            <a href="{{ url_for('gamification.dashboard') }}" class="px-6 py-3 bg-gradient-to-r from-purple-600 to-pink-600 rounded-lg hover:from-purple-700 hover:to-pink-700 transition">
+                Tilbake til dashboard
+            </a>
+        </div>
+        {% endif %}
+    </div>
+</section>
+{% endblock %}

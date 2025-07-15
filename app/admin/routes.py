@@ -11,13 +11,14 @@ from functools import wraps
 
 from .utils import validate_question
 from .. import db
-from ..models import Question, Option, TrafficSign, QuizImage, User, AdminAuditLog, AdminReport, UserFeedback, QuizSession, QuizResponse, LearningModules, LearningSubmodules, VideoShorts, UserShortsProgress
+from ..models import Question, Option, TrafficSign, QuizImage, User, AdminAuditLog, AdminReport, UserFeedback, QuizSession, QuizResponse, LearningModules, LearningSubmodules, VideoShorts, UserShortsProgress, Achievement, UserAchievement
+from ..gamification_models import WeeklyTournament, TournamentParticipant, DailyChallenge, UserDailyChallenge, XPReward, XPTransaction, UserLevel
 from ..marketing_models import MarketingEmail, MarketingTemplate, MarketingEmailLog
 from ..marketing_service import MarketingEmailService
 from ..security.admin_security import AdminSecurityService
 from ..services.file_upload import FileUploadService
 import json
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, date
 
 # Setup logger for admin operations
 logger = logging.getLogger(__name__)
@@ -4434,3 +4435,1057 @@ def upload_video():
             'success': False, 
             'message': f'Upload failed: {str(e)}'
         }), 500
+
+
+# =============================================================================
+# TOURNAMENT MANAGEMENT ROUTES
+# =============================================================================
+
+@admin_bp.route('/api/tournaments', methods=['GET'])
+@admin_required
+def get_tournaments():
+    """Get tournaments with filtering and pagination"""
+    try:
+        page = request.args.get('page', 1, type=int)
+        per_page = request.args.get('per_page', 20, type=int)
+        search = request.args.get('search', '').strip()
+        status_filter = request.args.get('status', '').strip()
+        
+        # Build query
+        query = WeeklyTournament.query
+        
+        # Apply search filter
+        if search:
+            query = query.filter(
+                db.or_(
+                    WeeklyTournament.name.ilike(f'%{search}%'),
+                    WeeklyTournament.description.ilike(f'%{search}%'),
+                    WeeklyTournament.tournament_type.ilike(f'%{search}%')
+                )
+            )
+        
+        # Apply status filter
+        if status_filter == 'active':
+            query = query.filter(
+                WeeklyTournament.is_active == True,
+                WeeklyTournament.end_date > datetime.utcnow()
+            )
+        elif status_filter == 'upcoming':
+            query = query.filter(
+                WeeklyTournament.start_date > datetime.utcnow()
+            )
+        elif status_filter == 'completed':
+            query = query.filter(
+                WeeklyTournament.end_date < datetime.utcnow()
+            )
+        elif status_filter == 'inactive':
+            query = query.filter(WeeklyTournament.is_active == False)
+        
+        # Get total count before pagination
+        total = query.count()
+        
+        # Apply pagination
+        tournaments = query.order_by(WeeklyTournament.start_date.desc()).paginate(
+            page=page, per_page=per_page, error_out=False
+        )
+        
+        # Format tournament data
+        tournament_data = []
+        for tournament in tournaments.items:
+            # Get participant count
+            participant_count = TournamentParticipant.query.filter_by(
+                tournament_id=tournament.id
+            ).count()
+            
+            # Determine status
+            now = datetime.utcnow()
+            if not tournament.is_active:
+                status = 'inactive'
+            elif now < tournament.start_date:
+                status = 'upcoming'
+            elif now > tournament.end_date:
+                status = 'completed'
+            else:
+                status = 'active'
+            
+            tournament_data.append({
+                'id': tournament.id,
+                'name': tournament.name,
+                'description': tournament.description,
+                'tournament_type': tournament.tournament_type,
+                'category': tournament.category,
+                'start_date': tournament.start_date.strftime('%Y-%m-%d %H:%M'),
+                'end_date': tournament.end_date.strftime('%Y-%m-%d %H:%M'),
+                'entry_fee_xp': tournament.entry_fee_xp,
+                'prize_pool_xp': tournament.prize_pool_xp,
+                'participant_count': participant_count,
+                'is_active': tournament.is_active,
+                'status': status
+            })
+        
+        return jsonify({
+            'success': True,
+            'tournaments': tournament_data,
+            'pagination': {
+                'page': page,
+                'per_page': per_page,
+                'total': total,
+                'pages': tournaments.pages,
+                'has_prev': tournaments.has_prev,
+                'has_next': tournaments.has_next
+            }
+        })
+        
+    except Exception as e:
+        logger.error(f"Error fetching tournaments: {str(e)}")
+        return jsonify({'success': False, 'message': str(e)}), 500
+
+
+@admin_bp.route('/api/tournaments', methods=['POST'])
+@admin_required  
+def create_tournament():
+    """Create a new tournament"""
+    try:
+        data = request.get_json()
+        
+        # Validate required fields
+        required_fields = ['name', 'description', 'tournament_type', 'start_date', 'end_date']
+        for field in required_fields:
+            if not data.get(field):
+                return jsonify({
+                    'success': False,
+                    'message': f'Field {field} is required'
+                }), 400
+        
+        # Parse dates
+        try:
+            start_date = datetime.fromisoformat(data['start_date'].replace('Z', '+00:00'))
+            end_date = datetime.fromisoformat(data['end_date'].replace('Z', '+00:00'))
+        except ValueError:
+            return jsonify({
+                'success': False,
+                'message': 'Invalid date format'
+            }), 400
+        
+        # Validate date logic
+        if start_date >= end_date:
+            return jsonify({
+                'success': False,
+                'message': 'End date must be after start date'
+            }), 400
+        
+        # Create tournament
+        tournament = WeeklyTournament(
+            name=data['name'],
+            description=data['description'],
+            tournament_type=data['tournament_type'],
+            category=data.get('category'),
+            start_date=start_date,
+            end_date=end_date,
+            entry_fee_xp=int(data.get('entry_fee_xp', 0)),
+            prize_pool_xp=int(data.get('prize_pool_xp', 1000)),
+            is_active=bool(data.get('is_active', True))
+        )
+        
+        db.session.add(tournament)
+        db.session.commit()
+        
+        # Log action
+        AdminSecurityService.log_admin_action(
+            current_user,
+            f"Created tournament: {tournament.name}"
+        )
+        
+        return jsonify({
+            'success': True,
+            'message': 'Tournament created successfully',
+            'tournament_id': tournament.id
+        })
+        
+    except Exception as e:
+        db.session.rollback()
+        logger.error(f"Error creating tournament: {str(e)}")
+        return jsonify({'success': False, 'message': str(e)}), 500
+
+
+@admin_bp.route('/api/tournaments/<int:tournament_id>', methods=['PUT'])
+@admin_required
+def update_tournament(tournament_id):
+    """Update an existing tournament"""
+    try:
+        tournament = WeeklyTournament.query.get_or_404(tournament_id)
+        data = request.get_json()
+        
+        # Update fields if provided
+        if 'name' in data:
+            tournament.name = data['name']
+        if 'description' in data:
+            tournament.description = data['description']
+        if 'tournament_type' in data:
+            tournament.tournament_type = data['tournament_type']
+        if 'category' in data:
+            tournament.category = data['category']
+        if 'entry_fee_xp' in data:
+            tournament.entry_fee_xp = int(data['entry_fee_xp'])
+        if 'prize_pool_xp' in data:
+            tournament.prize_pool_xp = int(data['prize_pool_xp'])
+        if 'is_active' in data:
+            tournament.is_active = bool(data['is_active'])
+        
+        # Update dates if provided
+        if 'start_date' in data:
+            try:
+                tournament.start_date = datetime.fromisoformat(
+                    data['start_date'].replace('Z', '+00:00')
+                )
+            except ValueError:
+                return jsonify({
+                    'success': False,
+                    'message': 'Invalid start date format'
+                }), 400
+        
+        if 'end_date' in data:
+            try:
+                tournament.end_date = datetime.fromisoformat(
+                    data['end_date'].replace('Z', '+00:00')
+                )
+            except ValueError:
+                return jsonify({
+                    'success': False,
+                    'message': 'Invalid end date format'
+                }), 400
+        
+        # Validate date logic
+        if tournament.start_date >= tournament.end_date:
+            return jsonify({
+                'success': False,
+                'message': 'End date must be after start date'
+            }), 400
+        
+        db.session.commit()
+        
+        # Log action
+        AdminSecurityService.log_admin_action(
+            current_user,
+            f"Updated tournament: {tournament.name}"
+        )
+        
+        return jsonify({
+            'success': True,
+            'message': 'Tournament updated successfully'
+        })
+        
+    except Exception as e:
+        db.session.rollback()
+        logger.error(f"Error updating tournament: {str(e)}")
+        return jsonify({'success': False, 'message': str(e)}), 500
+
+
+@admin_bp.route('/api/tournaments/<int:tournament_id>', methods=['DELETE'])
+@admin_required
+def delete_tournament(tournament_id):
+    """Delete a tournament"""
+    try:
+        tournament = WeeklyTournament.query.get_or_404(tournament_id)
+        tournament_name = tournament.name
+        
+        # Check if tournament has participants
+        participant_count = TournamentParticipant.query.filter_by(
+            tournament_id=tournament_id
+        ).count()
+        
+        if participant_count > 0:
+            return jsonify({
+                'success': False,
+                'message': f'Cannot delete tournament with {participant_count} participants'
+            }), 400
+        
+        db.session.delete(tournament)
+        db.session.commit()
+        
+        # Log action
+        AdminSecurityService.log_admin_action(
+            current_user,
+            f"Deleted tournament: {tournament_name}"
+        )
+        
+        return jsonify({
+            'success': True,
+            'message': 'Tournament deleted successfully'
+        })
+        
+    except Exception as e:
+        db.session.rollback()
+        logger.error(f"Error deleting tournament: {str(e)}")
+        return jsonify({'success': False, 'message': str(e)}), 500
+
+
+@admin_bp.route('/api/tournaments/stats', methods=['GET'])
+@admin_required
+def get_tournament_stats():
+    """Get tournament statistics for admin dashboard"""
+    try:
+        now = datetime.utcnow()
+        
+        # Calculate stats
+        total_tournaments = WeeklyTournament.query.count()
+        active_tournaments = WeeklyTournament.query.filter(
+            WeeklyTournament.is_active == True,
+            WeeklyTournament.start_date <= now,
+            WeeklyTournament.end_date > now
+        ).count()
+        upcoming_tournaments = WeeklyTournament.query.filter(
+            WeeklyTournament.start_date > now
+        ).count()
+        total_participants = TournamentParticipant.query.count()
+        
+        return jsonify({
+            'success': True,
+            'stats': {
+                'total_tournaments': total_tournaments,
+                'active_tournaments': active_tournaments,
+                'upcoming_tournaments': upcoming_tournaments,
+                'total_participants': total_participants
+            }
+        })
+        
+    except Exception as e:
+        logger.error(f"Error fetching tournament stats: {str(e)}")
+        return jsonify({'success': False, 'message': str(e)}), 500
+
+
+# =============================================================================
+# DAILY CHALLENGE MANAGEMENT ROUTES
+# =============================================================================
+
+@admin_bp.route('/api/daily-challenges', methods=['GET'])
+@admin_required
+def get_daily_challenges():
+    """Get daily challenges with filtering and pagination"""
+    try:
+        page = request.args.get('page', 1, type=int)
+        per_page = request.args.get('per_page', 20, type=int)
+        search = request.args.get('search', '').strip()
+        challenge_type_filter = request.args.get('challenge_type', '').strip()
+        date_filter = request.args.get('date_filter', '').strip()
+        
+        # Build query
+        query = DailyChallenge.query
+        
+        # Apply search filter
+        if search:
+            query = query.filter(
+                db.or_(
+                    DailyChallenge.title.ilike(f'%{search}%'),
+                    DailyChallenge.description.ilike(f'%{search}%'),
+                    DailyChallenge.challenge_type.ilike(f'%{search}%')
+                )
+            )
+        
+        # Apply challenge type filter
+        if challenge_type_filter:
+            query = query.filter(DailyChallenge.challenge_type == challenge_type_filter)
+        
+        # Apply date filter
+        if date_filter == 'today':
+            query = query.filter(DailyChallenge.date == date.today())
+        elif date_filter == 'active':
+            query = query.filter(DailyChallenge.is_active == True)
+        elif date_filter == 'past_week':
+            week_ago = date.today() - timedelta(days=7)
+            query = query.filter(DailyChallenge.date >= week_ago)
+        
+        # Get total count before pagination
+        total = query.count()
+        
+        # Apply pagination
+        challenges = query.order_by(DailyChallenge.date.desc()).paginate(
+            page=page, per_page=per_page, error_out=False
+        )
+        
+        # Format challenge data
+        challenge_data = []
+        for challenge in challenges.items:
+            # Get completion stats
+            total_users = UserDailyChallenge.query.filter_by(
+                challenge_id=challenge.id
+            ).count()
+            completed_users = UserDailyChallenge.query.filter_by(
+                challenge_id=challenge.id,
+                completed=True
+            ).count()
+            
+            completion_rate = (completed_users / total_users * 100) if total_users > 0 else 0
+            
+            challenge_data.append({
+                'id': challenge.id,
+                'title': challenge.title,
+                'description': challenge.description,
+                'challenge_type': challenge.challenge_type,
+                'requirement_value': challenge.requirement_value,
+                'xp_reward': challenge.xp_reward,
+                'bonus_reward': challenge.bonus_reward,
+                'category': challenge.category,
+                'date': challenge.date.strftime('%Y-%m-%d'),
+                'is_active': challenge.is_active,
+                'total_users': total_users,
+                'completed_users': completed_users,
+                'completion_rate': round(completion_rate, 1)
+            })
+        
+        return jsonify({
+            'success': True,
+            'challenges': challenge_data,
+            'pagination': {
+                'page': page,
+                'per_page': per_page,
+                'total': total,
+                'pages': challenges.pages,
+                'has_prev': challenges.has_prev,
+                'has_next': challenges.has_next
+            }
+        })
+        
+    except Exception as e:
+        logger.error(f"Error fetching daily challenges: {str(e)}")
+        return jsonify({'success': False, 'message': str(e)}), 500
+
+
+@admin_bp.route('/api/daily-challenges', methods=['POST'])
+@admin_required
+def create_daily_challenge():
+    """Create a new daily challenge"""
+    try:
+        data = request.get_json()
+        
+        # Validate required fields
+        required_fields = ['title', 'description', 'challenge_type', 'requirement_value']
+        for field in required_fields:
+            if not data.get(field):
+                return jsonify({
+                    'success': False,
+                    'message': f'Field {field} is required'
+                }), 400
+        
+        # Parse date
+        challenge_date = date.today()  # Default to today
+        if 'date' in data and data['date']:
+            try:
+                challenge_date = datetime.strptime(data['date'], '%Y-%m-%d').date()
+            except ValueError:
+                return jsonify({
+                    'success': False,
+                    'message': 'Invalid date format (use YYYY-MM-DD)'
+                }), 400
+        
+        # Check if challenge already exists for this date and type
+        existing = DailyChallenge.query.filter_by(
+            date=challenge_date,
+            challenge_type=data['challenge_type']
+        ).first()
+        
+        if existing:
+            return jsonify({
+                'success': False,
+                'message': f'Challenge of type {data["challenge_type"]} already exists for {challenge_date}'
+            }), 400
+        
+        # Create challenge
+        challenge = DailyChallenge(
+            title=data['title'],
+            description=data['description'],
+            challenge_type=data['challenge_type'],
+            requirement_value=int(data['requirement_value']),
+            xp_reward=int(data.get('xp_reward', 50)),
+            bonus_reward=int(data.get('bonus_reward', 0)),
+            category=data.get('category'),
+            date=challenge_date,
+            is_active=bool(data.get('is_active', True))
+        )
+        
+        db.session.add(challenge)
+        db.session.commit()
+        
+        # Log action
+        AdminSecurityService.log_admin_action(
+            current_user,
+            f"Created daily challenge: {challenge.title}"
+        )
+        
+        return jsonify({
+            'success': True,
+            'message': 'Daily challenge created successfully',
+            'challenge_id': challenge.id
+        })
+        
+    except Exception as e:
+        db.session.rollback()
+        logger.error(f"Error creating daily challenge: {str(e)}")
+        return jsonify({'success': False, 'message': str(e)}), 500
+
+
+@admin_bp.route('/api/daily-challenges/<int:challenge_id>', methods=['PUT'])
+@admin_required
+def update_daily_challenge(challenge_id):
+    """Update an existing daily challenge"""
+    try:
+        challenge = DailyChallenge.query.get_or_404(challenge_id)
+        data = request.get_json()
+        
+        # Update fields if provided
+        if 'title' in data:
+            challenge.title = data['title']
+        if 'description' in data:
+            challenge.description = data['description']
+        if 'challenge_type' in data:
+            challenge.challenge_type = data['challenge_type']
+        if 'requirement_value' in data:
+            challenge.requirement_value = int(data['requirement_value'])
+        if 'xp_reward' in data:
+            challenge.xp_reward = int(data['xp_reward'])
+        if 'bonus_reward' in data:
+            challenge.bonus_reward = int(data['bonus_reward'])
+        if 'category' in data:
+            challenge.category = data['category']
+        if 'is_active' in data:
+            challenge.is_active = bool(data['is_active'])
+        
+        # Update date if provided
+        if 'date' in data and data['date']:
+            try:
+                new_date = datetime.strptime(data['date'], '%Y-%m-%d').date()
+                
+                # Check for conflicts if date is changing
+                if new_date != challenge.date:
+                    existing = DailyChallenge.query.filter_by(
+                        date=new_date,
+                        challenge_type=challenge.challenge_type
+                    ).filter(DailyChallenge.id != challenge_id).first()
+                    
+                    if existing:
+                        return jsonify({
+                            'success': False,
+                            'message': f'Challenge of type {challenge.challenge_type} already exists for {new_date}'
+                        }), 400
+                
+                challenge.date = new_date
+                
+            except ValueError:
+                return jsonify({
+                    'success': False,
+                    'message': 'Invalid date format (use YYYY-MM-DD)'
+                }), 400
+        
+        db.session.commit()
+        
+        # Log action
+        AdminSecurityService.log_admin_action(
+            current_user,
+            f"Updated daily challenge: {challenge.title}"
+        )
+        
+        return jsonify({
+            'success': True,
+            'message': 'Daily challenge updated successfully'
+        })
+        
+    except Exception as e:
+        db.session.rollback()
+        logger.error(f"Error updating daily challenge: {str(e)}")
+        return jsonify({'success': False, 'message': str(e)}), 500
+
+
+@admin_bp.route('/api/daily-challenges/<int:challenge_id>', methods=['DELETE'])
+@admin_required
+def delete_daily_challenge(challenge_id):
+    """Delete a daily challenge"""
+    try:
+        challenge = DailyChallenge.query.get_or_404(challenge_id)
+        challenge_title = challenge.title
+        
+        # Check if challenge has user progress
+        user_progress_count = UserDailyChallenge.query.filter_by(
+            challenge_id=challenge_id
+        ).count()
+        
+        if user_progress_count > 0:
+            return jsonify({
+                'success': False,
+                'message': f'Cannot delete challenge with {user_progress_count} user progress records'
+            }), 400
+        
+        db.session.delete(challenge)
+        db.session.commit()
+        
+        # Log action
+        AdminSecurityService.log_admin_action(
+            current_user,
+            f"Deleted daily challenge: {challenge_title}"
+        )
+        
+        return jsonify({
+            'success': True,
+            'message': 'Daily challenge deleted successfully'
+        })
+        
+    except Exception as e:
+        db.session.rollback()
+        logger.error(f"Error deleting daily challenge: {str(e)}")
+        return jsonify({'success': False, 'message': str(e)}), 500
+
+
+@admin_bp.route('/api/daily-challenges/stats', methods=['GET'])
+@admin_required
+def get_daily_challenge_stats():
+    """Get daily challenge statistics for admin dashboard"""
+    try:
+        today = date.today()
+        week_ago = today - timedelta(days=7)
+        
+        # Calculate stats
+        total_challenges = DailyChallenge.query.count()
+        active_challenges = DailyChallenge.query.filter_by(
+            is_active=True, 
+            date=today
+        ).count()
+        challenges_this_week = DailyChallenge.query.filter(
+            DailyChallenge.date >= week_ago
+        ).count()
+        
+        # Calculate average completion rate
+        completed_count = db.session.query(func.count(UserDailyChallenge.id)).filter(
+            UserDailyChallenge.completed == True
+        ).scalar() or 0
+        total_attempts = db.session.query(func.count(UserDailyChallenge.id)).scalar() or 0
+        avg_completion_rate = (completed_count / total_attempts * 100) if total_attempts > 0 else 0
+        
+        return jsonify({
+            'success': True,
+            'stats': {
+                'total_challenges': total_challenges,
+                'active_challenges': active_challenges,
+                'challenges_this_week': challenges_this_week,
+                'avg_completion_rate': round(avg_completion_rate, 1)
+            }
+        })
+        
+    except Exception as e:
+        logger.error(f"Error fetching daily challenge stats: {str(e)}")
+        return jsonify({'success': False, 'message': str(e)}), 500
+
+
+# =============================================================================
+# ACHIEVEMENT MANAGEMENT ROUTES
+# =============================================================================
+
+@admin_bp.route('/api/achievements', methods=['GET'])
+@admin_required
+def get_achievements():
+    """Get achievements with filtering and pagination"""
+    try:
+        page = request.args.get('page', 1, type=int)
+        per_page = request.args.get('per_page', 20, type=int)
+        search = request.args.get('search', '').strip()
+        category_filter = request.args.get('category', '').strip()
+        
+        # Build query
+        query = Achievement.query
+        
+        # Apply search filter
+        if search:
+            query = query.filter(
+                db.or_(
+                    Achievement.name.ilike(f'%{search}%'),
+                    Achievement.description.ilike(f'%{search}%'),
+                    Achievement.requirement_type.ilike(f'%{search}%')
+                )
+            )
+        
+        # Apply category filter
+        if category_filter:
+            query = query.filter(Achievement.category == category_filter)
+        
+        # Get total count before pagination
+        total = query.count()
+        
+        # Apply pagination
+        achievements = query.order_by(Achievement.category, Achievement.name).paginate(
+            page=page, per_page=per_page, error_out=False
+        )
+        
+        # Format achievement data
+        achievement_data = []
+        for achievement in achievements.items:
+            # Get user count who earned this achievement
+            users_earned = UserAchievement.query.filter_by(
+                achievement_id=achievement.id
+            ).count()
+            
+            achievement_data.append({
+                'id': achievement.id,
+                'name': achievement.name,
+                'description': achievement.description,
+                'category': achievement.category,
+                'requirement_type': achievement.requirement_type,
+                'requirement_value': achievement.requirement_value,
+                'points': achievement.points,
+                'icon_filename': achievement.icon_filename,
+                'users_earned': users_earned
+            })
+        
+        return jsonify({
+            'success': True,
+            'achievements': achievement_data,
+            'pagination': {
+                'page': page,
+                'per_page': per_page,
+                'total': total,
+                'pages': achievements.pages,
+                'has_prev': achievements.has_prev,
+                'has_next': achievements.has_next
+            }
+        })
+        
+    except Exception as e:
+        logger.error(f"Error fetching achievements: {str(e)}")
+        return jsonify({'success': False, 'message': str(e)}), 500
+
+
+@admin_bp.route('/api/achievements', methods=['POST'])
+@admin_required
+def create_achievement():
+    """Create a new achievement"""
+    try:
+        data = request.get_json()
+        
+        # Validate required fields
+        required_fields = ['name', 'description', 'category', 'requirement_type', 'requirement_value', 'points']
+        for field in required_fields:
+            if not data.get(field):
+                return jsonify({
+                    'success': False,
+                    'message': f'Field {field} is required'
+                }), 400
+        
+        # Create achievement
+        achievement = Achievement(
+            name=data['name'],
+            description=data['description'],
+            category=data['category'],
+            requirement_type=data['requirement_type'],
+            requirement_value=int(data['requirement_value']),
+            points=int(data['points']),
+            icon_filename=data.get('icon_filename')
+        )
+        
+        db.session.add(achievement)
+        db.session.commit()
+        
+        # Log action
+        AdminSecurityService.log_admin_action(
+            current_user,
+            f"Created achievement: {achievement.name}"
+        )
+        
+        return jsonify({
+            'success': True,
+            'message': 'Achievement created successfully',
+            'achievement_id': achievement.id
+        })
+        
+    except Exception as e:
+        db.session.rollback()
+        logger.error(f"Error creating achievement: {str(e)}")
+        return jsonify({'success': False, 'message': str(e)}), 500
+
+
+@admin_bp.route('/api/achievements/<int:achievement_id>', methods=['PUT'])
+@admin_required
+def update_achievement(achievement_id):
+    """Update an existing achievement"""
+    try:
+        achievement = Achievement.query.get_or_404(achievement_id)
+        data = request.get_json()
+        
+        # Update fields if provided
+        if 'name' in data:
+            achievement.name = data['name']
+        if 'description' in data:
+            achievement.description = data['description']
+        if 'category' in data:
+            achievement.category = data['category']
+        if 'requirement_type' in data:
+            achievement.requirement_type = data['requirement_type']
+        if 'requirement_value' in data:
+            achievement.requirement_value = int(data['requirement_value'])
+        if 'points' in data:
+            achievement.points = int(data['points'])
+        if 'icon_filename' in data:
+            achievement.icon_filename = data['icon_filename']
+        
+        db.session.commit()
+        
+        # Log action
+        AdminSecurityService.log_admin_action(
+            current_user,
+            f"Updated achievement: {achievement.name}"
+        )
+        
+        return jsonify({
+            'success': True,
+            'message': 'Achievement updated successfully'
+        })
+        
+    except Exception as e:
+        db.session.rollback()
+        logger.error(f"Error updating achievement: {str(e)}")
+        return jsonify({'success': False, 'message': str(e)}), 500
+
+
+@admin_bp.route('/api/achievements/<int:achievement_id>', methods=['DELETE'])
+@admin_required
+def delete_achievement(achievement_id):
+    """Delete an achievement"""
+    try:
+        achievement = Achievement.query.get_or_404(achievement_id)
+        achievement_name = achievement.name
+        
+        # Check if achievement has been earned by users
+        users_earned = UserAchievement.query.filter_by(
+            achievement_id=achievement_id
+        ).count()
+        
+        if users_earned > 0:
+            return jsonify({
+                'success': False,
+                'message': f'Cannot delete achievement earned by {users_earned} users'
+            }), 400
+        
+        db.session.delete(achievement)
+        db.session.commit()
+        
+        # Log action
+        AdminSecurityService.log_admin_action(
+            current_user,
+            f"Deleted achievement: {achievement_name}"
+        )
+        
+        return jsonify({
+            'success': True,
+            'message': 'Achievement deleted successfully'
+        })
+        
+    except Exception as e:
+        db.session.rollback()
+        logger.error(f"Error deleting achievement: {str(e)}")
+        return jsonify({'success': False, 'message': str(e)}), 500
+
+
+@admin_bp.route('/api/achievements/stats', methods=['GET'])
+@admin_required
+def get_achievement_stats():
+    """Get achievement statistics for admin dashboard"""
+    try:
+        # Calculate stats
+        total_achievements = Achievement.query.count()
+        total_earned = UserAchievement.query.count()
+        unique_achievers = db.session.query(UserAchievement.user_id).distinct().count()
+        
+        # Get most popular achievement
+        most_popular = db.session.query(
+            Achievement.name,
+            func.count(UserAchievement.id).label('earn_count')
+        ).join(UserAchievement).group_by(Achievement.id).order_by(
+            func.count(UserAchievement.id).desc()
+        ).first()
+        
+        most_popular_name = most_popular[0] if most_popular else 'None'
+        
+        return jsonify({
+            'success': True,
+            'stats': {
+                'total_achievements': total_achievements,
+                'total_earned': total_earned,
+                'unique_achievers': unique_achievers,
+                'most_popular': most_popular_name
+            }
+        })
+        
+    except Exception as e:
+        logger.error(f"Error fetching achievement stats: {str(e)}")
+        return jsonify({'success': False, 'message': str(e)}), 500
+
+
+# =============================================================================
+# XP REWARDS MANAGEMENT ROUTES
+# =============================================================================
+
+@admin_bp.route('/api/xp-rewards', methods=['GET'])
+@admin_required
+def get_xp_rewards():
+    """Get XP rewards configuration"""
+    try:
+        rewards = XPReward.query.order_by(XPReward.reward_type).all()
+        
+        reward_data = []
+        for reward in rewards:
+            reward_data.append({
+                'id': reward.id,
+                'reward_type': reward.reward_type,
+                'base_value': reward.base_value,
+                'scaling_factor': float(reward.scaling_factor) if reward.scaling_factor else 0,
+                'max_value': reward.max_value,
+                'description': reward.description
+            })
+        
+        return jsonify({
+            'success': True,
+            'rewards': reward_data
+        })
+        
+    except Exception as e:
+        logger.error(f"Error fetching XP rewards: {str(e)}")
+        return jsonify({'success': False, 'message': str(e)}), 500
+
+
+@admin_bp.route('/api/xp-rewards/<int:reward_id>', methods=['PUT'])
+@admin_required
+def update_xp_reward(reward_id):
+    """Update XP reward configuration"""
+    try:
+        reward = XPReward.query.get_or_404(reward_id)
+        data = request.get_json()
+        
+        # Update fields if provided
+        if 'base_value' in data:
+            reward.base_value = int(data['base_value'])
+        if 'scaling_factor' in data:
+            reward.scaling_factor = float(data['scaling_factor'])
+        if 'max_value' in data:
+            reward.max_value = int(data['max_value']) if data['max_value'] else None
+        if 'description' in data:
+            reward.description = data['description']
+        
+        db.session.commit()
+        
+        # Log action
+        AdminSecurityService.log_admin_action(
+            current_user,
+            f"Updated XP reward: {reward.reward_type}"
+        )
+        
+        return jsonify({
+            'success': True,
+            'message': 'XP reward updated successfully'
+        })
+        
+    except Exception as e:
+        db.session.rollback()
+        logger.error(f"Error updating XP reward: {str(e)}")
+        return jsonify({'success': False, 'message': str(e)}), 500
+
+
+@admin_bp.route('/api/xp-rewards/stats', methods=['GET'])
+@admin_required
+def get_xp_reward_stats():
+    """Get XP reward statistics"""
+    try:
+        # Get XP transaction stats
+        total_xp_awarded = db.session.query(func.sum(XPTransaction.amount)).filter(
+            XPTransaction.amount > 0
+        ).scalar() or 0
+        
+        total_transactions = XPTransaction.query.count()
+        
+        # Get average user level
+        avg_level = db.session.query(func.avg(UserLevel.current_level)).scalar() or 0
+        
+        # Get total active users with XP
+        active_users = UserLevel.query.filter(UserLevel.total_xp > 0).count()
+        
+        return jsonify({
+            'success': True,
+            'stats': {
+                'total_xp_awarded': int(total_xp_awarded),
+                'total_transactions': total_transactions,
+                'avg_user_level': round(float(avg_level), 1),
+                'active_users': active_users
+            }
+        })
+        
+    except Exception as e:
+        logger.error(f"Error fetching XP reward stats: {str(e)}")
+        return jsonify({'success': False, 'message': str(e)}), 500
+
+
+# =============================================================================
+# GAMIFICATION OVERVIEW STATS
+# =============================================================================
+
+@admin_bp.route('/api/gamification/overview', methods=['GET'])
+@admin_required
+def get_gamification_overview():
+    """Get comprehensive gamification overview statistics"""
+    try:
+        now = datetime.utcnow()
+        today = date.today()
+        week_ago = today - timedelta(days=7)
+        
+        # Tournament stats
+        total_tournaments = WeeklyTournament.query.count()
+        active_tournaments = WeeklyTournament.query.filter(
+            WeeklyTournament.is_active == True,
+            WeeklyTournament.start_date <= now,
+            WeeklyTournament.end_date > now
+        ).count()
+        total_tournament_participants = TournamentParticipant.query.count()
+        
+        # Daily challenge stats
+        total_challenges = DailyChallenge.query.count()
+        active_challenges = DailyChallenge.query.filter_by(
+            is_active=True, 
+            date=today
+        ).count()
+        
+        # Achievement stats
+        total_achievements = Achievement.query.count()
+        total_earned_achievements = UserAchievement.query.count()
+        
+        # XP stats
+        total_xp_awarded = db.session.query(func.sum(XPTransaction.amount)).filter(
+            XPTransaction.amount > 0
+        ).scalar() or 0
+        
+        # User engagement stats
+        total_gamified_users = UserLevel.query.filter(UserLevel.total_xp > 0).count()
+        avg_user_level = db.session.query(func.avg(UserLevel.current_level)).scalar() or 0
+        
+        return jsonify({
+            'success': True,
+            'overview': {
+                'tournaments': {
+                    'total': total_tournaments,
+                    'active': active_tournaments,
+                    'participants': total_tournament_participants
+                },
+                'challenges': {
+                    'total': total_challenges,
+                    'active_today': active_challenges
+                },
+                'achievements': {
+                    'total': total_achievements,
+                    'total_earned': total_earned_achievements
+                },
+                'xp': {
+                    'total_awarded': int(total_xp_awarded),
+                    'avg_user_level': round(float(avg_user_level), 1)
+                },
+                'users': {
+                    'gamified_users': total_gamified_users
+                }
+            }
+        })
+        
+    except Exception as e:
+        logger.error(f"Error fetching gamification overview: {str(e)}")
+        return jsonify({'success': False, 'message': str(e)}), 500
