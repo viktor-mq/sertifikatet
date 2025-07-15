@@ -614,6 +614,7 @@ function loadAchievementData() {
         .then(response => response.json())
         .then(data => {
             if (data.success) {
+                achievementsData = data.achievements; // Store achievements globally
                 displayAchievementData(data.achievements);
                 updateAchievementPagination(data.pagination);
             } else {
@@ -649,21 +650,21 @@ function displayAchievementData(achievements) {
                 <td style="padding: 12px 16px;">
                     <div style="display: flex; align-items: center; gap: 10px;">
                         ${achievement.icon_filename ? 
-                            `<img src="/static/images/achievements/${achievement.icon_filename}" alt="Icon" style="width: 24px; height: 24px;">` : 
+                            `<img src="/static/achievements/${achievement.icon_filename}" alt="Icon" style="width: 24px; height: 24px;">` : 
                             '<i class="fas fa-medal" style="color: #f59e0b; font-size: 20px;"></i>'
                         }
                         <div>
-                            <strong>${escapeHtml(achievement.name)}</strong>
+                            <strong>${escapeHtml(achievement.name || 'Unnamed Achievement')}</strong>
                             <div style="font-size: 12px; color: #6b7280; margin-top: 2px;">
-                                ${escapeHtml(achievement.description.substring(0, 50))}${achievement.description.length > 50 ? '...' : ''}
+                                ${escapeHtml((achievement.description || 'No description').substring(0, 50))}${(achievement.description || '').length > 50 ? '...' : ''}
                             </div>
                         </div>
                     </div>
                 </td>
-                <td style="padding: 12px 16px; text-transform: capitalize;">${escapeHtml(achievement.category)}</td>
+                <td style="padding: 12px 16px; text-transform: capitalize;">${escapeHtml(achievement.category || 'General')}</td>
                 <td style="padding: 12px 16px;">
                     <div style="font-size: 12px;">
-                        <div>${escapeHtml(achievement.requirement_type.replace('_', ' '))}</div>
+                        <div>${escapeHtml((achievement.requirement_type || 'unknown').replace('_', ' '))}</div>
                         <div style="color: #6b7280;">${achievement.requirement_value}</div>
                     </div>
                 </td>
@@ -675,7 +676,7 @@ function displayAchievementData(achievements) {
                                 style="background: #3b82f6; color: white; border: none; padding: 4px 8px; border-radius: 4px; cursor: pointer; font-size: 12px;">
                             <i class="fas fa-edit"></i>
                         </button>
-                        <button onclick="deleteAchievement(${achievement.id}, '${escapeHtml(achievement.name).replace(/'/g, "\\'")})')" 
+                        <button onclick="deleteAchievement(${achievement.id}, '${escapeHtml(achievement.name || 'Unnamed Achievement').replace(/'/g, "\'")}')" 
                                 style="background: #ef4444; color: white; border: none; padding: 4px 8px; border-radius: 4px; cursor: pointer; font-size: 12px;">
                             <i class="fas fa-trash"></i>
                         </button>
@@ -818,7 +819,20 @@ function updateAchievementPagination(pagination) {
 }
 
 function loadAchievementForEdit(achievementId) {
-    console.log('Loading achievement for edit:', achievementId);
+    const achievement = achievementsData.find(a => a.id === achievementId);
+    if (!achievement) {
+        showMessage('Could not find achievement data to edit.', 'error');
+        return;
+    }
+
+    document.getElementById('achievementModalId').value = achievement.id;
+    document.getElementById('achievementModalName').value = achievement.name;
+    document.getElementById('achievementModalDescription').value = achievement.description;
+    document.getElementById('achievementModalCategory').value = achievement.category;
+    document.getElementById('achievementModalRequirementType').value = achievement.requirement_type;
+    document.getElementById('achievementModalRequirementValue').value = achievement.requirement_value;
+    document.getElementById('achievementModalPoints').value = achievement.points;
+    document.getElementById('achievementModalIconFilename').value = achievement.icon_filename;
 }
 
 // =============================================================================
