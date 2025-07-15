@@ -35,11 +35,6 @@
                         <label for="achievementModalCategory">Category:</label>
                         <select id="achievementModalCategory" name="category" required>
                             <option value="">Select Category</option>
-                            <option value="quiz">Quiz</option>
-                            <option value="streak">Streak</option>
-                            <option value="learning">Learning</option>
-                            <option value="social">Social</option>
-                            <option value="mastery">Mastery</option>
                         </select>
                     </div>
                     <div class="form-group">
@@ -55,13 +50,6 @@
                         <label for="achievementModalRequirementType">Requirement Type:</label>
                         <select id="achievementModalRequirementType" name="requirement_type" required>
                             <option value="">Select Type</option>
-                            <option value="quiz_count">Quiz Count</option>
-                            <option value="correct_answers">Correct Answers</option>
-                            <option value="streak_days">Streak Days</option>
-                            <option value="perfect_scores">Perfect Scores</option>
-                            <option value="category_mastery">Category Mastery</option>
-                            <option value="level_reached">Level Reached</option>
-                            <option value="xp_earned">XP Earned</option>
                         </select>
                     </div>
                     <div class="form-group">
@@ -105,3 +93,28 @@
         </div>
     </div>
 </div>
+<script>
+/* Dynamically fill Category & Requirement‑Type drop‑downs */
+async function populateAchievementDropdowns () {
+  try {
+    const res  = await fetch('/api/achievement/metadata', { credentials: 'same-origin' });
+    if (!res.ok) throw new Error(`HTTP ${res.status}`);
+    const meta = await res.json();
+
+    const catSel = document.getElementById('achievementModalCategory');
+    const reqSel = document.getElementById('achievementModalRequirementType');
+
+    /* Preserve the first placeholder option, remove the rest */
+    catSel.length = 1;
+    reqSel.length = 1;
+
+    (meta.categories || []).forEach(cat => catSel.add(new Option(cat, cat)));
+    (meta.requirement_types || []).forEach(rt => reqSel.add(new Option(rt, rt)));
+  } catch (err) {
+    console.error('Failed to populate achievement drop‑downs:', err);
+  }
+}
+
+/* Populate once the DOM is ready; call again each time the modal opens if needed */
+document.addEventListener('DOMContentLoaded', populateAchievementDropdowns);
+</script>

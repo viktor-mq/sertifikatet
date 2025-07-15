@@ -4,7 +4,7 @@ import os
 import logging
 from . import api_bp
 from .. import db
-from ..models import Question, User, QuizSession, TrafficSign
+from ..models import Question, User, QuizSession, TrafficSign, Achievement
 from ..services.progress_service import ProgressService
 from ..services.achievement_service import AchievementService
 from ..services.leaderboard_service import LeaderboardService
@@ -255,6 +255,34 @@ def check_achievements():
         ],
         'count': len(new_achievements)
     })
+
+
+@api_bp.route('/achievement/metadata', methods=['GET'])
+def get_achievement_metadata():
+    """Get achievement metadata for admin dropdown population"""
+    try:
+        # Get unique categories from achievements table
+        categories = db.session.query(Achievement.category).distinct().filter(
+            Achievement.category.isnot(None),
+            Achievement.category != ''
+        ).all()
+        categories = [cat[0] for cat in categories if cat[0]]
+        
+        # Get unique requirement types from achievements table
+        requirement_types = db.session.query(Achievement.requirement_type).distinct().filter(
+            Achievement.requirement_type.isnot(None),
+            Achievement.requirement_type != ''
+        ).all()
+        requirement_types = [req[0] for req in requirement_types if req[0]]
+        
+        return jsonify({
+            'categories': sorted(categories),
+            'requirement_types': sorted(requirement_types)
+        })
+        
+    except Exception as e:
+        logger.error(f"Error getting achievement metadata: {e}")
+        return jsonify({'error': 'Failed to get achievement metadata'}), 500
 
 
 # Leaderboard API Endpoints
