@@ -97,33 +97,37 @@ class ProgressService:
         }
     
     def _calculate_category_performance(self, user_id: int) -> List[Dict]:
-        """Calculate performance by category"""
+        """Calculate performance by category using quiz responses"""
+        # Use quiz_responses to get accurate category performance
         results = db.session.query(
-            QuizSession.category,
-            func.count(QuizSession.id).label('sessions'),
-            func.avg(QuizSession.score).label('avg_score'),
-            func.sum(QuizSession.total_questions).label('total_questions'),
-            func.sum(QuizSession.correct_answers).label('correct_answers')
+            QuizResponse.category,
+            func.count(func.distinct(QuizResponse.session_id)).label('sessions'),
+            func.count(QuizResponse.id).label('total_questions'),
+            func.sum(func.cast(QuizResponse.is_correct, db.Integer)).label('correct_answers')
+        ).join(
+            QuizSession, QuizResponse.session_id == QuizSession.id
         ).filter(
             QuizSession.user_id == user_id,
             QuizSession.completed_at.isnot(None),
-            QuizSession.category.isnot(None)
-        ).group_by(QuizSession.category).all()
+            QuizResponse.category.isnot(None)
+        ).group_by(QuizResponse.category).all()
         
         category_performance = []
         for result in results:
             accuracy = 0
+            avg_score = 0
             if result.total_questions and result.correct_answers:
                 accuracy = (result.correct_answers / result.total_questions) * 100
+                avg_score = accuracy  # Since we're calculating from individual responses
             
             mastery_level = self._calculate_mastery_level(
-                result.sessions, result.avg_score, accuracy
+                result.sessions, avg_score, accuracy
             )
             
             category_performance.append({
                 'category': str(result.category),
                 'sessions': int(result.sessions),
-                'avg_score': round(float(result.avg_score or 0), 1),
+                'avg_score': round(float(avg_score), 1),
                 'accuracy': round(float(accuracy), 1),
                 'mastery_level': str(mastery_level),
                 'total_questions': int(result.total_questions or 0)

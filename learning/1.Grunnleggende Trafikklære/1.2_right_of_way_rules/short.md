@@ -1,4 +1,3 @@
-
 # Vikepliktsregler - Sammendrag
 
 ## 🎯 Hovedpoeng
@@ -13,10 +12,22 @@
 - Gjelder også for syklister.
 
 ### 2. **Skiltet vikeplikt og stoppskilt**
+
+<div style="display:flex; gap:6px; margin-left:30px;">
+  <img src="/static/images/signs/vikeplikt-_og_forkjørs/sf20051007121920201_gif.gif" alt="Vikeplikt‑skilt" height="90">
+  <img src="/static/images/signs/vikeplikt-_og_forkjørs/sf20051007121920401_gif.gif" alt="Stoppskilt" height="90">
+</div>
+
 - Vikeplikt-skilt: Du må alltid vente for kryssende trafikk.
 - Stoppskilt: Full stopp før du kjører videre.
 
 ### 3. **Forkjørsvei og slutt på forkjørsvei**
+
+<div style="display:flex; gap:6px; margin-left:30px;">
+  <img src="/static/images/signs/vikeplikt-_og_forkjørs/sf20051007121920601_gif.gif" alt="Forkjørsvei‑skilt" height="90">
+  <img src="/static/images/signs/vikeplikt-_og_forkjørs/sf20051007121920801_gif.gif" alt="Slutt på forkjørsvei‑skilt" height="90">
+</div>
+
 - Forkjørsvei gir deg fortrinn – andre må vente på deg.
 - Slutt på forkjørsvei: Tilbake til høyreregel eller nytt skilt.
 
@@ -39,4 +50,3 @@
 > **"Når du er i tvil – vis vikeplikt!"**
 
 Det er bedre å vente litt ekstra enn å ta en sjanse i trafikken.
-

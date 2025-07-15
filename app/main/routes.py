@@ -12,6 +12,7 @@ from ..models import Question, Option, QuizSession, QuizResponse, User, UserProg
 from ..services.progress_service import ProgressService
 from ..services.achievement_service import AchievementService
 from ..services.leaderboard_service import LeaderboardService
+from ..gamification.services import GamificationService
 
 
 @main_bp.route('/ads.txt')
@@ -69,6 +70,18 @@ def index():
         try:
             progress_service = ProgressService()
             dashboard_data = progress_service.get_user_dashboard_data(current_user.id)
+            
+            # Get daily challenge data
+            daily_challenges = GamificationService.get_daily_challenges(current_user)
+            dashboard_data['daily_challenges'] = daily_challenges
+            
+            # Get incomplete quiz sessions for "Fortsett Quiz"
+            incomplete_session = QuizSession.query.filter_by(
+                user_id=current_user.id,
+                completed_at=None
+            ).order_by(QuizSession.started_at.desc()).first()
+            dashboard_data['incomplete_session'] = incomplete_session
+            
         except Exception as e:
             # Fallback to None if dashboard data fails
             print(f"Dashboard data error: {e}")
@@ -140,12 +153,23 @@ def exam():
 @main_bp.route('/quiz', methods=['GET', 'POST'])
 @login_required
 def quiz():
-    """Main quiz page"""
+    """Main quiz page with different quiz types"""
     # Get quiz parameters
     quiz_type = request.args.get('type', 'practice')
     category = request.args.get('category')
     limit = request.args.get('limit', type=int)
     learning_module_id = request.args.get('learning_module_id', type=int)
+    
+    # Set default limits based on quiz type
+    if not limit:
+        if quiz_type == 'exam':
+            limit = 45  # Standard theory exam length
+        elif quiz_type == 'practice':
+            limit = 20
+        elif quiz_type == 'quick':
+            limit = 10
+        else:
+            limit = 20
     
     # Check subscription limits
     from ..services.payment_service import SubscriptionService, UsageLimitService
@@ -316,6 +340,7 @@ def submit_quiz():
         response = QuizResponse(
             session_id=quiz_session.id,
             question_id=result['question'].id,
+            category=result['question'].category,  # Store actual question category
             user_answer=result['user_answer'],
             is_correct=result['is_correct']
         )

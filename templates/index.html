@@ -62,7 +62,7 @@
                         <div class="text-4xl font-bold bg-gradient-to-r from-green-400 to-blue-400 bg-clip-text text-transparent mb-2">
                             {{ current_user.total_xp or 0 }}
                         </div>
-                        <p class="text-gray-300">XP poeng</p>
+                        <p class="text-gray-300">XP</p>
                     </div>
                 </div>
             </div>
@@ -118,12 +118,12 @@
                 <p class="text-gray-400 text-sm">45 spørsmål, 90 min</p>
             </a>
             
-            <a href="{{ url_for('video.index') }}" class="glass rounded-xl p-6 hover-card group">
+            <a href="{{ url_for('learning.index') }}" class="glass rounded-xl p-6 hover-card group">
                 <div class="w-12 h-12 bg-blue-600/20 rounded-lg flex items-center justify-center group-hover:bg-blue-600/30 transition mb-4">
-                    <i class="fas fa-play text-blue-400 text-xl"></i>
+                    <i class="fas fa-compass text-blue-400 text-xl"></i>
                 </div>
-                <h3 class="text-lg font-semibold mb-2">Videoer</h3>
-                <p class="text-gray-400 text-sm">Lær gjennom video</p>
+                <h3 class="text-lg font-semibold mb-2">Teorikurs</h3>
+                <p class="text-gray-400 text-sm">Lær teorien gjennom kort-videor eller tekst</p>
             </a>
 
             <a href="{{ url_for('main.achievements') }}" class="glass rounded-xl p-6 hover-card group">
@@ -186,19 +186,62 @@
 
         <!-- Daily Challenge -->
         <div class="glass rounded-2xl p-8 bg-gradient-to-r from-orange-600/10 to-red-600/10">
-            <div class="flex items-center justify-between">
-                <div>
-                    <h2 class="text-2xl font-bold mb-2">Dagens Utfordring 🎯</h2>
-                    <p class="text-gray-400 mb-4">Fullfør dagens utfordring for å opprettholde din streak!</p>
-                    <a href="{{ url_for('main.quiz') }}" class="inline-block px-6 py-3 bg-gradient-to-r from-orange-600 to-red-600 rounded-lg hover:from-orange-700 hover:to-red-700 transition">
-                        Start Utfordringen
-                    </a>
+            {% if dashboard_data and dashboard_data.daily_challenges %}
+                {% set challenge = dashboard_data.daily_challenges[0] %}
+                <div class="flex items-center justify-between">
+                    <div>
+                        <h2 class="text-2xl font-bold mb-2">{{ challenge.challenge.title }} 🎯</h2>
+                        <p class="text-gray-400 mb-2">{{ challenge.challenge.description }}</p>
+                        
+                        <!-- Progress Bar -->
+                        {% if challenge.progress > 0 and not challenge.completed %}
+                        <div class="mb-4">
+                            <div class="flex justify-between text-sm mb-1">
+                                <span>Fremgang</span>
+                                <span>{{ challenge.progress }}/{{ challenge.challenge.requirement_value }}</span>
+                            </div>
+                            <div class="bg-gray-700 rounded-full h-2">
+                                <div class="bg-gradient-to-r from-orange-600 to-red-600 h-2 rounded-full" 
+                                     style="width: {{ (challenge.progress / challenge.challenge.requirement_value * 100) | round }}%"></div>
+                            </div>
+                        </div>
+                        {% endif %}
+                        
+                        {% if challenge.completed %}
+                            <div class="inline-block px-6 py-3 bg-green-600 rounded-lg text-white font-semibold">
+                                ✅ Fullført! (+{{ challenge.xp_earned }} XP)
+                            </div>
+                        {% else %}
+                            <a href="{{ url_for('quiz.daily_challenge', challenge_id=challenge.challenge.id) }}" 
+                               class="inline-block px-6 py-3 bg-gradient-to-r from-orange-600 to-red-600 rounded-lg hover:from-orange-700 hover:to-red-700 transition">
+                                {% if challenge.progress > 0 %}Fortsett Utfordringen{% else %}Start Utfordringen{% endif %}
+                            </a>
+                        {% endif %}
+                    </div>
+                    <div class="text-center">
+                        <div class="text-5xl font-bold mb-2">{{ challenge.challenge.requirement_value }}</div>
+                        <div class="text-sm text-gray-400">
+                            {% if challenge.challenge.challenge_type == 'quiz' %}spørsmål{% else %}{{ challenge.challenge.challenge_type }}{% endif %}
+                        </div>
+                        <div class="text-xs text-orange-400 mt-1">+{{ challenge.challenge.xp_reward }} XP</div>
+                    </div>
                 </div>
-                <div class="text-center hidden md:block">
-                    <div class="text-5xl font-bold mb-2">15</div>
-                    <div class="text-sm text-gray-400">spørsmål</div>
+            {% else %}
+                <div class="flex items-center justify-between">
+                    <div>
+                        <h2 class="text-2xl font-bold mb-2">Ingen Utfordring i Dag 🎯</h2>
+                        <p class="text-gray-400 mb-4">Sjekk tilbake senere for nye utfordringer!</p>
+                        <a href="{{ url_for('main.quiz', type='practice') }}" 
+                           class="inline-block px-6 py-3 bg-gradient-to-r from-orange-600 to-red-600 rounded-lg hover:from-orange-700 hover:to-red-700 transition">
+                            Øv i Mellomtiden
+                        </a>
+                    </div>
+                    <div class="text-center opacity-50">
+                        <div class="text-5xl font-bold mb-2">—</div>
+                        <div class="text-sm text-gray-400">i dag</div>
+                    </div>
                 </div>
-            </div>
+            {% endif %}
         </div>
     </div>
 </section>

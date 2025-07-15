@@ -179,6 +179,7 @@ class QuizSession(db.Model):
     score = db.Column(db.Numeric(5, 2))
     started_at = db.Column(db.DateTime, default=datetime.utcnow)
     completed_at = db.Column(db.DateTime)
+    challenge_id = db.Column(db.Integer, db.ForeignKey('daily_challenges.id'), nullable=True)  # For daily challenges
     
     # Relationships
     responses = db.relationship('QuizResponse', backref='session', cascade='all, delete-orphan')
@@ -190,6 +191,7 @@ class QuizResponse(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     session_id = db.Column(db.Integer, db.ForeignKey('quiz_sessions.id'), nullable=False)
     question_id = db.Column(db.Integer, db.ForeignKey('questions.id'), nullable=False)
+    category = db.Column(db.String(100))  # Track actual question category
     user_answer = db.Column(db.String(1))
     is_correct = db.Column(db.Boolean)
     time_spent_seconds = db.Column(db.Integer)

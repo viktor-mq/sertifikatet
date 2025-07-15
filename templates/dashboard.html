@@ -28,7 +28,20 @@
 
         <!-- Quick Actions -->
         <div class="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
-            <a href="{{ url_for('main.quiz') }}" class="glass rounded-xl p-6 hover-card group">
+            <!-- Continue Quiz or Start New Quiz -->
+            {% if dashboard_data and dashboard_data.incomplete_session %}
+            <a href="{{ url_for('quiz.take_quiz', session_id=dashboard_data.incomplete_session.id) }}" class="glass rounded-xl p-6 hover-card group bg-gradient-to-br from-purple-600/10 to-pink-600/10 border border-purple-600/20">
+                <div class="flex items-center justify-between mb-4">
+                    <div class="w-12 h-12 bg-purple-600/20 rounded-lg flex items-center justify-center group-hover:bg-purple-600/30 transition">
+                        <i class="fas fa-play text-purple-400 text-xl"></i>
+                    </div>
+                    <span class="text-xs text-purple-400 px-2 py-1 bg-purple-600/20 rounded-full">Ikke fullført</span>
+                </div>
+                <h3 class="text-xl font-semibold mb-2">Fortsett Quiz</h3>
+                <p class="text-gray-400 text-sm">Fullfør din påbegynte quiz ({{ dashboard_data.incomplete_session.total_questions }} spørsmål)</p>
+            </a>
+            {% else %}
+            <a href="{{ url_for('main.quiz', type='quick') }}" class="glass rounded-xl p-6 hover-card group">
                 <div class="flex items-center justify-between mb-4">
                     <div class="w-12 h-12 bg-purple-600/20 rounded-lg flex items-center justify-center group-hover:bg-purple-600/30 transition">
                         <i class="fas fa-brain text-purple-400 text-xl"></i>
@@ -37,8 +50,9 @@
                 <h3 class="text-xl font-semibold mb-2">Start Quiz</h3>
                 <p class="text-gray-400 text-sm">Test kunnskapen din med en quiz</p>
             </a>
+            {% endif %}
             
-            <a href="{{ url_for('main.practice') }}" class="glass rounded-xl p-6 hover-card group">
+            <a href="{{ url_for('main.quiz', type='practice') }}" class="glass rounded-xl p-6 hover-card group">
                 <div class="flex items-center justify-between mb-4">
                     <div class="w-12 h-12 bg-blue-600/20 rounded-lg flex items-center justify-center group-hover:bg-blue-600/30 transition">
                         <i class="fas fa-book-open text-blue-400 text-xl"></i>
@@ -48,7 +62,7 @@
                 <p class="text-gray-400 text-sm">Øv på spesifikke kategorier</p>
             </a>
             
-            <a href="{{ url_for('main.exam') }}" class="glass rounded-xl p-6 hover-card group">
+            <a href="{{ url_for('main.quiz', type='exam') }}" class="glass rounded-xl p-6 hover-card group">
                 <div class="flex items-center justify-between mb-4">
                     <div class="w-12 h-12 bg-green-600/20 rounded-lg flex items-center justify-center group-hover:bg-green-600/30 transition">
                         <i class="fas fa-graduation-cap text-green-400 text-xl"></i>
@@ -164,19 +178,62 @@
 
         <!-- Daily Challenge -->
         <div class="glass rounded-2xl p-8 bg-gradient-to-r from-orange-600/10 to-red-600/10">
-            <div class="flex items-center justify-between">
-                <div>
-                    <h2 class="text-2xl font-bold mb-2">Dagens Utfordring 🎯</h2>
-                    <p class="text-gray-400 mb-4">Fullfør dagens utfordring for å opprettholde din streak!</p>
-                    <a href="#" class="inline-block px-6 py-3 bg-gradient-to-r from-orange-600 to-red-600 rounded-lg hover:from-orange-700 hover:to-red-700 transition">
-                        Start Utfordringen
-                    </a>
+            {% if dashboard_data and dashboard_data.daily_challenges %}
+                {% set challenge = dashboard_data.daily_challenges[0] %}
+                <div class="flex items-center justify-between">
+                    <div>
+                        <h2 class="text-2xl font-bold mb-2">{{ challenge.challenge.title }} 🎯</h2>
+                        <p class="text-gray-400 mb-2">{{ challenge.challenge.description }}</p>
+                        
+                        <!-- Progress Bar -->
+                        {% if challenge.progress > 0 and not challenge.completed %}
+                        <div class="mb-4">
+                            <div class="flex justify-between text-sm mb-1">
+                                <span>Fremgang</span>
+                                <span>{{ challenge.progress }}/{{ challenge.challenge.requirement_value }}</span>
+                            </div>
+                            <div class="bg-gray-700 rounded-full h-2">
+                                <div class="bg-gradient-to-r from-orange-600 to-red-600 h-2 rounded-full" 
+                                     style="width: {{ (challenge.progress / challenge.challenge.requirement_value * 100) | round }}%"></div>
+                            </div>
+                        </div>
+                        {% endif %}
+                        
+                        {% if challenge.completed %}
+                            <div class="inline-block px-6 py-3 bg-green-600 rounded-lg text-white font-semibold">
+                                ✅ Fullført! (+{{ challenge.xp_earned }} XP)
+                            </div>
+                        {% else %}
+                            <a href="{{ url_for('quiz.daily_challenge', challenge_id=challenge.challenge.id) }}" 
+                               class="inline-block px-6 py-3 bg-gradient-to-r from-orange-600 to-red-600 rounded-lg hover:from-orange-700 hover:to-red-700 transition">
+                                {% if challenge.progress > 0 %}Fortsett Utfordringen{% else %}Start Utfordringen{% endif %}
+                            </a>
+                        {% endif %}
+                    </div>
+                    <div class="text-center">
+                        <div class="text-5xl font-bold mb-2">{{ challenge.challenge.requirement_value }}</div>
+                        <div class="text-sm text-gray-400">
+                            {% if challenge.challenge.challenge_type == 'quiz' %}spørsmål{% else %}{{ challenge.challenge.challenge_type }}{% endif %}
+                        </div>
+                        <div class="text-xs text-orange-400 mt-1">+{{ challenge.challenge.xp_reward }} XP</div>
+                    </div>
                 </div>
-                <div class="text-center">
-                    <div class="text-5xl font-bold mb-2">15</div>
-                    <div class="text-sm text-gray-400">spørsmål</div>
+            {% else %}
+                <div class="flex items-center justify-between">
+                    <div>
+                        <h2 class="text-2xl font-bold mb-2">Ingen Utfordring i Dag 🎯</h2>
+                        <p class="text-gray-400 mb-4">Sjekk tilbake senere for nye utfordringer!</p>
+                        <a href="{{ url_for('main.quiz', type='practice') }}" 
+                           class="inline-block px-6 py-3 bg-gradient-to-r from-orange-600 to-red-600 rounded-lg hover:from-orange-700 hover:to-red-700 transition">
+                            Øv i Mellomtiden
+                        </a>
+                    </div>
+                    <div class="text-center opacity-50">
+                        <div class="text-5xl font-bold mb-2">—</div>
+                        <div class="text-sm text-gray-400">i dag</div>
+                    </div>
                 </div>
-            </div>
+            {% endif %}
         </div>
     </div>
 </section>

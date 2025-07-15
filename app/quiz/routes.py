@@ -449,6 +449,7 @@ def submit_session(session_id):
             quiz_response = QuizResponse(
                 session_id=session_id,
                 question_id=question_id,
+                category=question.category,  # Store actual question category
                 user_answer=user_answer,
                 is_correct=is_correct,
                 time_spent_seconds=time_spent
@@ -486,6 +487,16 @@ def submit_session(session_id):
         try:
             from ..gamification.quiz_integration import process_quiz_completion
             gamification_rewards = process_quiz_completion(current_user, quiz_session)
+            
+            # Handle daily challenge progress if this is a daily challenge
+            if quiz_session.quiz_type == 'daily_challenge' and quiz_session.challenge_id:
+                from ..gamification.services import GamificationService
+                completed_challenges = GamificationService.update_daily_challenge_progress(
+                    current_user, 'quiz', 1, quiz_session.category
+                )
+                if completed_challenges:
+                    gamification_rewards['daily_challenges'] = completed_challenges
+                    
         except Exception as gamification_error:
             # Log gamification error but don't fail the quiz submission
             print(f"Gamification integration error: {gamification_error}")
@@ -593,6 +604,53 @@ def review_session(session_id):
     except Exception as e:
         logger.error(f'Error loading review data: {e}')
         return jsonify({'error': str(e), 'success': False}), 500
+
+
+@quiz_bp.route('/daily-challenge/<int:challenge_id>')
+@login_required
+def daily_challenge(challenge_id):
+    """Start or continue a daily challenge quiz"""
+    try:
+        from ..gamification_models import DailyChallenge, UserDailyChallenge
+        
+        # Get the challenge
+        challenge = DailyChallenge.query.get_or_404(challenge_id)
+        
+        # Check if user has progress on this challenge
+        user_challenge = UserDailyChallenge.query.filter_by(
+            user_id=current_user.id,
+            challenge_id=challenge_id
+        ).first()
+        
+        if user_challenge and user_challenge.completed:
+            flash('Du har allerede fullført denne utfordringen!', 'info')
+            return redirect(url_for('main.index'))
+        
+        # Create new quiz session for daily challenge
+        quiz_session = QuizSession(
+            user_id=current_user.id,
+            quiz_type='daily_challenge',
+            category=challenge.category,
+            total_questions=challenge.requirement_value,
+            started_at=datetime.utcnow()
+        )
+        
+        db.session.add(quiz_session)
+        db.session.flush()  # Get the session ID
+        
+        # Add challenge metadata to session
+        quiz_session.challenge_id = challenge_id
+        
+        db.session.commit()
+        
+        # Redirect to quiz interface with challenge context
+        return redirect(url_for('quiz.take_quiz', session_id=quiz_session.id, challenge=True))
+    
+    except Exception as e:
+        db.session.rollback()
+        logger.error(f'Error starting daily challenge {challenge_id}: {e}')
+        flash(f'Feil ved start av daglig utfordring: {str(e)}', 'error')
+        return redirect(url_for('main.index'))
 
 
 @quiz_bp.route('/results/<int:session_id>')
