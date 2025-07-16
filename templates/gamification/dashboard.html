@@ -103,6 +103,17 @@
                     <div class="text-center text-green-400 text-sm">
                         <i class="fas fa-check-circle mr-1"></i> Fullført!
                     </div>
+                    {% else %}
+                        <div class="text-center">
+                            <a href="{{ url_for('quiz.daily_challenge', challenge_id=challenge.challenge.id) }}" 
+                            class="inline-flex items-center px-4 py-2 bg-gradient-to-r from-blue-600 to-purple-600 text-white text-sm font-medium rounded-lg hover:from-blue-700 hover:to-purple-700 transition-all duration-200">
+                                {% if challenge.progress > 0 %}
+                                    <i class="fas fa-play mr-2"></i> Fortsett
+                                {% else %}
+                                    <i class="fas fa-rocket mr-2"></i> Start
+                                {% endif %}
+                            </a>
+                        </div>
                     {% endif %}
                 </div>
                 {% endfor %}

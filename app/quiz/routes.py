@@ -285,6 +285,23 @@ def take_quiz(session_id):
             flash('Ingen spørsmål funnet for denne kategorien', 'error')
             return redirect(url_for('main.dashboard'))
         
+        # Add image folder discovery for each question (like working quiz template)
+        import os
+        from flask import current_app
+        
+        images_dir = os.path.join(current_app.static_folder, 'images')
+        
+        for question in questions:
+            # Dynamic discovery of image folder
+            image_folder = ''
+            if question.image_filename:
+                for root, dirs, files in os.walk(images_dir):
+                    if question.image_filename in files:
+                        image_folder = os.path.relpath(root, images_dir).replace(os.sep, '/')
+                        break
+            # Add image_folder attribute to question object
+            question.image_folder = image_folder
+        
         return render_template('quiz/quiz_session.html',
                              session=quiz_session,
                              questions=questions,
@@ -497,14 +514,6 @@ def submit_session(session_id):
         
         db.session.commit()
         
-        # Update ML system with performance data
-        if ml_service.is_ml_enabled():
-            try:
-                ml_service.update_learning_progress(current_user.id, session_id, ml_responses)
-            except Exception as ml_error:
-                # Log ML error but don't fail the quiz submission
-                print(f"ML update error: {ml_error}")
-        
         # GAMIFICATION INTEGRATION: Process rewards and achievements
         gamification_rewards = {'xp_earned': 0, 'achievements': [], 'level_ups': [], 'daily_challenges': []}
         try:
@@ -523,6 +532,14 @@ def submit_session(session_id):
         except Exception as gamification_error:
             # Log gamification error but don't fail the quiz submission
             print(f"Gamification integration error: {gamification_error}")
+        
+        # Update user progress using the service (like regular quiz)
+        from ..services.progress_service import ProgressService
+        progress_service = ProgressService()
+        progress_service.update_user_progress(current_user.id, quiz_session)
+        
+        # Record quiz usage for limits tracking (like regular quiz)
+        UsageLimitService.record_quiz_taken(current_user.id, quiz_session.quiz_type)
         
         # Calculate performance metrics
         accuracy = (correct_count / len(responses)) * 100

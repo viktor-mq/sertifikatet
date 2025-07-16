@@ -45,7 +45,13 @@
                     
                     {% if question.image_filename %}
                     <div class="mb-4">
-                        <img src="{{ url_for('static', filename='images/quiz/' + question.image_filename) }}" 
+                        {% set path = [] %}
+                        {% if question.image_folder %}
+                          {% set path = ['images', question.image_folder, question.image_filename] %}
+                        {% else %}
+                          {% set path = ['images', question.image_filename] %}
+                        {% endif %}
+                        <img src="{{ url_for('static', filename=path | join('/')) }}" 
                              alt="Spørsmålsbilde" 
                              class="max-w-full h-auto rounded-lg shadow-lg">
                     </div>
@@ -196,6 +202,11 @@ document.head.appendChild(csrfMeta);
 
 // Enhanced quiz navigation
 document.addEventListener('DOMContentLoaded', function() {
+    // Initialize quiz
+    document.getElementById('startTime').value = startTime;
+    showQuestion(0);
+    startTimer();
+    
     // Set up next/previous button event listeners
     const nextBtn = document.getElementById('nextBtn');
     const prevBtn = document.getElementById('prevBtn');
@@ -223,10 +234,7 @@ document.addEventListener('DOMContentLoaded', function() {
             
             // Auto-advance after selection (with delay for mobile)
             setTimeout(() => {
-                const currentIndex = window.quizEnhancer ? window.quizEnhancer.currentQuestionIndex : 0;
-                const totalQuestions = {{ questions|length }};
-                
-                if (currentIndex < totalQuestions - 1) {
+                if (currentQuestionIndex < totalQuestions - 1) {
                     changeQuestion(1);
                 }
             }, window.innerWidth <= 768 ? 800 : 400);
@@ -235,6 +243,81 @@ document.addEventListener('DOMContentLoaded', function() {
     
     console.log('Quiz session template loaded with', {{ questions|length }}, 'questions');
 });
+
+// Essential navigation functions
+let currentQuestionIndex = 0;
+const totalQuestions = {{ questions|length }};
+let timerInterval;
+let startTime = Date.now();
+
+function startTimer() {
+    timerInterval = setInterval(() => {
+        const elapsed = Math.floor((Date.now() - startTime) / 1000);
+        const minutes = Math.floor(elapsed / 60).toString().padStart(2, '0');
+        const seconds = (elapsed % 60).toString().padStart(2, '0');
+        document.getElementById('timer').textContent = `${minutes}:${seconds}`;
+    }, 1000);
+}
+
+function showQuestion(index) {
+    // Hide all questions
+    document.querySelectorAll('.question-card').forEach(card => {
+        card.style.display = 'none';
+    });
+    
+    // Show current question
+    const questions = document.querySelectorAll('.question-card');
+    if (questions[index]) {
+        questions[index].style.display = 'block';
+    }
+    
+    updateProgress(index);
+    updateNavigation(index);
+}
+
+function updateProgress(index) {
+    const progress = ((index + 1) / totalQuestions) * 100;
+    document.getElementById('progressBar').style.width = `${progress}%`;
+    document.getElementById('currentQuestion').textContent = index + 1;
+    
+    // Update navigation buttons
+    document.querySelectorAll('.question-nav').forEach(btn => {
+        btn.classList.remove('current');
+    });
+    const currentNavBtn = document.querySelector(`[data-question-index="${index}"]`);
+    if (currentNavBtn) {
+        currentNavBtn.classList.add('current');
+    }
+}
+
+function updateNavigation(index) {
+    const prevBtn = document.getElementById('prevBtn');
+    const nextBtn = document.getElementById('nextBtn');
+    const submitBtn = document.getElementById('submitBtn');
+    
+    if (prevBtn) prevBtn.disabled = index === 0;
+    
+    if (index === totalQuestions - 1) {
+        if (nextBtn) nextBtn.style.display = 'none';
+        if (submitBtn) submitBtn.style.display = 'block';
+    } else {
+        if (nextBtn) nextBtn.style.display = 'block';
+        if (submitBtn) submitBtn.style.display = 'none';
+    }
+}
+
+function changeQuestion(direction) {
+    const newIndex = currentQuestionIndex + direction;
+    if (newIndex >= 0 && newIndex < totalQuestions) {
+        currentQuestionIndex = newIndex;
+        showQuestion(currentQuestionIndex);
+    }
+}
+
+function goToQuestion(index) {
+    currentQuestionIndex = index;
+    showQuestion(index);
+}
 </script>
 {% endblock %}
 {% endblock %}

@@ -188,6 +188,7 @@ class GamificationService:
                 
         db.session.commit()
         return level_ups
+
     
     @classmethod
     def sync_user_level(cls, user):
@@ -225,14 +226,15 @@ class GamificationService:
         
         # Get active daily challenges of the specified type
         active_challenges = DailyChallenge.query.filter_by(
-            challenge_type=challenge_type,
+            user_id=user.id,
             is_active=True,
             date=today
         ).all()
         
         if category:
             # Filter by category if specified
-            active_challenges = [c for c in active_challenges if category in (c.category or '')]
+            active_challenges = [c for c in active_challenges 
+                        if c.category and category in c.category]
         
         for challenge in active_challenges:
             # Get or create user challenge progress
@@ -581,53 +583,6 @@ class GamificationService:
         
         db.session.commit()
         return user_challenges
-    
-    @classmethod
-    def update_daily_challenge_progress(cls, user, challenge_type, increment=1, category=None):
-        """Update progress on daily challenges"""
-        today = date.today()
-        
-        # Find matching challenges
-        query = DailyChallenge.query.filter_by(
-            date=today,
-            challenge_type=challenge_type,
-            is_active=True
-        )
-        
-        if category:
-            query = query.filter_by(category=category)
-        
-        challenges = query.all()
-        
-        completed_challenges = []
-        for challenge in challenges:
-            user_challenge = UserDailyChallenge.query.filter_by(
-                user_id=user.id,
-                challenge_id=challenge.id
-            ).first()
-            
-            if user_challenge and not user_challenge.completed:
-                user_challenge.progress += increment
-                
-                # Check if completed
-                if user_challenge.progress >= challenge.requirement_value:
-                    user_challenge.completed = True
-                    user_challenge.completed_at = datetime.utcnow()
-                    user_challenge.xp_earned = challenge.xp_reward
-                    
-                    # Award XP
-                    cls.award_xp(
-                        user,
-                        challenge.xp_reward,
-                        'daily_challenge',
-                        f"Fullført: {challenge.title}",
-                        challenge.id
-                    )
-                    
-                    completed_challenges.append(challenge)
-        
-        db.session.commit()
-        return completed_challenges
     
     @classmethod
     def check_and_update_streak(cls, user):
