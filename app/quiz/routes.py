@@ -246,17 +246,39 @@ def take_quiz(session_id):
         
         # Get questions for this session
         questions = []
-        if ml_service.is_ml_enabled():
+        
+        # 🎯 For daily challenges: Skip ML and use direct filtering (supports subcategory)
+        is_daily_challenge = (quiz_session.quiz_type == 'daily_challenge' or 
+                             (hasattr(quiz_session, 'challenge_id') and quiz_session.challenge_id))
+        
+        if not is_daily_challenge and ml_service.is_ml_enabled():
             try:
-                questions = ml_service.get_session_questions(session_id)
+                # Use ML for regular practice sessions
+                questions = ml_service.get_adaptive_questions(
+                    user_id=current_user.id,
+                    category=quiz_session.category, 
+                    num_questions=quiz_session.total_questions,
+                    session_id=session_id
+                )
             except Exception as e:
                 logger.warning(f'Could not get ML questions for session {session_id}: {e}')
         
-        # Fallback to random questions if ML fails or is disabled
+        # Direct question selection for daily challenges or ML fallback
         if not questions:
             query = Question.query.filter_by(is_active=True)
             if quiz_session.category:
-                query = query.filter_by(category=quiz_session.category)
+                # 🏞️ Use Norwegian category names directly, search both category AND subcategory
+                category_norwegian = quiz_session.category  # Should be Norwegian (e.g., "vikepliktregler")
+                
+                # Search in both category and subcategory fields for flexibility
+                query = query.filter(
+                    db.or_(
+                        Question.category == category_norwegian,
+                        Question.subcategory == category_norwegian
+                    )
+                )
+                logger.info(f"Filtering questions by Norwegian category/subcategory: {category_norwegian}")
+                        
             questions = query.order_by(db.func.random()).limit(quiz_session.total_questions).all()
         
         if not questions:

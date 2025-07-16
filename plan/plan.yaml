@@ -546,6 +546,8 @@ database:
       - id
       - session_id
       - question_id
+      - category
+      - subcategory
       - user_answer
       - is_correct
       - time_spent_seconds

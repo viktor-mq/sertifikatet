@@ -166,34 +166,232 @@ class MLChallengeService:
     
     def _generate_fallback_challenge(self, user: User) -> ChallengeConfig:
         """
-        Generate a smart fallback challenge for users without sufficient ML data.
+        Generate a smart fallback challenge using REAL database categories.
+        For users without sufficient ML data.
         """
         # Get user's basic statistics
         progress = user.progress
         total_questions = progress.total_questions_answered if progress else 0
         
-        # Determine user experience level
+        # Get available categories from actual database questions
+        available_categories = self._get_available_categories_from_database()
+        
+        if not available_categories:
+            logger.warning("No categories found in database - using basic quiz challenge")
+            # Ultimate fallback if no categories exist
+            return self._create_basic_fallback_challenge(user, total_questions)
+        
+        # Determine user experience level and select appropriate challenge
         if total_questions < 50:
             # New user - start with basics
             challenge_type = ChallengeType.QUIZ
             requirement_value = 3
             difficulty = 0.3
-            category = None
+            # Pick a random available category for variety
+            category = random.choice(available_categories)
         elif total_questions < 200:
-            # Developing user - mixed challenges
+            # Developing user - try to find weak areas from limited data
+            weak_category = self._get_weakest_available_category(user.id, available_categories)
             challenge_type = random.choice([ChallengeType.QUIZ, ChallengeType.CATEGORY_FOCUS])
             requirement_value = random.randint(4, 7)
             difficulty = 0.5
-            category = random.choice(CategoryRegistry.get_all_categories())
+            category = weak_category if weak_category else random.choice(available_categories)
         else:
-            # Experienced user - challenging tasks
+            # Experienced user - focus on challenging areas
+            weak_category = self._get_weakest_available_category(user.id, available_categories)
             challenge_type = random.choice([ChallengeType.PERFECT_SCORE, ChallengeType.CATEGORY_FOCUS, ChallengeType.QUIZ])
             requirement_value = random.randint(6, 10) if challenge_type == ChallengeType.QUIZ else random.randint(2, 4)
             difficulty = 0.7
-            category = random.choice(CategoryRegistry.get_all_categories())
+            category = weak_category if weak_category else random.choice(available_categories)
+        
+        logger.info(f"Fallback challenge for user {user.id}: {challenge_type.value} in category '{category}' (from real database)")
         
         return self._build_fallback_challenge_config(
             challenge_type, category, requirement_value, difficulty, user
+        )
+    
+    def _get_available_categories_from_database(self) -> List[str]:
+        """
+        Get actual categories that have questions in the database.
+        This ensures we only create challenges for categories that exist.
+        """
+        try:
+            from ..models import Question
+            
+            # Get distinct categories from active questions
+            categories = db.session.query(Question.category).filter(
+                Question.is_active == True
+            ).distinct().all()
+            
+            # Extract category names from result tuples
+            category_names = [cat[0] for cat in categories if cat[0] is not None]
+            
+            logger.info(f"Found {len(category_names)} categories in database: {category_names}")
+            return category_names
+            
+        except Exception as e:
+            logger.error(f"Error getting categories from database: {e}")
+            return []
+    
+    def _get_weakest_available_category(self, user_id: int, available_categories: List[str]) -> Optional[str]:
+        """
+        Find the user's weakest area among available categories.
+        Uses actual user response data like the ML system.
+        """
+        try:
+            from ..models import QuizResponse, Question, QuizSession
+            from datetime import datetime, timedelta
+            
+            # Get user's recent responses (last 60 days for fallback - longer window)
+            recent_responses = db.session.query(QuizResponse, Question)\
+                .join(Question, QuizResponse.question_id == Question.id)\
+                .join(QuizSession, QuizResponse.session_id == QuizSession.id)\
+                .filter(QuizSession.user_id == user_id)\
+                .filter(QuizSession.completed_at >= datetime.now() - timedelta(days=60))\
+                .all()
+            
+            if not recent_responses:
+                logger.info(f"No recent responses for user {user_id}, selecting random category")
+                return None
+            
+            # Calculate performance per available category
+            category_stats = {}
+            for response, question in recent_responses:
+                category = question.category
+                if category in available_categories:  # Only consider available categories
+                    if category not in category_stats:
+                        category_stats[category] = {'correct': 0, 'total': 0}
+                    
+                    category_stats[category]['total'] += 1
+                    if response.is_correct:
+                        category_stats[category]['correct'] += 1
+            
+            # Find weakest category (lowest accuracy with minimum attempts)
+            weakest_category = None
+            lowest_accuracy = 1.0
+            
+            for category, stats in category_stats.items():
+                if stats['total'] >= 3:  # Minimum attempts for reliable data
+                    accuracy = stats['correct'] / stats['total']
+                    if accuracy < lowest_accuracy:
+                        lowest_accuracy = accuracy
+                        weakest_category = category
+            
+            if weakest_category:
+                logger.info(f"User {user_id} weakest area: {weakest_category} (accuracy: {lowest_accuracy:.2f})")
+            else:
+                logger.info(f"No weak areas identified for user {user_id} with sufficient data")
+            
+            return weakest_category
+            
+        except Exception as e:
+            logger.error(f"Error finding weakest category for user {user_id}: {e}")
+            return None
+    
+    def _create_basic_fallback_challenge(self, user: User, total_questions: int) -> ChallengeConfig:
+        """
+        Ultimate fallback challenge when no categories are available in database.
+        """
+        challenge_type = ChallengeType.QUIZ
+        requirement_value = 5 if total_questions > 100 else 3
+        difficulty = 0.5
+        
+        logger.warning(f"Creating basic fallback challenge for user {user.id} - no database categories available")
+        
+        return self._build_fallback_challenge_config(
+            challenge_type, None, requirement_value, difficulty, user
+        )
+    
+    def _get_available_categories_from_database(self) -> List[str]:
+        """
+        Get actual categories that have questions in the database.
+        This ensures we only create challenges for categories that exist.
+        """
+        try:
+            from ..models import Question
+            
+            # Get distinct categories from active questions
+            categories = db.session.query(Question.category).filter(
+                Question.is_active == True
+            ).distinct().all()
+            
+            # Extract category names from result tuples
+            category_names = [cat[0] for cat in categories if cat[0] is not None]
+            
+            logger.info(f"Found {len(category_names)} categories in database: {category_names}")
+            return category_names
+            
+        except Exception as e:
+            logger.error(f"Error getting categories from database: {e}")
+            return []
+    
+    def _get_weakest_available_category(self, user_id: int, available_categories: List[str]) -> Optional[str]:
+        """
+        Find the user's weakest area among available categories.
+        Uses actual user response data like the ML system.
+        """
+        try:
+            from ..models import QuizResponse, Question, QuizSession
+            from datetime import datetime, timedelta
+            
+            # Get user's recent responses (last 60 days for fallback - longer window)
+            recent_responses = db.session.query(QuizResponse, Question)\
+                .join(Question, QuizResponse.question_id == Question.id)\
+                .join(QuizSession, QuizResponse.session_id == QuizSession.id)\
+                .filter(QuizSession.user_id == user_id)\
+                .filter(QuizSession.completed_at >= datetime.now() - timedelta(days=60))\
+                .all()
+            
+            if not recent_responses:
+                logger.info(f"No recent responses for user {user_id}, selecting random category")
+                return None
+            
+            # Calculate performance per available category
+            category_stats = {}
+            for response, question in recent_responses:
+                category = question.category
+                if category in available_categories:  # Only consider available categories
+                    if category not in category_stats:
+                        category_stats[category] = {'correct': 0, 'total': 0}
+                    
+                    category_stats[category]['total'] += 1
+                    if response.is_correct:
+                        category_stats[category]['correct'] += 1
+            
+            # Find weakest category (lowest accuracy with minimum attempts)
+            weakest_category = None
+            lowest_accuracy = 1.0
+            
+            for category, stats in category_stats.items():
+                if stats['total'] >= 3:  # Minimum attempts for reliable data
+                    accuracy = stats['correct'] / stats['total']
+                    if accuracy < lowest_accuracy:
+                        lowest_accuracy = accuracy
+                        weakest_category = category
+            
+            if weakest_category:
+                logger.info(f"User {user_id} weakest area: {weakest_category} (accuracy: {lowest_accuracy:.2f})")
+            else:
+                logger.info(f"No weak areas identified for user {user_id} with sufficient data")
+            
+            return weakest_category
+            
+        except Exception as e:
+            logger.error(f"Error finding weakest category for user {user_id}: {e}")
+            return None
+    
+    def _create_basic_fallback_challenge(self, user: User, total_questions: int) -> ChallengeConfig:
+        """
+        Ultimate fallback challenge when no categories are available in database.
+        """
+        challenge_type = ChallengeType.QUIZ
+        requirement_value = 5 if total_questions > 100 else 3
+        difficulty = 0.5
+        
+        logger.warning(f"Creating basic fallback challenge for user {user.id} - no database categories available")
+        
+        return self._build_fallback_challenge_config(
+            challenge_type, None, requirement_value, difficulty, user
         )
     
     def _select_ml_challenge_type(self, user: User, skill_assessment: Dict) -> ChallengeType:
