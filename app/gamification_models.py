@@ -20,10 +20,11 @@ class UserLevel(db.Model):
 
 
 class DailyChallenge(db.Model):
-    """Daily challenges for users"""
+    """Daily challenges for users - personalized per user"""
     __tablename__ = 'daily_challenges'
     
     id = db.Column(db.Integer, primary_key=True)
+    user_id = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=False)  # ADD THIS
     title = db.Column(db.String(200), nullable=False)
     description = db.Column(db.Text)
     challenge_type = db.Column(db.String(50))  # 'quiz', 'streak', 'perfect_score', 'category_focus'
@@ -35,7 +36,13 @@ class DailyChallenge(db.Model):
     category = db.Column(db.String(100))  # Optional category focus
     
     # Relationships
+    user = db.relationship('User', backref='daily_challenges_created')  # ADD THIS
     user_challenges = db.relationship('UserDailyChallenge', backref='challenge', cascade='all, delete-orphan')
+    
+    # Add unique constraint to prevent duplicate challenges per user per day
+    __table_args__ = (
+        db.UniqueConstraint('user_id', 'date', name='unique_user_daily_challenge'),
+    )
 
 
 class UserDailyChallenge(db.Model):

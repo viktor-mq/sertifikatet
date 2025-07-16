@@ -47,6 +47,35 @@ Disse feltene har egne regler – se etter skilt og oppmerking, og bruk dem bare
 Ved avkjøring: Start plassering tidlig, gi tegn, og skift rolig og sikkert.  
 Ved innfletting («zipper-prinsippet»): La biler vekselsvis slippe inn, vis hensyn og samarbeid.
 
+# Vegoppmerking og skilt for forbikjøring
+
+### Midtlinjer og sperreområder
+
+<div style="display:flex; gap:6px; margin-left:30px;">
+  <img src="/static/images/signs/linjer_og/sf200510071219100401_gif.gif" alt="Heltrukken linje" style="width:100px; height:auto;">
+  <img src="/static/images/signs/linjer_og/sf200510071219100601_gif.gif" alt="Kombinert linje" style="width:100px; height:auto;">
+  <img src="/static/images/signs/linjer_og/sf200510071219100201_gif_2.gif" alt="Stiplet linje" style="width:100px; height:auto;">
+</div>
+
+| Oppmerking | Kan du krysse? | Typisk bruk |
+|------------|----------------|-------------|
+| **Heltrukken linje** | ❌ Nei – unntak kun ved hindring eller dirigering | Smale veier, bakketopp, skarp sving |
+| **Stiplet linje** | ✅ Ja – når det er trygt | Oversiktlige rettstrekninger |
+| **Kombinert hel + stiplet** | Kun trafikk på stiplet side kan krysse | Overgang til/fra heltrukken |
+| **Sperreområde (skravert)** | ❌ Ikke kjør i eller over | Kryss, rundkjøring, øyer |
+
+### Skilt som regulerer forbikjøring
+
+#### Forbikjøring forbudt  
+![Forbikjøring forbudt](/static/images/signs/forbuds/sf20051007121933401_gif.gif)
+
+Dette skiltet forbyr forbikjøring av motorvogn med flere enn to hjul frem til det oppheves av et sluttskilt eller ved kryss.
+
+#### Slutt på forbikjøring forbudt  
+![Slutt på forbikjøring forbudt](/static/images/signs/forbuds/sf20051007121933601_gif.gif)
+
+Fra og med dette skiltet gjelder vanlige regler for forbikjøring igjen.
+
 ## Viktige poeng å huske
 
 ### Sikkerhetsrutiner før feltskifte:

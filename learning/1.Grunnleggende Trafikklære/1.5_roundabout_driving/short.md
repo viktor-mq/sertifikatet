@@ -5,6 +5,7 @@
 
 **Kjøring i rundkjøring** handler om riktig plassering, tydelige tegn og å følge vikeplikt – for flyt og sikkerhet i trafikken.
 
+![Rundkjøringskilt](/static/images/signs/påbuds/sf20051007121940601_gif.gif)
 ## 🔑 Viktige regler
 
 ### 1. **Plassering før rundkjøring**

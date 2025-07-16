@@ -195,6 +195,12 @@
     color: #c4b5fd;
 }
 
+/* Dark-theme table header fix */
+.content-text table thead th {
+    background: transparent;     /* or #1e293b; same blue as body */
+    color: #e2e8f0;              /* optional: header text colour */
+}
+
 /* Print styles */
 @media print {
     .content-toggle,

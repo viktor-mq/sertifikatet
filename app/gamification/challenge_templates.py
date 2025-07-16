@@ -201,7 +201,7 @@ class CategoryFocusChallengeTemplates(BaseChallengeTemplate):
         descriptions = [
             f"Fordyp deg i {category_name} med {requirement_value} {difficulty_adj} spørsmål.",
             f"Bli ekspert på {category_name} ved å løse {requirement_value} spørsmål.",
-            f"Fokuser på dine svake områder: øv {requirement_value} spørsmål om {category_name}.",
+            f"Fokuser på dine svake områder: øv på {requirement_value} spørsmål om {category_name}.",
             f"Styrk kunnskapen din innen {category_name} med målrettet øving på {requirement_value} spørsmål.",
             f"Spesialiser deg på {category_name} - fullfør {requirement_value} fokuserte oppgaver."
         ]

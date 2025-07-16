@@ -1,10 +1,20 @@
 
 # Kjøring i rundkjøring
 
+<br>
+<pq>
+  <img src="/static/images/quiz/rundkjring_ovenfra.png"
+       alt="Rundkjøring ovenfra"
+       style="width:400px; max-width:100%; display:block; margin:0 auto;">
+</p>
+
+
+
 ## Introduksjon
 Rundkjøringer er vanlige på norske veier og gir effektiv trafikkflyt – men bare hvis alle forstår og følger reglene! 🚗💨 Her lærer du hvordan du plasserer deg, gir tegn, og kjører trygt gjennom rundkjøringer.
 
 ## Hva er en rundkjøring?
+![Rundkjøringskilt](/static/images/signs/påbuds/sf20051007121940601_gif.gif)
 En rundkjøring er et veianlegg der trafikken går rundt et sentralområde i en sirkulær bevegelse. Det gir færre konfliktpunkter enn et vanlig kryss, men krever god forståelse for plassering, vikeplikt og signalbruk.
 
 ## Korrekt plassering før rundkjøring
@@ -20,7 +30,7 @@ Du nærmer deg en rundkjøring med flere felt. Les skilt og veioppmerking – no
 ## Vikeplikt i rundkjøring
 
 ### 🛑 Når har du vikeplikt?
-- Du har ALLTID vikeplikt for trafikk som allerede er i rundkjøringen.
+- Du har ALLTID vikeplikt for trafikk til venstre inne i rundkjøringen.
 - Kjøretøy i rundkjøringen skal ikke stoppe for deg som skal inn.
 - Husk vikeplikt for fotgjengere og syklister ved overgangsfelt før og etter rundkjøringen.
 

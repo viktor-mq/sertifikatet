@@ -434,6 +434,7 @@ database:
       - is_active
       - date
       - category
+      - user_id
       
     user_daily_challenges:
       - id

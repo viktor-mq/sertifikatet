@@ -1,5 +1,32 @@
 
+
 # Plassering og feltskifte - Sammendrag
+
+<div style="display:flex; gap:6px; margin-left:30px;">
+  <img src="/static/images/signs/linjer_og/sf200510071219100401_gif.gif" alt="Heltrukken linje" style="width:100px;" />
+  <img src="/static/images/signs/linjer_og/sf200510071219100601_gif.gif" alt="Kombinert linje" style="width:100px;" />
+  <img src="/static/images/signs/linjer_og/sf200510071219101001_gif.gif" alt="Stiplet linje" style="width:100px;" />
+
+</div>
+
+### Kort om linjetypene
+
+| Linje | Betydning |
+|-------|-----------|
+| **Heltrukken linje** | Feltskifte / forbikjøring er **forbudt** – unntak kun ved hindring eller dirigering |
+| **Kombinert hel + stiplet** | Kun trafikk på **stiplet** side kan krysse |
+| **Stiplet linje** | Feltskifte og forbikjøring **tillatt** når det er trygt |
+
+
+<div style="display:flex; gap:6px; margin-left:30px; margin-top:35px">
+  <img src="/static/images/signs/forbuds/sf20051007121933401_gif.gif" alt="Forbikjøring forbudt" style="width:100px;" />
+  <img src="/static/images/signs/forbuds/sf20051007121933601_gif.gif" alt="Slutt på forbikjøring forbudt" style="width:100px;" />
+</div>
+
+**Forbikjøringsskilt**
+
+- **Forbikjøring forbudt:** Det er ikke lov å passere motorvogn med flere enn to hjul før forbudet oppheves.
+- **Slutt på forbikjøring forbudt:** Forbudet oppheves – vanlige regler for forbikjøring gjelder igjen.
 
 ## 🎯 Hovedpoeng
 

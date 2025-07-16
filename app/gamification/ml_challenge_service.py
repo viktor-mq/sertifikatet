@@ -69,20 +69,34 @@ class MLChallengeService:
         
         for user in active_users:
             try:
+                # Check if user already has a challenge for this date
+                existing = DailyChallenge.query.filter_by(
+                    user_id=user.id,
+                    date=target_date,
+                    is_active=True
+                ).first()
+                
+                if existing:
+                    logger.info(f"User {user.id} already has challenge for {target_date}")
+                    continue
+                
                 challenge_config = self.generate_personalized_challenge(user.id, target_date)
                 if challenge_config:
-                    # Create the challenge in database
-                    challenge = self._create_challenge_from_config(challenge_config, target_date)
+                    # Create the challenge in database WITH user_id
+                    challenge = self._create_challenge_from_config(challenge_config, target_date, user.id)
                     if challenge:
                         results['generated'] += 1
                         if challenge_config.title.startswith('[ML]'):
                             results['ml_generated'] += 1
                         else:
                             results['fallback_generated'] += 1
+                        logger.info(f"Successfully created challenge for user {user.id}: {challenge.title}")
                     else:
                         results['errors'] += 1
+                        logger.error(f"Failed to create challenge for user {user.id}")
                 else:
                     results['errors'] += 1
+                    logger.error(f"No challenge config generated for user {user.id}")
                     
             except Exception as e:
                 logger.error(f"Error generating challenge for user {user.id}: {e}")
@@ -494,12 +508,25 @@ class MLChallengeService:
             difficulty_level=difficulty
         )
     
-    def _create_challenge_from_config(self, config: ChallengeConfig, target_date: date) -> Optional[DailyChallenge]:
+    def _create_challenge_from_config(self, config: ChallengeConfig, target_date: date, user_id: int) -> Optional[DailyChallenge]:
         """
         Create a DailyChallenge database record from a ChallengeConfig.
+        Now includes user_id for personalized challenges.
         """
         try:
+            # Check if user already has a challenge for this date (double check)
+            existing = DailyChallenge.query.filter_by(
+                user_id=user_id,
+                date=target_date,
+                is_active=True
+            ).first()
+            
+            if existing:
+                logger.info(f"User {user_id} already has challenge for {target_date}: {existing.title}")
+                return existing
+            
             challenge = DailyChallenge(
+                user_id=user_id,  # The key fix!
                 title=config.title,
                 description=config.description,
                 challenge_type=config.challenge_type,
@@ -514,21 +541,23 @@ class MLChallengeService:
             db.session.add(challenge)
             db.session.commit()
             
-            logger.info(f"Created challenge: {config.title} for {target_date}")
+            logger.info(f"Created personalized challenge for user {user_id}: {config.title} (ID: {challenge.id})")
             return challenge
             
         except Exception as e:
-            logger.error(f"Error creating challenge from config: {e}")
+            logger.error(f"Error creating challenge for user {user_id}: {e}")
             db.session.rollback()
             return None
     
     def _get_existing_challenge(self, user_id: int, target_date: date) -> Optional[DailyChallenge]:
         """
         Check if user already has a challenge for the target date.
+        Now checks per user instead of globally.
         """
         try:
-            # Check for existing challenges on this date
+            # Check for existing user-specific challenges on this date
             existing = DailyChallenge.query.filter_by(
+                user_id=user_id,  # CHECK FOR THIS USER'S CHALLENGE
                 date=target_date,
                 is_active=True
             ).first()
@@ -536,7 +565,7 @@ class MLChallengeService:
             return existing
             
         except Exception as e:
-            logger.error(f"Error checking existing challenge: {e}")
+            logger.error(f"Error checking existing challenge for user {user_id}: {e}")
             return None
     
     def get_challenge_performance_stats(self, days: int = 30) -> Dict:

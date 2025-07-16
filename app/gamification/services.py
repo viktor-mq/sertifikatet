@@ -539,6 +539,7 @@ class GamificationService:
         
         # Get today's challenges
         challenges = DailyChallenge.query.filter_by(
+            user_id = user.id,
             date=today,
             is_active=True
         ).all()
@@ -553,6 +554,7 @@ class GamificationService:
                 
                 # Refresh challenges query
                 challenges = DailyChallenge.query.filter_by(
+                    user_id = user.id,
                     date=today,
                     is_active=True
                 ).all()
