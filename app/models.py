@@ -593,6 +593,166 @@ class VideoShorts(db.Model):
         self.topic_tags = json.dumps(tags_list)
 
 
+class UserLearningProgress(db.Model):
+    """User progress tracking for learning modules and submodules"""
+    __tablename__ = 'user_learning_progress'
+    
+    id = db.Column(db.Integer, primary_key=True)
+    user_id = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=False)
+    module_id = db.Column(db.Integer, db.ForeignKey('learning_modules.id'), nullable=False)
+    submodule_id = db.Column(db.Integer, db.ForeignKey('learning_submodules.id'), nullable=True)
+    progress_type = db.Column(db.Enum('module','submodule','content','summary','shorts'), nullable=False)
+    status = db.Column(db.Enum('not_started','in_progress','completed','skipped'), default='not_started')
+    completion_percentage = db.Column(db.Integer, default=0)
+    time_spent_minutes = db.Column(db.Integer, default=0)
+    content_viewed = db.Column(db.Boolean, default=False)
+    summary_viewed = db.Column(db.Boolean, default=False)
+    shorts_watched = db.Column(db.Integer, default=0)
+    quiz_attempts = db.Column(db.Integer, default=0)
+    quiz_best_score = db.Column(db.Float, default=0.0)
+    last_accessed = db.Column(db.DateTime, default=datetime.utcnow)
+    started_at = db.Column(db.DateTime, default=datetime.utcnow)
+    completed_at = db.Column(db.DateTime, nullable=True)
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+    updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+    
+    # Relationships
+    user = db.relationship('User', backref='learning_progress')
+    learning_module = db.relationship('LearningModules', backref='user_progress')
+    
+    # Unique constraint to prevent duplicates
+    __table_args__ = (
+        db.UniqueConstraint('user_id', 'module_id', 'submodule_id', 'progress_type'),
+    )
+    
+    def __repr__(self):
+        return f'<UserLearningProgress user:{self.user_id} module:{self.module_id} submodule:{self.submodule_id} type:{self.progress_type}>'
+
+    def to_dict(self):
+        """Serialize the progress record to primitives JSON can handle."""
+        return {
+            'id': self.id,
+            'user_id': self.user_id,
+            'module_id': self.module_id,
+            'submodule_id': self.submodule_id,
+            'progress_type': str(self.progress_type),
+            'status': str(self.status),
+            'completion_percentage': self.completion_percentage,
+            'time_spent_minutes': self.time_spent_minutes,
+            'content_viewed': self.content_viewed,
+            'summary_viewed': self.summary_viewed,
+            'shorts_watched': self.shorts_watched,
+            'quiz_attempts': self.quiz_attempts,
+            'quiz_best_score': self.quiz_best_score,
+            'last_accessed': self.last_accessed.isoformat() if self.last_accessed else None,
+            'started_at': self.started_at.isoformat() if self.started_at else None,
+            'completed_at': self.completed_at.isoformat() if self.completed_at else None,
+            'created_at': self.created_at.isoformat() if self.created_at else None,
+            'updated_at': self.updated_at.isoformat() if self.updated_at else None
+        }
+    
+    @classmethod
+    def get_user_last_position(cls, user_id):
+        """Get user's last learning position"""
+        return cls.query.filter_by(user_id=user_id)\
+            .order_by(cls.last_accessed.desc()).first()
+    
+    @classmethod
+    def track_content_access(cls, user_id, module_id, submodule_id, progress_type):
+        """Track content access with UPSERT operation"""
+        try:
+            # Find existing or create new
+            progress = cls.query.filter_by(
+                user_id=user_id,
+                module_id=module_id,
+                submodule_id=submodule_id,
+                progress_type=progress_type
+            ).first()
+            
+            if not progress:
+                progress = cls(
+                    user_id=user_id,
+                    module_id=module_id,
+                    submodule_id=submodule_id,
+                    progress_type=progress_type,
+                    time_spent_minutes=0
+                )
+                db.session.add(progress)
+            
+            progress.last_accessed = datetime.utcnow()
+            if progress.status != 'completed':
+                progress.status = 'in_progress'
+            
+            if progress_type == 'content':
+                progress.content_viewed = True
+            elif progress_type == 'summary':
+                progress.summary_viewed = True
+            elif progress_type == 'shorts':
+                progress.shorts_watched += 1
+                
+            db.session.commit()
+            return progress
+            
+        except Exception as e:
+            db.session.rollback()
+            raise e
+    
+    @classmethod
+    def mark_content_complete(cls, user_id, module_id, submodule_id, progress_type, completion_data=None):
+        """Mark content as completed"""
+        try:
+             # Add debug logging
+            print(f"DEBUG: Marking complete with params:")
+            print(f"  user_id: {user_id}")
+            print(f"  module_id: {module_id}")
+            print(f"  submodule_id: {submodule_id} (type: {type(submodule_id)})")
+            print(f"  progress_type: {progress_type}")
+            progress = cls.query.filter_by(
+                user_id=user_id,
+                module_id=module_id,
+                submodule_id=submodule_id,
+                progress_type=progress_type
+            ).first()
+            
+            if not progress:
+                progress = cls(
+                    user_id=user_id,
+                    module_id=module_id,
+                    submodule_id=submodule_id,
+                    progress_type=progress_type,
+                    time_spent_minutes=0  # Explicitly initialize to prevent None issues
+                )
+                db.session.add(progress)
+            
+            progress.status = 'completed'
+            progress.completion_percentage = 100
+            progress.completed_at = datetime.utcnow()
+            progress.last_accessed = datetime.utcnow()
+            
+            if completion_data:
+                if 'time_spent' in completion_data:
+                    # Ensure time_spent_minutes is not None before adding
+                    if progress.time_spent_minutes is None:
+                        progress.time_spent_minutes = 0
+                    progress.time_spent_minutes += completion_data['time_spent']
+                if 'quiz_score' in completion_data:
+                    # Ensure quiz_best_score is not None before comparison
+                    if progress.quiz_best_score is None:
+                        progress.quiz_best_score = 0.0
+                    progress.quiz_best_score = max(progress.quiz_best_score, completion_data['quiz_score'])
+                    if progress.quiz_attempts is None:
+                        progress.quiz_attempts = 0
+                    progress.quiz_attempts += 1
+            
+            db.session.commit()
+            print(f"DEBUG: Created new progress record with submodule_id: {progress.submodule_id}")
+            return progress
+            
+        except Exception as e:
+            db.session.rollback()
+            raise e
+
+
 class UserShortsProgress(db.Model):
     """User progress tracking for video shorts"""
     __tablename__ = 'user_shorts_progress'

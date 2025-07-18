@@ -6,6 +6,7 @@ from app.learning.services import LearningService
 from app.learning.content_manager import ContentManager
 from app import db
 import logging
+from app.models import UserLearningProgress
 
 logger = logging.getLogger(__name__)
 
@@ -14,32 +15,7 @@ logger = logging.getLogger(__name__)
 @login_required
 def index():
     """Main learning index route - redirects to dashboard"""
-    return redirect(url_for('learning.dashboard'))
-
-
-@learning_bp.route('/dashboard')
-@login_required
-def dashboard():
-    """Main learning dashboard - shows all modules with progress"""
-    try:
-        # Get all modules with user progress
-        modules_data = LearningService.get_user_modules_progress(current_user)
-        
-        # Get user learning stats
-        learning_stats = LearningService.get_user_learning_stats(current_user)
-        
-        # Get recommended next steps
-        recommendations = LearningService.get_recommendations(current_user)
-        
-        return render_template('learning/index.html',
-                             modules=modules_data,
-                             stats=learning_stats,
-                             recommendations=recommendations)
-    except Exception as e:
-        logger.error(f"Error loading learning dashboard: {str(e)}")
-        flash('Det oppstod en feil ved lasting av læringsoversikten', 'error')
-        return redirect(url_for('main.index'))
-
+    return redirect(url_for('learning.theory_dashboard'))
 
 @learning_bp.route('/module/<int:module_id>/enroll', methods=['POST'])
 @login_required
@@ -104,8 +80,8 @@ def submodule_content(submodule_id):
                 'shorts_count': 0
             }
         
-        # Start or update progress
-        LearningService.start_submodule_content(current_user, submodule_id)
+        # Track content access for progress tracking
+        LearningService.track_content_access(current_user, submodule_id, 'content')
         
         return render_template('learning/submodule_content.html',
                              submodule=submodule_data,
@@ -135,8 +111,8 @@ def shorts_player(submodule_id):
             flash('Ingen videoer funnet for denne undermodulen ennå', 'info')
             return redirect(url_for('learning.submodule_content', submodule_id=submodule_id))
         
-        # Start shorts progress tracking
-        LearningService.start_submodule_shorts(current_user, submodule_id)
+        # Track shorts access for progress tracking
+        LearningService.track_content_access(current_user, submodule_id, 'shorts')
         
         return render_template('learning/shorts_player.html',
                              submodule=submodule_data,
@@ -145,6 +121,132 @@ def shorts_player(submodule_id):
         logger.error(f"Error loading shorts for submodule {submodule_id}: {str(e)}")
         flash('Det oppstod en feil ved lasting av videoene', 'error')
         return redirect(url_for('learning.submodule_content', submodule_id=submodule_id))
+
+
+@learning_bp.route('/continue')
+@login_required
+def continue_learning():
+    """Continue where user left off"""
+    try:
+        # Get user's last learning position
+        last_position = LearningService.get_user_last_position(current_user)
+        
+        if last_position and last_position['submodule_number']:
+            # Redirect based on progress type
+            if last_position['progress_type'] == 'shorts':
+                return redirect(url_for('learning.shorts_player', 
+                                      submodule_id=last_position['submodule_number']))
+            else:
+                return redirect(url_for('learning.submodule_content', 
+                                      submodule_id=last_position['submodule_number']))
+        elif last_position and last_position['module_id']:
+            # Redirect to module overview if no specific submodule
+            return redirect(url_for('learning.module_overview', 
+                                  module_id=last_position['module_id']))
+        else:
+            # First time user - redirect to dashboard
+            flash('Velkommen! Start med å utforske læringsmodulene.', 'info')
+            return redirect(url_for('learning.dashboard'))
+            
+    except Exception as e:
+        logger.error(f"Error getting continue position: {str(e)}")
+        flash('Kunne ikke finne din siste posisjon. Starter fra begynnelsen.', 'warning')
+        return redirect(url_for('learning.dashboard'))
+
+
+# Also add a route name fix for the shorts player
+@learning_bp.route('/theory/shorts/<float:submodule_id>')
+@login_required
+def theory_shorts_player(submodule_id):
+    """Redirect to shorts player (for backward compatibility)"""
+    return redirect(url_for('learning.shorts_player', submodule_id=submodule_id))
+
+
+@learning_bp.route('/api/get-next', methods=['POST'])
+@login_required
+def get_next_content_api():
+    """API endpoint for getting next content recommendation"""
+    try:
+        data = request.get_json()
+        if not data:
+            return jsonify({'success': False, 'error': 'Ingen data mottatt'}), 400
+        
+        current_submodule = data.get('submodule_id')
+        current_content_type = data.get('content_type', 'content')
+        
+        if not current_submodule:
+            return jsonify({'success': False, 'error': 'Mangler submodule_id'}), 400
+        
+        # Get next content recommendation
+        next_content = LearningService.get_next_content_smart(
+            current_user, current_submodule, current_content_type
+        )
+        
+        if next_content:
+            return jsonify({
+                'success': True,
+                'next_content': next_content,
+                'has_next': True
+            })
+        else:
+            return jsonify({
+                'success': True,
+                'next_content': None,
+                'has_next': False,
+                'message': 'Du har fullført alt tilgjengelig innhold!'
+            })
+            
+    except Exception as e:
+        logger.error(f"Error getting next content: {str(e)}")
+        return jsonify({
+            'success': False,
+            'error': 'Kunne ikke hente neste innhold'
+        }), 500
+
+
+@learning_bp.route('/api/complete-content', methods=['POST'])
+@login_required
+def complete_content_api():
+    """API endpoint for marking content as complete"""
+    try:
+        data = request.get_json()
+        if not data:
+            return jsonify({'success': False, 'error': 'Ingen data mottatt'}), 400
+        
+        content_type = data.get('content_type', 'content')
+        content_id = data.get('content_id')
+        completion_data = data.get('completion_data', {})
+        
+        if not content_id:
+            return jsonify({'success': False, 'error': 'Mangler content_id'}), 400
+        
+        # Mark content as complete
+        result = LearningService.mark_content_complete(
+            current_user, content_type, content_id, completion_data
+        )
+        # Ensure progress is JSON‑serialisable
+        progress_obj = result.get('progress')
+        if hasattr(progress_obj, 'to_dict'):
+            result['progress'] = progress_obj.to_dict()
+        
+        if result.get('success'):
+            return jsonify({
+                'success': True,
+                'message': 'Innhold markert som fullført',
+                'progress': result.get('progress', {})
+            })
+        else:
+            return jsonify({
+                'success': False,
+                'error': result.get('error', 'Kunne ikke markere som fullført')
+            }), 500
+            
+    except Exception as e:
+        logger.error(f"Error marking content complete: {str(e)}")
+        return jsonify({
+            'success': False,
+            'error': 'Kunne ikke markere innhold som fullført'
+        }), 500
 
 
 @learning_bp.route('/progress')
@@ -177,7 +279,9 @@ def api_update_progress():
             content_id=data.get('content_id'),
             progress_data=data.get('progress_data', {})
         )
-        
+        # Ensure returned progress is JSON‑friendly
+        if hasattr(result, 'to_dict'):
+            result = result.to_dict()
         return jsonify({
             'success': True,
             'progress': result
@@ -190,30 +294,7 @@ def api_update_progress():
         }), 400
 
 
-@learning_bp.route('/api/complete-content', methods=['POST'])
-@login_required
-def api_complete_content():
-    """Mark content as completed (AJAX)"""
-    try:
-        data = request.get_json()
-        
-        result = LearningService.mark_content_complete(
-            user=current_user,
-            content_type=data.get('content_type'),
-            content_id=data.get('content_id'),
-            completion_data=data.get('completion_data', {})
-        )
-        
-        return jsonify({
-            'success': True,
-            'completion': result
-        })
-    except Exception as e:
-        logger.error(f"Error marking content complete: {str(e)}")
-        return jsonify({
-            'success': False,
-            'error': 'Kunne ikke markere innhold som fullført'
-        }), 400
+
 
 
 @learning_bp.route('/api/track-time', methods=['POST'])
@@ -410,25 +491,6 @@ def theory_submodule_content(submodule_id):
         return redirect(url_for('learning.theory_dashboard'))
 
 
-@learning_bp.route('/theory/shorts/<float:submodule_id>')
-@login_required
-def theory_shorts_player(submodule_id):
-    """Theory shorts player - TikTok-style video player"""
-    try:
-        # Get shorts for this submodule
-        shorts_data = LearningService.get_submodule_shorts(submodule_id, current_user)
-        
-        if not shorts_data:
-            flash('Ingen videoer funnet for denne delen', 'error')
-            return redirect(url_for('learning.theory_submodule_content', submodule_id=submodule_id))
-        
-        return render_template('learning/shorts_player.html',
-                             shorts=shorts_data,
-                             submodule_id=submodule_id)
-    except Exception as e:
-        logger.error(f"Error loading theory shorts for {submodule_id}: {str(e)}")
-        flash('Det oppstod en feil ved lasting av videoene', 'error')
-        return redirect(url_for('learning.theory_dashboard'))
 
 
 # Additional routes required by the template
@@ -442,19 +504,6 @@ def view_module(module_id):
     except Exception as e:
         logger.error(f"Error viewing module {module_id}: {str(e)}")
         flash('Læringsveien ble ikke funnet', 'error')
-        return redirect(url_for('learning.index'))
-
-
-@learning_bp.route('/my-modules')
-@login_required
-def my_modules():
-    """Show user's enrolled learning modules"""
-    try:
-        # For now, show empty state
-        return render_template('learning/my_modules.html', modules=[])
-    except Exception as e:
-        logger.error(f"Error loading my modules: {str(e)}")
-        flash('Kunne ikke laste dine læringsveier', 'error')
         return redirect(url_for('learning.index'))
 
 

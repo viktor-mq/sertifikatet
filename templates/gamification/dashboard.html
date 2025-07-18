@@ -172,7 +172,7 @@
                 
                 <div class="glass rounded-lg overflow-hidden">
                     <table class="w-full">
-                        {% for ranking in rankings.rankings %}
+                        {% for ranking in rankings.rankings[:3] %}
                         <tr class="border-b border-gray-700/50 hover:bg-gray-800/50 transition {{ 'bg-purple-900/20' if ranking.id == current_user.id else '' }}">
                             <td class="p-3 text-center w-12">
                                 {% if loop.index == 1 %}

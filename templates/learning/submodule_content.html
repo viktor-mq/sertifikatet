@@ -169,31 +169,57 @@
         </div>
 
         <!-- Navigation -->
-        <div class="flex justify-between items-center mt-8">
-            <a href="{{ url_for('learning.theory_dashboard') }}" 
-               class="inline-flex items-center px-6 py-3 bg-white/10 backdrop-blur-lg rounded-lg text-white hover:bg-white/20 transition-all duration-300">
-                <i class="fas fa-arrow-left mr-2"></i>
-                Tilbake til teorioversikt
-            </a>
-            
-            <div class="flex space-x-4">
-                {% if submodule.has_video_shorts %}
-                <a href="{{ url_for('learning.theory_shorts_player', submodule_id=submodule.submodule_number) }}" 
-                   class="inline-flex items-center px-6 py-3 bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white rounded-lg transition-all duration-300">
-                    <i class="fas fa-play mr-2"></i>
-                    Se videoer
+        <div class="mt-8 space-y-4">
+            <!-- Top Navigation: Back Button -->
+            <div class="flex justify-between items-center">
+                <a href="{{ url_for('learning.theory_dashboard') }}" 
+                   class="inline-flex items-center px-6 py-3 bg-white/10 backdrop-blur-lg rounded-lg text-white hover:bg-white/20 transition-all duration-300">
+                    <i class="fas fa-arrow-left mr-2"></i>
+                    Tilbake til teorioversikt
                 </a>
-                {% endif %}
                 
                 <button class="inline-flex items-center px-6 py-3 bg-gradient-to-r from-green-600 to-blue-600 hover:from-green-700 hover:to-blue-700 text-white rounded-lg transition-all duration-300" onclick="markAsComplete()">
                     <i class="fas fa-check mr-2"></i>
-                    Marker som fullført
+                    {% if submodule.status == 'completed' %}Fullført{% else %}Marker som fullført{% endif %}
+                </button>
+            </div>
+            
+            <!-- Bottom Navigation: Previous/Next + Videos -->
+            <div class="flex justify-between items-center">
+                <!-- Previous Button -->
+                <button id="prev-btn" class="inline-flex items-center px-6 py-3 bg-white/10 backdrop-blur-lg rounded-lg text-white hover:bg-white/20 transition-all duration-300" onclick="goToPrevious()" style="display: none;">
+                    <i class="fas fa-arrow-left mr-2"></i>
+                    <span id="prev-btn-text">Forrige</span>
+                </button>
+                
+                <!-- Placeholder for alignment when no previous -->
+                <div id="prev-placeholder" class="w-6"></div>
+                
+                <!-- Center: Videos Button (only show if has shorts) -->
+                <div class="flex space-x-3">
+                    {% if submodule.has_video_shorts %}
+                    <a href="{{ url_for('learning.theory_shorts_player', submodule_id=submodule.submodule_number) }}" 
+                       class="inline-flex items-center px-6 py-3 bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white rounded-lg transition-all duration-300">
+                        <i class="fas fa-play mr-2"></i>
+                        Videoer for modul {{ submodule.submodule_number }}
+                    </a>
+                    {% endif %}
+                </div>
+                
+                <!-- Next Button -->
+                <button id="smart-next-btn" class="inline-flex items-center px-6 py-3 bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-700 hover:to-pink-700 text-white rounded-lg transition-all duration-300" onclick="goToNext()">
+                    <i class="fas fa-arrow-right mr-2"></i>
+                    <span id="next-btn-text">Neste</span>
                 </button>
             </div>
         </div>
     </div>
 </div>
-
+<!-- Add this for debugging -->
+<script>
+    console.log('Submodule status from backend:', '{{ submodule.status }}');
+    console.log('Is completed from backend:', {{ submodule.is_completed|tojson }});
+    </script>
 <script>
 // Content type toggle functionality
 function toggleContent(contentType) {
@@ -274,51 +300,256 @@ document.addEventListener('DOMContentLoaded', function() {
     if (isDarkMode) {
         toggleDarkMode();
     }
+    
+    // Load navigation content for smart navigation
+    loadNavigationContent();
 });
+
+// Load navigation content on page load
+async function loadNavigationContent() {
+    // Load both next and previous content
+    await Promise.all([
+        loadNextContent(),
+        loadPreviousContent()
+    ]);
+}
+
+// Load next content
+async function loadNextContent() {
+    try {
+        const response = await fetch('/learning/api/get-next', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRFToken': getCsrfToken()
+            },
+            body: JSON.stringify({
+                submodule_id: {{ submodule.submodule_number }},
+                content_type: 'content'
+            })
+        });
+        
+        if (!response.ok) {
+            throw new Error('Network response was not ok');
+        }
+        
+        const data = await response.json();
+        
+        if (data.success && data.has_next && data.next_content) {
+            const nextBtn = document.getElementById('smart-next-btn');
+            const nextBtnText = document.getElementById('next-btn-text');
+            
+            if (nextBtn && nextBtnText) {
+                nextBtn.setAttribute('data-next-url', data.next_content.url);
+                nextBtnText.textContent = data.next_content.title;
+                
+                // Update button icon based on content type
+                const icon = nextBtn.querySelector('i');
+                if (data.next_content.content_type === 'shorts') {
+                    icon.className = 'fas fa-play mr-2';
+                    nextBtn.title = 'Se videoer for dette emnet';
+                } else if (data.next_content.content_type === 'module') {
+                    icon.className = 'fas fa-arrow-up mr-2';
+                    nextBtn.title = 'Gå til neste modul';
+                } else {
+                    icon.className = 'fas fa-arrow-right mr-2';
+                    nextBtn.title = 'Gå til neste emne';
+                }
+                
+                console.log('Smart navigation loaded:', data.next_content.title);
+                console.log('Submodule status from backend:', '{{ submodule.status }}');
+                console.log('Is completed from backend:', {{ submodule.is_completed|tojson }});
+            }
+        } else {
+            // No next content available - hide the button
+            const nextBtn = document.getElementById('smart-next-btn');
+            if (nextBtn) {
+                nextBtn.style.display = 'none';
+            }
+            console.log('No next content available');
+        }
+    } catch (error) {
+        console.error('Error loading next content:', error);
+        // Hide button on error but don't crash the page
+        const nextBtn = document.getElementById('smart-next-btn');
+        if (nextBtn) {
+            nextBtn.style.display = 'none';
+        }
+    }
+}
+
+// Load previous content
+async function loadPreviousContent() {
+    try {
+        const currentSubmodule = {{ submodule.submodule_number }};
+        let previousSubmodule = null;
+        
+        // Calculate previous submodule (simple logic)
+        if (currentSubmodule > 1.1) {
+            if (currentSubmodule.toString().endsWith('.1')) {
+                // If it's X.1, go to previous module's last submodule
+                const currentModule = Math.floor(currentSubmodule);
+                if (currentModule > 1) {
+                    // Submodule counts: [5, 5, 5, 4, 4] for modules 1-5
+                    const submoduleCounts = [5, 5, 5, 4, 4];
+                    const prevModule = currentModule - 1;
+                    const lastSubInPrevModule = submoduleCounts[prevModule - 1] || 5;
+                    previousSubmodule = prevModule + (lastSubInPrevModule / 10);
+                }
+            } else {
+                // Within same module, just subtract 0.1
+                previousSubmodule = Math.round((currentSubmodule - 0.1) * 10) / 10;
+            }
+        }
+        
+        if (previousSubmodule) {
+            const prevBtn = document.getElementById('prev-btn');
+            const prevBtnText = document.getElementById('prev-btn-text');
+            const prevPlaceholder = document.getElementById('prev-placeholder');
+            
+            if (prevBtn && prevBtnText) {
+                const prevUrl = `/learning/module/${previousSubmodule}`;
+                prevBtn.setAttribute('data-prev-url', prevUrl);
+                prevBtnText.textContent = `Modul ${previousSubmodule}`;
+                prevBtn.style.display = 'inline-flex';
+                
+                // Hide placeholder
+                if (prevPlaceholder) {
+                    prevPlaceholder.style.display = 'none';
+                }
+                
+                console.log('Previous navigation loaded:', `Modul ${previousSubmodule}`);
+            }
+        } else {
+            console.log('No previous content available');
+        }
+    } catch (error) {
+        console.error('Error loading previous content:', error);
+    }
+}
+
+// Go to previous content
+function goToPrevious() {
+    const prevBtn = document.getElementById('prev-btn');
+    const prevUrl = prevBtn.getAttribute('data-prev-url');
+    
+    if (prevUrl) {
+        // Show loading state
+        const originalText = prevBtn.innerHTML;
+        prevBtn.innerHTML = '<i class="fas fa-spinner fa-spin mr-2"></i>Laster...';
+        prevBtn.disabled = true;
+        
+        window.location.href = prevUrl;
+    } else {
+        alert('Ingen forrige side tilgjengelig.');
+    }
+}
+
+// Helper function to get CSRF token
+function getCsrfToken() {
+    const token = document.querySelector('meta[name="csrf-token"]');
+    return token ? token.getAttribute('content') : '';
+}
+
+// Smart navigation function
+function goToNext() {
+    const nextBtn = document.getElementById('smart-next-btn');
+    const nextUrl = nextBtn.getAttribute('data-next-url');
+    
+    if (nextUrl) {
+        // Show loading state
+        const originalText = nextBtn.innerHTML;
+        nextBtn.innerHTML = '<i class="fas fa-spinner fa-spin mr-2"></i>Laster...';
+        nextBtn.disabled = true;
+        
+        // Mark current content as complete first
+        markAsComplete().then(() => {
+            window.location.href = nextUrl;
+        }).catch(() => {
+            // Go to next even if marking complete fails
+            window.location.href = nextUrl;
+        }).finally(() => {
+            // Restore button state in case navigation fails
+            setTimeout(() => {
+                nextBtn.innerHTML = originalText;
+                nextBtn.disabled = false;
+            }, 2000);
+        });
+    } else {
+        alert('Ingen neste side tilgjengelig.');
+    }
+}
 
 // Mark as complete functionality
 function markAsComplete() {
-    const currentContentType = document.querySelector('input[name="content-type"]:checked').value;
-    
-    const confirmMessage = currentContentType === 'kort' 
-        ? 'Marker dette emnet som fullført? (Du har lest den korte versjonen)' 
-        : 'Marker dette emnet som fullført? (Du har lest den detaljerte versjonen)';
-    
-    if (confirm(confirmMessage)) {
-        // Send completion data to server
-        fetch('{{ url_for("learning.api_complete_content") }}', {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json'
-            },
-            body: JSON.stringify({
-                content_type: 'submodule',
-                content_id: {{ submodule.submodule_number }},
-                completion_data: {
-                    content_type_read: currentContentType,
-                    font_size: currentFontSize,
-                    time_spent: Math.floor((Date.now() - startTime) / 1000 / 60)
+    return new Promise((resolve, reject) => {
+        const completeButton = document.querySelector('[onclick="markAsComplete()"]');
+
+        // DEBUG: Let's see what we're working with
+        console.log('Complete button found:', completeButton);
+        console.log('Button innerHTML:', completeButton ? completeButton.innerHTML : 'Button not found');
+
+        if (completeButton && completeButton.innerHTML.includes('Fullført')) {
+            // Already marked as complete, just resolve
+            console.log('✅ Already marked as complete, skipping dialog');
+            resolve();
+            return;
+        }
+        console.log('❌ Not marked as complete yet, showing dialog');
+        const currentContentType = document.querySelector('input[name="content-type"]:checked').value;
+        
+        const confirmMessage = currentContentType === 'kort' 
+            ? 'Marker dette emnet som fullført? (Du har lest den korte versjonen)' 
+            : 'Marker dette emnet som fullført? (Du har lest den detaljerte versjonen)';
+        
+        if (confirm(confirmMessage)) {
+            // Send completion data to server using mark_content_complete service
+            fetch('/learning/api/complete-content', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({
+                    content_type: 'content',
+                    content_id: {{ submodule.submodule_number }},
+                    completion_data: {
+                        content_type_read: currentContentType,
+                        font_size: currentFontSize,
+                        time_spent: Math.floor((Date.now() - startTime) / 1000 / 60)
+                    }
+                })
+            })
+            .then(response => {
+                if (!response.ok) {
+                    throw new Error('Network response was not ok');
+                }
+                return response.json();
+            })
+            .then(data => {
+                if (data.success) {
+                    // Update UI to show completion
+                    const button = document.querySelector('[onclick="markAsComplete()"]');
+                    if (button) {
+                        button.innerHTML = '<i class="fas fa-check mr-2"></i>Fullført';
+                        button.classList.remove('from-green-600', 'to-blue-600');
+                        button.classList.add('from-green-700', 'to-green-700');
+                    }
+                    resolve();
+                } else {
+                    console.warn('Completion tracking failed:', data.error);
+                    alert('Innholdet er lest, men fremgangen ble ikke lagret. (Teknisk feil)');
+                    resolve(); // Still resolve so navigation continues
                 }
             })
-        })
-        .then(response => response.json())
-        .then(data => {
-            if (data.success) {
-                alert('Emnet er markert som fullført!');
-                // Update UI to show completion
-                const button = document.querySelector('[onclick="markAsComplete()"]');
-                button.innerHTML = '<i class="fas fa-check mr-2"></i>Fullført';
-                button.classList.remove('from-green-600', 'to-blue-600');
-                button.classList.add('from-green-700', 'to-green-700');
-            } else {
-                alert('Kunne ikke markere som fullført: ' + data.error);
-            }
-        })
-        .catch(error => {
-            console.error('Error:', error);
-            alert('Det oppstod en feil ved markering som fullført.');
-        });
-    }
+            .catch(error => {
+                console.error('Error marking complete:', error);
+                alert('Innholdet er lest, men fremgangen ble ikke lagret. (Nettverksfeil)');
+                resolve(); // Still resolve so navigation continues
+            });
+        } else {
+            resolve(); // User cancelled, but that's fine
+        }
+    });
 }
 
 // Track reading time
