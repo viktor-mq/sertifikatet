@@ -2,7 +2,7 @@ Flask==2.3.2
 Werkzeug>=2.3.8
 Flask-SQLAlchemy==3.0.5
 SQLAlchemy==2.0.20
-Flask-WTF==1.1.1
+Flask-WTF>=1.2.1
 python-dotenv==1.0.0
 Flask-Migrate==4.0.4
 PyMySQL>=1.1.1
