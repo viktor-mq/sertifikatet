@@ -8,7 +8,7 @@ from app import db
 from app.models import User, Achievement, UserAchievement
 from app.gamification_models import (
     UserLevel, DailyChallenge, UserDailyChallenge,
-    WeeklyTournament, TournamentParticipant, PowerUp, UserPowerUp,
+    WeeklyTournament, TournamentParticipant,
     FriendChallenge, XPTransaction
 )
 
@@ -16,13 +16,10 @@ from app.gamification_models import (
 @gamification_bp.route('/dashboard')
 @login_required
 def dashboard():
-    """Gamification dashboard"""
-    # Get user's level info
-    user_level = UserLevel.query.filter_by(user_id=current_user.id).first()
-    if not user_level:
-        user_level = UserLevel(user_id=current_user.id)
-        db.session.add(user_level)
-        db.session.commit()
+    """Gamification dashboard - now fully AJAX-based"""
+    
+    # Don't calculate user_level server-side - let JavaScript handle it via API
+    # This eliminates the conflict between template and AJAX values
     
     # Get daily challenges
     daily_challenges = GamificationService.get_daily_challenges(current_user)
@@ -48,27 +45,17 @@ def dashboard():
     # Get leaderboard rankings
     rankings = GamificationService.get_user_ranking(current_user, 'weekly')
     
-    # Get available power-ups
-    power_ups = PowerUp.query.filter_by(is_active=True).all()
-    user_powerups = UserPowerUp.query.filter_by(
-        user_id=current_user.id,
-        used_at=None
-    ).all()
-    
     # Get recent XP transactions
     recent_xp = XPTransaction.query.filter_by(
         user_id=current_user.id
     ).order_by(XPTransaction.created_at.desc()).limit(10).all()
     
     return render_template('gamification/dashboard.html',
-                         user_level=user_level,
                          daily_challenges=daily_challenges,
                          active_tournaments=active_tournaments,
                          user_tournaments=user_tournaments,
                          recent_achievements=recent_achievements,
                          rankings=rankings,
-                         power_ups=power_ups,
-                         user_powerups=user_powerups,
                          recent_xp=recent_xp)
 
 
@@ -76,36 +63,26 @@ def dashboard():
 @login_required
 def achievements():
     """View all achievements"""
-    # Get all achievements grouped by category
-    all_achievements = Achievement.query.order_by(
-        Achievement.category, Achievement.points
-    ).all()
+    from app.services.achievement_service import AchievementService
     
-    # Get user's earned achievements
-    earned_achievement_ids = [ua.achievement_id for ua in current_user.achievements]
+    # Use the updated AchievementService
+    achievement_service = AchievementService()
+    user_achievements = achievement_service.get_user_achievements(current_user.id)
     
     # Group achievements by category
     achievements_by_category = {}
-    for achievement in all_achievements:
-        category = achievement.category or 'Generelt'
+    for achievement in user_achievements:
+        category = achievement['category'] or 'Generelt'
         if category not in achievements_by_category:
             achievements_by_category[category] = []
-        
-        achievements_by_category[category].append({
-            'achievement': achievement,
-            'earned': achievement.id in earned_achievement_ids,
-            'earned_date': next(
-                (ua.earned_at for ua in current_user.achievements if ua.achievement_id == achievement.id),
-                None
-            )
-        })
+        achievements_by_category[category].append(achievement)
     
     # Calculate progress
-    total_achievements = len(all_achievements)
-    earned_achievements = len(earned_achievement_ids)
+    total_achievements = len(user_achievements)
+    earned_achievements = len([a for a in user_achievements if a['earned']])
     progress_percentage = (earned_achievements / total_achievements * 100) if total_achievements > 0 else 0
     
-    return render_template('gamification/achievements.html',
+    return render_template('progress/achievements.html',
                          achievements_by_category=achievements_by_category,
                          total_achievements=total_achievements,
                          earned_achievements=earned_achievements,
@@ -270,69 +247,6 @@ def daily_challenges():
                          total_xp_earned=total_xp_earned)
 
 
-@gamification_bp.route('/power-ups')
-@login_required
-def power_ups():
-    """View and purchase power-ups"""
-    # Get all available power-ups
-    available_power_ups = PowerUp.query.filter_by(is_active=True).all()
-    
-    # Get user's power-ups
-    user_powerups = UserPowerUp.query.filter_by(
-        user_id=current_user.id
-    ).all()
-    
-    # Group user's power-ups
-    owned_powerups = {}
-    active_powerups = []
-    
-    for up in user_powerups:
-        if up.used_at is None:
-            if up.power_up_id not in owned_powerups:
-                owned_powerups[up.power_up_id] = 0
-            owned_powerups[up.power_up_id] += up.quantity
-        elif up.expires_at and up.expires_at > datetime.utcnow():
-            active_powerups.append(up)
-    
-    return render_template('gamification/power_ups.html',
-                         available_power_ups=available_power_ups,
-                         owned_powerups=owned_powerups,
-                         active_powerups=active_powerups,
-                         user_xp=current_user.total_xp)
-
-
-@gamification_bp.route('/power-up/<int:power_up_id>/buy', methods=['POST'])
-@login_required
-def buy_power_up(power_up_id):
-    """Purchase a power-up"""
-    power_up = PowerUp.query.get_or_404(power_up_id)
-    
-    # Check if user has enough XP
-    if current_user.total_xp < power_up.cost_xp:
-        flash(f'Du trenger {power_up.cost_xp} XP for å kjøpe {power_up.name}', 'error')
-        return redirect(url_for('gamification.power_ups'))
-    
-    # Deduct XP
-    GamificationService.award_xp(
-        current_user,
-        -power_up.cost_xp,
-        'power_up_purchase',
-        f'Kjøpte: {power_up.name}',
-        power_up.id
-    )
-    
-    # Add power-up to user's inventory
-    user_power_up = UserPowerUp(
-        user_id=current_user.id,
-        power_up_id=power_up.id
-    )
-    db.session.add(user_power_up)
-    db.session.commit()
-    
-    flash(f'{power_up.name} kjøpt!', 'success')
-    return redirect(url_for('gamification.power_ups'))
-
-
 @gamification_bp.route('/api/xp-progress')
 @login_required
 def xp_progress():
@@ -359,6 +273,136 @@ def xp_progress():
     })
 
 
+@gamification_bp.route('/debug/create-transactions')
+@login_required
+def create_missing_transactions():
+    """Create XP transactions for existing XP (one-time fix)"""
+    
+    # Only run for admin users or the specific user
+    if not (current_user.username == 'Administrator' or current_user.is_admin or current_user.id == 1):
+        return jsonify({'error': 'Not authorized'}), 403
+    
+    # Check if transactions already exist
+    existing_transactions = XPTransaction.query.filter_by(user_id=current_user.id).count()
+    if existing_transactions > 0:
+        return jsonify({'message': 'Transactions already exist', 'count': existing_transactions})
+    
+    # Create a transaction for the user's current total XP
+    total_xp = current_user.total_xp or 0
+    if total_xp > 0:
+        transaction = XPTransaction(
+            user_id=current_user.id,
+            amount=total_xp,
+            transaction_type='manual_import',
+            description=f'Initial XP import: {total_xp} XP',
+            created_at=datetime.utcnow()
+        )
+        db.session.add(transaction)
+        db.session.commit()
+        
+        return jsonify({
+            'success': True,
+            'message': f'Created transaction for {total_xp} XP',
+            'transaction_id': transaction.id
+        })
+    
+    return jsonify({'message': 'No XP to import'})
+
+
+@gamification_bp.route('/debug/user-info')
+@login_required
+def debug_user_info():
+    """Check current user info for debugging"""
+    return jsonify({
+        'user_id': current_user.id,
+        'username': current_user.username,
+        'is_admin': getattr(current_user, 'is_admin', False),
+        'total_xp': current_user.total_xp,
+        'full_name': getattr(current_user, 'full_name', None)
+    })
+
+
+@gamification_bp.route('/debug/test-quiz-xp')
+@login_required  
+def test_quiz_xp():
+    """Test gamification integration with a fake quiz session"""
+    
+    # Only run for admin users or the specific user
+    if not (current_user.username == 'Administrator' or current_user.is_admin or current_user.id == 1):
+        return jsonify({'error': 'Not authorized'}), 403
+    
+    try:
+        from app.gamification.quiz_integration import process_quiz_completion
+        from app.models import QuizSession
+        from datetime import datetime
+        
+        # Create a fake quiz session for testing
+        fake_quiz_session = type('FakeQuizSession', (), {
+            'id': 999,
+            'user_id': current_user.id,
+            'total_questions': 5,
+            'correct_answers': 4,
+            'score': 80,
+            'time_spent_seconds': 120,
+            'category': 'Trafikkregler',
+            'quiz_type': 'practice'
+        })()
+        
+        # Process gamification rewards
+        rewards = process_quiz_completion(current_user, fake_quiz_session)
+        
+        return jsonify({
+            'success': True,
+            'fake_quiz': {
+                'total_questions': 5,
+                'correct_answers': 4,
+                'score': 80
+            },
+            'rewards': rewards,
+            'user_xp_before': current_user.total_xp,
+            'user_xp_after': 'Check /debug/xp-data for updated value'
+        })
+        
+    except Exception as e:
+        return jsonify({
+            'success': False,
+            'error': str(e),
+            'traceback': str(e.__class__.__name__)
+        })
+
+
+@gamification_bp.route('/debug/xp-data')
+@login_required
+def debug_xp_data():
+    """Debug endpoint to check XP data"""
+    total_xp = current_user.total_xp or 0
+    
+    # XP transactions
+    transactions = XPTransaction.query.filter_by(user_id=current_user.id).all()
+    
+    # Calculated level info
+    current_level = GamificationService.calculate_level_from_xp(total_xp)
+    xp_for_current = GamificationService.calculate_total_xp_for_level(current_level)
+    xp_for_next = GamificationService.calculate_total_xp_for_level(current_level + 1)
+    
+    return jsonify({
+        'user_total_xp': total_xp,
+        'calculated_level': current_level,
+        'progress_xp': total_xp - xp_for_current,
+        'next_level_xp': xp_for_next - xp_for_current,
+        'progress_percentage': int(((total_xp - xp_for_current) / (xp_for_next - xp_for_current)) * 100),
+        'transaction_count': len(transactions),
+        'transactions': [
+            {
+                'amount': t.amount,
+                'type': t.transaction_type,
+                'description': t.description,
+                'created_at': t.created_at.isoformat()
+            } for t in transactions[-5:]  # Last 5
+        ]
+    })
+
+
 @gamification_bp.route('/api/check-achievements', methods=['POST'])
 @login_required
 def check_achievements():
@@ -377,4 +421,50 @@ def check_achievements():
             }
             for achievement in new_achievements
         ]
+    })
+
+
+@gamification_bp.route('/api/level-info')
+@login_required
+def get_level_info():
+    """Get current user level and XP info for real-time updates"""
+    
+    # Single source of truth: user.total_xp
+    total_xp = current_user.total_xp or 0
+    
+    # Calculate everything dynamically
+    current_level = GamificationService.calculate_level_from_xp(total_xp)
+    xp_for_current_level = GamificationService.calculate_total_xp_for_level(current_level)
+    xp_for_next_level = GamificationService.calculate_total_xp_for_level(current_level + 1)
+    
+    # Progress within current level
+    current_xp = total_xp - xp_for_current_level
+    next_level_xp = xp_for_next_level - xp_for_current_level
+    
+    # Progress percentage
+    progress_percentage = int((current_xp / next_level_xp) * 100) if next_level_xp > 0 else 0
+    
+    return jsonify({
+        'current_level': current_level,
+        'current_xp': current_xp,
+        'next_level_xp': next_level_xp,
+        'total_xp': total_xp,
+        'progress_percentage': progress_percentage
+    })
+
+
+@gamification_bp.route('/api/calculate-xp')
+@login_required 
+def calculate_xp():
+    """Calculate XP for given parameters (for testing/preview)"""
+    correct_answers = request.args.get('correct', type=int, default=0)
+    total_questions = request.args.get('total', type=int, default=1)
+    score = request.args.get('score', type=int, default=0)
+    
+    calculation = GamificationService.calculate_quiz_xp(correct_answers, total_questions, score)
+    
+    return jsonify({
+        'total_xp': calculation['total_xp'],
+        'breakdown': calculation['breakdown'],
+        'example_url': f'/gamification/api/calculate-xp?correct=5&total=5&score=100'
     })

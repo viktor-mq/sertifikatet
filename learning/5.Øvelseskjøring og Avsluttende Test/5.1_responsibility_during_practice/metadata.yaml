@@ -1,0 +1,58 @@
+submodule_id: 5.1
+title: "Ansvar og regler under øvingskjøring"
+module_id: 5
+content_version: "1.0"
+last_updated: "2025-07-08"
+ai_generated: true
+difficulty_level: 2
+estimated_minutes: 40
+tags:
+  - "øvingskjøring"
+  - "ledsager"
+  - "trafikalt grunnkurs"
+  - "L-skilt"
+  - "førerkort"
+  - "ansvar"
+learning_objectives:
+  - "Kjenne til alderskrav og kurskrav for øvingskjører."
+  - "Forstå kravene til ledsager (alder, førerkort, tilstand)."
+  - "Vite hvilke krav som stilles til kjøretøyet (L-skilt, speil)."
+  - "Forstå ledsagerens juridiske ansvar under øvingskjøring."
+  - "Kjenne til anbefalinger for trygg og effektiv øvingskjøring."
+prerequisites: ["4.4"]
+linked_questions:
+  - "Krav til øvingskjører"
+  - "Krav til ledsager"
+  - "Utstyr for øvingskjøring"
+  - "Ledsagers ansvar"
+quiz_topics:
+  - "Aldersgrenser for øvingskjøring"
+  - "Krav til ledsagers førerkort"
+  - "Betydningen av L-skilt og ekstra speil"
+  - "Situasjoner der øvingskjøring ikke er tillatt"
+video_shorts_planned:
+  - sequence: 1
+    title: "Øvingskjøring: Hvem, Hva, Hvor?"
+    duration: "45s"
+    topics: ["øvingskjører krav", "ledsager krav", "trafikalt grunnkurs"]
+  - sequence: 2  
+    title: "L-skilt og Ekstra Speil: Derfor er det viktig!"
+    duration: "35s"
+    topics: ["L-skilt", "ekstra speil", "synlighet", "sikkerhet"]
+  - sequence: 3
+    title: "Ledsagerens Ansvar: Du er sjefen!"
+    duration: "50s"
+    topics: ["juridisk ansvar", "overta kjøring", "edru/opplagt"]
+  - sequence: 4
+    title: "Unngå disse feilene under øvingskjøring!"
+    duration: "40s"
+    topics: ["for tidlig start", "dårlig kommunikasjon", "manglende utstyr"]
+engagement_metrics:
+  target_completion_rate: 85
+  target_time_minutes: 40
+  difficulty_rating: "Lett"
+content_structure:
+  word_count_content: 1499
+  word_count_summary: 299
+  sections: 5
+  subsections: 14

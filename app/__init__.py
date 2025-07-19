@@ -3,12 +3,14 @@ from flask_sqlalchemy import SQLAlchemy
 from flask_migrate import Migrate
 from config import Config
 from flask_login import LoginManager
+from flask_wtf.csrf import CSRFProtect
 
 
 db = SQLAlchemy()
 migrate = Migrate()
 login_manager = LoginManager()
 login_manager.login_view = 'auth.login'
+csrf = CSRFProtect()
 
 
 # User loader callback for Flask-Login
@@ -28,6 +30,9 @@ def create_app(config_class=None):
     
     # Initialize Flask-Login
     login_manager.init_app(app)
+    
+    # Initialize CSRF protection (TODO: Implement properly across all forms)
+    # csrf.init_app(app)
     
     # Initialize extensions
     db.init_app(app)
@@ -116,6 +121,16 @@ def create_app(config_class=None):
                 return []
         return value or []
     
+    # Register CSRF token context processor
+    @app.context_processor
+    def inject_csrf_token():
+        from flask_wtf.csrf import generate_csrf
+        try:
+            return dict(csrf_token=generate_csrf)
+        except Exception as e:
+            app.logger.error(f"Error generating CSRF token: {e}")
+            return dict(csrf_token=lambda: 'csrf-error')
+    
     # Register game blueprint
     from .game import game_bp
     app.register_blueprint(game_bp)
@@ -133,7 +148,6 @@ def create_app(config_class=None):
     with app.app_context():
         try:
             ml_service.initialize()
-            app.logger.info("ML Service initialized successfully")
         except Exception as e:
             app.logger.error(f"Failed to initialize ML Service: {e}")
             # Continue without ML - graceful degradation
@@ -167,6 +181,7 @@ def create_app(config_class=None):
     with app.app_context():
         # Import all models to ensure they're registered
         from . import models, gamification_models, video_models, payment_models, notification_models, marketing_models, ad_models
+        # NOTE: learning models now use existing tables via services, no separate import needed
         from .ml import models as ml_models
         db.create_all()
         

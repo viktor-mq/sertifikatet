@@ -1,0 +1,56 @@
+
+
+submodule_id: 1.4
+title: "Plassering og feltskifte"
+module_id: 1
+content_version: "1.0"
+last_updated: "2025-07-08"
+ai_generated: true
+difficulty_level: 2
+estimated_minutes: 35
+tags:
+  - "plassering"
+  - "feltskifte"
+  - "trafikksikkerhet"
+  - "veioppmerking"
+learning_objectives:
+  - "Forstå korrekt plassering i ulike trafikksituasjoner"
+  - "Mestre sikker og lovlig feltskifte"
+  - "Gjenkjenne og respektere spesialfelt"
+  - "Bruke tegn og observasjon for å unngå farlige situasjoner"
+prerequisites: ["1.3"]
+linked_questions:
+  - "Hvor skal du plassere deg i kjørebanen?"
+  - "Hvilke regler gjelder for feltskifte?"
+  - "Når og hvordan skal blinklys brukes?"
+quiz_topics:
+  - "Riktig plassering i felt"
+  - "Sikker feltskifte-prosedyre"
+  - "Bruk av blinklys og speil"
+  - "Regler for spesialfelt"
+video_shorts_planned:
+  - sequence: 1
+    title: "Slik plasserer du deg riktig i veien"
+    duration: "30s"
+    topics: ["plassering", "kjørefelt"]
+  - sequence: 2
+    title: "Trygt feltskifte – steg for steg"
+    duration: "35s"
+    topics: ["feltskifte", "sikkerhet"]
+  - sequence: 3
+    title: "Blindsoner og skulderblikk – unngå uhell"
+    duration: "25s"
+    topics: ["skulderblikk", "observasjon"]
+  - sequence: 4
+    title: "Zipper-fletting og samspill i kø"
+    duration: "30s"
+    topics: ["fletting", "trafikksamspill"]
+engagement_metrics:
+  target_completion_rate: 85
+  target_time_minutes: 35
+  difficulty_rating: "Middels"
+content_structure:
+  word_count_content: 1140
+  word_count_summary: 253
+  sections: 6
+  subsections: 9

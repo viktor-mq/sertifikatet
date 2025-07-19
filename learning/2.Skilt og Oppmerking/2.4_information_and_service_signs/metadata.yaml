@@ -1,0 +1,57 @@
+submodule_id: 2.4
+title: "Opplysningsskilt og serviceskilt"
+module_id: 2
+content_version: "1.0"
+last_updated: "2025-07-08"
+ai_generated: true
+difficulty_level: 2
+estimated_minutes: 30
+tags:
+  - "opplysningsskilt"
+  - "serviceskilt"
+  - "trafikkskilt"
+  - "parkering"
+  - "motorvei"
+  - "enveiskjøring"
+learning_objectives:
+  - "Identifisere og forstå de vanligste opplysningsskiltene."
+  - "Forstå betydningen av skilt for motorvei, enveiskjøring og tettbygd strøk."
+  - "Tolke parkeringsskilt og deres underskilt korrekt."
+  - "Skille mellom opplysningsskilt og serviceskilt."
+prerequisites: ["2.3"]
+linked_questions:
+  - "Opplysningsskilt generelt"
+  - "Motorvei og motortrafikkvei"
+  - "Parkering og underskilt"
+  - "Enveiskjøring"
+quiz_topics:
+  - "Tolkning av opplysningsskilt"
+  - "Regler for motorvei"
+  - "Korrekt tolkning av parkeringsskilt"
+  - "Forskjellen på opplysning og service"
+video_shorts_planned:
+  - sequence: 1
+    title: "Firkantet skilt? Dette betyr det!"
+    duration: "30s"
+    topics: ["design", "informasjon", "blå vs hvit"]
+  - sequence: 2  
+    title: "Parkering: Ikke gå i underskilt-fella!"
+    duration: "55s"
+    topics: ["P-skilt", "underskilt", "tid", "avgift", "plassering"]
+  - sequence: 3
+    title: "Motorvei vs. Tettbygd strøk: Bytt modus!"
+    duration: "45s"
+    topics: ["motorveiskilt", "tettbygd strøk-skilt", "fartsendring", "regler"]
+  - sequence: 4
+    title: "Serviceskiltene som redder turen din"
+    duration: "35s"
+    topics: ["bensin", "rasteplass", "verksted", "planlegging"]
+engagement_metrics:
+  target_completion_rate: 80
+  target_time_minutes: 30
+  difficulty_rating: "Lett"
+content_structure:
+  word_count_content: 1124
+  word_count_summary: 276
+  sections: 5
+  subsections: 12

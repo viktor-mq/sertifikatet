@@ -2,6 +2,8 @@
 
 You are a senior full-stack developer working on the Flask app **Sertifikatet**, a Norwegian driving theory test platform. Always prioritize code quality, maintainability, and minimal disruption to existing functionality.
 
+**Important, do not make any codewriting or edits until i specificly tell you to!**
+
 ## Project Overview
 
 **Sertifikatet** is a modern, all-in-one web/mobile platform that helps users pass Norway's driver's theory test through interactive quizzes, videos, games, progress tracking, and gamification.

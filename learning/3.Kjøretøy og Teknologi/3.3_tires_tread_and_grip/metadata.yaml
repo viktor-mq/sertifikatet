@@ -1,0 +1,59 @@
+submodule_id: 3.3
+title: "Dekk, mønsterdybde og grep"
+module_id: 3
+content_version: "1.0"
+last_updated: "2025-07-08"
+ai_generated: true
+difficulty_level: 3
+estimated_minutes: 35
+tags:
+  - "dekk"
+  - "mønsterdybde"
+  - "grep"
+  - "lufttrykk"
+  - "vannplaning"
+  - "vinterdekk"
+  - "sommerdekk"
+learning_objectives:
+  - "Forstå dekkets funksjon og betydning for sikkerhet."
+  - "Kjenne til lovkrav for mønsterdybde på sommer- og vinterdekk."
+  - "Forstå årsaker til og hvordan man unngår/reagerer på vannplaning."
+  - "Vite viktigheten av riktig lufttrykk og hvordan det påvirker kjøreegenskaper."
+  - "Kunne velge riktig dekktype for sesongen."
+prerequisites: ["3.2"]
+linked_questions:
+  - "Mønsterdybde krav"
+  - "Vannplaning årsaker"
+  - "Lufttrykk konsekvenser"
+  - "Dekktyper og sesong"
+quiz_topics:
+  - "Lovkrav for mønsterdybde"
+  - "Faktorer som påvirker vannplaning"
+  - "Konsekvenser av feil lufttrykk"
+  - "Forskjeller mellom sommer- og vinterdekk"
+video_shorts_planned:
+  - sequence: 1
+    title: "Dekk: Din eneste kontakt med veien!"
+    duration: "30s"
+    topics: ["funksjon", "grep", "sikkerhet"]
+  - sequence: 2  
+    title: "Mønsterdybde: Slik sjekker du og unngår vannplaning"
+    duration: "50s"
+    topics: ["lovkrav", "sjekk", "vannplaning", "reaksjon"]
+  - sequence: 3
+    title: "Sommer, Vinter, Allvær: Hvilket dekk skal du velge?"
+    duration: "45s"
+    topics: ["dekktyper", "sesong", "egenskaper"]
+  - sequence: 4
+    title: "Lufttrykk: Den glemte sikkerhetsfaktoren"
+    duration: "40s"
+    topics: ["viktighet", "sjekk", "konsekvenser av feil trykk"]
+engagement_metrics:
+  target_completion_rate: 80
+  target_time_minutes: 35
+  difficulty_rating: "Middels"
+content_structure:
+  word_count_content: 1499
+  word_count_summary: 299
+  sections: 5
+  subsections: 14

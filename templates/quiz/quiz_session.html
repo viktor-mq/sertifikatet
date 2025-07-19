@@ -1,1 +1,323 @@
-<!-- Placeholder for quiz_session.html in templates/quiz -->
+{% extends "base.html" %}
+
+{% block title %}Quiz - {{ category|title }} - Sertifikatet{% endblock %}
+
+{% block content %}
+<div class="max-w-4xl mx-auto px-6 py-8" id="quiz-container">
+    <!-- Quiz Header -->
+    <div class="glass rounded-xl p-6 mb-6">
+        <div class="flex justify-between items-center mb-4">
+            <div>
+                <h1 class="text-2xl font-bold text-white">
+                    {% if category %}{{ category|title }}{% else %}Generell{% endif %} Quiz
+                </h1>
+                <p class="text-gray-300">Spørsmål <span id="currentQuestion">1</span> av <span id="totalQuestions">{{ questions|length }}</span></p>
+            </div>
+            <div class="text-right">
+                <div class="text-lg font-bold text-white" id="timer">00:00</div>
+                <div class="text-sm text-gray-400">Tid brukt</div>
+            </div>
+        </div>
+        
+        <!-- Progress Bar -->
+        <div class="bg-gray-700 rounded-full h-2">
+            <div id="progressBar" class="bg-gradient-to-r from-purple-500 to-pink-500 h-2 rounded-full transition-all duration-300" style="width: 5%"></div>
+        </div>
+    </div>
+
+    <!-- Quiz Form -->
+    <form id="quizForm" data-quiz-form="true" data-session-id="{{ session.id if session else '' }}">
+        <input type="hidden" id="startTime" name="start_time" value="">
+        <input type="hidden" name="session_id" value="{{ session.id if session else '' }}">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+        
+        <div id="questionsContainer">
+            {% for question in questions %}
+            <div class="question-card glass rounded-xl p-8 mb-6" 
+                 data-question-id="{{ question.id }}" 
+                 style="{% if not loop.first %}display: none;{% endif %}">
+                
+                <!-- Question -->
+                <div class="mb-6">
+                    <h2 class="text-xl font-semibold text-white mb-4">
+                        {{ question.question }}
+                    </h2>
+                    
+                    {% if question.image_filename %}
+                    <div class="mb-4">
+                        {% set path = [] %}
+                        {% if question.image_folder %}
+                          {% set path = ['images', question.image_folder, question.image_filename] %}
+                        {% else %}
+                          {% set path = ['images', question.image_filename] %}
+                        {% endif %}
+                        <img src="{{ url_for('static', filename=path | join('/')) }}" 
+                             alt="Spørsmålsbilde" 
+                             class="max-w-full h-auto rounded-lg shadow-lg">
+                    </div>
+                    {% endif %}
+                </div>
+
+                <!-- Answer Options -->
+                <div class="space-y-3 mb-6">
+                    {% for option in question.options %}
+                    <label class="answer-option block cursor-pointer">
+                        <div class="glass rounded-lg p-4 hover:bg-white/10 transition-all duration-200 border-2 border-transparent hover:border-purple-400">
+                            <div class="flex items-center">
+                                <input type="radio" 
+                                       name="question_{{ question.id }}" 
+                                       value="{{ option.option_letter }}"
+                                       data-question-id="{{ question.id }}"
+                                       class="sr-only">
+                                <div class="w-8 h-8 rounded-full border-2 border-gray-400 flex items-center justify-center mr-4 text-sm font-bold">
+                                    {{ option.option_letter|upper }}
+                                </div>
+                                <span class="text-white font-medium">{{ option.option_text }}</span>
+                            </div>
+                        </div>
+                    </label>
+                    {% endfor %}
+                </div>
+            </div>
+            {% endfor %}
+        </div>
+
+        <!-- Navigation -->
+        <div class="glass rounded-xl p-6">
+            <div class="flex justify-between items-center mb-6">
+                <button type="button" id="prevBtn" 
+                        class="bg-gray-600 hover:bg-gray-700 text-white font-medium py-2 px-6 rounded-lg transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed"
+                        disabled>
+                    <i class="fas fa-chevron-left mr-2"></i>Forrige
+                </button>
+                
+                <div class="flex space-x-2">
+                    {% for question in questions %}
+                    <button type="button" 
+                            class="question-nav w-10 h-10 rounded-full border-2 border-gray-400 text-sm font-bold transition-all duration-200 hover:border-purple-400"
+                            data-question-index="{{ loop.index0 }}"
+                            onclick="goToQuestion({{ loop.index0 }})">
+                        {{ loop.index }}
+                    </button>
+                    {% endfor %}
+                </div>
+                
+                <div>
+                    <button type="button" id="nextBtn" 
+                            class="bg-purple-600 hover:bg-purple-700 text-white font-medium py-2 px-6 rounded-lg transition-all duration-200">
+                        Neste <i class="fas fa-chevron-right ml-2"></i>
+                    </button>
+                    <button type="submit" id="submitBtn" 
+                            class="bg-gradient-to-r from-green-600 to-emerald-600 hover:from-green-700 hover:to-emerald-700 text-white font-bold py-2 px-6 rounded-lg transition-all duration-200"
+                            style="display: none;">
+                        <i class="fas fa-paper-plane mr-2"></i>Send inn quiz
+                    </button>
+                </div>
+            </div>
+            
+            <!-- Mobile Navigation -->
+            <div class="flex justify-center space-x-4 md:hidden">
+                <button type="button" 
+                        onclick="changeQuestion(-1)"
+                        class="bg-gray-600 hover:bg-gray-700 text-white p-3 rounded-full transition-all duration-200">
+                    <i class="fas fa-chevron-left"></i>
+                </button>
+                <button type="button" 
+                        onclick="changeQuestion(1)"
+                        class="bg-purple-600 hover:bg-purple-700 text-white p-3 rounded-full transition-all duration-200">
+                    <i class="fas fa-chevron-right"></i>
+                </button>
+            </div>
+        </div>
+    </form>
+</div>
+
+<style>
+/* Answer option styling */
+.answer-option input[type="radio"]:checked + div {
+    background: rgba(168, 85, 247, 0.2);
+    border-color: #a855f7;
+}
+
+.answer-option input[type="radio"]:checked + div .w-8 {
+    background: #a855f7;
+    border-color: #a855f7;
+    color: white;
+}
+
+/* Question navigation styling */
+.question-nav.current {
+    background: #a855f7;
+    border-color: #a855f7;
+    color: white;
+}
+
+.question-nav.answered {
+    background: rgba(34, 197, 94, 0.2);
+    border-color: #22c55e;
+    color: #22c55e;
+}
+
+.question-nav.answered.current {
+    background: #22c55e;
+    color: white;
+}
+
+/* Mobile optimizations */
+@media (max-width: 768px) {
+    .question-nav {
+        width: 2.5rem;
+        height: 2.5rem;
+        font-size: 0.875rem;
+    }
+    
+    .answer-option div {
+        padding: 1rem;
+    }
+    
+    #quiz-container {
+        padding: 1rem;
+    }
+}
+</style>
+
+{% block extra_js %}
+<!-- Gamification System JavaScript -->
+<script src="{{ url_for('static', filename='js/quiz-results-modal.js') }}"></script>
+
+<script>
+// Initialize quiz data for JavaScript
+window.quizData = {
+    sessionId: '{{ session.id if session else "" }}',
+    totalQuestions: {{ questions|length }},
+    category: '{{ category if category else "general" }}',
+    startTime: Date.now()
+};
+
+// Set up CSRF token
+const csrfMeta = document.createElement('meta');
+csrfMeta.name = 'csrf-token';
+csrfMeta.content = '{{ csrf_token() }}';
+document.head.appendChild(csrfMeta);
+
+// Enhanced quiz navigation
+document.addEventListener('DOMContentLoaded', function() {
+    // Initialize quiz
+    document.getElementById('startTime').value = startTime;
+    showQuestion(0);
+    startTimer();
+    
+    // Set up next/previous button event listeners
+    const nextBtn = document.getElementById('nextBtn');
+    const prevBtn = document.getElementById('prevBtn');
+    
+    if (nextBtn) {
+        nextBtn.addEventListener('click', () => changeQuestion(1));
+    }
+    
+    if (prevBtn) {
+        prevBtn.addEventListener('click', () => changeQuestion(-1));
+    }
+    
+    // Enhanced answer selection with better UX
+    document.querySelectorAll('input[type="radio"]').forEach(radio => {
+        radio.addEventListener('change', function() {
+            // Mark question as answered in navigation
+            const questionIndex = Array.from(document.querySelectorAll('.question-card')).findIndex(
+                card => card.dataset.questionId === this.dataset.questionId
+            );
+            
+            const navButton = document.querySelector(`[data-question-index="${questionIndex}"]`);
+            if (navButton) {
+                navButton.classList.add('answered');
+            }
+            
+            // Auto-advance after selection (with delay for mobile)
+            setTimeout(() => {
+                if (currentQuestionIndex < totalQuestions - 1) {
+                    changeQuestion(1);
+                }
+            }, window.innerWidth <= 768 ? 800 : 400);
+        });
+    });
+    
+    console.log('Quiz session template loaded with', {{ questions|length }}, 'questions');
+});
+
+// Essential navigation functions
+let currentQuestionIndex = 0;
+const totalQuestions = {{ questions|length }};
+let timerInterval;
+let startTime = Date.now();
+
+function startTimer() {
+    timerInterval = setInterval(() => {
+        const elapsed = Math.floor((Date.now() - startTime) / 1000);
+        const minutes = Math.floor(elapsed / 60).toString().padStart(2, '0');
+        const seconds = (elapsed % 60).toString().padStart(2, '0');
+        document.getElementById('timer').textContent = `${minutes}:${seconds}`;
+    }, 1000);
+}
+
+function showQuestion(index) {
+    // Hide all questions
+    document.querySelectorAll('.question-card').forEach(card => {
+        card.style.display = 'none';
+    });
+    
+    // Show current question
+    const questions = document.querySelectorAll('.question-card');
+    if (questions[index]) {
+        questions[index].style.display = 'block';
+    }
+    
+    updateProgress(index);
+    updateNavigation(index);
+}
+
+function updateProgress(index) {
+    const progress = ((index + 1) / totalQuestions) * 100;
+    document.getElementById('progressBar').style.width = `${progress}%`;
+    document.getElementById('currentQuestion').textContent = index + 1;
+    
+    // Update navigation buttons
+    document.querySelectorAll('.question-nav').forEach(btn => {
+        btn.classList.remove('current');
+    });
+    const currentNavBtn = document.querySelector(`[data-question-index="${index}"]`);
+    if (currentNavBtn) {
+        currentNavBtn.classList.add('current');
+    }
+}
+
+function updateNavigation(index) {
+    const prevBtn = document.getElementById('prevBtn');
+    const nextBtn = document.getElementById('nextBtn');
+    const submitBtn = document.getElementById('submitBtn');
+    
+    if (prevBtn) prevBtn.disabled = index === 0;
+    
+    if (index === totalQuestions - 1) {
+        if (nextBtn) nextBtn.style.display = 'none';
+        if (submitBtn) submitBtn.style.display = 'block';
+    } else {
+        if (nextBtn) nextBtn.style.display = 'block';
+        if (submitBtn) submitBtn.style.display = 'none';
+    }
+}
+
+function changeQuestion(direction) {
+    const newIndex = currentQuestionIndex + direction;
+    if (newIndex >= 0 && newIndex < totalQuestions) {
+        currentQuestionIndex = newIndex;
+        showQuestion(currentQuestionIndex);
+    }
+}
+
+function goToQuestion(index) {
+    currentQuestionIndex = index;
+    showQuestion(index);
+}
+</script>
+{% endblock %}
+{% endblock %}

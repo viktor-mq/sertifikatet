@@ -1,0 +1,58 @@
+submodule_id: 4.4
+title: "Førstehjelp og ulykkesberedskap"
+module_id: 4
+content_version: "1.0"
+last_updated: "2025-07-08"
+ai_generated: true
+difficulty_level: 3
+estimated_minutes: 30
+tags:
+  - "førstehjelp"
+  - "ulykkesberedskap"
+  - "trafikksikkerhet"
+  - "nødetater"
+  - "HLR"
+  - "varsling"
+learning_objectives:
+  - "Forstå din plikt til å hjelpe ved en ulykke."
+  - "Kunne sikre et ulykkessted for å unngå ytterligere skade."
+  - "Vite hvordan man varsler nødetatene effektivt (113)."
+  - "Mestre grunnleggende førstehjelp som stabilt sideleie og stans av blødninger."
+  - "Forstå viktigheten av å samarbeide med nødetatene."
+prerequisites: ["4.3"]
+linked_questions:
+  - "Plikt til å hjelpe"
+  - "Sikring av ulykkessted"
+  - "Varsling 113"
+  - "Stabilt sideleie"
+quiz_topics:
+  - "Rekkefølge ved ulykke (S-V-L-S)"
+  - "Hva man skal si til 113"
+  - "Grunnleggende førstehjelpsprinsipper"
+  - "Utstyr i bilen for beredskap"
+video_shorts_planned:
+  - sequence: 1
+    title: "Ulykke? Slik sikrer du stedet!"
+    duration: "45s"
+    topics: ["egen sikkerhet", "varseltrekant", "nødblink", "tenning av"]
+  - sequence: 2  
+    title: "Ring 113: Hva MÅ du si?"
+    duration: "50s"
+    topics: ["stedsangivelse", "skadeomfang", "antall skadde", "farer"]
+  - sequence: 3
+    title: "Stabilt sideleie: Redder liv på sekunder!"
+    duration: "60s"
+    topics: ["bevisstløs", "puster", "frie luftveier", "praktisk demonstrasjon"]
+  - sequence: 4
+    title: "Din plikt til å hjelpe: Hvorfor du ikke kan kjøre forbi"
+    duration: "35s"
+    topics: ["moralsk plikt", "juridisk ansvar", "konsekvenser av å ikke hjelpe"]
+engagement_metrics:
+  target_completion_rate: 85
+  target_time_minutes: 30
+  difficulty_rating: "Middels"
+content_structure:
+  word_count_content: 1499
+  word_count_summary: 299
+  sections: 4
+  subsections: 13

@@ -1,5 +1,5 @@
 # app/video/routes.py
-from flask import Blueprint, render_template, request, jsonify, redirect, url_for, flash
+from flask import Blueprint, render_template, request, jsonify, redirect, url_for, flash, current_app
 from flask_login import login_required, current_user
 from app import db
 from app.models import Video, VideoCheckpoint, Question
@@ -12,6 +12,14 @@ from app.utils.subscription_decorators import video_access_required, subscriptio
 import os
 
 video_bp = Blueprint('video', __name__, url_prefix='/video')
+
+
+@video_bp.before_request
+def check_videos_enabled():
+    """Redirect video routes if videos are disabled"""
+    if not current_app.config.get('REGULAR_VIDEOS_ENABLED', True):
+        flash('Videoseksjonen er midlertidig deaktivert', 'info')
+        return redirect(url_for('main.index'))
 
 
 @video_bp.route('/')

@@ -1,0 +1,40 @@
+id: 4
+module_number: 4
+title: "Mennesket i Trafikken"
+description: "Denne modulen utforsker den viktigste faktoren i trafikken: mennesket. Lær hvordan dine egne og andres holdninger, reaksjonsevne og valg påvirker sikkerheten, og hvordan du kan bli en mer bevisst og ansvarlig trafikant."
+estimated_hours: 3.0
+prerequisites: ["3"]
+learning_objectives:
+  - "Forstå hvordan alkohol, rusmidler og trøtthet påvirker kjøreevnen."
+  - "Kjenne til farene ved distraksjoner og hvordan man unngår dem."
+  - "Utvikle en god risikoforståelse og en defensiv kjørestrategi."
+  - "Vite hvordan man skal handle ved ulykker og yte førstehjelp."
+  - "Forstå betydningen av holdninger og samhandling i trafikken."
+content_directory: "4.human_factors_in_traffic"
+is_active: true
+ai_generated: true
+submodules:
+  - id: 4.1
+    title: "Alkohol, rus og reaksjonsevne"
+    description: "Lær om de alvorlige konsekvensene av å kjøre i ruspåvirket tilstand og hvordan det påvirker din evne til å kjøre trygt."
+    estimated_minutes: 45
+    has_quiz: true
+    has_video_shorts: true
+  - id: 4.2
+    title: "Trøtthet og distraksjoner"
+    description: "Forstå hvordan mangel på søvn og uoppmerksomhet kan være like farlig som rus, og hvordan du unngår det."
+    estimated_minutes: 40
+    has_quiz: true
+    has_video_shorts: true
+  - id: 4.3
+    title: "Risikoforståelse og kjørestrategi"
+    description: "Utvikle evnen til å identifisere farer, vurdere risiko og velge en sikker kjørestrategi."
+    estimated_minutes: 45
+    has_quiz: true
+    has_video_shorts: true
+  - id: 4.4
+    title: "Førstehjelp og ulykkesberedskap"
+    description: "Lær hva du skal gjøre hvis du kommer til et ulykkessted, og hvordan du kan redde liv."
+    estimated_minutes: 30
+    has_quiz: true
+    has_video_shorts: true

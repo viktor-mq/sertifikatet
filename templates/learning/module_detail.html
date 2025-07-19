@@ -1,0 +1,194 @@
+{% extends "base.html" %}
+
+{% block title %}{{ module.name }} - Sertifikatet{% endblock %}
+
+{% block content %}
+<div class="min-h-screen bg-gradient-to-br from-purple-900 via-blue-900 to-indigo-900">
+    <div class="container mx-auto px-4 py-8">
+        <!-- Back Button -->
+        <div class="mb-6">
+            <a href="{{ url_for('learning.index') }}" class="inline-flex items-center text-white hover:text-blue-300 transition-colors">
+                <i class="fas fa-arrow-left mr-2"></i>
+                Tilbake til læringsveier
+            </a>
+        </div>
+
+        <!-- Module Header -->
+        <div class="bg-white/10 backdrop-blur-lg rounded-xl p-8 mb-8 border border-white/20">
+            <div class="flex flex-col md:flex-row justify-between items-start md:items-center">
+                <div class="mb-4 md:mb-0">
+                    <h1 class="text-4xl font-bold text-white mb-4">{{ module.name }}</h1>
+                    <p class="text-xl text-blue-200 mb-4">{{ module.description }}</p>
+                    
+                    <div class="flex flex-wrap gap-4 text-gray-300">
+                        <div class="flex items-center">
+                            <i class="fas fa-clock mr-2"></i>
+                            <span>{{ module.estimated_hours }} timer</span>
+                        </div>
+                        <div class="flex items-center">
+                            <i class="fas fa-layer-group mr-2"></i>
+                            <span>{{ module|length }} moduler</span>
+                        </div>
+                        <div class="flex items-center">
+                            <i class="fas fa-signal mr-2"></i>
+                            <span>Nivå {{ module.difficulty_level }}</span>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="text-center">
+                    {% if user_module %}
+                        <div class="mb-4">
+                            <div class="text-5xl font-bold text-white">{{ progress }}%</div>
+                            <div class="text-gray-300">fullført</div>
+                        </div>
+                        {% if progress >= 100 %}
+                        <div class="px-4 py-2 bg-green-500 text-white rounded-lg">
+                            <i class="fas fa-check-circle mr-2"></i>Fullført!
+                        </div>
+                        {% endif %}
+                    {% else %}
+                        <form action="{{ url_for('learning.enroll_module', module_id=module.id) }}" method="POST">
+                            <button type="submit" class="px-6 py-3 bg-gradient-to-r from-purple-600 to-pink-600 text-white font-semibold rounded-lg hover:from-purple-700 hover:to-pink-700 transition-all duration-300">
+                                <i class="fas fa-plus mr-2"></i>Start denne læringsveien
+                            </button>
+                        </form>
+                    {% endif %}
+                </div>
+            </div>
+
+            <!-- Progress Bar -->
+            {% if user_module %}
+            <div class="mt-6">
+                <div class="w-full bg-gray-700 rounded-full h-3">
+                    <div class="bg-gradient-to-r from-green-400 to-blue-500 h-3 rounded-full transition-all duration-500"
+                         style="width: {{ progress }}%"></div>
+                </div>
+            </div>
+            {% endif %}
+        </div>
+
+        <!-- module Items -->
+        <div class="space-y-4">
+            {% for item_info in module_items %}
+            <div class="bg-white/10 backdrop-blur-lg rounded-xl p-6 border border-white/20 
+                        {% if item_info.completed %}bg-green-900/20 border-green-500/30{% endif %}
+                        {% if item_info.locked %}opacity-60{% endif %}">
+                <div class="flex items-center justify-between">
+                    <div class="flex items-center">
+                        <!-- Status Icon -->
+                        <div class="mr-4">
+                            {% if item_info.completed %}
+                                <div class="w-12 h-12 bg-green-500 rounded-full flex items-center justify-center">
+                                    <i class="fas fa-check text-white text-xl"></i>
+                                </div>
+                            {% elif item_info.locked %}
+                                <div class="w-12 h-12 bg-gray-600 rounded-full flex items-center justify-center">
+                                    <i class="fas fa-lock text-gray-400 text-xl"></i>
+                                </div>
+                            {% else %}
+                                <div class="w-12 h-12 bg-blue-600 rounded-full flex items-center justify-center">
+                                    <span class="text-white font-bold">{{ item_info.item.order_index }}</span>
+                                </div>
+                            {% endif %}
+                        </div>
+
+                        <!-- Item Info -->
+                        <div>
+                            <div class="flex items-center mb-2">
+                                <h3 class="text-xl font-semibold text-white">
+                                    {% if item_info.item.item_type == 'quiz' %}
+                                        <i class="fas fa-question-circle mr-2"></i>Quiz: {{ item_info.item.item_id }}
+                                    {% elif item_info.item.item_type == 'video' %}
+                                        <i class="fas fa-video mr-2"></i>Video: {{ item_info.content.title if item_info.content else 'Video' }}
+                                    {% elif item_info.item.item_type == 'game' %}
+                                        <i class="fas fa-gamepad mr-2"></i>Spill: {{ item_info.content.name if item_info.content else 'Spill' }}
+                                    {% endif %}
+                                </h3>
+                                {% if item_info.item.is_mandatory %}
+                                <span class="ml-2 px-2 py-1 bg-red-500/20 text-red-300 text-sm rounded">Obligatorisk</span>
+                                {% endif %}
+                            </div>
+                            
+                            {% if item_info.locked %}
+                            <p class="text-gray-400">Fullfør tidligere obligatoriske moduler for å låse opp</p>
+                            {% elif item_info.completed %}
+                            <p class="text-green-400"><i class="fas fa-check-circle mr-1"></i>Fullført</p>
+                            {% else %}
+                            <p class="text-gray-300">Klar til å starte</p>
+                            {% endif %}
+                        </div>
+                    </div>
+
+                    <!-- Action Button -->
+                    {% if user_module and not item_info.locked %}
+                        {% if item_info.item.item_type == 'quiz' %}
+                            <a href="{{ url_for('quiz.quiz', category=item_info.item.item_id, learning_module_id=module.id) }}" 
+                               class="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors">
+                                {% if item_info.completed %}
+                                    <i class="fas fa-redo mr-2"></i>Gjør på nytt
+                                {% else %}
+                                    <i class="fas fa-play mr-2"></i>Start
+                                {% endif %}
+                            </a>
+                        {% elif item_info.item.item_type == 'video' and item_info.content %}
+                            <a href="{{ url_for('video.watch', video_id=item_info.content.id) }}" 
+                               class="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors">
+                                {% if item_info.completed %}
+                                    <i class="fas fa-redo mr-2"></i>Se igjen
+                                {% else %}
+                                    <i class="fas fa-play mr-2"></i>Se video
+                                {% endif %}
+                            </a>
+                        {% elif item_info.item.item_type == 'game' and item_info.content %}
+                            <a href="{{ url_for('game.play', scenario_id=item_info.content.id) }}" 
+                               class="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors">
+                                {% if item_info.completed %}
+                                    <i class="fas fa-redo mr-2"></i>Spill igjen
+                                {% else %}
+                                    <i class="fas fa-play mr-2"></i>Spill
+                                {% endif %}
+                            </a>
+                        {% endif %}
+                    {% endif %}
+                </div>
+            </div>
+            {% endfor %}
+        </div>
+
+        <!-- Certificate Section -->
+        {% if user_module and progress >= 100 %}
+        <div class="mt-12 text-center">
+            <div class="bg-gradient-to-r from-yellow-500 to-orange-500 rounded-xl p-8 inline-block">
+                <i class="fas fa-trophy text-6xl text-white mb-4"></i>
+                <h2 class="text-3xl font-bold text-white mb-2">Gratulerer!</h2>
+                <p class="text-white">Du har fullført denne læringsveien!</p>
+            </div>
+        </div>
+        {% endif %}
+    </div>
+</div>
+
+<script>
+// Update progress when items are completed
+function updateModuleProgress(moduleId, completedItems) {
+    fetch(`/learning/${moduleId}/item/complete`, {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+            completed_items: completedItems
+        })
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            // Reload page to show updated progress
+            window.location.reload();
+        }
+    })
+    .catch(error => console.error('Error updating progress:', error));
+}
+</script>
+{% endblock %}

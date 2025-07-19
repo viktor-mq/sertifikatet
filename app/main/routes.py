@@ -12,6 +12,7 @@ from ..models import Question, Option, QuizSession, QuizResponse, User, UserProg
 from ..services.progress_service import ProgressService
 from ..services.achievement_service import AchievementService
 from ..services.leaderboard_service import LeaderboardService
+from ..gamification.services import GamificationService
 
 
 @main_bp.route('/ads.txt')
@@ -41,6 +42,12 @@ def offline():
     return render_template('offline.html')
 
 
+@main_bp.route('/script-test')
+def script_test():
+    """Test script loading for debugging"""
+    return render_template('script_test.html')
+
+
 @main_bp.route('/')
 def index():
     """Home page with dynamic subscription plans and dashboard for logged-in users"""
@@ -63,6 +70,18 @@ def index():
         try:
             progress_service = ProgressService()
             dashboard_data = progress_service.get_user_dashboard_data(current_user.id)
+            
+            # Get daily challenge data
+            daily_challenges = GamificationService.get_daily_challenges(current_user)
+            dashboard_data['daily_challenges'] = daily_challenges
+            
+            # Get incomplete quiz sessions for "Fortsett Quiz"
+            incomplete_session = QuizSession.query.filter_by(
+                user_id=current_user.id,
+                completed_at=None
+            ).order_by(QuizSession.started_at.desc()).first()
+            dashboard_data['incomplete_session'] = incomplete_session
+            
         except Exception as e:
             # Fallback to None if dashboard data fails
             print(f"Dashboard data error: {e}")
@@ -134,12 +153,23 @@ def exam():
 @main_bp.route('/quiz', methods=['GET', 'POST'])
 @login_required
 def quiz():
-    """Main quiz page"""
+    """Main quiz page with different quiz types"""
     # Get quiz parameters
     quiz_type = request.args.get('type', 'practice')
     category = request.args.get('category')
     limit = request.args.get('limit', type=int)
-    learning_path_id = request.args.get('learning_path_id', type=int)
+    learning_module_id = request.args.get('learning_module_id', type=int)
+    
+    # Set default limits based on quiz type
+    if not limit:
+        if quiz_type == 'exam':
+            limit = 45  # Standard theory exam length
+        elif quiz_type == 'practice':
+            limit = 20
+        elif quiz_type == 'quick':
+            limit = 10
+        else:
+            limit = 20
     
     # Check subscription limits
     from ..services.payment_service import SubscriptionService, UsageLimitService
@@ -150,8 +180,8 @@ def quiz():
         return redirect(url_for('subscription.plans'))
     
     # If from learning path, set quiz_type
-    if learning_path_id:
-        quiz_type = 'learning_path'
+    if learning_module_id:
+        quiz_type = 'learning_module'
     
     # For exam mode, always use 45 questions
     if quiz_type == 'exam':
@@ -243,7 +273,7 @@ def quiz():
     return render_template('quiz.html', 
                          questions=questions, 
                          quiz_type=quiz_type, 
-                         learning_path_id=learning_path_id,
+                         learning_module_id=learning_module_id,
                          seo=seo_data,
                          structured_data=structured_data)
 
@@ -310,12 +340,29 @@ def submit_quiz():
         response = QuizResponse(
             session_id=quiz_session.id,
             question_id=result['question'].id,
+            category=result['question'].category,  # Store actual question category
+            subcategory=result['question'].subcategory,  # Store granular subcategory
             user_answer=result['user_answer'],
             is_correct=result['is_correct']
         )
         db.session.add(response)
     
     db.session.commit()
+    
+    # 🎯 GAMIFICATION INTEGRATION - Award XP for quiz completion
+    gamification_rewards = {
+        'xp_earned': 0,
+        'achievements': [],
+        'level_ups': [],
+        'daily_challenges': []
+    }
+    
+    try:
+        from ..gamification.quiz_integration import process_quiz_completion
+        gamification_rewards = process_quiz_completion(current_user, quiz_session)
+    except Exception as e:
+        current_app.logger.error(f'Gamification error: {e}')
+        # Continue without gamification if it fails
     
     # Update user progress using the service
     progress_service = ProgressService()
@@ -325,12 +372,12 @@ def submit_quiz():
     achievement_service = AchievementService()
     new_achievements = achievement_service.check_achievements(user_id)
     
-    # If this was a learning path quiz and passed (>= 80%), update learning path progress
-    if quiz_type == 'learning_path' and score >= 80:
+    # If this was a learning module quiz and passed (>= 80%), update learning module progress
+    if quiz_type == 'learning_module' and score >= 80:
         from ..services.learning_service import LearningService
-        learning_path_id = request.form.get('learning_path_id', type=int)
-        if learning_path_id:
-            LearningService.update_path_progress(user_id, learning_path_id)
+        learning_module_id = request.form.get('learning_module_id', type=int)
+        if learning_module_id:
+            LearningService.update_module_progress(user_id, learning_module_id)
     
     # Update leaderboards
     leaderboard_service = LeaderboardService()
@@ -350,8 +397,23 @@ def submit_quiz():
                 'icon': ach.icon_filename
             } for ach in new_achievements
         ]
+
+    # If the request is AJAX, return JSON
+    if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
+        return jsonify({
+            'success': True,
+            'message': 'Quiz submitted successfully.',
+            'redirect_url': url_for('main.quiz_results', session_id=quiz_session.id),
+            'session_id': quiz_session.id,
+            'results': {
+                'score': score,
+                'correct_answers': correct_count,
+                'total_questions': total_questions
+            },
+            'gamification': gamification_rewards  # 🎯 Include gamification rewards
+        })
     
-    # Redirect to results page
+    # Otherwise, redirect as usual
     return redirect(url_for('main.quiz_results', session_id=quiz_session.id))
 
 
@@ -575,10 +637,23 @@ def achievements():
     """Achievements page"""
     # Get achievement stats for template
     achievement_service = AchievementService()
-    achievements_data = achievement_service.get_user_achievements(current_user.id)
+    user_achievements = achievement_service.get_user_achievements(current_user.id)
     
-    total_earned = len([a for a in achievements_data if a['earned']])
-    total_available = len(achievements_data)
+    # Group achievements by category
+    achievements_by_category = {}
+    for achievement in user_achievements:
+        category = achievement['category'] or 'Generelt'
+        if category not in achievements_by_category:
+            achievements_by_category[category] = []
+        achievements_by_category[category].append(achievement)
+    
+    # Calculate progress
+    total_achievements = len(user_achievements)
+    earned_achievements = len([a for a in user_achievements if a['earned']])
+    progress_percentage = (earned_achievements / total_achievements * 100) if total_achievements > 0 else 0
+    
+    total_earned = earned_achievements
+    total_available = total_achievements
     
     # Generate SEO data for achievements page
     from ..utils.seo import SEOGenerator
@@ -590,9 +665,22 @@ def achievements():
     )
     
     return render_template('progress/achievements.html',
+                         achievements_by_category=achievements_by_category,
+                         total_achievements=total_achievements,
+                         earned_achievements=earned_achievements,
+                         progress_percentage=progress_percentage,
                          total_earned=total_earned,
                          total_available=total_available,
                          seo=seo_data)
+
+
+@main_bp.route('/api/clear-achievement-notifications', methods=['POST'])
+@login_required
+def clear_achievement_notifications():
+    """Clear achievement notifications from session after they've been shown"""
+    if 'new_achievements' in session:
+        session.pop('new_achievements', None)
+    return jsonify({'status': 'success'})
 
 
 @main_bp.route('/leaderboard')
@@ -696,3 +784,6 @@ def deploy_webhook():
     except Exception as e:
         current_app.logger.error(f'Webhook error: {str(e)}')
         return jsonify({'error': 'Webhook processing failed'}), 500
+
+
+

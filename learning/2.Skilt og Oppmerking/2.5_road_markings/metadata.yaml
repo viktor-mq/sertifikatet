@@ -1,0 +1,57 @@
+submodule_id: 2.5
+title: "Vegoppmerking – linjer og symboler"
+module_id: 2
+content_version: "1.0"
+last_updated: "2025-07-08"
+ai_generated: true
+difficulty_level: 3
+estimated_minutes: 45
+tags:
+  - "vegoppmerking"
+  - "kjørefeltlinje"
+  - "midtlinje"
+  - "gangfelt"
+  - "stopplinje"
+  - "trafikkregler"
+learning_objectives:
+  - "Forstå betydningen av ulike typer langsgående linjer (heltrukken, stiplet, kombinert)."
+  - "Skille mellom gul og hvit midtlinje."
+  - "Identifisere og forstå funksjonen til tverrgående linjer som stopplinje og vikelinje."
+  - "Tolke piler og symboler i kjørefeltet som påbud."
+prerequisites: ["2.4"]
+linked_questions:
+  - "Vegoppmerking generelt"
+  - "Langsgående linjer"
+  - "Tverrgående linjer"
+  - "Symboler i veibanen"
+quiz_topics:
+  - "Betydningen av heltrukne og stiplede linjer"
+  - "Regler for forbikjøring basert på midtlinje"
+  - "Funksjonen til stopplinje, vikelinje og gangfelt"
+  - "Påbud gitt av piler i kjørefeltet"
+video_shorts_planned:
+  - sequence: 1
+    title: "Heltrukken vs. Stiplet: Forskjellen på lov og lovbrudd"
+    duration: "40s"
+    topics: ["heltrukken linje", "stiplet linje", "forbud", "tillatelse"]
+  - sequence: 2  
+    title: "Gul linje: Hva betyr den egentlig?"
+    duration: "50s"
+    topics: ["midtlinje", "varsellinje", "kombinert linje", "forbikjøring"]
+  - sequence: 3
+    title: "Haifinner, piler og striper: Symbolene du MÅ kunne"
+    duration: "60s"
+    topics: ["vikelinje", "stopplinje", "gangfelt", "kjørefeltpiler"]
+  - sequence: 4
+    title: "Den vanligste feilen folk gjør med vegoppmerking"
+    duration: "35s"
+    topics: ["kombinert linje", "feiltolkning", "fare"]
+engagement_metrics:
+  target_completion_rate: 75
+  target_time_minutes: 45
+  difficulty_rating: "Middels"
+content_structure:
+  word_count_content: 1198
+  word_count_summary: 263
+  sections: 5
+  subsections: 14

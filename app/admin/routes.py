@@ -5,18 +5,20 @@ from flask import render_template, request, redirect, url_for, session, current_
 from flask_login import login_required, current_user
 from werkzeug.utils import secure_filename
 from io import StringIO, BytesIO
-from sqlalchemy import text, inspect
+from sqlalchemy import text, inspect, func
 from . import admin_bp
 from functools import wraps
 
 from .utils import validate_question
 from .. import db
-from ..models import Question, Option, TrafficSign, QuizImage, User, AdminAuditLog, AdminReport, UserFeedback, QuizSession, QuizResponse
+from ..models import Question, Option, TrafficSign, QuizImage, User, AdminAuditLog, AdminReport, UserFeedback, QuizSession, QuizResponse, LearningModules, LearningSubmodules, Achievement, UserAchievement, Video
+from ..gamification_models import WeeklyTournament, TournamentParticipant, DailyChallenge, UserDailyChallenge, XPReward, XPTransaction, UserLevel
 from ..marketing_models import MarketingEmail, MarketingTemplate, MarketingEmailLog
 from ..marketing_service import MarketingEmailService
 from ..security.admin_security import AdminSecurityService
+from ..services.file_upload import FileUploadService
 import json
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, date
 
 # Setup logger for admin operations
 logger = logging.getLogger(__name__)
@@ -2217,6 +2219,548 @@ def api_reports():
     except Exception as e:
         return jsonify({'error': str(e)}), 500
 
+
+# ===================================
+# LEARNING MODULES ADMIN API ROUTES
+# ===================================
+
+@admin_bp.route('/api/learning-modules', methods=['GET'])
+@admin_required
+def get_learning_modules():
+    """Get all learning modules with statistics"""
+    try:
+        # Get filter parameters
+        status_filter = request.args.get('status', '')
+        search_filter = request.args.get('search', '')
+        
+        # Build query
+        query = LearningModules.query
+        
+        # Apply filters
+        if status_filter == 'active':
+            query = query.filter(LearningModules.is_active == True)
+        elif status_filter == 'inactive':
+            query = query.filter(LearningModules.is_active == False)
+            
+        if search_filter:
+            query = query.filter(
+                db.or_(
+                    LearningModules.title.ilike(f'%{search_filter}%'),
+                    LearningModules.description.ilike(f'%{search_filter}%')
+                )
+            )
+        
+        # Order by module number
+        modules = query.order_by(LearningModules.module_number).all()
+        
+        # Format modules with additional stats
+        modules_data = []
+        for module in modules:
+            # Get submodule count
+            submodule_count = LearningSubmodules.query.filter_by(
+                module_id=module.id, is_active=True
+            ).count()
+            
+            # Get video count for this module
+            video_count = db.session.query(Video).join(
+                LearningSubmodules,
+                Video.theory_module_ref == func.cast(LearningSubmodules.submodule_number, db.String)
+            ).filter(
+                LearningSubmodules.module_id == module.id,
+                Video.is_active == True,
+                Video.aspect_ratio == '9:16'  # Only count short videos
+            ).count()
+            
+            module_dict = module.to_dict()
+            module_dict['submodule_count'] = submodule_count
+            module_dict['video_count'] = video_count
+            modules_data.append(module_dict)
+        
+        # Calculate overall statistics
+        total_modules = LearningModules.query.count()
+        total_submodules = LearningSubmodules.query.filter_by(is_active=True).count()
+        total_videos = Video.query.filter_by(is_active=True).count()
+        
+        # Calculate average completion rate
+        avg_completion = db.session.query(func.avg(LearningModules.completion_rate)).scalar() or 0
+        
+        stats = {
+            'total_modules': total_modules,
+            'total_submodules': total_submodules,
+            'total_videos': total_videos,
+            'avg_completion_rate': float(avg_completion)
+        }
+        
+        return jsonify({
+            'modules': modules_data,
+            'stats': stats
+        })
+        
+    except Exception as e:
+        logger.error(f"Error getting learning modules: {str(e)}")
+        return jsonify({'error': str(e)}), 500
+
+
+@admin_bp.route('/api/learning-modules', methods=['POST'])
+@admin_required
+def create_learning_module():
+    """Create a new learning module"""
+    try:
+        data = request.get_json()
+        
+        # Validation
+        if not data.get('title'):
+            return jsonify({'error': 'Module title is required'}), 400
+            
+        if not data.get('module_number'):
+            return jsonify({'error': 'Module number is required'}), 400
+        
+        # Check if module number already exists
+        existing = LearningModules.query.filter_by(
+            module_number=data['module_number']
+        ).first()
+        if existing:
+            return jsonify({'error': 'Module number already exists'}), 400
+        
+        # Create new module
+        module = LearningModules(
+            module_number=float(data['module_number']),
+            title=data['title'].strip(),
+            description=data.get('description', '').strip() or None,
+            estimated_hours=data.get('estimated_hours'),
+            is_active=True,
+            created_at=datetime.utcnow(),
+            updated_at=datetime.utcnow()
+        )
+        
+        db.session.add(module)
+        db.session.commit()
+        
+        # Log admin action
+        AdminSecurityService.log_admin_action(
+            current_user,
+            f"Created learning module: {module.title} (#{module.module_number})"
+        )
+        
+        return jsonify({
+            'success': True,
+            'message': 'Module created successfully',
+            'module': module.to_dict()
+        })
+        
+    except Exception as e:
+        db.session.rollback()
+        logger.error(f"Error creating learning module: {str(e)}")
+        return jsonify({'error': str(e)}), 500
+
+
+@admin_bp.route('/api/learning-modules/<int:module_id>', methods=['GET'])
+@admin_required
+def get_learning_module(module_id):
+    """Get a specific learning module"""
+    try:
+        module = LearningModules.query.get_or_404(module_id)
+        return jsonify(module.to_dict())
+        
+    except Exception as e:
+        logger.error(f"Error getting learning module {module_id}: {str(e)}")
+        return jsonify({'error': str(e)}), 500
+
+
+@admin_bp.route('/api/learning-modules/<int:module_id>', methods=['PUT'])
+@admin_required
+def update_learning_module(module_id):
+    """Update a learning module"""
+    try:
+        module = LearningModules.query.get_or_404(module_id)
+        data = request.get_json()
+        
+        # Validation
+        if not data.get('title'):
+            return jsonify({'error': 'Module title is required'}), 400
+            
+        if not data.get('module_number'):
+            return jsonify({'error': 'Module number is required'}), 400
+        
+        # Check if module number conflicts with another module
+        if float(data['module_number']) != module.module_number:
+            existing = LearningModules.query.filter(
+                LearningModules.module_number == data['module_number'],
+                LearningModules.id != module_id
+            ).first()
+            if existing:
+                return jsonify({'error': 'Module number already exists'}), 400
+        
+        # Update module
+        module.module_number = float(data['module_number'])
+        module.title = data['title'].strip()
+        module.description = data.get('description', '').strip() or None
+        module.estimated_hours = data.get('estimated_hours')
+        module.is_active = data.get('is_active', True)
+        module.updated_at = datetime.utcnow()
+        
+        db.session.commit()
+        
+        # Log admin action
+        AdminSecurityService.log_admin_action(
+            current_user,
+            f"Updated learning module: {module.title} (#{module.module_number})"
+        )
+        
+        return jsonify({
+            'success': True,
+            'message': 'Module updated successfully',
+            'module': module.to_dict()
+        })
+        
+    except Exception as e:
+        db.session.rollback()
+        logger.error(f"Error updating learning module {module_id}: {str(e)}")
+        return jsonify({'error': str(e)}), 500
+
+
+@admin_bp.route('/api/learning-modules/<int:module_id>', methods=['DELETE'])
+@admin_required
+def delete_learning_module(module_id):
+    """Delete a learning module and all associated content"""
+    try:
+        module = LearningModules.query.get_or_404(module_id)
+        
+        # Store module info for logging
+        module_info = f"{module.title} (#{module.module_number})"
+        
+        # Delete associated submodules and their videos
+        submodules = LearningSubmodules.query.filter_by(module_id=module_id).all()
+        for submodule in submodules:
+            # Delete videos associated with this submodule
+            videos = Video.query.filter(
+                func.cast(Video.submodule_id, db.Float) == submodule.submodule_number
+            ).all()
+            for video in videos:
+                # Delete video progress records
+                UserShortsProgress.query.filter_by(shorts_id=video.id).delete()
+                # Delete video file if it exists
+                if video.file_path and os.path.exists(video.file_path):
+                    try:
+                        os.remove(video.file_path)
+                    except OSError:
+                        pass  # Continue even if file deletion fails
+                db.session.delete(video)
+            
+            db.session.delete(submodule)
+        
+        # Delete the module itself
+        db.session.delete(module)
+        db.session.commit()
+        
+        # Log admin action
+        AdminSecurityService.log_admin_action(
+            current_user,
+            f"Deleted learning module: {module_info}"
+        )
+        
+        return jsonify({
+            'success': True,
+            'message': 'Module deleted successfully'
+        })
+        
+    except Exception as e:
+        db.session.rollback()
+        logger.error(f"Error deleting learning module {module_id}: {str(e)}")
+        return jsonify({'error': str(e)}), 500
+
+
+@admin_bp.route('/api/learning-modules/<int:module_id>/submodules', methods=['GET'])
+@admin_required
+def get_module_submodules(module_id):
+    """Get submodules for a specific module"""
+    try:
+        module = LearningModules.query.get_or_404(module_id)
+        
+        submodules = LearningSubmodules.query.filter_by(
+            module_id=module_id,
+            is_active=True
+        ).order_by(LearningSubmodules.submodule_number).all()
+        
+        submodules_data = []
+        for submodule in submodules:
+            submodule_dict = {
+                'id': submodule.id,
+                'submodule_number': submodule.submodule_number,
+                'title': submodule.title,
+                'description': submodule.description,
+                'estimated_minutes': submodule.estimated_minutes,
+                'has_video_shorts': submodule.has_video_shorts,
+                'is_active': submodule.is_active
+            }
+            submodules_data.append(submodule_dict)
+        
+        return jsonify({
+            'submodules': submodules_data
+        })
+        
+    except Exception as e:
+        logger.error(f"Error getting submodules for module {module_id}: {str(e)}")
+        return jsonify({'error': str(e)}), 500
+
+# Learning Modules API Routes
+@admin_bp.route('/api/learning-modules')
+@admin_required
+def api_learning_modules():
+    """API endpoint for learning modules with filtering and stats"""
+    try:
+        # Import here to avoid circular imports
+        from ..models import LearningModules, LearningSubmodules, Video
+        
+        # Get filter parameters
+        status = request.args.get('status', '')
+        search = request.args.get('search', '')
+        
+        # Build query
+        query = LearningModules.query
+        
+        # Apply filters
+        if status == 'active':
+            query = query.filter(LearningModules.is_active == True)
+        elif status == 'inactive':
+            query = query.filter(LearningModules.is_active == False)
+            
+        if search:
+            query = query.filter(
+                LearningModules.title.contains(search) |
+                LearningModules.description.contains(search)
+            )
+        
+        # Get modules ordered by module_number
+        modules = query.order_by(LearningModules.module_number).all()
+        
+        # Format modules data with counts
+        modules_data = []
+        for module in modules:
+            # Count submodules
+            submodule_count = LearningSubmodules.query.filter_by(module_id=module.id, is_active=True).count()
+            
+            # Count videos (through submodules)
+            video_count = db.session.query(Video).join(
+                LearningSubmodules, 
+                Video.submodule_id == LearningSubmodules.submodule_number
+            ).filter(
+                LearningSubmodules.module_id == module.id,
+                Video.is_active == True
+            ).count()
+            
+            modules_data.append({
+                'id': module.id,
+                'module_number': module.module_number,
+                'title': module.title,
+                'description': module.description,
+                'estimated_hours': module.estimated_hours,
+                'is_active': module.is_active,
+                'completion_rate': module.completion_rate or 0,
+                'submodule_count': submodule_count,
+                'video_count': video_count,
+                'created_at': module.created_at.isoformat() if module.created_at else None,
+                'updated_at': module.updated_at.isoformat() if module.updated_at else None
+            })
+        
+        # Calculate stats
+        total_modules = len(modules)
+        total_submodules = LearningSubmodules.query.filter_by(is_active=True).count()
+        total_videos = Video.query.filter_by(is_active=True).count()
+        avg_completion_rate = db.session.query(func.avg(LearningModules.completion_rate)).scalar() or 0
+        
+        stats = {
+            'total_modules': total_modules,
+            'total_submodules': total_submodules,
+            'total_videos': total_videos,
+            'avg_completion_rate': float(avg_completion_rate) if avg_completion_rate else 0
+        }
+        
+        return jsonify({
+            'modules': modules_data,
+            'stats': stats
+        })
+        
+    except Exception as e:
+        current_app.logger.error(f'Error in api_learning_modules: {str(e)}')
+        return jsonify({'error': str(e)}), 500
+
+@admin_bp.route('/api/learning-modules', methods=['POST'])
+@admin_required
+def api_create_learning_module():
+    """Create a new learning module"""
+    try:
+        from ..models import LearningModules
+        
+        data = request.get_json()
+        
+        # Validation
+        if not data.get('title'):
+            return jsonify({'success': False, 'message': 'Title is required'}), 400
+            
+        if not data.get('module_number'):
+            return jsonify({'success': False, 'message': 'Module number is required'}), 400
+        
+        # Check if module number already exists
+        existing = LearningModules.query.filter_by(module_number=data['module_number']).first()
+        if existing:
+            return jsonify({'success': False, 'message': 'Module number already exists'}), 400
+        
+        # Create new module
+        module = LearningModules(
+            module_number=data['module_number'],
+            title=data['title'],
+            description=data.get('description', ''),
+            estimated_hours=data.get('estimated_hours'),
+            is_active=True
+        )
+        
+        db.session.add(module)
+        db.session.commit()
+        
+        return jsonify({
+            'success': True, 
+            'message': 'Module created successfully',
+            'module': {
+                'id': module.id,
+                'module_number': module.module_number,
+                'title': module.title
+            }
+        })
+        
+    except Exception as e:
+        db.session.rollback()
+        current_app.logger.error(f'Error creating learning module: {str(e)}')
+        return jsonify({'success': False, 'message': str(e)}), 500
+
+@admin_bp.route('/api/learning-modules/<int:module_id>')
+@admin_required
+def api_get_learning_module(module_id):
+    """Get a specific learning module"""
+    try:
+        from ..models import LearningModules
+        
+        module = LearningModules.query.get_or_404(module_id)
+        
+        return jsonify({
+            'id': module.id,
+            'module_number': module.module_number,
+            'title': module.title,
+            'description': module.description,
+            'estimated_hours': module.estimated_hours,
+            'is_active': module.is_active,
+            'completion_rate': module.completion_rate or 0,
+            'created_at': module.created_at.isoformat() if module.created_at else None,
+            'updated_at': module.updated_at.isoformat() if module.updated_at else None
+        })
+        
+    except Exception as e:
+        current_app.logger.error(f'Error getting learning module: {str(e)}')
+        return jsonify({'error': str(e)}), 500
+
+@admin_bp.route('/api/learning-modules/<int:module_id>', methods=['PUT'])
+@admin_required
+def api_update_learning_module(module_id):
+    """Update a learning module"""
+    try:
+        from ..models import LearningModules
+        
+        module = LearningModules.query.get_or_404(module_id)
+        data = request.get_json()
+        
+        # Validation
+        if not data.get('title'):
+            return jsonify({'success': False, 'message': 'Title is required'}), 400
+            
+        # Check if module number conflicts (excluding current module)
+        if data.get('module_number') and data['module_number'] != module.module_number:
+            existing = LearningModules.query.filter(
+                LearningModules.module_number == data['module_number'],
+                LearningModules.id != module_id
+            ).first()
+            if existing:
+                return jsonify({'success': False, 'message': 'Module number already exists'}), 400
+        
+        # Update module
+        if 'module_number' in data:
+            module.module_number = data['module_number']
+        if 'title' in data:
+            module.title = data['title']
+        if 'description' in data:
+            module.description = data['description']
+        if 'estimated_hours' in data:
+            module.estimated_hours = data['estimated_hours']
+        if 'is_active' in data:
+            module.is_active = data['is_active']
+            
+        module.updated_at = datetime.utcnow()
+        
+        db.session.commit()
+        
+        return jsonify({
+            'success': True, 
+            'message': 'Module updated successfully'
+        })
+        
+    except Exception as e:
+        db.session.rollback()
+        current_app.logger.error(f'Error updating learning module: {str(e)}')
+        return jsonify({'success': False, 'message': str(e)}), 500
+
+@admin_bp.route('/api/learning-modules/<int:module_id>', methods=['DELETE'])
+@admin_required
+def api_delete_learning_module(module_id):
+    """Delete a learning module"""
+    try:
+        from ..models import LearningModules
+        
+        module = LearningModules.query.get_or_404(module_id)
+        
+        # In a production system, you might want to soft delete or check for dependencies
+        db.session.delete(module)
+        db.session.commit()
+        
+        return jsonify({
+            'success': True, 
+            'message': 'Module deleted successfully'
+        })
+        
+    except Exception as e:
+        db.session.rollback()
+        current_app.logger.error(f'Error deleting learning module: {str(e)}')
+        return jsonify({'success': False, 'message': str(e)}), 500
+
+@admin_bp.route('/api/learning-modules/<int:module_id>/submodules')
+@admin_required
+def api_get_module_submodules(module_id):
+    """Get submodules for a specific module"""
+    try:
+        from ..models import LearningModules, LearningSubmodules
+        
+        module = LearningModules.query.get_or_404(module_id)
+        submodules = LearningSubmodules.query.filter_by(
+            module_id=module_id, 
+            is_active=True
+        ).order_by(LearningSubmodules.submodule_number).all()
+        
+        submodules_data = []
+        for submodule in submodules:
+            submodules_data.append({
+                'id': submodule.id,
+                'submodule_number': submodule.submodule_number,
+                'title': submodule.title,
+                'description': submodule.description,
+                'estimated_minutes': submodule.estimated_minutes
+            })
+        
+        return jsonify({
+            'submodules': submodules_data
+        })
+        
+    except Exception as e:
+        current_app.logger.error(f'Error getting module submodules: {str(e)}')
+        return jsonify({'error': str(e)}), 500
+
 # Marketing Email API Endpoints
 
 @admin_bp.route('/api/marketing-recipients')
@@ -3162,3 +3706,1787 @@ def api_audit_logs():
         
     except Exception as e:
         return jsonify({'error': str(e)}), 500
+
+# ===== LEARNING MODULES ADMIN API ROUTES =====
+# Add this section to the very end of app/admin/routes.py
+
+@admin_bp.route('/api/learning-modules')
+@admin_required
+def admin_api_learning_modules():
+    """Get all learning modules with statistics for admin interface"""
+    try:
+        modules = LearningModules.query.order_by(LearningModules.module_number).all()
+        
+        modules_data = []
+        for module in modules:
+            # Get submodule count
+            submodule_count = LearningSubmodules.query.filter_by(
+                module_id=module.id, is_active=True
+            ).count()
+            
+            # Get video shorts count
+            video_count = db.session.query(Video).join(
+                LearningSubmodules, 
+                Video.submodule_id == LearningSubmodules.submodule_number
+            ).filter(
+                LearningSubmodules.module_id == module.id,
+                Video.is_active == True
+            ).count()
+            
+            modules_data.append({
+                'id': module.id,
+                'module_number': module.module_number,
+                'title': module.title,
+                'description': module.description,
+                'estimated_hours': module.estimated_hours,
+                'submodule_count': submodule_count,
+                'video_count': video_count,
+                'completion_rate': module.completion_rate or 0,
+                'is_active': module.is_active,
+                'has_content_directory': bool(module.content_directory),
+                'last_updated': module.last_content_update.isoformat() if module.last_content_update else None,
+                'created_at': module.created_at.isoformat() if module.created_at else None
+            })
+        
+        # Calculate statistics
+        total_modules = len(modules_data)
+        total_submodules = sum(m['submodule_count'] for m in modules_data)
+        total_videos = sum(m['video_count'] for m in modules_data)
+        avg_completion = sum(m['completion_rate'] for m in modules_data) / total_modules if total_modules > 0 else 0
+        
+        return jsonify({
+            'modules': modules_data,
+            'stats': {
+                'total_modules': total_modules,
+                'total_submodules': total_submodules,
+                'total_videos': total_videos,
+                'avg_completion_rate': avg_completion
+            }
+        })
+        
+    except Exception as e:
+        logger.error(f'Error in admin_api_learning_modules: {str(e)}')
+        return jsonify({'error': str(e)}), 500
+
+@admin_bp.route('/api/learning-modules', methods=['POST'])
+@admin_required
+def admin_create_learning_module():
+    """Create a new learning module"""
+    try:
+        data = request.get_json()
+        
+        # Validate required fields
+        required_fields = ['title']
+        for field in required_fields:
+            if field not in data or not data[field].strip():
+                return jsonify({'error': f'Missing required field: {field}'}), 400
+        
+        # Get next module number if not provided
+        module_number = data.get('module_number')
+        if not module_number:
+            last_module = LearningModules.query.order_by(LearningModules.module_number.desc()).first()
+            module_number = (last_module.module_number if last_module else 0) + 1
+        
+        # Create module
+        module = LearningModules(
+            module_number=float(module_number),
+            title=data['title'].strip(),
+            description=data.get('description', '').strip(),
+            estimated_hours=float(data.get('estimated_hours', 0)) if data.get('estimated_hours') else None,
+            prerequisites=json.dumps(data.get('prerequisites', [])),
+            learning_objectives=json.dumps(data.get('learning_objectives', [])),
+            is_active=True,
+            ai_generated=False,
+            created_at=datetime.utcnow(),
+            updated_at=datetime.utcnow()
+        )
+        
+        db.session.add(module)
+        db.session.commit()
+        
+        # Log admin action
+        AdminSecurityService.log_admin_action(
+            current_user, 'create_learning_module', 
+            additional_info=f'Created module: {module.title}'
+        )
+        
+        return jsonify({
+            'success': True, 
+            'module_id': module.id,
+            'message': f'Module "{module.title}" created successfully'
+        })
+        
+    except Exception as e:
+        logger.error(f'Error creating learning module: {str(e)}')
+        db.session.rollback()
+        return jsonify({'error': str(e)}), 500
+
+@admin_bp.route('/api/learning-modules/<int:module_id>')
+@admin_required
+def admin_get_learning_module(module_id):
+    """Get a specific learning module"""
+    try:
+        module = LearningModules.query.get_or_404(module_id)
+        
+        return jsonify({
+            'id': module.id,
+            'module_number': module.module_number,
+            'title': module.title,
+            'description': module.description,
+            'estimated_hours': module.estimated_hours,
+            'prerequisites': module.get_prerequisites_list() if hasattr(module, 'get_prerequisites_list') else [],
+            'learning_objectives': module.get_learning_objectives_list() if hasattr(module, 'get_learning_objectives_list') else [],
+            'is_active': module.is_active,
+            'content_directory': module.content_directory,
+            'created_at': module.created_at.isoformat() if module.created_at else None,
+            'updated_at': module.updated_at.isoformat() if module.updated_at else None
+        })
+        
+    except Exception as e:
+        logger.error(f'Error getting learning module {module_id}: {str(e)}')
+        return jsonify({'error': str(e)}), 500
+
+@admin_bp.route('/api/learning-modules/<int:module_id>', methods=['PUT'])
+@admin_required
+def admin_update_learning_module(module_id):
+    """Update an existing learning module"""
+    try:
+        module = LearningModules.query.get_or_404(module_id)
+        data = request.get_json()
+        
+        # Update fields if provided
+        if 'title' in data and data['title'].strip():
+            module.title = data['title'].strip()
+        if 'description' in data:
+            module.description = data['description'].strip()
+        if 'estimated_hours' in data:
+            module.estimated_hours = float(data['estimated_hours']) if data['estimated_hours'] else None
+        if 'module_number' in data:
+            module.module_number = float(data['module_number'])
+        if 'prerequisites' in data:
+            module.prerequisites = json.dumps(data['prerequisites'])
+        if 'learning_objectives' in data:
+            module.learning_objectives = json.dumps(data['learning_objectives'])
+        if 'is_active' in data:
+            module.is_active = bool(data['is_active'])
+        
+        module.updated_at = datetime.utcnow()
+        db.session.commit()
+        
+        # Log admin action
+        AdminSecurityService.log_admin_action(
+            current_user, 'update_learning_module',
+            additional_info=f'Updated module: {module.title}'
+        )
+        
+        return jsonify({
+            'success': True,
+            'message': f'Module "{module.title}" updated successfully'
+        })
+        
+    except Exception as e:
+        logger.error(f'Error updating learning module {module_id}: {str(e)}')
+        db.session.rollback()
+        return jsonify({'error': str(e)}), 500
+
+@admin_bp.route('/api/learning-modules/<int:module_id>', methods=['DELETE'])
+@admin_required
+def admin_delete_learning_module(module_id):
+    """Delete a learning module and its content"""
+    try:
+        from ..services.file_upload import FileUploadService
+        
+        module = LearningModules.query.get_or_404(module_id)
+        module_title = module.title
+        
+        # Delete content files and directories
+        FileUploadService.delete_content('module', module_id)
+        
+        # Log admin action
+        AdminSecurityService.log_admin_action(
+            current_user, 'delete_learning_module',
+            additional_info=f'Deleted module: {module_title}'
+        )
+        
+        return jsonify({
+            'success': True,
+            'message': f'Module "{module_title}" deleted successfully'
+        })
+        
+    except Exception as e:
+        logger.error(f'Error deleting learning module {module_id}: {str(e)}')
+        db.session.rollback()
+        return jsonify({'error': str(e)}), 500
+
+@admin_bp.route('/api/learning-modules/<int:module_id>/submodules')
+@admin_required
+def admin_get_module_submodules(module_id):
+    """Get all submodules for a specific module"""
+    try:
+        module = LearningModules.query.get_or_404(module_id)
+        submodules = LearningSubmodules.query.filter_by(
+            module_id=module_id
+        ).order_by(LearningSubmodules.submodule_number).all()
+        
+        submodules_data = []
+        for submodule in submodules:
+            # Count video shorts for this submodule
+            video_count = Video.query.filter_by(
+                submodule_id=submodule.submodule_number,
+                is_active=True
+            ).count()
+            
+            submodules_data.append({
+                'id': submodule.id,
+                'submodule_number': submodule.submodule_number,
+                'title': submodule.title,
+                'description': submodule.description,
+                'estimated_minutes': submodule.estimated_minutes,
+                'difficulty_level': submodule.difficulty_level,
+                'has_quiz': submodule.has_quiz,
+                'has_video_shorts': submodule.has_video_shorts,
+                'video_count': video_count,
+                'is_active': submodule.is_active,
+                'has_content': bool(submodule.content_file_path),
+                'has_summary': bool(submodule.summary_file_path),
+                'last_updated': submodule.last_content_update.isoformat() if submodule.last_content_update else None
+            })
+        
+        return jsonify({
+            'module': {
+                'id': module.id,
+                'title': module.title,
+                'module_number': module.module_number
+            },
+            'submodules': submodules_data
+        })
+        
+    except Exception as e:
+        logger.error(f'Error getting submodules for module {module_id}: {str(e)}')
+        return jsonify({'error': str(e)}), 500
+
+@admin_bp.route('/api/upload-video', methods=['POST'])
+@admin_required
+def admin_upload_video():
+    """Upload video file for learning modules"""
+    try:
+        from ..services.file_upload import FileUploadService
+        
+        if 'video_file' not in request.files:
+            return jsonify({'error': 'No video file provided'}), 400
+        
+        video_file = request.files['video_file']
+        if video_file.filename == '':
+            return jsonify({'error': 'No file selected'}), 400
+        
+        # Get form data
+        submodule_id = request.form.get('submodule_id')
+        if not submodule_id:
+            return jsonify({'error': 'Submodule ID is required'}), 400
+        
+        try:
+            submodule_id = int(submodule_id)
+        except (ValueError, TypeError):
+            return jsonify({'error': 'Invalid submodule ID'}), 400
+        
+        if not FileUploadService.allowed_file(video_file.filename, 'video'):
+            return jsonify({'error': 'Invalid video format. Only MP4, MOV, AVI, MKV allowed.'}), 400
+        
+        if not FileUploadService.validate_file_size(video_file, 'video'):
+            return jsonify({'error': 'Video file too large. Maximum size is 300MB.'}), 400
+        
+        # Get video metadata from form
+        video_metadata = {
+            'title': request.form.get('title', 'Untitled Video').strip(),
+            'description': request.form.get('description', '').strip(),
+            'duration_seconds': int(request.form.get('duration_seconds', 60)),
+            'difficulty_level': int(request.form.get('difficulty_level', 1))
+        }
+        
+        if not video_metadata['title']:
+            return jsonify({'error': 'Video title is required'}), 400
+        
+        # Upload video
+        video_id = FileUploadService.upload_video_short(submodule_id, video_file, video_metadata)
+        
+        # Log admin action
+        submodule = LearningSubmodules.query.get(submodule_id)
+        AdminSecurityService.log_admin_action(
+            current_user, 'upload_learning_video',
+            additional_info=f'Uploaded video "{video_metadata["title"]}" for submodule: {submodule.title if submodule else submodule_id}'
+        )
+        
+        return jsonify({
+            'success': True,
+            'video_id': video_id,
+            'message': 'Video uploaded successfully'
+        })
+        
+    except Exception as e:
+        logger.error(f'Error uploading video: {str(e)}')
+        return jsonify({'error': str(e)}), 500
+    
+# Add these routes to your app/admin/routes.py file
+
+@admin_bp.route('/api/learning-modules/<int:module_id>/upload-yaml', methods=['POST'])
+@admin_required
+def upload_module_yaml(module_id):
+    """Upload module.yaml file for a learning module"""
+    try:
+        # Check if YAML file is present
+        if 'yaml_file' not in request.files:
+            return jsonify({'error': 'No YAML file provided'}), 400
+            
+        yaml_file = request.files['yaml_file']
+        if yaml_file.filename == '':
+            return jsonify({'error': 'No YAML file selected'}), 400
+        
+        # Validate file type
+        if not yaml_file.filename.lower().endswith(('.yaml', '.yml')):
+            return jsonify({'error': 'Only YAML files (.yaml, .yml) are supported'}), 400
+        
+        # Verify module exists
+        module = LearningModules.query.get_or_404(module_id)
+        
+        # Read and validate YAML content
+        try:
+            yaml_content = yaml_file.read().decode('utf-8')
+        except UnicodeDecodeError:
+            return jsonify({'error': 'Invalid file encoding. Please use UTF-8'}), 400
+        
+        # Use FileUploadService to upload YAML
+        from ..services.file_upload import FileUploadService
+        FileUploadService.upload_module_yaml(module_id, yaml_content)
+        
+        # Log admin action
+        AdminSecurityService.log_admin_action(
+            current_user,
+            f"Uploaded module.yaml for module: {module.title} (#{module.module_number})"
+        )
+        
+        return jsonify({
+            'success': True,
+            'message': 'Module YAML uploaded successfully'
+        })
+        
+    except Exception as e:
+        logger.error(f"Error uploading module YAML for module {module_id}: {str(e)}")
+        return jsonify({'error': str(e)}), 500
+
+
+@admin_bp.route('/api/learning-submodules/<int:submodule_id>/upload-content', methods=['POST'])
+@admin_required
+def upload_submodule_content(submodule_id):
+    """Upload long.md or short.md content for a submodule"""
+    try:
+        # Check if content file is present
+        if 'content_file' not in request.files:
+            return jsonify({'error': 'No content file provided'}), 400
+            
+        content_file = request.files['content_file']
+        if content_file.filename == '':
+            return jsonify({'error': 'No content file selected'}), 400
+        
+        # Get content type from form data
+        content_type = request.form.get('content_type')
+        if content_type not in ['long', 'short']:
+            return jsonify({'error': 'Content type must be "long" or "short"'}), 400
+        
+        # Validate file type
+        if not content_file.filename.lower().endswith('.md'):
+            return jsonify({'error': 'Only Markdown files (.md) are supported'}), 400
+        
+        # Verify submodule exists
+        submodule = LearningSubmodules.query.get_or_404(submodule_id)
+        
+        # Read markdown content
+        try:
+            markdown_content = content_file.read().decode('utf-8')
+        except UnicodeDecodeError:
+            return jsonify({'error': 'Invalid file encoding. Please use UTF-8'}), 400
+        
+        # Use FileUploadService to upload markdown content
+        from ..services.file_upload import FileUploadService
+        FileUploadService.upload_markdown_content(submodule_id, content_type, markdown_content)
+        
+        # Log admin action
+        AdminSecurityService.log_admin_action(
+            current_user,
+            f"Uploaded {content_type}.md for submodule: {submodule.title} (#{submodule.submodule_number})"
+        )
+        
+        return jsonify({
+            'success': True,
+            'message': f'{content_type.capitalize()} content uploaded successfully'
+        })
+        
+    except Exception as e:
+        logger.error(f"Error uploading content for submodule {submodule_id}: {str(e)}")
+        return jsonify({'error': str(e)}), 500
+
+
+@admin_bp.route('/api/learning-submodules/<int:submodule_id>/upload-metadata', methods=['POST'])
+@admin_required
+def upload_submodule_metadata(submodule_id):
+    """Upload metadata.yaml file for a submodule"""
+    try:
+        # Check if metadata file is present
+        if 'content_file' not in request.files:
+            return jsonify({'error': 'No metadata file provided'}), 400
+            
+        metadata_file = request.files['content_file']
+        if metadata_file.filename == '':
+            return jsonify({'error': 'No metadata file selected'}), 400
+        
+        # Validate file type
+        if not metadata_file.filename.lower().endswith(('.yaml', '.yml')):
+            return jsonify({'error': 'Only YAML files (.yaml, .yml) are supported'}), 400
+        
+        # Verify submodule exists
+        submodule = LearningSubmodules.query.get_or_404(submodule_id)
+        
+        # Read and validate YAML content
+        try:
+            metadata_content = metadata_file.read().decode('utf-8')
+        except UnicodeDecodeError:
+            return jsonify({'error': 'Invalid file encoding. Please use UTF-8'}), 400
+        
+        # Use FileUploadService to upload metadata
+        from ..services.file_upload import FileUploadService
+        FileUploadService.upload_submodule_metadata(submodule_id, metadata_content)
+        
+        # Log admin action
+        AdminSecurityService.log_admin_action(
+            current_user,
+            f"Uploaded metadata.yaml for submodule: {submodule.title} (#{submodule.submodule_number})"
+        )
+        
+        return jsonify({
+            'success': True,
+            'message': 'Metadata uploaded successfully'
+        })
+        
+    except Exception as e:
+        logger.error(f"Error uploading metadata for submodule {submodule_id}: {str(e)}")
+        return jsonify({'error': str(e)}), 500
+
+
+@admin_bp.route('/api/export-content', methods=['GET'])
+@admin_required
+def export_learning_content():
+    """Export learning content in various formats"""
+    try:
+        # Get export parameters
+        export_type = request.args.get('type', 'all')  # 'all' or 'module'
+        export_format = request.args.get('format', 'zip')  # 'zip' or 'json'
+        module_id = request.args.get('module_id')
+        
+        # Get include options
+        include_videos = request.args.get('include_videos', 'false').lower() == 'true'
+        include_markdown = request.args.get('include_markdown', 'false').lower() == 'true'
+        include_yaml = request.args.get('include_yaml', 'false').lower() == 'true'
+        include_progress = request.args.get('include_progress', 'false').lower() == 'true'
+        
+        # Validation
+        if export_type == 'module' and not module_id:
+            return jsonify({'error': 'Module ID required for module export'}), 400
+        
+        if export_type == 'module':
+            module = LearningModules.query.get_or_404(module_id)
+            modules = [module]
+            export_name = f"module_{module.module_number}_{module.title}"
+        else:
+            modules = LearningModules.query.filter_by(is_active=True).all()
+            export_name = "all_learning_content"
+        
+        # Sanitize export name for filename
+        import re
+        export_name = re.sub(r'[^\w\-_.]', '_', export_name)
+        
+        if export_format == 'json':
+            # JSON Export - Database data only
+            export_data = {
+                'export_info': {
+                    'exported_at': datetime.utcnow().isoformat(),
+                    'exported_by': current_user.username,
+                    'export_type': export_type,
+                    'include_options': {
+                        'videos': include_videos,
+                        'markdown': include_markdown,
+                        'yaml': include_yaml,
+                        'progress': include_progress
+                    }
+                },
+                'modules': []
+            }
+            
+            for module in modules:
+                module_data = {
+                    'id': module.id,
+                    'module_number': module.module_number,
+                    'title': module.title,
+                    'description': module.description,
+                    'estimated_hours': module.estimated_hours,
+                    'submodules': []
+                }
+                
+                # Get submodules
+                submodules = LearningSubmodules.query.filter_by(
+                    module_id=module.id, 
+                    is_active=True
+                ).all()
+                
+                for submodule in submodules:
+                    submodule_data = {
+                        'id': submodule.id,
+                        'submodule_number': submodule.submodule_number,
+                        'title': submodule.title,
+                        'description': submodule.description,
+                        'estimated_minutes': submodule.estimated_minutes
+                    }
+                    
+                    # Add video data if requested
+                    if include_videos:
+                        videos = Video.query.filter(
+                            func.cast(Video.submodule_id, db.Float) == submodule.submodule_number,
+                            Video.is_active == True
+                        ).all()
+                        submodule_data['videos'] = [{
+                            'id': video.id,
+                            'title': video.title,
+                            'description': video.description,
+                            'filename': video.filename,
+                            'duration_seconds': video.duration_seconds,
+                            'sequence_order': video.sequence_order
+                        } for video in videos]
+                    
+                    module_data['submodules'].append(submodule_data)
+                
+                export_data['modules'].append(module_data)
+            
+            # Add user progress if requested
+            if include_progress:
+                progress_data = UserShortsProgress.query.all()
+                export_data['user_progress'] = [{
+                    'user_id': p.user_id,
+                    'shorts_id': p.shorts_id,
+                    'watch_status': p.watch_status,
+                    'watch_percentage': p.watch_percentage,
+                    'completed_at': p.completed_at.isoformat() if p.completed_at else None
+                } for p in progress_data]
+            
+            # Create JSON response
+            output = BytesIO()
+            json_content = json.dumps(export_data, ensure_ascii=False, indent=2)
+            output.write(json_content.encode('utf-8'))
+            output.seek(0)
+            
+            # Log export action
+            AdminSecurityService.log_admin_action(
+                current_user,
+                f"Exported learning content (JSON): {export_type}"
+            )
+            
+            return send_file(
+                output,
+                mimetype='application/json',
+                as_attachment=True,
+                download_name=f'{export_name}.json'
+            )
+        
+        else:
+            # ZIP Export - Files and data
+            import zipfile
+            import tempfile
+            
+            # Create temporary file for ZIP
+            temp_zip = tempfile.NamedTemporaryFile(delete=False, suffix='.zip')
+            
+            with zipfile.ZipFile(temp_zip.name, 'w', zipfile.ZIP_DEFLATED) as zipf:
+                learning_base = os.path.join(current_app.root_path, '..', 'learning')
+                
+                for module in modules:
+                    if not module.content_directory:
+                        continue
+                    
+                    module_path = os.path.join(learning_base, module.content_directory)
+                    if not os.path.exists(module_path):
+                        continue
+                    
+                    # Add module files to ZIP
+                    for root, dirs, files in os.walk(module_path):
+                        for file in files:
+                            file_path = os.path.join(root, file)
+                            
+                            # Check include options
+                            if file.endswith('.yaml') and not include_yaml:
+                                continue
+                            if file.endswith('.md') and not include_markdown:
+                                continue
+                            if file.endswith('.mp4') and not include_videos:
+                                continue
+                            
+                            # Add file to ZIP with relative path
+                            arcname = os.path.relpath(file_path, learning_base)
+                            zipf.write(file_path, arcname)
+                
+                # Add database export as JSON
+                if include_progress or any([include_videos, include_markdown, include_yaml]):
+                    # Create simplified database export
+                    db_export = {
+                        'modules': [{
+                            'id': m.id,
+                            'module_number': m.module_number,
+                            'title': m.title,
+                            'description': m.description
+                        } for m in modules]
+                    }
+                    
+                    db_json = json.dumps(db_export, ensure_ascii=False, indent=2)
+                    zipf.writestr('database_export.json', db_json.encode('utf-8'))
+            
+            # Log export action
+            AdminSecurityService.log_admin_action(
+                current_user,
+                f"Exported learning content (ZIP): {export_type}"
+            )
+            
+            # Send ZIP file
+            return send_file(
+                temp_zip.name,
+                mimetype='application/zip',
+                as_attachment=True,
+                download_name=f'{export_name}.zip'
+            )
+        
+    except Exception as e:
+        logger.error(f"Error exporting learning content: {str(e)}")
+        return jsonify({'error': str(e)}), 500
+
+# Video Upload API Endpoint
+@admin_bp.route('/api/upload-video', methods=['POST'])
+@admin_required
+def upload_video():
+    """API endpoint for uploading video files with progress tracking"""
+    try:
+        # Validate required fields
+        if 'video_file' not in request.files:
+            return jsonify({'success': False, 'message': 'No video file provided'}), 400
+        
+        if 'submodule_id' not in request.form:
+            return jsonify({'success': False, 'message': 'Submodule ID is required'}), 400
+        
+        video_file = request.files['video_file']
+        submodule_id = request.form.get('submodule_id')
+        
+        # Validate file selection
+        if video_file.filename == '':
+            return jsonify({'success': False, 'message': 'No file selected'}), 400
+        
+        # Validate file type
+        if not FileUploadService.allowed_file(video_file.filename, 'video'):
+            return jsonify({
+                'success': False, 
+                'message': 'Invalid file format. Only MP4, MOV, AVI, and MKV files are allowed.'
+            }), 400
+        
+        # Validate file size
+        if not FileUploadService.validate_file_size(video_file, 'video'):
+            return jsonify({
+                'success': False, 
+                'message': 'File too large. Maximum size is 300MB.'
+            }), 400
+        
+        # Get video metadata from form
+        video_metadata = {
+            'title': request.form.get('video_title', 'Untitled Video'),
+            'description': request.form.get('video_description', ''),
+            'sequence_order': int(request.form.get('video_sequence', 1)),
+            'duration_seconds': int(request.form.get('duration_seconds', 60)),
+            'difficulty_level': int(request.form.get('difficulty_level', 1))
+        }
+        
+        # Upload video using FileUploadService
+        video_id = FileUploadService.upload_video_short(
+            submodule_id=submodule_id,
+            video_file=video_file,
+            video_metadata=video_metadata
+        )
+        
+        # Log successful upload
+        AdminSecurityService.log_admin_action(
+            current_user,
+            f"Uploaded video: {video_file.filename} for submodule {submodule_id}"
+        )
+        
+        return jsonify({
+            'success': True,
+            'message': 'Video uploaded successfully',
+            'video_id': video_id,
+            'filename': video_file.filename
+        })
+        
+    except ValueError as e:
+        logger.error(f"Validation error during video upload: {str(e)}")
+        return jsonify({'success': False, 'message': str(e)}), 400
+        
+    except Exception as e:
+        logger.error(f"Error uploading video: {str(e)}")
+        return jsonify({
+            'success': False, 
+            'message': f'Upload failed: {str(e)}'
+        }), 500
+
+
+# =============================================================================
+# TOURNAMENT MANAGEMENT ROUTES
+# =============================================================================
+
+@admin_bp.route('/api/tournaments', methods=['GET'])
+@admin_required
+def get_tournaments():
+    """Get tournaments with filtering and pagination"""
+    try:
+        page = request.args.get('page', 1, type=int)
+        per_page = request.args.get('per_page', 20, type=int)
+        search = request.args.get('search', '').strip()
+        status_filter = request.args.get('status', '').strip()
+        
+        # Build query
+        query = WeeklyTournament.query
+        
+        # Apply search filter
+        if search:
+            query = query.filter(
+                db.or_(
+                    WeeklyTournament.name.ilike(f'%{search}%'),
+                    WeeklyTournament.description.ilike(f'%{search}%'),
+                    WeeklyTournament.tournament_type.ilike(f'%{search}%')
+                )
+            )
+        
+        # Apply status filter
+        if status_filter == 'active':
+            query = query.filter(
+                WeeklyTournament.is_active == True,
+                WeeklyTournament.end_date > datetime.utcnow()
+            )
+        elif status_filter == 'upcoming':
+            query = query.filter(
+                WeeklyTournament.start_date > datetime.utcnow()
+            )
+        elif status_filter == 'completed':
+            query = query.filter(
+                WeeklyTournament.end_date < datetime.utcnow()
+            )
+        elif status_filter == 'inactive':
+            query = query.filter(WeeklyTournament.is_active == False)
+        
+        # Get total count before pagination
+        total = query.count()
+        
+        # Apply pagination
+        tournaments = query.order_by(WeeklyTournament.start_date.desc()).paginate(
+            page=page, per_page=per_page, error_out=False
+        )
+        
+        # Format tournament data
+        tournament_data = []
+        for tournament in tournaments.items:
+            # Get participant count
+            participant_count = TournamentParticipant.query.filter_by(
+                tournament_id=tournament.id
+            ).count()
+            
+            # Determine status
+            now = datetime.utcnow()
+            if not tournament.is_active:
+                status = 'inactive'
+            elif now < tournament.start_date:
+                status = 'upcoming'
+            elif now > tournament.end_date:
+                status = 'completed'
+            else:
+                status = 'active'
+            
+            tournament_data.append({
+                'id': tournament.id,
+                'name': tournament.name,
+                'description': tournament.description,
+                'tournament_type': tournament.tournament_type,
+                'category': tournament.category,
+                'start_date': tournament.start_date.strftime('%Y-%m-%d %H:%M'),
+                'end_date': tournament.end_date.strftime('%Y-%m-%d %H:%M'),
+                'entry_fee_xp': tournament.entry_fee_xp,
+                'prize_pool_xp': tournament.prize_pool_xp,
+                'participant_count': participant_count,
+                'is_active': tournament.is_active,
+                'status': status
+            })
+        
+        return jsonify({
+            'success': True,
+            'tournaments': tournament_data,
+            'pagination': {
+                'page': page,
+                'per_page': per_page,
+                'total': total,
+                'pages': tournaments.pages,
+                'has_prev': tournaments.has_prev,
+                'has_next': tournaments.has_next
+            }
+        })
+        
+    except Exception as e:
+        logger.error(f"Error fetching tournaments: {str(e)}")
+        return jsonify({'success': False, 'message': str(e)}), 500
+
+
+@admin_bp.route('/api/tournaments', methods=['POST'])
+@admin_required  
+def create_tournament():
+    """Create a new tournament"""
+    try:
+        data = request.get_json()
+        
+        # Validate required fields
+        required_fields = ['name', 'description', 'tournament_type', 'start_date', 'end_date']
+        for field in required_fields:
+            if not data.get(field):
+                return jsonify({
+                    'success': False,
+                    'message': f'Field {field} is required'
+                }), 400
+        
+        # Parse dates
+        try:
+            start_date = datetime.fromisoformat(data['start_date'].replace('Z', '+00:00'))
+            end_date = datetime.fromisoformat(data['end_date'].replace('Z', '+00:00'))
+        except ValueError:
+            return jsonify({
+                'success': False,
+                'message': 'Invalid date format'
+            }), 400
+        
+        # Validate date logic
+        if start_date >= end_date:
+            return jsonify({
+                'success': False,
+                'message': 'End date must be after start date'
+            }), 400
+        
+        # Create tournament
+        tournament = WeeklyTournament(
+            name=data['name'],
+            description=data['description'],
+            tournament_type=data['tournament_type'],
+            category=data.get('category'),
+            start_date=start_date,
+            end_date=end_date,
+            entry_fee_xp=int(data.get('entry_fee_xp', 0)),
+            prize_pool_xp=int(data.get('prize_pool_xp', 1000)),
+            is_active=bool(data.get('is_active', True))
+        )
+        
+        db.session.add(tournament)
+        db.session.commit()
+        
+        # Log action
+        AdminSecurityService.log_admin_action(
+            current_user,
+            f"Created tournament: {tournament.name}"
+        )
+        
+        return jsonify({
+            'success': True,
+            'message': 'Tournament created successfully',
+            'tournament_id': tournament.id
+        })
+        
+    except Exception as e:
+        db.session.rollback()
+        logger.error(f"Error creating tournament: {str(e)}")
+        return jsonify({'success': False, 'message': str(e)}), 500
+
+
+@admin_bp.route('/api/tournaments/<int:tournament_id>', methods=['PUT'])
+@admin_required
+def update_tournament(tournament_id):
+    """Update an existing tournament"""
+    try:
+        tournament = WeeklyTournament.query.get_or_404(tournament_id)
+        data = request.get_json()
+        
+        # Update fields if provided
+        if 'name' in data:
+            tournament.name = data['name']
+        if 'description' in data:
+            tournament.description = data['description']
+        if 'tournament_type' in data:
+            tournament.tournament_type = data['tournament_type']
+        if 'category' in data:
+            tournament.category = data['category']
+        if 'entry_fee_xp' in data:
+            tournament.entry_fee_xp = int(data['entry_fee_xp'])
+        if 'prize_pool_xp' in data:
+            tournament.prize_pool_xp = int(data['prize_pool_xp'])
+        if 'is_active' in data:
+            tournament.is_active = bool(data['is_active'])
+        
+        # Update dates if provided
+        if 'start_date' in data:
+            try:
+                tournament.start_date = datetime.fromisoformat(
+                    data['start_date'].replace('Z', '+00:00')
+                )
+            except ValueError:
+                return jsonify({
+                    'success': False,
+                    'message': 'Invalid start date format'
+                }), 400
+        
+        if 'end_date' in data:
+            try:
+                tournament.end_date = datetime.fromisoformat(
+                    data['end_date'].replace('Z', '+00:00')
+                )
+            except ValueError:
+                return jsonify({
+                    'success': False,
+                    'message': 'Invalid end date format'
+                }), 400
+        
+        # Validate date logic
+        if tournament.start_date >= tournament.end_date:
+            return jsonify({
+                'success': False,
+                'message': 'End date must be after start date'
+            }), 400
+        
+        db.session.commit()
+        
+        # Log action
+        AdminSecurityService.log_admin_action(
+            current_user,
+            f"Updated tournament: {tournament.name}"
+        )
+        
+        return jsonify({
+            'success': True,
+            'message': 'Tournament updated successfully'
+        })
+        
+    except Exception as e:
+        db.session.rollback()
+        logger.error(f"Error updating tournament: {str(e)}")
+        return jsonify({'success': False, 'message': str(e)}), 500
+
+
+@admin_bp.route('/api/tournaments/<int:tournament_id>', methods=['DELETE'])
+@admin_required
+def delete_tournament(tournament_id):
+    """Delete a tournament"""
+    try:
+        tournament = WeeklyTournament.query.get_or_404(tournament_id)
+        tournament_name = tournament.name
+        
+        # Check if tournament has participants
+        participant_count = TournamentParticipant.query.filter_by(
+            tournament_id=tournament_id
+        ).count()
+        
+        if participant_count > 0:
+            return jsonify({
+                'success': False,
+                'message': f'Cannot delete tournament with {participant_count} participants'
+            }), 400
+        
+        db.session.delete(tournament)
+        db.session.commit()
+        
+        # Log action
+        AdminSecurityService.log_admin_action(
+            current_user,
+            f"Deleted tournament: {tournament_name}"
+        )
+        
+        return jsonify({
+            'success': True,
+            'message': 'Tournament deleted successfully'
+        })
+        
+    except Exception as e:
+        db.session.rollback()
+        logger.error(f"Error deleting tournament: {str(e)}")
+        return jsonify({'success': False, 'message': str(e)}), 500
+
+
+@admin_bp.route('/api/tournaments/stats', methods=['GET'])
+@admin_required
+def get_tournament_stats():
+    """Get tournament statistics for admin dashboard"""
+    try:
+        now = datetime.utcnow()
+        
+        # Calculate stats
+        total_tournaments = WeeklyTournament.query.count()
+        active_tournaments = WeeklyTournament.query.filter(
+            WeeklyTournament.is_active == True,
+            WeeklyTournament.start_date <= now,
+            WeeklyTournament.end_date > now
+        ).count()
+        upcoming_tournaments = WeeklyTournament.query.filter(
+            WeeklyTournament.start_date > now
+        ).count()
+        total_participants = TournamentParticipant.query.count()
+        
+        return jsonify({
+            'success': True,
+            'stats': {
+                'total_tournaments': total_tournaments,
+                'active_tournaments': active_tournaments,
+                'upcoming_tournaments': upcoming_tournaments,
+                'total_participants': total_participants
+            }
+        })
+        
+    except Exception as e:
+        logger.error(f"Error fetching tournament stats: {str(e)}")
+        return jsonify({'success': False, 'message': str(e)}), 500
+
+
+# =============================================================================
+# DAILY CHALLENGE MANAGEMENT ROUTES
+# =============================================================================
+
+@admin_bp.route('/api/daily-challenges', methods=['GET'])
+@admin_required
+def get_daily_challenges():
+    """Get daily challenges with filtering and pagination"""
+    try:
+        page = request.args.get('page', 1, type=int)
+        per_page = request.args.get('per_page', 20, type=int)
+        search = request.args.get('search', '').strip()
+        challenge_type_filter = request.args.get('challenge_type', '').strip()
+        date_filter = request.args.get('date_filter', '').strip()
+        
+        # Build query
+        query = DailyChallenge.query
+        
+        # Apply search filter
+        if search:
+            query = query.filter(
+                db.or_(
+                    DailyChallenge.title.ilike(f'%{search}%'),
+                    DailyChallenge.description.ilike(f'%{search}%'),
+                    DailyChallenge.challenge_type.ilike(f'%{search}%')
+                )
+            )
+        
+        # Apply challenge type filter
+        if challenge_type_filter:
+            query = query.filter(DailyChallenge.challenge_type == challenge_type_filter)
+        
+        # Apply date filter
+        if date_filter == 'today':
+            query = query.filter(DailyChallenge.date == date.today())
+        elif date_filter == 'active':
+            query = query.filter(DailyChallenge.is_active == True)
+        elif date_filter == 'past_week':
+            week_ago = date.today() - timedelta(days=7)
+            query = query.filter(DailyChallenge.date >= week_ago)
+        
+        # Get total count before pagination
+        total = query.count()
+        
+        # Apply pagination
+        challenges = query.order_by(DailyChallenge.date.desc()).paginate(
+            page=page, per_page=per_page, error_out=False
+        )
+        
+        # Format challenge data
+        challenge_data = []
+        for challenge in challenges.items:
+            # Get completion stats
+            total_users = UserDailyChallenge.query.filter_by(
+                challenge_id=challenge.id
+            ).count()
+            completed_users = UserDailyChallenge.query.filter_by(
+                challenge_id=challenge.id,
+                completed=True
+            ).count()
+            
+            completion_rate = (completed_users / total_users * 100) if total_users > 0 else 0
+            
+            challenge_data.append({
+                'id': challenge.id,
+                'title': challenge.title,
+                'description': challenge.description,
+                'challenge_type': challenge.challenge_type,
+                'requirement_value': challenge.requirement_value,
+                'xp_reward': challenge.xp_reward,
+                'bonus_reward': challenge.bonus_reward,
+                'category': challenge.category,
+                'date': challenge.date.strftime('%Y-%m-%d'),
+                'is_active': challenge.is_active,
+                'total_users': total_users,
+                'completed_users': completed_users,
+                'completion_rate': round(completion_rate, 1)
+            })
+        
+        return jsonify({
+            'success': True,
+            'challenges': challenge_data,
+            'pagination': {
+                'page': page,
+                'per_page': per_page,
+                'total': total,
+                'pages': challenges.pages,
+                'has_prev': challenges.has_prev,
+                'has_next': challenges.has_next
+            }
+        })
+        
+    except Exception as e:
+        logger.error(f"Error fetching daily challenges: {str(e)}")
+        return jsonify({'success': False, 'message': str(e)}), 500
+
+
+@admin_bp.route('/api/daily-challenges', methods=['POST'])
+@admin_required
+def create_daily_challenge():
+    """Create a new daily challenge"""
+    try:
+        data = request.get_json()
+        
+        # Validate required fields
+        required_fields = ['title', 'description', 'challenge_type', 'requirement_value']
+        for field in required_fields:
+            if not data.get(field):
+                return jsonify({
+                    'success': False,
+                    'message': f'Field {field} is required'
+                }), 400
+        
+        # Parse date
+        challenge_date = date.today()  # Default to today
+        if 'date' in data and data['date']:
+            try:
+                challenge_date = datetime.strptime(data['date'], '%Y-%m-%d').date()
+            except ValueError:
+                return jsonify({
+                    'success': False,
+                    'message': 'Invalid date format (use YYYY-MM-DD)'
+                }), 400
+        
+        # Check if challenge already exists for this date and type
+        existing = DailyChallenge.query.filter_by(
+            date=challenge_date,
+            challenge_type=data['challenge_type']
+        ).first()
+        
+        if existing:
+            return jsonify({
+                'success': False,
+                'message': f'Challenge of type {data["challenge_type"]} already exists for {challenge_date}'
+            }), 400
+        
+        # Create challenge
+        challenge = DailyChallenge(
+            title=data['title'],
+            description=data['description'],
+            challenge_type=data['challenge_type'],
+            requirement_value=int(data['requirement_value']),
+            xp_reward=int(data.get('xp_reward', 50)),
+            bonus_reward=int(data.get('bonus_reward', 0)),
+            category=data.get('category'),
+            date=challenge_date,
+            is_active=bool(data.get('is_active', True))
+        )
+        
+        db.session.add(challenge)
+        db.session.commit()
+        
+        # Log action
+        AdminSecurityService.log_admin_action(
+            current_user,
+            f"Created daily challenge: {challenge.title}"
+        )
+        
+        return jsonify({
+            'success': True,
+            'message': 'Daily challenge created successfully',
+            'challenge_id': challenge.id
+        })
+        
+    except Exception as e:
+        db.session.rollback()
+        logger.error(f"Error creating daily challenge: {str(e)}")
+        return jsonify({'success': False, 'message': str(e)}), 500
+
+
+@admin_bp.route('/api/daily-challenges/<int:challenge_id>', methods=['PUT'])
+@admin_required
+def update_daily_challenge(challenge_id):
+    """Update an existing daily challenge"""
+    try:
+        challenge = DailyChallenge.query.get_or_404(challenge_id)
+        data = request.get_json()
+        
+        # Update fields if provided
+        if 'title' in data:
+            challenge.title = data['title']
+        if 'description' in data:
+            challenge.description = data['description']
+        if 'challenge_type' in data:
+            challenge.challenge_type = data['challenge_type']
+        if 'requirement_value' in data:
+            challenge.requirement_value = int(data['requirement_value'])
+        if 'xp_reward' in data:
+            challenge.xp_reward = int(data['xp_reward'])
+        if 'bonus_reward' in data:
+            challenge.bonus_reward = int(data['bonus_reward'])
+        if 'category' in data:
+            challenge.category = data['category']
+        if 'is_active' in data:
+            challenge.is_active = bool(data['is_active'])
+        
+        # Update date if provided
+        if 'date' in data and data['date']:
+            try:
+                new_date = datetime.strptime(data['date'], '%Y-%m-%d').date()
+                
+                # Check for conflicts if date is changing
+                if new_date != challenge.date:
+                    existing = DailyChallenge.query.filter_by(
+                        date=new_date,
+                        challenge_type=challenge.challenge_type
+                    ).filter(DailyChallenge.id != challenge_id).first()
+                    
+                    if existing:
+                        return jsonify({
+                            'success': False,
+                            'message': f'Challenge of type {challenge.challenge_type} already exists for {new_date}'
+                        }), 400
+                
+                challenge.date = new_date
+                
+            except ValueError:
+                return jsonify({
+                    'success': False,
+                    'message': 'Invalid date format (use YYYY-MM-DD)'
+                }), 400
+        
+        db.session.commit()
+        
+        # Log action
+        AdminSecurityService.log_admin_action(
+            current_user,
+            f"Updated daily challenge: {challenge.title}"
+        )
+        
+        return jsonify({
+            'success': True,
+            'message': 'Daily challenge updated successfully'
+        })
+        
+    except Exception as e:
+        db.session.rollback()
+        logger.error(f"Error updating daily challenge: {str(e)}")
+        return jsonify({'success': False, 'message': str(e)}), 500
+
+
+@admin_bp.route('/api/daily-challenges/<int:challenge_id>', methods=['DELETE'])
+@admin_required
+def delete_daily_challenge(challenge_id):
+    """Delete a daily challenge"""
+    try:
+        challenge = DailyChallenge.query.get_or_404(challenge_id)
+        challenge_title = challenge.title
+        
+        # Check if challenge has user progress
+        user_progress_count = UserDailyChallenge.query.filter_by(
+            challenge_id=challenge_id
+        ).count()
+        
+        if user_progress_count > 0:
+            return jsonify({
+                'success': False,
+                'message': f'Cannot delete challenge with {user_progress_count} user progress records'
+            }), 400
+        
+        db.session.delete(challenge)
+        db.session.commit()
+        
+        # Log action
+        AdminSecurityService.log_admin_action(
+            current_user,
+            f"Deleted daily challenge: {challenge_title}"
+        )
+        
+        return jsonify({
+            'success': True,
+            'message': 'Daily challenge deleted successfully'
+        })
+        
+    except Exception as e:
+        db.session.rollback()
+        logger.error(f"Error deleting daily challenge: {str(e)}")
+        return jsonify({'success': False, 'message': str(e)}), 500
+
+
+@admin_bp.route('/api/daily-challenges/stats', methods=['GET'])
+@admin_required
+def get_daily_challenge_stats():
+    """Get daily challenge statistics for admin dashboard"""
+    try:
+        today = date.today()
+        week_ago = today - timedelta(days=7)
+        
+        # Calculate stats
+        total_challenges = DailyChallenge.query.count()
+        active_challenges = DailyChallenge.query.filter_by(
+            is_active=True, 
+            date=today
+        ).count()
+        challenges_this_week = DailyChallenge.query.filter(
+            DailyChallenge.date >= week_ago
+        ).count()
+        
+        # Calculate average completion rate
+        completed_count = db.session.query(func.count(UserDailyChallenge.id)).filter(
+            UserDailyChallenge.completed == True
+        ).scalar() or 0
+        total_attempts = db.session.query(func.count(UserDailyChallenge.id)).scalar() or 0
+        avg_completion_rate = (completed_count / total_attempts * 100) if total_attempts > 0 else 0
+        
+        return jsonify({
+            'success': True,
+            'stats': {
+                'total_challenges': total_challenges,
+                'active_challenges': active_challenges,
+                'challenges_this_week': challenges_this_week,
+                'avg_completion_rate': round(avg_completion_rate, 1)
+            }
+        })
+        
+    except Exception as e:
+        logger.error(f"Error fetching daily challenge stats: {str(e)}")
+        return jsonify({'success': False, 'message': str(e)}), 500
+
+
+# =============================================================================
+# ACHIEVEMENT MANAGEMENT ROUTES
+# =============================================================================
+
+@admin_bp.route('/api/achievements', methods=['GET'])
+@admin_required
+def get_achievements():
+    """Get achievements with filtering and pagination"""
+    try:
+        page = request.args.get('page', 1, type=int)
+        per_page = request.args.get('per_page', 20, type=int)
+        search = request.args.get('search', '').strip()
+        category_filter = request.args.get('category', '').strip()
+        
+        # Build query
+        query = Achievement.query
+        
+        # Apply search filter
+        if search:
+            query = query.filter(
+                db.or_(
+                    Achievement.name.ilike(f'%{search}%'),
+                    Achievement.description.ilike(f'%{search}%'),
+                    Achievement.requirement_type.ilike(f'%{search}%')
+                )
+            )
+        
+        # Apply category filter
+        if category_filter:
+            query = query.filter(Achievement.category == category_filter)
+        
+        # Get total count before pagination
+        total = query.count()
+        
+        # Apply pagination
+        achievements = query.order_by(Achievement.category, Achievement.name).paginate(
+            page=page, per_page=per_page, error_out=False
+        )
+        
+        # Format achievement data
+        achievement_data = []
+        for achievement in achievements.items:
+            # Get user count who earned this achievement
+            users_earned = UserAchievement.query.filter_by(
+                achievement_id=achievement.id
+            ).count()
+            
+            achievement_data.append({
+                'id': achievement.id,
+                'name': achievement.name,
+                'description': achievement.description,
+                'category': achievement.category,
+                'requirement_type': achievement.requirement_type,
+                'requirement_value': achievement.requirement_value,
+                'points': achievement.points,
+                'icon_filename': achievement.icon_filename,
+                'users_earned': users_earned
+            })
+        
+        return jsonify({
+            'success': True,
+            'achievements': achievement_data,
+            'pagination': {
+                'page': page,
+                'per_page': per_page,
+                'total': total,
+                'pages': achievements.pages,
+                'has_prev': achievements.has_prev,
+                'has_next': achievements.has_next
+            }
+        })
+        
+    except Exception as e:
+        logger.error(f"Error fetching achievements: {str(e)}")
+        return jsonify({'success': False, 'message': str(e)}), 500
+
+
+@admin_bp.route('/api/achievements', methods=['POST'])
+@admin_required
+def create_achievement():
+    """Create a new achievement"""
+    try:
+        data = request.get_json()
+        
+        # Validate required fields
+        required_fields = ['name', 'description', 'category', 'requirement_type', 'requirement_value', 'points']
+        for field in required_fields:
+            if not data.get(field):
+                return jsonify({
+                    'success': False,
+                    'message': f'Field {field} is required'
+                }), 400
+        
+        # Create achievement
+        achievement = Achievement(
+            name=data['name'],
+            description=data['description'],
+            category=data['category'],
+            requirement_type=data['requirement_type'],
+            requirement_value=int(data['requirement_value']),
+            points=int(data['points']),
+            icon_filename=data.get('icon_filename')
+        )
+        
+        db.session.add(achievement)
+        db.session.commit()
+        
+        # Log action
+        AdminSecurityService.log_admin_action(
+            current_user,
+            f"Created achievement: {achievement.name}"
+        )
+        
+        return jsonify({
+            'success': True,
+            'message': 'Achievement created successfully',
+            'achievement_id': achievement.id
+        })
+        
+    except Exception as e:
+        db.session.rollback()
+        logger.error(f"Error creating achievement: {str(e)}")
+        return jsonify({'success': False, 'message': str(e)}), 500
+
+
+@admin_bp.route('/api/achievements/<int:achievement_id>', methods=['PUT'])
+@admin_required
+def update_achievement(achievement_id):
+    """Update an existing achievement"""
+    try:
+        achievement = Achievement.query.get_or_404(achievement_id)
+        data = request.get_json()
+        
+        # Update fields if provided
+        if 'name' in data:
+            achievement.name = data['name']
+        if 'description' in data:
+            achievement.description = data['description']
+        if 'category' in data:
+            achievement.category = data['category']
+        if 'requirement_type' in data:
+            achievement.requirement_type = data['requirement_type']
+        if 'requirement_value' in data:
+            achievement.requirement_value = int(data['requirement_value'])
+        if 'points' in data:
+            achievement.points = int(data['points'])
+        if 'icon_filename' in data:
+            achievement.icon_filename = data['icon_filename']
+        
+        db.session.commit()
+        
+        # Log action
+        AdminSecurityService.log_admin_action(
+            current_user,
+            f"Updated achievement: {achievement.name}"
+        )
+        
+        return jsonify({
+            'success': True,
+            'message': 'Achievement updated successfully'
+        })
+        
+    except Exception as e:
+        db.session.rollback()
+        logger.error(f"Error updating achievement: {str(e)}")
+        return jsonify({'success': False, 'message': str(e)}), 500
+
+
+@admin_bp.route('/api/achievements/<int:achievement_id>', methods=['DELETE'])
+@admin_required
+def delete_achievement(achievement_id):
+    """Delete an achievement"""
+    try:
+        achievement = Achievement.query.get_or_404(achievement_id)
+        achievement_name = achievement.name
+        
+        # Check if achievement has been earned by users
+        users_earned = UserAchievement.query.filter_by(
+            achievement_id=achievement_id
+        ).count()
+        
+        if users_earned > 0:
+            return jsonify({
+                'success': False,
+                'message': f'Cannot delete achievement earned by {users_earned} users'
+            }), 400
+        
+        db.session.delete(achievement)
+        db.session.commit()
+        
+        # Log action
+        AdminSecurityService.log_admin_action(
+            current_user,
+            f"Deleted achievement: {achievement_name}"
+        )
+        
+        return jsonify({
+            'success': True,
+            'message': 'Achievement deleted successfully'
+        })
+        
+    except Exception as e:
+        db.session.rollback()
+        logger.error(f"Error deleting achievement: {str(e)}")
+        return jsonify({'success': False, 'message': str(e)}), 500
+
+
+@admin_bp.route('/api/achievements/stats', methods=['GET'])
+@admin_required
+def get_achievement_stats():
+    """Get achievement statistics for admin dashboard"""
+    try:
+        # Calculate stats
+        total_achievements = Achievement.query.count()
+        total_earned = UserAchievement.query.count()
+        unique_achievers = db.session.query(UserAchievement.user_id).distinct().count()
+        
+        # Get most popular achievement
+        most_popular = db.session.query(
+            Achievement.name,
+            func.count(UserAchievement.id).label('earn_count')
+        ).join(UserAchievement).group_by(Achievement.id).order_by(
+            func.count(UserAchievement.id).desc()
+        ).first()
+        
+        most_popular_name = most_popular[0] if most_popular else 'None'
+        
+        return jsonify({
+            'success': True,
+            'stats': {
+                'total_achievements': total_achievements,
+                'total_earned': total_earned,
+                'unique_achievers': unique_achievers,
+                'most_popular': most_popular_name
+            }
+        })
+        
+    except Exception as e:
+        logger.error(f"Error fetching achievement stats: {str(e)}")
+        return jsonify({'success': False, 'message': str(e)}), 500
+
+
+# =============================================================================
+# XP REWARDS MANAGEMENT ROUTES
+# =============================================================================
+
+@admin_bp.route('/api/xp-rewards', methods=['GET'])
+@admin_required
+def get_xp_rewards():
+    """Get XP rewards configuration"""
+    try:
+        rewards = XPReward.query.order_by(XPReward.reward_type).all()
+        
+        reward_data = []
+        for reward in rewards:
+            reward_data.append({
+                'id': reward.id,
+                'reward_type': reward.reward_type,
+                'base_value': reward.base_value,
+                'scaling_factor': float(reward.scaling_factor) if reward.scaling_factor else 0,
+                'max_value': reward.max_value,
+                'description': reward.description
+            })
+        
+        return jsonify({
+            'success': True,
+            'rewards': reward_data
+        })
+        
+    except Exception as e:
+        logger.error(f"Error fetching XP rewards: {str(e)}")
+        return jsonify({'success': False, 'message': str(e)}), 500
+
+
+@admin_bp.route('/api/xp-rewards/<int:reward_id>', methods=['PUT'])
+@admin_required
+def update_xp_reward(reward_id):
+    """Update XP reward configuration"""
+    try:
+        reward = XPReward.query.get_or_404(reward_id)
+        data = request.get_json()
+        
+        # Update fields if provided
+        if 'base_value' in data:
+            reward.base_value = int(data['base_value'])
+        if 'scaling_factor' in data:
+            reward.scaling_factor = float(data['scaling_factor'])
+        if 'max_value' in data:
+            reward.max_value = int(data['max_value']) if data['max_value'] else None
+        if 'description' in data:
+            reward.description = data['description']
+        
+        db.session.commit()
+        
+        # Log action
+        AdminSecurityService.log_admin_action(
+            current_user,
+            f"Updated XP reward: {reward.reward_type}"
+        )
+        
+        return jsonify({
+            'success': True,
+            'message': 'XP reward updated successfully'
+        })
+        
+    except Exception as e:
+        db.session.rollback()
+        logger.error(f"Error updating XP reward: {str(e)}")
+        return jsonify({'success': False, 'message': str(e)}), 500
+
+
+@admin_bp.route('/api/xp-rewards/stats', methods=['GET'])
+@admin_required
+def get_xp_reward_stats():
+    """Get XP reward statistics"""
+    try:
+        # Get XP transaction stats
+        total_xp_awarded = db.session.query(func.sum(XPTransaction.amount)).filter(
+            XPTransaction.amount > 0
+        ).scalar() or 0
+        
+        total_transactions = XPTransaction.query.count()
+        
+        # Get average user level
+        avg_level = db.session.query(func.avg(UserLevel.current_level)).scalar() or 0
+        
+        # Get total active users with XP
+        active_users = UserLevel.query.filter(UserLevel.total_xp > 0).count()
+        
+        return jsonify({
+            'success': True,
+            'stats': {
+                'total_xp_awarded': int(total_xp_awarded),
+                'total_transactions': total_transactions,
+                'avg_user_level': round(float(avg_level), 1),
+                'active_users': active_users
+            }
+        })
+        
+    except Exception as e:
+        logger.error(f"Error fetching XP reward stats: {str(e)}")
+        return jsonify({'success': False, 'message': str(e)}), 500
+
+
+# =============================================================================
+# GAMIFICATION OVERVIEW STATS
+# =============================================================================
+
+@admin_bp.route('/api/gamification/overview', methods=['GET'])
+@admin_required
+def get_gamification_overview():
+    """Get comprehensive gamification overview statistics"""
+    try:
+        now = datetime.utcnow()
+        today = date.today()
+        week_ago = today - timedelta(days=7)
+        
+        # Tournament stats
+        total_tournaments = WeeklyTournament.query.count()
+        active_tournaments = WeeklyTournament.query.filter(
+            WeeklyTournament.is_active == True,
+            WeeklyTournament.start_date <= now,
+            WeeklyTournament.end_date > now
+        ).count()
+        total_tournament_participants = TournamentParticipant.query.count()
+        
+        # Daily challenge stats
+        total_challenges = DailyChallenge.query.count()
+        active_challenges = DailyChallenge.query.filter_by(
+            is_active=True, 
+            date=today
+        ).count()
+        
+        # Achievement stats
+        total_achievements = Achievement.query.count()
+        total_earned_achievements = UserAchievement.query.count()
+        
+        # XP stats
+        total_xp_awarded = db.session.query(func.sum(XPTransaction.amount)).filter(
+            XPTransaction.amount > 0
+        ).scalar() or 0
+        
+        # User engagement stats
+        total_gamified_users = UserLevel.query.filter(UserLevel.total_xp > 0).count()
+        avg_user_level = db.session.query(func.avg(UserLevel.current_level)).scalar() or 0
+        
+        return jsonify({
+            'success': True,
+            'overview': {
+                'tournaments': {
+                    'total': total_tournaments,
+                    'active': active_tournaments,
+                    'participants': total_tournament_participants
+                },
+                'challenges': {
+                    'total': total_challenges,
+                    'active_today': active_challenges
+                },
+                'achievements': {
+                    'total': total_achievements,
+                    'total_earned': total_earned_achievements
+                },
+                'xp': {
+                    'total_awarded': int(total_xp_awarded),
+                    'avg_user_level': round(float(avg_user_level), 1)
+                },
+                'users': {
+                    'gamified_users': total_gamified_users
+                }
+            }
+        })
+        
+    except Exception as e:
+        logger.error(f"Error fetching gamification overview: {str(e)}")
+        return jsonify({'success': False, 'message': str(e)}), 500

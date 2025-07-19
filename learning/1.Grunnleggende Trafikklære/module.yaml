@@ -1,0 +1,46 @@
+id: 1
+module_number: 1
+title: "Grunnleggende trafikklære"
+description: "Lær de grunnleggende prinsippene for sikker kjøring i trafikken. Dette modulet dekker trafikkregler, vikeplikt, signaler fra politi og trafikklys, samt grunnleggende plassering og feltskifte."
+estimated_hours: 3.5
+prerequisites: []
+learning_objectives:
+  - "Forstå grunnleggende trafikkregler og hvordan de brukes"
+  - "Mestre vikepliktregler i ulike trafikksituasjoner"
+  - "Gjenkjenne og følge signaler fra politi og trafikklys"
+  - "Utføre sikker plassering på veien og feltskifte"
+  - "Navigere trygt gjennom rundkjøringer"
+content_directory: "grunnleggende-trafikklare"
+is_active: true
+ai_generated: false
+submodules:
+  - id: 1.1
+    title: "Hva er trafikkreglene?"
+    description: "Introduksjon til norske trafikkregler og hvorfor de er viktige"
+    estimated_minutes: 25
+    has_quiz: true
+    has_video_shorts: true
+  - id: 1.2
+    title: "Vikeplikt og vikepliktregler"
+    description: "Lær når du skal vike og når du har forkjørsrett"
+    estimated_minutes: 35
+    has_quiz: true
+    has_video_shorts: true
+  - id: 1.3
+    title: "Tegn fra politi og trafikklys"
+    description: "Forstå signaler fra trafikklys og politiets håndtegn"
+    estimated_minutes: 20
+    has_quiz: true
+    has_video_shorts: true
+  - id: 1.4
+    title: "Plassering og feltskifte"
+    description: "Riktig plassering på veien og hvordan skifte felt trygt"
+    estimated_minutes: 30
+    has_quiz: true
+    has_video_shorts: true
+  - id: 1.5
+    title: "Kjøring i rundkjøring"
+    description: "Mestre navigering gjennom rundkjøringer på en trygg måte"
+    estimated_minutes: 25
+    has_quiz: true
+    has_video_shorts: true

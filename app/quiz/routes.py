@@ -178,6 +178,185 @@ def adaptive_practice():
         return redirect(url_for('main.dashboard'))
 
 
+@quiz_bp.route('/start-practice', methods=['POST'])
+@login_required
+@quiz_limit_check('practice')
+def start_practice():
+    """Start a practice quiz session and redirect to quiz interface"""
+    try:
+        # Get form data
+        category = request.form.get('category', 'all')
+        num_questions = int(request.form.get('num_questions', 20))
+        
+        # Validate inputs
+        if num_questions not in [10, 20, 30, 45]:
+            num_questions = 20
+        
+        if category == 'all':
+            category = None
+        
+        # Check subscription limits
+        can_take, message = SubscriptionService.can_user_take_quiz(current_user.id, 'practice')
+        if not can_take:
+            flash(message, 'error')
+            return redirect(url_for('quiz.practice', category=category or 'all'))
+        
+        # Create new quiz session
+        quiz_session = QuizSession(
+            user_id=current_user.id,
+            quiz_type='practice',
+            category=category,
+            total_questions=num_questions,
+            started_at=datetime.utcnow()
+        )
+        
+        db.session.add(quiz_session)
+        db.session.flush()  # Get the session ID
+        
+        # Record quiz usage for limits tracking
+        UsageLimitService.record_quiz_taken(current_user.id, 'practice')
+        
+        db.session.commit()
+        
+        # Redirect to quiz interface
+        return redirect(url_for('quiz.take_quiz', session_id=quiz_session.id))
+    
+    except Exception as e:
+        db.session.rollback()
+        logger.error(f'Error starting practice quiz: {e}')
+        flash(f'Feil ved start av quiz: {str(e)}', 'error')
+        return redirect(url_for('main.dashboard'))
+
+
+@quiz_bp.route('/session/<int:session_id>')
+@login_required
+def take_quiz(session_id):
+    """Display quiz interface for taking a quiz"""
+    try:
+        # Get session and validate ownership
+        quiz_session = QuizSession.query.get_or_404(session_id)
+        if quiz_session.user_id != current_user.id:
+            flash('Uautorisert tilgang til quiz-økt', 'error')
+            return redirect(url_for('main.dashboard'))
+        
+        # Check if session is already completed
+        if quiz_session.completed_at:
+            flash('Denne quiz-økten er allerede fullført', 'info')
+            return redirect(url_for('quiz.view_results', session_id=session_id))
+        
+        # Get questions for this session
+        questions = []
+        
+        # 🎯 For daily challenges: Skip ML and use direct filtering (supports subcategory)
+        is_daily_challenge = (quiz_session.quiz_type == 'daily_challenge' or 
+                             (hasattr(quiz_session, 'challenge_id') and quiz_session.challenge_id))
+        
+        if not is_daily_challenge and ml_service.is_ml_enabled():
+            try:
+                # Use ML for regular practice sessions
+                questions = ml_service.get_adaptive_questions(
+                    user_id=current_user.id,
+                    category=quiz_session.category, 
+                    num_questions=quiz_session.total_questions,
+                    session_id=session_id
+                )
+            except Exception as e:
+                logger.warning(f'Could not get ML questions for session {session_id}: {e}')
+        
+        # Direct question selection for daily challenges or ML fallback
+        if not questions:
+            query = Question.query.filter_by(is_active=True)
+            if quiz_session.category:
+                # 🏞️ Use Norwegian category names directly, search both category AND subcategory
+                category_norwegian = quiz_session.category  # Should be Norwegian (e.g., "vikepliktregler")
+                
+                # Search in both category and subcategory fields for flexibility
+                query = query.filter(
+                    db.or_(
+                        Question.category == category_norwegian,
+                        Question.subcategory == category_norwegian
+                    )
+                )
+                logger.info(f"Filtering questions by Norwegian category/subcategory: {category_norwegian}")
+                        
+            questions = query.order_by(db.func.random()).limit(quiz_session.total_questions).all()
+        
+        if not questions:
+            flash('Ingen spørsmål funnet for denne kategorien', 'error')
+            return redirect(url_for('main.dashboard'))
+        
+        # Add image folder discovery for each question (like working quiz template)
+        import os
+        from flask import current_app
+        
+        images_dir = os.path.join(current_app.static_folder, 'images')
+        
+        for question in questions:
+            # Dynamic discovery of image folder
+            image_folder = ''
+            if question.image_filename:
+                for root, dirs, files in os.walk(images_dir):
+                    if question.image_filename in files:
+                        image_folder = os.path.relpath(root, images_dir).replace(os.sep, '/')
+                        break
+            # Add image_folder attribute to question object
+            question.image_folder = image_folder
+        
+        return render_template('quiz/quiz_session.html',
+                             session=quiz_session,
+                             questions=questions,
+                             category=quiz_session.category or 'Generell')
+    
+    except Exception as e:
+        logger.error(f'Error loading quiz session {session_id}: {e}')
+        flash(f'Feil ved lasting av quiz: {str(e)}', 'error')
+        return redirect(url_for('main.dashboard'))
+
+
+@quiz_bp.route('/test-xp-integration')
+@login_required
+def test_xp_integration():
+    """Test endpoint to verify XP integration is working"""
+    try:
+        from ..gamification.quiz_integration import process_quiz_completion
+        from ..gamification.services import GamificationService
+        
+        # Test XP calculation
+        test_xp = GamificationService.calculate_quiz_xp(
+            correct_answers=15,
+            total_questions=20, 
+            score=75
+        )
+        
+        return jsonify({
+            'success': True,
+            'message': 'XP integration working correctly',
+            'test_calculation': test_xp,
+            'current_user_xp': current_user.total_xp,
+            'gamification_methods_available': {
+                'get_xp_reward': hasattr(GamificationService, 'get_xp_reward'),
+                'award_xp': hasattr(GamificationService, 'award_xp'),
+                'check_achievements': hasattr(GamificationService, 'check_achievements'),
+                'update_daily_challenge_progress': hasattr(GamificationService, 'update_daily_challenge_progress'),
+                'check_and_update_streak': hasattr(GamificationService, 'check_and_update_streak')
+            }
+        })
+    except Exception as e:
+        return jsonify({
+            'success': False,
+            'error': str(e),
+            'message': 'XP integration has issues'
+        }), 500
+
+
+@quiz_bp.route('/test-modal')
+@login_required
+def test_modal():
+    """Test route to demonstrate the quiz results modal system"""
+    # This is a test route to demonstrate the modal functionality
+    return render_template('quiz/test_modal.html')
+
+
 @quiz_bp.route('/session/start', methods=['POST'])
 @login_required
 def start_session():
@@ -309,6 +488,8 @@ def submit_session(session_id):
             quiz_response = QuizResponse(
                 session_id=session_id,
                 question_id=question_id,
+                category=question.category,  # Store actual question category
+                subcategory=question.subcategory,  # Store granular subcategory
                 user_answer=user_answer,
                 is_correct=is_correct,
                 time_spent_seconds=time_spent
@@ -333,13 +514,32 @@ def submit_session(session_id):
         
         db.session.commit()
         
-        # Update ML system with performance data
-        if ml_service.is_ml_enabled():
-            try:
-                ml_service.update_learning_progress(current_user.id, session_id, ml_responses)
-            except Exception as ml_error:
-                # Log ML error but don't fail the quiz submission
-                print(f"ML update error: {ml_error}")
+        # GAMIFICATION INTEGRATION: Process rewards and achievements
+        gamification_rewards = {'xp_earned': 0, 'achievements': [], 'level_ups': [], 'daily_challenges': []}
+        try:
+            from ..gamification.quiz_integration import process_quiz_completion
+            gamification_rewards = process_quiz_completion(current_user, quiz_session)
+            
+            # Handle daily challenge progress if this is a daily challenge
+            if quiz_session.quiz_type == 'daily_challenge' and quiz_session.challenge_id:
+                from ..gamification.services import GamificationService
+                completed_challenges = GamificationService.update_daily_challenge_progress(
+                    current_user, 'quiz', 1, quiz_session.category
+                )
+                if completed_challenges:
+                    gamification_rewards['daily_challenges'] = completed_challenges
+                    
+        except Exception as gamification_error:
+            # Log gamification error but don't fail the quiz submission
+            print(f"Gamification integration error: {gamification_error}")
+        
+        # Update user progress using the service (like regular quiz)
+        from ..services.progress_service import ProgressService
+        progress_service = ProgressService()
+        progress_service.update_user_progress(current_user.id, quiz_session)
+        
+        # Record quiz usage for limits tracking (like regular quiz)
+        UsageLimitService.record_quiz_taken(current_user.id, quiz_session.quiz_type)
         
         # Calculate performance metrics
         accuracy = (correct_count / len(responses)) * 100
@@ -365,6 +565,7 @@ def submit_session(session_id):
                 'avg_time_per_question': avg_time_per_question,
                 'score': quiz_session.score
             },
+            'gamification': gamification_rewards,  # Add gamification rewards
             'ml_insights': updated_insights,
             'ml_enabled': ml_service.is_ml_enabled(),
             'analytics_data': {
@@ -384,6 +585,112 @@ def submit_session(session_id):
     except Exception as e:
         db.session.rollback()
         return jsonify({'error': str(e), 'success': False}), 500
+
+
+@quiz_bp.route('/session/<int:session_id>/review')
+@login_required
+def review_session(session_id):
+    """Get detailed review data for quiz session (for modal system)"""
+    try:
+        # Validate session ownership
+        quiz_session = QuizSession.query.get_or_404(session_id)
+        if quiz_session.user_id != current_user.id:
+            return jsonify({'error': 'Unauthorized', 'success': False}), 403
+        
+        # Get all responses with question details
+        responses = db.session.query(
+            QuizResponse,
+            Question
+        ).join(
+            Question, QuizResponse.question_id == Question.id
+        ).filter(
+            QuizResponse.session_id == session_id
+        ).all()
+        
+        questions_data = []
+        for response, question in responses:
+            # Get question options
+            options = [{
+                'letter': opt.option_letter,
+                'text': opt.option_text
+            } for opt in question.options]
+            
+            question_data = {
+                'question_id': question.id,
+                'question_text': question.question,
+                'image_filename': question.image_filename,
+                'options': options,
+                'correct_answer': question.correct_option,
+                'user_answer': response.user_answer,
+                'is_correct': response.is_correct,
+                'time_spent': response.time_spent_seconds,
+                'explanation': question.explanation,
+                'category': question.category
+            }
+            questions_data.append(question_data)
+        
+        return jsonify({
+            'success': True,
+            'questions': questions_data,
+            'session_info': {
+                'id': quiz_session.id,
+                'total_questions': quiz_session.total_questions,
+                'correct_answers': quiz_session.correct_answers,
+                'score': quiz_session.score,
+                'time_spent': quiz_session.time_spent_seconds
+            }
+        })
+    
+    except Exception as e:
+        logger.error(f'Error loading review data: {e}')
+        return jsonify({'error': str(e), 'success': False}), 500
+
+
+@quiz_bp.route('/daily-challenge/<int:challenge_id>')
+@login_required
+def daily_challenge(challenge_id):
+    """Start or continue a daily challenge quiz"""
+    try:
+        from ..gamification_models import DailyChallenge, UserDailyChallenge
+        
+        # Get the challenge
+        challenge = DailyChallenge.query.get_or_404(challenge_id)
+        
+        # Check if user has progress on this challenge
+        user_challenge = UserDailyChallenge.query.filter_by(
+            user_id=current_user.id,
+            challenge_id=challenge_id
+        ).first()
+        
+        if user_challenge and user_challenge.completed:
+            flash('Du har allerede fullført denne utfordringen!', 'info')
+            return redirect(url_for('main.index'))
+        
+        # Create new quiz session for daily challenge
+        quiz_session = QuizSession(
+            user_id=current_user.id,
+            quiz_type='daily_challenge',
+            category=challenge.category,
+            total_questions=challenge.requirement_value,
+            started_at=datetime.utcnow()
+        )
+        
+        db.session.add(quiz_session)
+        db.session.flush()  # Get the session ID
+        
+        # Add challenge metadata to session
+        quiz_session.challenge_id = challenge_id
+        
+        db.session.commit()
+        
+        # Redirect to quiz interface with challenge context
+        return redirect(url_for('quiz.take_quiz', session_id=quiz_session.id, challenge=True))
+    
+    except Exception as e:
+        db.session.rollback()
+        logger.error(f'Error starting daily challenge {challenge_id}: {e}')
+        flash(f'Feil ved start av daglig utfordring: {str(e)}', 'error')
+        return redirect(url_for('main.index'))
 
 
 @quiz_bp.route('/results/<int:session_id>')

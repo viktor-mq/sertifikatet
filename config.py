@@ -48,3 +48,9 @@ class Config:
     
     # Cookie policy version (GDPR compliance)
     COOKIE_POLICY_VERSION = os.getenv('COOKIE_POLICY_VERSION', '1.0')
+    
+    # Short videos configuration (TikTok-style learning videos)
+    SHORT_VIDEOS_MOCK = os.getenv('SHORT_VIDEOS_MOCK', 'False').lower() in ('true', '1', 'yes')
+    
+    # Feature toggles
+    REGULAR_VIDEOS_ENABLED = os.getenv('REGULAR_VIDEOS_ENABLED', 'True').lower() in ('true', '1', 'yes')

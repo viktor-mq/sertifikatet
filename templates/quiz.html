@@ -299,8 +299,38 @@ document.getElementById('quizForm').addEventListener('submit', function(e) {
     
     if (confirm(message)) {
         clearInterval(timerInterval);
-        this.submit();
+        
+        const formData = new FormData(this);
+        const action = this.action;
+        
+        fetch(action, {
+            method: 'POST',
+            headers: {
+                'X-Requested-With': 'XMLHttpRequest'
+            },
+            body: formData
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                // Assuming you have a function to show the results modal
+                // You might need to adapt this part to your actual modal implementation
+                if (window.showResultsModal) {
+                    window.showResultsModal(data);
+                } else {
+                    // Fallback if the modal function doesn't exist
+                    window.location.href = data.redirect_url;
+                }
+            } else {
+                alert('An error occurred: ' + data.message);
+            }
+        })
+        .catch(error => {
+            console.error('Error submitting quiz:', error);
+            alert('An error occurred while submitting the quiz. Please try again.');
+        });
     }
 });
 </script>
+<!-- In quiz templates -->
 {% endblock %}

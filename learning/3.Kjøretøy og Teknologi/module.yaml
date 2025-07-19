@@ -1,0 +1,46 @@
+id: 3
+module_number: 3
+title: "Kjøretøy og Teknologi"
+description: "Forstå samspillet mellom deg, kjøretøyet og veien. Denne modulen dekker alt fra de fysiske lovene som styrer bremsing og veigrep, til hvordan moderne teknologi kan hjelpe deg å bli en tryggere sjåfør."
+estimated_hours: 3.5
+prerequisites: ["2"]
+learning_objectives:
+  - "Forstå de fysiske prinsippene bak bremselengde, reaksjonstid og veigrep."
+  - "Mestre bruken av lys og sikt under ulike vær- og føreforhold."
+  - "Utføre grunnleggende sikkerhetskontroller av kjøretøyet."
+  - "Kjenne til funksjonen og begrensningene til moderne førerstøttesystemer."
+  - "Forstå de unike egenskapene til elbiler og hybrider."
+content_directory: "3.vehicles_and_technology"
+is_active: true
+ai_generated: true
+submodules:
+  - id: 3.1
+    title: "Bremselengde og reaksjonstid"
+    description: "Lær om de kritiske faktorene som bestemmer hvor lang tid og distanse du trenger for å stoppe."
+    estimated_minutes: 45
+    has_quiz: true
+    has_video_shorts: true
+  - id: 3.2
+    title: "Sikt, lysbruk og vær"
+    description: "Mestre kunsten å se og bli sett under alle forhold, fra solskinn til snøstorm."
+    estimated_minutes: 40
+    has_quiz: true
+    has_video_shorts: true
+  - id: 3.3
+    title: "Dekk, mønsterdybde og grep"
+    description: "Forstå hvorfor dekkene er din viktigste forbindelse til veien og hvordan du holder dem i topp stand."
+    estimated_minutes: 35
+    has_quiz: true
+    has_video_shorts: true
+  - id: 3.4
+    title: "Kontrollrutiner før kjøring"
+    description: "Lær deg de enkle sjekkene du må gjøre før hver kjøretur for å sikre en trygg ferd."
+    estimated_minutes: 30
+    has_quiz: true
+    has_video_shorts: true
+  - id: 3.5
+    title: "Elbil, hybrid og moderne hjelpemidler"
+    description: "Utforsk teknologien som former fremtidens kjøring og lær hvordan du bruker den riktig."
+    estimated_minutes: 40
+    has_quiz: true
+    has_video_shorts: true

@@ -1,0 +1,11 @@
+<svg width="64" height="64" viewBox="0 0 64 64" xmlns="http://www.w3.org/2000/svg">
+  <!-- Background circle -->
+  <circle cx="32" cy="32" r="30" fill="#dc2626" stroke="#ffffff" stroke-width="2"/>
+  
+  <!-- Warning triangle -->
+  <polygon points="32,18 46,42 18,42" fill="#ffd700" stroke="#dc2626" stroke-width="2"/>
+  <polygon points="30,25 34,25 33,35 31,35" fill="#dc2626"/>
+  <circle cx="32" cy="38" r="2" fill="#dc2626"/>
+  
+  <title>Fareskilt Ekspert</title>
+</svg>

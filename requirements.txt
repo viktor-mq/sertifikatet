@@ -1,38 +1,42 @@
 Flask==2.3.2
-Werkzeug==2.3.6
+Werkzeug>=2.3.8
 Flask-SQLAlchemy==3.0.5
 SQLAlchemy==2.0.20
-Flask-WTF==1.1.1
+Flask-WTF>=1.2.1
 python-dotenv==1.0.0
 Flask-Migrate==4.0.4
-PyMySQL==1.0.3
+PyMySQL>=1.1.1
 Flask-Login==0.6.3
 itsdangerous==2.1.2
+
+# Image Processing & Video Thumbnails - SECURITY FIX (SAFE)
+Pillow>=10.3.0
 
 # Payment Processing
 stripe==7.12.0
 
-# Machine Learning Dependencies
-scikit-learn==1.3.0
+# Machine Learning Dependencies - CONSERVATIVE UPDATE
+scikit-learn>=1.4.0
 pandas==1.5.3
 numpy==1.24.3
 scipy==1.10.1
 
-# NEW: Enhanced Security & Performance Dependencies
+# Enhanced Security & Performance Dependencies - CONSERVATIVE UPDATES
 Flask-Limiter==3.5.0
 redis==5.0.1
 Flask-Session==0.5.0
 celery==5.3.4
-gunicorn==21.2.0
+gunicorn>=22.0.0
 psutil==5.9.6
+
+# TikTok Learning System Dependencies
+markdown==3.5.1
+PyYAML==6.0.1
 
 # Development and testing dependencies moved to requirements-dev.txt
 # Run: pip install -r requirements-dev.txt for development
 
-# NEW: Image Processing
-Pillow>=10.0.0
-
-# NEW: Production Dependencies
+# Production Dependencies
 # Note: nginx and supervisor are system packages, not Python packages
 # Install them separately:
 # - nginx: apt-get install nginx (Ubuntu) or brew install nginx (macOS)

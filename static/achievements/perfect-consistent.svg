@@ -1,0 +1,14 @@
+<svg width="64" height="64" viewBox="0 0 64 64" xmlns="http://www.w3.org/2000/svg">
+  <!-- Background circle -->
+  <circle cx="32" cy="32" r="30" fill="#f59e0b" stroke="#ffffff" stroke-width="2"/>
+  
+  <!-- Diamond icon -->
+  <polygon points="32,16 42,32 32,48 22,32" fill="#ffffff"/>
+  <polygon points="32,16 37,24 32,32 27,24" fill="#f59e0b"/>
+  <polygon points="27,24 32,32 22,32" fill="#d97706"/>
+  <polygon points="37,24 42,32 32,32" fill="#d97706"/>
+  <polygon points="32,32 32,48 22,32" fill="#92400e"/>
+  <polygon points="32,32 42,32 32,48" fill="#92400e"/>
+  
+  <title>Konsistent Perfekt</title>
+</svg>

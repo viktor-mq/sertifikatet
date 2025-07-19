@@ -1,1 +1,211 @@
-<!-- Placeholder for quiz_results.html in templates/quiz -->
+{% extends "base.html" %}
+
+{% block title %}Quiz Resultater - Sertifikatet{% endblock %}
+
+{% block content %}
+<div class="max-w-4xl mx-auto px-6 py-12">
+    <!-- Header -->
+    <div class="text-center mb-8">
+        <h1 class="text-3xl font-bold mb-4">
+            <span class="bg-gradient-to-r from-purple-400 to-pink-400 bg-clip-text text-transparent">
+                Quiz Resultater
+            </span>
+        </h1>
+        <p class="text-gray-300">Din prestasjon på quiz-økningen</p>
+    </div>
+
+    <!-- Results Card -->
+    <div class="glass rounded-2xl p-8 mb-8">
+        <!-- Score Display -->
+        <div class="text-center mb-8">
+            <div class="inline-block relative">
+                <div class="w-32 h-32 rounded-full border-8 border-gray-700 relative">
+                    <div class="absolute inset-0 rounded-full border-8 border-purple-500" 
+                         style="clip-path: polygon(0 0, {{ (session.score / 100) * 100 }}% 0, {{ (session.score / 100) * 100 }}% 100%, 0 100%);">
+                    </div>
+                    <div class="absolute inset-0 flex items-center justify-center">
+                        <span class="text-3xl font-bold text-white">{{ "%.0f"|format(session.score) }}%</span>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="mt-4">
+                <h2 class="text-2xl font-bold text-white mb-2">
+                    {{ session.correct_answers }}/{{ session.total_questions }} riktige
+                </h2>
+                <p class="text-gray-300">
+                    Tid brukt: {{ "%.0f"|format(session.time_spent_seconds / 60) }} min {{ "%.0f"|format(session.time_spent_seconds % 60) }} sek
+                </p>
+            </div>
+        </div>
+
+        <!-- Performance Message -->
+        <div class="text-center mb-8">
+            {% if session.score >= 90 %}
+                <div class="bg-green-500 bg-opacity-20 border border-green-500 rounded-lg p-4">
+                    <h3 class="text-green-400 font-bold mb-2">🌟 Utmerket!</h3>
+                    <p class="text-green-300">Du har god kontroll på teorien. Fortsett den gode jobben!</p>
+                </div>
+            {% elif session.score >= 70 %}
+                <div class="bg-yellow-500 bg-opacity-20 border border-yellow-500 rounded-lg p-4">
+                    <h3 class="text-yellow-400 font-bold mb-2">👍 Bra jobbet!</h3>
+                    <p class="text-yellow-300">Du er på rett vei. Fortsett å øve for enda bedre resultater.</p>
+                </div>
+            {% else %}
+                <div class="bg-orange-500 bg-opacity-20 border border-orange-500 rounded-lg p-4">
+                    <h3 class="text-orange-400 font-bold mb-2">📚 Fortsett å studiere!</h3>
+                    <p class="text-orange-300">Du er på rett vei. Mer øving vil gi bedre resultater.</p>
+                </div>
+            {% endif %}
+        </div>
+
+        <!-- Statistics -->
+        <div class="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
+            <div class="bg-white bg-opacity-10 rounded-lg p-4 text-center">
+                <div class="text-2xl font-bold text-purple-400 mb-1">{{ session.correct_answers }}</div>
+                <div class="text-sm text-gray-300">Riktige svar</div>
+            </div>
+            <div class="bg-white bg-opacity-10 rounded-lg p-4 text-center">
+                <div class="text-2xl font-bold text-pink-400 mb-1">{{ session.total_questions - session.correct_answers }}</div>
+                <div class="text-sm text-gray-300">Feil svar</div>
+            </div>
+            <div class="bg-white bg-opacity-10 rounded-lg p-4 text-center">
+                <div class="text-2xl font-bold text-blue-400 mb-1">{{ "%.1f"|format((session.time_spent_seconds / session.total_questions) if session.total_questions > 0 else 0) }}s</div>
+                <div class="text-sm text-gray-300">Gjennomsnitt per spørsmål</div>
+            </div>
+        </div>
+
+        <!-- Action Buttons -->
+        <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+            <a href="{{ url_for('quiz.view_detailed_results', session_id=session.id) }}" 
+               class="bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-700 hover:to-pink-700 
+                      text-white font-semibold py-3 px-6 rounded-lg text-center transition-all duration-200">
+                📝 Se detaljerte svar
+            </a>
+            <a href="{{ url_for('quiz.practice', category=session.category if session.category else 'all') }}" 
+               class="bg-white bg-opacity-20 hover:bg-opacity-30 text-white font-medium py-3 px-6 
+                      rounded-lg text-center transition-all duration-200">
+                🔄 Ta ny quiz
+            </a>
+            <a href="{{ url_for('main.dashboard') }}" 
+               class="bg-white bg-opacity-20 hover:bg-opacity-30 text-white font-medium py-3 px-6 
+                      rounded-lg text-center transition-all duration-200">
+                🏠 Tilbake til dashboard
+            </a>
+        </div>
+    </div>
+
+    <!-- Detailed Results -->
+    {% if responses %}
+    <div class="glass rounded-2xl p-8">
+        <h3 class="text-xl font-bold mb-6 flex items-center">
+            <i class="fas fa-list-check mr-3 text-purple-400"></i>
+            Detaljerte svar
+        </h3>
+        
+        <div class="space-y-6">
+            {% for response in responses %}
+            <div class="bg-white bg-opacity-10 rounded-lg p-6">
+                <div class="flex items-start justify-between mb-4">
+                    <div class="flex-1">
+                        <h4 class="font-semibold text-white mb-2">Spørsmål {{ loop.index }}</h4>
+                        <p class="text-gray-300 mb-3">{{ response.question.question }}</p>
+                        
+                        {% if response.question.image_filename %}
+                        <img src="{{ url_for('static', filename='images/quiz/' + response.question.image_filename) }}" 
+                             alt="Spørsmålsbilde" class="mb-4 rounded-lg max-w-full h-auto">
+                        {% endif %}
+                    </div>
+                    
+                    <div class="ml-4 text-right">
+                        {% if response.is_correct %}
+                            <span class="bg-green-500 text-white px-3 py-1 rounded-full text-sm font-medium">
+                                ✓ Riktig
+                            </span>
+                        {% else %}
+                            <span class="bg-red-500 text-white px-3 py-1 rounded-full text-sm font-medium">
+                                ✗ Feil
+                            </span>
+                        {% endif %}
+                        <div class="text-sm text-gray-400 mt-1">
+                            {{ "%.0f"|format(response.time_spent_seconds) }}s
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Answer Options -->
+                <div class="grid grid-cols-1 gap-2 mb-4">
+                    {% for option in response.question.options %}
+                    <div class="p-3 rounded-lg border-2 
+                        {% if option.option_letter == response.question.correct_option %}
+                            bg-green-500 bg-opacity-30 border-green-400
+                        {% elif option.option_letter == response.user_answer and not response.is_correct %}
+                            bg-red-500 bg-opacity-30 border-red-400
+                        {% else %}
+                            bg-white bg-opacity-10 border-transparent
+                        {% endif %}
+                    ">
+                        <div class="flex items-center justify-between">
+                            <div class="flex items-center">
+                                <span class="bg-white bg-opacity-20 text-white w-8 h-8 rounded-full flex items-center justify-center text-sm font-semibold mr-3">
+                                    {{ option.option_letter.upper() }}
+                                </span>
+                                <span class="text-white">{{ option.option_text }}</span>
+                            </div>
+                            {% if option.option_letter == response.question.correct_option %}
+                                <span class="text-green-400">✓</span>
+                            {% elif option.option_letter == response.user_answer and not response.is_correct %}
+                                <span class="text-red-400">✗</span>
+                            {% endif %}
+                        </div>
+                        {% if option.option_letter == response.user_answer %}
+                        <div class="text-purple-200 text-sm mt-2 ml-11">Ditt svar</div>
+                        {% endif %}
+                    </div>
+                    {% endfor %}
+                </div>
+                
+                <!-- Explanation -->
+                {% if response.question.explanation %}
+                <div class="bg-blue-500 bg-opacity-20 border-l-4 border-blue-400 rounded-lg p-4">
+                    <h5 class="text-white font-semibold mb-2 flex items-center">
+                        <i class="fas fa-lightbulb mr-2"></i>
+                        Forklaring
+                    </h5>
+                    <p class="text-blue-100">{{ response.question.explanation }}</p>
+                </div>
+                {% endif %}
+            </div>
+            {% endfor %}
+        </div>
+    </div>
+    {% endif %}
+
+    <!-- ML Insights (if available) -->
+    {% if ml_insights %}
+    <div class="glass rounded-2xl p-8 mt-8">
+        <h3 class="text-xl font-bold mb-6 flex items-center">
+            <i class="fas fa-brain mr-3 text-blue-400"></i>
+            AI-drevne innsikter
+        </h3>
+        
+        <!-- ML content here -->
+        <div class="bg-blue-500 bg-opacity-20 rounded-lg p-4">
+            <p class="text-blue-100">Personaliserte læringsanbefalinger basert på din prestasjon.</p>
+        </div>
+    </div>
+    {% endif %}
+</div>
+
+<!-- Trigger modal if JavaScript is enabled -->
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    // Check if we have session data and modal system is available
+    if (window.QuizResultsModal && {{ session.id|tojson }}) {
+        // This template serves as fallback, so we don't auto-trigger modal here
+        // Modal should be triggered from the quiz completion flow
+        console.log('Quiz results template loaded with session ID:', {{ session.id|tojson }});
+    }
+});
+</script>
+{% endblock %}

@@ -3,18 +3,18 @@ from datetime import datetime
 from sqlalchemy import func
 from .. import db
 from ..models import (
-    LearningPath, LearningPathItem, UserLearningPath,
+    LearningModules, LearningModuleItem, UserLearningModule,
     Question, QuizSession, VideoProgress, GameSession, QuizResponse
 )
 
 
 class LearningService:
-    """Service for managing learning paths and progression."""
+    """Service for managing learning module and progression."""
     
     @staticmethod
-    def create_default_learning_paths():
-        """Create initial learning paths for the platform."""
-        paths_data = [
+    def create_default_learning_modules():
+        """Create initial learning modules for the platform."""
+        modules_data = [
             {
                 'name': 'Grunnleggende Trafikkregler',
                 'description': 'Start din reise mot førerkortet med de mest grunnleggende trafikkreglene. Perfekt for nybegynnere!',
@@ -83,29 +83,29 @@ class LearningService:
             }
         ]
         
-        created_paths = []
+        created_modules = []
         
-        for path_data in paths_data:
-            # Check if path already exists
-            existing = LearningPath.query.filter_by(name=path_data['name']).first()
+        for module_data in module_data:
+            # Check if module already exists
+            existing = LearningModules.query.filter_by(name=module_data['name']).first()
             if existing:
                 continue
                 
-            # Create learning path
-            path = LearningPath(
-                name=path_data['name'],
-                description=path_data['description'],
-                estimated_hours=path_data['estimated_hours'],
-                difficulty_level=path_data['difficulty_level'],
-                is_recommended=path_data['is_recommended']
+            # Create learning module
+            module = LearningModules(
+                name=module_data['name'],
+                description=module_data['description'],
+                estimated_hours=module_data['estimated_hours'],
+                difficulty_level=module_data['difficulty_level'],
+                is_recommended=module_data['is_recommended']
             )
-            db.session.add(path)
+            db.session.add(module)
             db.session.flush()  # Get the ID
             
-            # Create path items
-            for item_data in path_data['items']:
-                item = LearningPathItem(
-                    path_id=path.id,
+            # Create module items
+            for item_data in module_data['items']:
+                item = LearningModuleItem(
+                    module_id=module.id,
                     item_type=item_data['type'],
                     item_id=item_data['category'],  # Using category as identifier
                     order_index=item_data['order'],
@@ -113,25 +113,25 @@ class LearningService:
                 )
                 db.session.add(item)
             
-            created_paths.append(path)
+            created_modules.append(module)
         
         db.session.commit()
-        return created_paths
+        return created_modules
     
     @staticmethod
-    def calculate_path_progress(user_id, path_id):
-        """Calculate user's progress in a learning path."""
-        path = LearningPath.query.get(path_id)
-        if not path:
+    def calculate_module_progress(user_id, model_id):
+        """Calculate user's progress in a learning module."""
+        module = LearningModules.query.get(model_id)
+        if not module:
             return 0
             
-        total_items = len(path.items)
+        total_items = len(module.items)
         if total_items == 0:
             return 0
             
         completed_items = 0
         
-        for item in path.items:
+        for item in module.items:
             if LearningService.is_item_completed(user_id, item):
                 completed_items += 1
         
@@ -139,7 +139,7 @@ class LearningService:
     
     @staticmethod
     def is_item_completed(user_id, item):
-        """Check if a learning path item is completed by the user."""
+        """Check if a learning module item is completed by the user."""
         if item.item_type == 'quiz':
             # Check if user has passed quiz in this category
             passed_quiz = QuizSession.query.filter_by(
@@ -147,7 +147,7 @@ class LearningService:
                 category=item.item_id
             ).filter(
                 QuizSession.score >= 80,  # 80% pass rate
-                QuizSession.quiz_type == 'learning_path'
+                QuizSession.quiz_type == 'learning_module'
             ).first()
             return passed_quiz is not None
             
@@ -172,24 +172,24 @@ class LearningService:
         return False
     
     @staticmethod
-    def get_next_item(user_id, path_id):
-        """Get the next item to complete in a learning path."""
-        path = LearningPath.query.get(path_id)
-        if not path:
+    def get_next_item(user_id, model_id):
+        """Get the next item to complete in a learning module."""
+        module = LearningModules.query.get(model_id)
+        if not module:
             return None
             
-        for item in path.items:
+        for item in module.items:
             if not LearningService.is_item_completed(user_id, item):
                 # Check if prerequisites are met
-                if LearningService.are_prerequisites_met(user_id, path, item):
+                if LearningService.are_prerequisites_met(user_id, module, item):
                     return item
         
         return None  # All items completed
     
     @staticmethod
-    def are_prerequisites_met(user_id, path, item):
+    def are_prerequisites_met(user_id, module, item):
         """Check if all mandatory prerequisite items are completed."""
-        for prereq_item in path.items:
+        for prereq_item in module.items:
             if prereq_item.order_index >= item.order_index:
                 break
             if prereq_item.is_mandatory and not LearningService.is_item_completed(user_id, prereq_item):
@@ -197,30 +197,30 @@ class LearningService:
         return True
     
     @staticmethod
-    def update_path_progress(user_id, path_id):
-        """Update user's progress in a learning path."""
-        user_path = UserLearningPath.query.filter_by(
+    def update_module_progress(user_id, model_id):
+        """Update user's progress in a learning module."""
+        user_module = UserLearningModule.query.filter_by(
             user_id=user_id,
-            path_id=path_id
+            model_id=model_id
         ).first()
         
-        if not user_path:
+        if not user_module:
             return None
             
         # Calculate new progress
-        progress = LearningService.calculate_path_progress(user_id, path_id)
-        user_path.progress_percentage = progress
+        progress = LearningService.calculate_module_progress(user_id, model_id)
+        user_module.progress_percentage = progress
         
         # Check if completed
-        if progress >= 100 and not user_path.completed_at:
-            user_path.completed_at = datetime.utcnow()
+        if progress >= 100 and not user_module.completed_at:
+            user_module.completed_at = datetime.utcnow()
         
         db.session.commit()
-        return user_path
+        return user_module
     
     @staticmethod
-    def get_recommended_paths(user_id, limit=3):
-        """Get recommended learning paths for a user based on their performance."""
+    def get_recommended_modules(user_id, limit=3):
+        """Get recommended learning modules for a user based on their performance."""
         # Get user's weak areas
         weak_categories = db.session.query(
             Question.category,
@@ -236,25 +236,25 @@ class LearningService:
         ).all()
         
         if not weak_categories:
-            # Return beginner-friendly paths
-            return LearningPath.query.filter_by(
+            # Return beginner-friendly modules
+            return LearningModules.query.filter_by(
                 difficulty_level=1,
                 is_recommended=True
             ).limit(limit).all()
         
-        # Find paths that cover weak categories
+        # Find modules that cover weak categories
         weak_category_names = [cat[0] for cat in weak_categories]
         
-        recommended_paths = []
-        all_paths = LearningPath.query.all()
+        recommended_modules = []
+        all_modules = LearningModules.query.all()
         
-        for path in all_paths:
-            path_categories = [item.item_id for item in path.items if item.item_type == 'quiz']
-            overlap = set(path_categories).intersection(weak_category_names)
+        for module in all_modules:
+            module_categories = [item.item_id for item in module.items if item.item_type == 'quiz']
+            overlap = set(module_categories).intersection(weak_category_names)
             
             if overlap:
-                recommended_paths.append((path, len(overlap)))
+                recommended_modules.append((module, len(overlap)))
         
-        # Sort by coverage and return top paths
-        recommended_paths.sort(key=lambda x: x[1], reverse=True)
-        return [path for path, _ in recommended_paths[:limit]]
+        # Sort by coverage and return top modules
+        recommended_modules.sort(key=lambda x: x[1], reverse=True)
+        return [module for module, _ in recommended_modules[:limit]]

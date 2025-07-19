@@ -1,0 +1,206 @@
+/* Gamification Notifications */
+.gamification-notifications {
+    position: fixed;
+    top: 20px;
+    right: 20px;
+    z-index: 9999;
+    pointer-events: none;
+}
+
+/* Loading Animation */
+@keyframes spin {
+    from {
+        transform: rotate(0deg);
+    }
+    to {
+        transform: rotate(360deg);
+    }
+}
+
+.level-badge {
+    transition: all 0.3s ease;
+}
+
+.level-badge:empty {
+    min-height: 1.5rem;
+}
+
+.gamification-notification {
+    background: rgba(17, 24, 39, 0.95);
+    backdrop-filter: blur(10px);
+    border: 1px solid rgba(156, 163, 175, 0.2);
+    border-radius: 12px;
+    padding: 16px;
+    margin-bottom: 12px;
+    max-width: 320px;
+    transform: translateX(400px);
+    opacity: 0;
+    transition: all 0.3s ease-out;
+    pointer-events: auto;
+    box-shadow: 0 10px 25px rgba(0, 0, 0, 0.2);
+}
+
+.gamification-notification.show {
+    transform: translateX(0);
+    opacity: 1;
+}
+
+.gamification-notification.hide {
+    transform: translateX(400px);
+    opacity: 0;
+}
+
+.notification-content {
+    display: flex;
+    align-items: flex-start;
+    gap: 12px;
+}
+
+.notification-icon {
+    font-size: 24px;
+    flex-shrink: 0;
+    margin-top: 2px;
+}
+
+.notification-text {
+    flex: 1;
+    min-width: 0;
+}
+
+.notification-text h4 {
+    color: white;
+    font-size: 14px;
+    font-weight: 600;
+    margin: 0 0 4px 0;
+    line-height: 1.3;
+}
+
+.notification-text p {
+    color: #d1d5db;
+    font-size: 13px;
+    margin: 0 0 2px 0;
+    line-height: 1.4;
+}
+
+.notification-text small {
+    color: #9ca3af;
+    font-size: 11px;
+    line-height: 1.3;
+    display: block;
+}
+
+.notification-close {
+    background: none;
+    border: none;
+    color: #9ca3af;
+    font-size: 18px;
+    cursor: pointer;
+    padding: 0;
+    width: 20px;
+    height: 20px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 4px;
+    transition: all 0.2s ease;
+    flex-shrink: 0;
+}
+
+.notification-close:hover {
+    background: rgba(156, 163, 175, 0.1);
+    color: white;
+}
+
+/* Notification type-specific styles */
+.xp-notification {
+    border-left: 4px solid #8b5cf6;
+}
+
+.achievement-notification {
+    border-left: 4px solid #f59e0b;
+}
+
+.level-up-notification {
+    border-left: 4px solid #10b981;
+    background: linear-gradient(135deg, rgba(16, 185, 129, 0.1), rgba(17, 24, 39, 0.95));
+}
+
+.challenge-notification {
+    border-left: 4px solid #3b82f6;
+}
+
+/* Enhanced level display for real-time updates */
+.level-badge {
+    transition: all 0.3s ease;
+}
+
+.xp-progress-bar {
+    transition: width 0.5s ease-out;
+}
+
+.xp-text, .xp-percentage, .total-xp {
+    transition: all 0.3s ease;
+}
+
+/* Pulse animation for XP updates */
+@keyframes xp-pulse {
+    0% { transform: scale(1); }
+    50% { transform: scale(1.05); }
+    100% { transform: scale(1); }
+}
+
+.xp-updated {
+    animation: xp-pulse 0.6s ease-out;
+}
+
+/* Level up celebration effect */
+@keyframes level-up-celebration {
+    0% { 
+        transform: scale(1);
+        box-shadow: 0 0 0 0 rgba(139, 92, 246, 0.7);
+    }
+    70% { 
+        transform: scale(1.05);
+        box-shadow: 0 0 0 10px rgba(139, 92, 246, 0);
+    }
+    100% { 
+        transform: scale(1);
+        box-shadow: 0 0 0 0 rgba(139, 92, 246, 0);
+    }
+}
+
+.level-up {
+    animation: level-up-celebration 1s ease-out;
+}
+
+/* Mobile responsive notifications */
+@media (max-width: 640px) {
+    .gamification-notifications {
+        top: 10px;
+        right: 10px;
+        left: 10px;
+    }
+    
+    .gamification-notification {
+        max-width: none;
+        transform: translateY(-100px);
+    }
+    
+    .gamification-notification.show {
+        transform: translateY(0);
+    }
+    
+    .gamification-notification.hide {
+        transform: translateY(-100px);
+    }
+}
+
+/* Gamification dashboard enhancements */
+.gamification-dashboard .glass {
+    position: relative;
+    overflow: visible;
+}
+
+.gamification-dashboard [data-gamification="true"] {
+    /* Mark elements that should receive real-time updates */
+}

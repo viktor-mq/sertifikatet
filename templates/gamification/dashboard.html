@@ -2,8 +2,12 @@
 
 {% block title %}Gamification - Sertifikatet{% endblock %}
 
+{% block head %}
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/gamification.css') }}">
+{% endblock %}
+
 {% block content %}
-<section class="py-12">
+<section class="py-12 gamification-dashboard" data-gamification="true">
     <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <!-- Level & XP Header -->
         <div class="glass rounded-2xl p-8 mb-8">
@@ -12,7 +16,7 @@
                     <!-- Level Badge -->
                     <div class="relative">
                         <div class="w-24 h-24 rounded-full bg-gradient-to-r from-purple-600 to-pink-600 flex items-center justify-center">
-                            <div class="text-3xl font-bold">{{ user_level.current_level }}</div>
+                            <div class="text-3xl font-bold level-badge">...</div>
                         </div>
                         <div class="absolute -bottom-2 left-0 right-0 text-center">
                             <span class="px-3 py-1 bg-gray-800 rounded-full text-xs">Nivå</span>
@@ -24,15 +28,15 @@
                         <h1 class="text-2xl font-bold mb-2">{{ current_user.full_name or current_user.username }}</h1>
                         <div class="mb-2">
                             <div class="flex justify-between text-sm text-gray-400 mb-1">
-                                <span>{{ user_level.current_xp }} / {{ user_level.next_level_xp }} XP</span>
-                                <span>{{ ((user_level.current_xp / user_level.next_level_xp) * 100)|round|int }}%</span>
+                                <span class="xp-text">... / ... XP</span>
+                                <span class="xp-percentage">...%</span>
                             </div>
                             <div class="h-4 bg-gray-700 rounded-full overflow-hidden">
-                                <div class="h-full bg-gradient-to-r from-purple-600 to-pink-600 transition-all duration-500"
-                                     style="width: {{ ((user_level.current_xp / user_level.next_level_xp) * 100)|round|int }}%"></div>
+                                <div class="h-full bg-gradient-to-r from-purple-600 to-pink-600 transition-all duration-500 xp-progress-bar"
+                                     style="width: 0%"></div>
                             </div>
                         </div>
-                        <p class="text-gray-400">Total XP: <span class="text-white font-semibold">{{ current_user.total_xp }}</span></p>
+                        <p class="text-gray-400">Total XP: <span class="text-white font-semibold total-xp">{{ current_user.total_xp }}</span></p>
                     </div>
                 </div>
                 
@@ -99,6 +103,17 @@
                     <div class="text-center text-green-400 text-sm">
                         <i class="fas fa-check-circle mr-1"></i> Fullført!
                     </div>
+                    {% else %}
+                        <div class="text-center">
+                            <a href="{{ url_for('quiz.daily_challenge', challenge_id=challenge.challenge.id) }}" 
+                            class="inline-flex items-center px-4 py-2 bg-gradient-to-r from-blue-600 to-purple-600 text-white text-sm font-medium rounded-lg hover:from-blue-700 hover:to-purple-700 transition-all duration-200">
+                                {% if challenge.progress > 0 %}
+                                    <i class="fas fa-play mr-2"></i> Fortsett
+                                {% else %}
+                                    <i class="fas fa-rocket mr-2"></i> Start
+                                {% endif %}
+                            </a>
+                        </div>
                     {% endif %}
                 </div>
                 {% endfor %}
@@ -150,14 +165,14 @@
             <div>
                 <div class="flex items-center justify-between mb-4">
                     <h2 class="text-xl font-bold">Ukentlig toppliste</h2>
-                    <a href="{{ url_for('gamification.leaderboard') }}" class="text-purple-400 hover:text-purple-300">
+                    <a href="{{ url_for('main.leaderboard') }}" class="text-purple-400 hover:text-purple-300">
                         Full toppliste <i class="fas fa-arrow-right ml-1"></i>
                     </a>
                 </div>
                 
                 <div class="glass rounded-lg overflow-hidden">
                     <table class="w-full">
-                        {% for ranking in rankings.rankings %}
+                        {% for ranking in rankings.rankings[:3] %}
                         <tr class="border-b border-gray-700/50 hover:bg-gray-800/50 transition {{ 'bg-purple-900/20' if ranking.id == current_user.id else '' }}">
                             <td class="p-3 text-center w-12">
                                 {% if loop.index == 1 %}
@@ -252,38 +267,6 @@
                 </div>
             </div>
         </div>
-
-        <!-- Power-ups -->
-        <div class="mt-8">
-            <div class="flex items-center justify-between mb-4">
-                <h2 class="text-xl font-bold">Dine power-ups</h2>
-                <a href="{{ url_for('gamification.power_ups') }}" class="text-purple-400 hover:text-purple-300">
-                    Kjøp flere <i class="fas fa-arrow-right ml-1"></i>
-                </a>
-            </div>
-            
-            <div class="grid grid-cols-2 md:grid-cols-4 gap-4">
-                {% for powerup in user_powerups[:4] %}
-                <div class="glass rounded-lg p-4 text-center hover-card">
-                    <div class="w-12 h-12 bg-gradient-to-r from-green-600 to-blue-600 rounded-lg mx-auto mb-2 flex items-center justify-center">
-                        <i class="fas fa-bolt text-xl"></i>
-                    </div>
-                    <h3 class="font-semibold text-sm">{{ powerup.powerup.name }}</h3>
-                    <p class="text-xs text-gray-400">x{{ powerup.quantity }}</p>
-                </div>
-                {% endfor %}
-                
-                {% if not user_powerups %}
-                <div class="col-span-full text-center py-8 text-gray-400">
-                    <i class="fas fa-bolt text-4xl mb-2 opacity-20"></i>
-                    <p>Ingen power-ups ennå</p>
-                    <a href="{{ url_for('gamification.power_ups') }}" class="text-purple-400 hover:text-purple-300 text-sm">
-                        Kjøp din første →
-                    </a>
-                </div>
-                {% endif %}
-            </div>
-        </div>
     </div>
 </section>
 
@@ -357,9 +340,35 @@ function closeAchievementModal() {
     }, 300);
 }
 
-// Check achievements on page load
-document.addEventListener('DOMContentLoaded', () => {
-    checkAchievements();
+// Instead of immediate execution, wait for script to load
+document.addEventListener('DOMContentLoaded', function() {
+    function waitForGamification() {
+        if (window.GamificationUpdater) {
+            console.log('✅ GamificationUpdater available, initializing...');
+            new GamificationUpdater();
+        } else {
+            console.log('⏳ Waiting for GamificationUpdater...');
+            setTimeout(waitForGamification, 300);
+        }
+    }
+    waitForGamification();
 });
+
+// Force gamification initialization after all scripts load
+document.addEventListener('DOMContentLoaded', function() {
+        // Wait a brief moment for all scripts to settle
+        setTimeout(function() {
+            if (window.GamificationUpdater) {
+                if (document.querySelector('.gamification-dashboard') || 
+                    document.querySelector('[data-gamification="true"]')) {
+                    console.log('🎯 Force-initializing gamification...');
+                    new GamificationUpdater();
+                    console.log('✅ Gamification force-initialized successfully');
+                }
+            } else {
+                console.log('❌ GamificationUpdater still not available after timeout');
+            }
+        }, 100); // Small delay to ensure script execution order
+    });
 </script>
 {% endblock %}

@@ -94,6 +94,7 @@
     <link rel="stylesheet" href="{{ url_for('static', filename='css/layout-common.css') }}">
     <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
     <link rel="stylesheet" href="{{ url_for('static', filename='css/cookie-consent.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/quiz-results.css') }}">
     
     <!-- Font Awesome -->
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
@@ -268,7 +269,9 @@
                     {% else %}
                         <a href="{{ url_for('main.quiz_preview') }}" class="hover:text-purple-400 transition">Quiz</a>
                     {% endif %}
+                    {% if config.REGULAR_VIDEOS_ENABLED %}
                     <a href="{{ url_for('video.index') }}" class="hover:text-purple-400 transition">Videoer</a>
+                    {% endif %}
                     <a href="{{ url_for('game.index') }}" class="hover:text-purple-400 transition">Spill</a>
                     <a href="{{ url_for('learning.index') }}" class="hover:text-purple-400 transition">Læringsveier</a>
                     
@@ -418,13 +421,16 @@
         </div>
     </footer>
     
-    <!-- JavaScript -->
+    <!-- JavaScript Files -->
     <script src="{{ url_for('static', filename='js/main.js') }}"></script>
     <script src="{{ url_for('static', filename='js/pwa.js') }}"></script>
     <script src="{{ url_for('static', filename='js/cookie-consent.js') }}"></script>
     <script src="{{ url_for('static', filename='js/analytics-service.js') }}"></script>
     <script src="{{ url_for('static', filename='js/analytics-integration.js') }}"></script>
     <script src="{{ url_for('static', filename='js/gtm-integration.js') }}"></script>
+    <script src="{{ url_for('static', filename='js/gamification.js') }}"></script>
+    <script src="{{ url_for('static', filename='js/quiz-gamification.js') }}"></script>
+    <script src="{{ url_for('static', filename='js/quiz-results-modal.js') }}"></script>
     
     <!-- AdSense Integration Script -->
     <script>
@@ -478,6 +484,39 @@
         console.log('  - testGTMTriggers() - Test GTM trigger firing');
         console.log('  - window.gtmTestReport - View last test report');
         console.log('  - Add ?gtm_debug=1 to URL for auto-testing');
+    </script>
+    {% endif %}
+    
+    <!-- Achievement Popup Integration -->
+    {% include 'components/achievement_popup.html' %}
+    
+    <!-- Achievement Notification Logic -->
+    {% if session.new_achievements %}
+    <script>
+    document.addEventListener('DOMContentLoaded', function() {
+        // Show popups for new achievements
+        const newAchievements = {{ session.new_achievements|tojson }};
+        
+        if (newAchievements && newAchievements.length > 0) {
+            // Show each achievement popup with delay
+            newAchievements.forEach((achievement, index) => {
+                setTimeout(() => {
+                    showAchievementPopup(achievement);
+                }, (index * 6000) + 1000); // 6 seconds apart + 1 second initial delay
+            });
+            
+            // Clear achievements from session after showing
+            // This prevents popups from showing again on page refresh
+            fetch('/api/clear-achievement-notifications', { 
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                }
+            }).catch(error => {
+                console.log('Note: Clear notifications endpoint not yet implemented');
+            });
+        }
+    });
     </script>
     {% endif %}
     
@@ -592,6 +631,8 @@
                 });
             }
         });
+    </script>
+    
     </script>
 </body>
 </html>

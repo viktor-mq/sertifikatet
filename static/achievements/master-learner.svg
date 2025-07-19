@@ -1,0 +1,16 @@
+<svg width="64" height="64" viewBox="0 0 64 64" xmlns="http://www.w3.org/2000/svg">
+  <!-- Background circle -->
+  <circle cx="32" cy="32" r="30" fill="#7c3aed" stroke="#ffffff" stroke-width="2"/>
+  
+  <!-- Teacher/Master figure -->
+  <circle cx="32" cy="24" r="6" fill="#ffffff"/>
+  <rect x="26" y="30" width="12" height="16" fill="#ffffff"/>
+  <polygon points="20,46 32,38 44,46 20,46" fill="#ffffff"/>
+  
+  <!-- Book/knowledge symbol -->
+  <rect x="28" y="34" width="8" height="6" fill="#7c3aed"/>
+  <line x1="30" y1="36" x2="34" y2="36" stroke="#ffffff" stroke-width="1"/>
+  <line x1="30" y1="38" x2="34" y2="38" stroke="#ffffff" stroke-width="1"/>
+  
+  <title>Læremester</title>
+</svg>

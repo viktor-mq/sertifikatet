@@ -1,0 +1,56 @@
+submodule_id: 2.1
+title: "Fareskilt – lær mønstrene"
+module_id: 2
+content_version: "1.0"
+last_updated: "2025-07-08"
+ai_generated: true
+difficulty_level: 2
+estimated_minutes: 30
+tags:
+  - "fareskilt"
+  - "trafikkskilt"
+  - "sikkerhet"
+  - "veistandard"
+  - "farevarsling"
+learning_objectives:
+  - "Gjenkjenne formen og fargen på fareskilt."
+  - "Forstå de vanligste symbolene for farer."
+  - "Vite hvordan man skal reagere på et fareskilt."
+  - "Tolke underskilt som spesifiserer avstand og lengde."
+prerequisites: ["1.1"]
+linked_questions:
+  - "Fareskilt generelt"
+  - "Veiarbeid og konsekvenser"
+  - "Dyr i veibanen"
+  - "Svinger og veigrep"
+quiz_topics:
+  - "Tolkning av fareskilt-symboler"
+  - "Riktig reaksjon på fareskilt"
+  - "Forståelse av underskilt"
+  - "Avstand til fare"
+video_shorts_planned:
+  - sequence: 1
+    title: "Hva betyr trekanten?"
+    duration: "25s"
+    topics: ["form", "farge", "betydning"]
+  - sequence: 2  
+    title: "Topp 5 fareskilt du MÅ kunne"
+    duration: "50s"
+    topics: ["veiarbeid", "sving", "dyr", "glatt kjørebane", "barn"]
+  - sequence: 3
+    title: "Underskilt: Den hemmelige beskjeden"
+    duration: "40s"
+    topics: ["avstand", "lengde", "klokkeslett"]
+  - sequence: 4
+    title: "Fareskilt-tabben nesten alle gjør"
+    duration: "35s"
+    topics: ["bremse for sent", "ignorere skiltet"]
+engagement_metrics:
+  target_completion_rate: 80
+  target_time_minutes: 30
+  difficulty_rating: "Lett"
+content_structure:
+  word_count_content: 1089
+  word_count_summary: 268
+  sections: 5
+  subsections: 12

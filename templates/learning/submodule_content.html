@@ -1,0 +1,569 @@
+{% extends "base.html" %}
+
+{% block title %}{{ submodule.title }} - Teoristudie - Sertifikatet{% endblock %}
+
+{% block extra_css %}
+<link rel="stylesheet" href="{{ url_for('static', filename='css/learning-content.css') }}">
+{% endblock %}
+
+{% block content %}
+<div class="min-h-screen bg-gradient-to-br from-purple-900 via-blue-900 to-indigo-900">
+    <div class="container mx-auto px-4 py-8">
+        <!-- Breadcrumb Navigation -->
+        <nav aria-label="breadcrumb" class="mb-6">
+            <ol class="flex items-center space-x-2 text-sm text-blue-200">
+                <li>
+                    <a href="{{ url_for('learning.index') }}" class="text-blue-200 hover:text-white">
+                        <i class="fas fa-arrow-left mr-1"></i>Læringsveier
+                    </a>
+                </li>
+                <li class="text-blue-300">/</li>
+                <li>
+                    <a href="{{ url_for('learning.theory_dashboard') }}" class="text-blue-200 hover:text-white">
+                        Teorioversikt
+                    </a>
+                </li>
+                <li class="text-blue-300">/</li>
+                <li class="text-white" aria-current="page">
+                    {{ submodule.submodule_number }} {{ submodule.title }}
+                </li>
+            </ol>
+        </nav>
+
+        <!-- Content Header -->
+        <div class="bg-white/10 backdrop-blur-lg rounded-xl p-6 border border-white/20 mb-8">
+            <div class="flex items-center justify-between mb-4">
+                <div class="flex items-center">
+                    <div class="w-14 h-14 bg-blue-600 rounded-xl flex items-center justify-center mr-4">
+                        <span class="text-lg font-bold text-white">{{ submodule.submodule_number }}</span>
+                    </div>
+                    <div>
+                        <h1 class="text-2xl font-bold text-white mb-1">{{ submodule.title }}</h1>
+                        <p class="text-blue-200 text-sm">
+                            {% if submodule.estimated_minutes %}
+                            <i class="fas fa-clock mr-1"></i>{{ submodule.estimated_minutes }} min
+                            {% endif %}
+                            {% if submodule.difficulty_level %}
+                            • Nivå {{ submodule.difficulty_level }}/5
+                            {% endif %}
+                        </p>
+                    </div>
+                </div>
+                
+                <!-- Action Buttons -->
+                <div class="flex space-x-2">
+                    {% if submodule.has_video_shorts %}
+                    <a href="{{ url_for('learning.theory_shorts_player', submodule_id=submodule.submodule_number) }}" 
+                       class="px-4 py-2 bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white font-semibold rounded-lg transition-all duration-300">
+                        <i class="fas fa-play mr-1"></i>Videoer
+                    </a>
+                    {% endif %}
+                    {% if submodule.has_quiz %}
+                    <a href="#" class="px-4 py-2 bg-gradient-to-r from-green-600 to-blue-600 hover:from-green-700 hover:to-blue-700 text-white font-semibold rounded-lg transition-all duration-300">
+                        <i class="fas fa-question-circle mr-1"></i>Quiz
+                    </a>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+
+        <!-- Content Control Bar -->
+        <div class="mb-8">
+            <div class="bg-white/10 backdrop-blur-lg rounded-xl p-4 border border-white/20">
+                <div class="flex items-center justify-between">
+                    <!-- Content Type Toggle -->
+                    <div class="flex items-center space-x-4">
+                        <span class="text-blue-200 text-sm font-medium">Innholdstype:</span>
+                        <div class="flex items-center space-x-3">
+                            <label class="flex items-center cursor-pointer">
+                                <input type="radio" name="content-type" value="kort" class="sr-only" onchange="toggleContent('kort')">
+                                <div class="content-toggle kort-toggle flex items-center px-4 py-2 rounded-lg border border-blue-400 bg-blue-600/50 text-white transition-all duration-300">
+                                    <i class="fas fa-bolt mr-2"></i>
+                                    <span class="font-medium">Kort</span>
+                                    <span class="ml-2 text-xs opacity-75">5 min</span>
+                                </div>
+                            </label>
+                            
+                            <label class="flex items-center cursor-pointer">
+                                <input type="radio" name="content-type" value="detailed" class="sr-only" checked onchange="toggleContent('detailed')">
+                                <div class="content-toggle detailed-toggle flex items-center px-4 py-2 rounded-lg border border-purple-400 bg-purple-600/50 text-white transition-all duration-300">
+                                    <i class="fas fa-book-open mr-2"></i>
+                                    <span class="font-medium">Detaljert</span>
+                                    <span class="ml-2 text-xs opacity-75">{{ submodule.estimated_minutes or 25 }} min</span>
+                                </div>
+                            </label>
+                        </div>
+                    </div>
+                    
+                    <!-- Content Actions -->
+                    <div class="flex items-center space-x-3">
+                        <button onclick="adjustFontSize(-1)" class="p-2 text-blue-200 hover:text-white transition-colors" title="Mindre tekst">
+                            <i class="fas fa-minus"></i>
+                        </button>
+                        <button onclick="adjustFontSize(1)" class="p-2 text-blue-200 hover:text-white transition-colors" title="Større tekst">
+                            <i class="fas fa-plus"></i>
+                        </button>
+                        <button onclick="toggleDarkMode()" class="p-2 text-blue-200 hover:text-white transition-colors" title="Mørk/lys modus">
+                            <i class="fas fa-adjust"></i>
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Content Display -->
+        <div id="content-container">
+            <!-- Kort (Short) Content -->
+            <div id="kort-panel" class="content-panel hidden">
+                <div class="bg-white/10 backdrop-blur-lg rounded-xl p-6 md:p-8 border border-white/20">
+                    {% if content and content.kort and content.kort.html_content %}
+                    <div class="mb-4">
+                        <div class="bg-blue-500/20 border border-blue-500/30 rounded-lg p-4">
+                            <h3 class="text-lg font-bold text-blue-100 mb-2">
+                                <i class="fas fa-bolt mr-2"></i>Kort sammendrag
+                            </h3>
+                            <p class="text-blue-200 text-sm">Raskt gjennomgang av de viktigste punktene. Perfect for repetisjon!</p>
+                        </div>
+                    </div>
+                    <div class="prose prose-invert max-w-none text-blue-50 content-text" id="kort-content">
+                        {{ content.kort.html_content | safe }}
+                    </div>
+                    {% else %}
+                    <div class="text-center py-12">
+                        <div class="mb-4">
+                            <i class="fas fa-bolt fa-3x text-blue-300"></i>
+                        </div>
+                        <h3 class="text-xl font-bold text-white mb-2">Kort innhold ikke tilgjengelig</h3>
+                        <p class="text-blue-200">Det korte sammendraget for dette emnet er under utvikling.</p>
+                    </div>
+                    {% endif %}
+                </div>
+            </div>
+
+            <!-- Detaljert (Detailed) Content -->
+            <div id="detailed-panel" class="content-panel">
+                <div class="bg-white/10 backdrop-blur-lg rounded-xl p-6 md:p-8 border border-white/20">
+                    {% if content and content.detailed and content.detailed.html_content %}
+                    <div class="mb-4">
+                        <div class="bg-purple-500/20 border border-purple-500/30 rounded-lg p-4">
+                            <h3 class="text-lg font-bold text-purple-100 mb-2">
+                                <i class="fas fa-book-open mr-2"></i>Detaljert innhold
+                            </h3>
+                            <p class="text-purple-200 text-sm">Grundig gjennomgang med eksempler, forklaringer og praktiske tips.</p>
+                        </div>
+                    </div>
+                    <div class="prose prose-invert max-w-none text-blue-50 content-text" id="detailed-content">
+                        {{ content.detailed.html_content | safe }}
+                    </div>
+                    {% else %}
+                    <div class="text-center py-12">
+                        <div class="mb-4">
+                            <i class="fas fa-book-open fa-3x text-blue-300"></i>
+                        </div>
+                        <h3 class="text-xl font-bold text-white mb-2">Detaljert innhold ikke tilgjengelig</h3>
+                        <p class="text-blue-200">Det detaljerte innholdet for dette emnet er under utvikling.</p>
+                    </div>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+
+        <!-- Navigation -->
+        <div class="mt-8 space-y-4">
+            <!-- Top Navigation: Back Button -->
+            <div class="flex justify-between items-center">
+                <a href="{{ url_for('learning.theory_dashboard') }}" 
+                   class="inline-flex items-center px-6 py-3 bg-white/10 backdrop-blur-lg rounded-lg text-white hover:bg-white/20 transition-all duration-300">
+                    <i class="fas fa-arrow-left mr-2"></i>
+                    Tilbake til teorioversikt
+                </a>
+                
+                <button class="inline-flex items-center px-6 py-3 bg-gradient-to-r from-green-600 to-blue-600 hover:from-green-700 hover:to-blue-700 text-white rounded-lg transition-all duration-300" onclick="markAsComplete()">
+                    <i class="fas fa-check mr-2"></i>
+                    {% if submodule.status == 'completed' %}Fullført{% else %}Marker som fullført{% endif %}
+                </button>
+            </div>
+            
+            <!-- Bottom Navigation: Previous/Next + Videos -->
+            <div class="flex justify-between items-center">
+                <!-- Previous Button -->
+                <button id="prev-btn" class="inline-flex items-center px-6 py-3 bg-white/10 backdrop-blur-lg rounded-lg text-white hover:bg-white/20 transition-all duration-300" onclick="goToPrevious()" style="display: none;">
+                    <i class="fas fa-arrow-left mr-2"></i>
+                    <span id="prev-btn-text">Forrige</span>
+                </button>
+                
+                <!-- Placeholder for alignment when no previous -->
+                <div id="prev-placeholder" class="w-6"></div>
+                
+                <!-- Center: Videos Button (only show if has shorts) -->
+                <div class="flex space-x-3">
+                    {% if submodule.has_video_shorts %}
+                    <a href="{{ url_for('learning.theory_shorts_player', submodule_id=submodule.submodule_number) }}" 
+                       class="inline-flex items-center px-6 py-3 bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white rounded-lg transition-all duration-300">
+                        <i class="fas fa-play mr-2"></i>
+                        Videoer for modul {{ submodule.submodule_number }}
+                    </a>
+                    {% endif %}
+                </div>
+                
+                <!-- Next Button -->
+                <button id="smart-next-btn" class="inline-flex items-center px-6 py-3 bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-700 hover:to-pink-700 text-white rounded-lg transition-all duration-300" onclick="goToNext()">
+                    <i class="fas fa-arrow-right mr-2"></i>
+                    <span id="next-btn-text">Neste</span>
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+<!-- Add this for debugging -->
+<script>
+    console.log('Submodule status from backend:', '{{ submodule.status }}');
+    console.log('Is completed from backend:', {{ submodule.is_completed|tojson }});
+    </script>
+<script>
+// Content type toggle functionality
+function toggleContent(contentType) {
+    // Hide all content panels
+    document.querySelectorAll('.content-panel').forEach(panel => {
+        panel.classList.add('hidden');
+    });
+    
+    // Reset all toggle buttons
+    document.querySelectorAll('.content-toggle').forEach(toggle => {
+        toggle.classList.remove('bg-blue-600', 'bg-purple-600', 'border-blue-400', 'border-purple-400');
+        toggle.classList.add('bg-white/10', 'border-white/30', 'text-blue-200');
+    });
+    
+    // Show selected content panel
+    document.getElementById(contentType + '-panel').classList.remove('hidden');
+    
+    // Activate selected toggle
+    if (contentType === 'kort') {
+        document.querySelector('.kort-toggle').classList.remove('bg-white/10', 'border-white/30', 'text-blue-200');
+        document.querySelector('.kort-toggle').classList.add('bg-blue-600', 'border-blue-400', 'text-white');
+    } else {
+        document.querySelector('.detailed-toggle').classList.remove('bg-white/10', 'border-white/30', 'text-blue-200');
+        document.querySelector('.detailed-toggle').classList.add('bg-purple-600', 'border-purple-400', 'text-white');
+    }
+    
+    // Track content type selection
+    if (window.gtag) {
+        gtag('event', 'content_type_toggle', {
+            'event_category': 'learning',
+            'event_label': contentType,
+            'value': 1
+        });
+    }
+    
+    // Save preference
+    localStorage.setItem('preferred_content_type', contentType);
+}
+
+// Font size adjustment
+let currentFontSize = 1;
+function adjustFontSize(delta) {
+    currentFontSize += delta * 0.1;
+    currentFontSize = Math.max(0.8, Math.min(1.4, currentFontSize)); // Clamp between 0.8 and 1.4
+    
+    document.querySelectorAll('.content-text').forEach(element => {
+        element.style.fontSize = currentFontSize + 'rem';
+    });
+    
+    localStorage.setItem('content_font_size', currentFontSize);
+}
+
+// Dark mode toggle (for content area)
+function toggleDarkMode() {
+    const contentContainer = document.getElementById('content-container');
+    contentContainer.classList.toggle('dark-mode');
+    
+    const isDark = contentContainer.classList.contains('dark-mode');
+    localStorage.setItem('content_dark_mode', isDark);
+}
+
+// Initialize preferences on page load
+document.addEventListener('DOMContentLoaded', function() {
+    // Restore content type preference
+    const preferredType = localStorage.getItem('preferred_content_type') || 'detailed';
+    document.querySelector(`input[value="${preferredType}"]`).checked = true;
+    toggleContent(preferredType);
+    
+    // Restore font size
+    const savedFontSize = localStorage.getItem('content_font_size');
+    if (savedFontSize) {
+        currentFontSize = parseFloat(savedFontSize);
+        adjustFontSize(0); // Apply saved size
+    }
+    
+    // Restore dark mode
+    const isDarkMode = localStorage.getItem('content_dark_mode') === 'true';
+    if (isDarkMode) {
+        toggleDarkMode();
+    }
+    
+    // Load navigation content for smart navigation
+    loadNavigationContent();
+});
+
+// Load navigation content on page load
+async function loadNavigationContent() {
+    // Load both next and previous content
+    await Promise.all([
+        loadNextContent(),
+        loadPreviousContent()
+    ]);
+}
+
+// Load next content
+async function loadNextContent() {
+    try {
+        const response = await fetch('/learning/api/get-next', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRFToken': getCsrfToken()
+            },
+            body: JSON.stringify({
+                submodule_id: {{ submodule.submodule_number }},
+                content_type: 'content'
+            })
+        });
+        
+        if (!response.ok) {
+            throw new Error('Network response was not ok');
+        }
+        
+        const data = await response.json();
+        
+        if (data.success && data.has_next && data.next_content) {
+            const nextBtn = document.getElementById('smart-next-btn');
+            const nextBtnText = document.getElementById('next-btn-text');
+            
+            if (nextBtn && nextBtnText) {
+                nextBtn.setAttribute('data-next-url', data.next_content.url);
+                nextBtnText.textContent = data.next_content.title;
+                
+                // Update button icon based on content type
+                const icon = nextBtn.querySelector('i');
+                if (data.next_content.content_type === 'shorts') {
+                    icon.className = 'fas fa-play mr-2';
+                    nextBtn.title = 'Se videoer for dette emnet';
+                } else if (data.next_content.content_type === 'module') {
+                    icon.className = 'fas fa-arrow-up mr-2';
+                    nextBtn.title = 'Gå til neste modul';
+                } else {
+                    icon.className = 'fas fa-arrow-right mr-2';
+                    nextBtn.title = 'Gå til neste emne';
+                }
+                
+                console.log('Smart navigation loaded:', data.next_content.title);
+                console.log('Submodule status from backend:', '{{ submodule.status }}');
+                console.log('Is completed from backend:', {{ submodule.is_completed|tojson }});
+            }
+        } else {
+            // No next content available - hide the button
+            const nextBtn = document.getElementById('smart-next-btn');
+            if (nextBtn) {
+                nextBtn.style.display = 'none';
+            }
+            console.log('No next content available');
+        }
+    } catch (error) {
+        console.error('Error loading next content:', error);
+        // Hide button on error but don't crash the page
+        const nextBtn = document.getElementById('smart-next-btn');
+        if (nextBtn) {
+            nextBtn.style.display = 'none';
+        }
+    }
+}
+
+// Load previous content
+async function loadPreviousContent() {
+    try {
+        const currentSubmodule = {{ submodule.submodule_number }};
+        let previousSubmodule = null;
+        
+        // Calculate previous submodule (simple logic)
+        if (currentSubmodule > 1.1) {
+            if (currentSubmodule.toString().endsWith('.1')) {
+                // If it's X.1, go to previous module's last submodule
+                const currentModule = Math.floor(currentSubmodule);
+                if (currentModule > 1) {
+                    // Submodule counts: [5, 5, 5, 4, 4] for modules 1-5
+                    const submoduleCounts = [5, 5, 5, 4, 4];
+                    const prevModule = currentModule - 1;
+                    const lastSubInPrevModule = submoduleCounts[prevModule - 1] || 5;
+                    previousSubmodule = prevModule + (lastSubInPrevModule / 10);
+                }
+            } else {
+                // Within same module, just subtract 0.1
+                previousSubmodule = Math.round((currentSubmodule - 0.1) * 10) / 10;
+            }
+        }
+        
+        if (previousSubmodule) {
+            const prevBtn = document.getElementById('prev-btn');
+            const prevBtnText = document.getElementById('prev-btn-text');
+            const prevPlaceholder = document.getElementById('prev-placeholder');
+            
+            if (prevBtn && prevBtnText) {
+                const prevUrl = `/learning/module/${previousSubmodule}`;
+                prevBtn.setAttribute('data-prev-url', prevUrl);
+                prevBtnText.textContent = `Modul ${previousSubmodule}`;
+                prevBtn.style.display = 'inline-flex';
+                
+                // Hide placeholder
+                if (prevPlaceholder) {
+                    prevPlaceholder.style.display = 'none';
+                }
+                
+                console.log('Previous navigation loaded:', `Modul ${previousSubmodule}`);
+            }
+        } else {
+            console.log('No previous content available');
+        }
+    } catch (error) {
+        console.error('Error loading previous content:', error);
+    }
+}
+
+// Go to previous content
+function goToPrevious() {
+    const prevBtn = document.getElementById('prev-btn');
+    const prevUrl = prevBtn.getAttribute('data-prev-url');
+    
+    if (prevUrl) {
+        // Show loading state
+        const originalText = prevBtn.innerHTML;
+        prevBtn.innerHTML = '<i class="fas fa-spinner fa-spin mr-2"></i>Laster...';
+        prevBtn.disabled = true;
+        
+        window.location.href = prevUrl;
+    } else {
+        alert('Ingen forrige side tilgjengelig.');
+    }
+}
+
+// Helper function to get CSRF token
+function getCsrfToken() {
+    const token = document.querySelector('meta[name="csrf-token"]');
+    return token ? token.getAttribute('content') : '';
+}
+
+// Smart navigation function
+function goToNext() {
+    const nextBtn = document.getElementById('smart-next-btn');
+    const nextUrl = nextBtn.getAttribute('data-next-url');
+    
+    if (nextUrl) {
+        // Show loading state
+        const originalText = nextBtn.innerHTML;
+        nextBtn.innerHTML = '<i class="fas fa-spinner fa-spin mr-2"></i>Laster...';
+        nextBtn.disabled = true;
+        
+        // Mark current content as complete first
+        markAsComplete().then(() => {
+            window.location.href = nextUrl;
+        }).catch(() => {
+            // Go to next even if marking complete fails
+            window.location.href = nextUrl;
+        }).finally(() => {
+            // Restore button state in case navigation fails
+            setTimeout(() => {
+                nextBtn.innerHTML = originalText;
+                nextBtn.disabled = false;
+            }, 2000);
+        });
+    } else {
+        alert('Ingen neste side tilgjengelig.');
+    }
+}
+
+// Mark as complete functionality
+function markAsComplete() {
+    return new Promise((resolve, reject) => {
+        const completeButton = document.querySelector('[onclick="markAsComplete()"]');
+
+        // DEBUG: Let's see what we're working with
+        console.log('Complete button found:', completeButton);
+        console.log('Button innerHTML:', completeButton ? completeButton.innerHTML : 'Button not found');
+
+        if (completeButton && completeButton.innerHTML.includes('Fullført')) {
+            // Already marked as complete, just resolve
+            console.log('✅ Already marked as complete, skipping dialog');
+            resolve();
+            return;
+        }
+        console.log('❌ Not marked as complete yet, showing dialog');
+        const currentContentType = document.querySelector('input[name="content-type"]:checked').value;
+        
+        const confirmMessage = currentContentType === 'kort' 
+            ? 'Marker dette emnet som fullført? (Du har lest den korte versjonen)' 
+            : 'Marker dette emnet som fullført? (Du har lest den detaljerte versjonen)';
+        
+        if (confirm(confirmMessage)) {
+            // Send completion data to server using mark_content_complete service
+            fetch('/learning/api/complete-content', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({
+                    content_type: 'content',
+                    content_id: {{ submodule.submodule_number }},
+                    completion_data: {
+                        content_type_read: currentContentType,
+                        font_size: currentFontSize,
+                        time_spent: Math.floor((Date.now() - startTime) / 1000 / 60)
+                    }
+                })
+            })
+            .then(response => {
+                if (!response.ok) {
+                    throw new Error('Network response was not ok');
+                }
+                return response.json();
+            })
+            .then(data => {
+                if (data.success) {
+                    // Update UI to show completion
+                    const button = document.querySelector('[onclick="markAsComplete()"]');
+                    if (button) {
+                        button.innerHTML = '<i class="fas fa-check mr-2"></i>Fullført';
+                        button.classList.remove('from-green-600', 'to-blue-600');
+                        button.classList.add('from-green-700', 'to-green-700');
+                    }
+                    resolve();
+                } else {
+                    console.warn('Completion tracking failed:', data.error);
+                    alert('Innholdet er lest, men fremgangen ble ikke lagret. (Teknisk feil)');
+                    resolve(); // Still resolve so navigation continues
+                }
+            })
+            .catch(error => {
+                console.error('Error marking complete:', error);
+                alert('Innholdet er lest, men fremgangen ble ikke lagret. (Nettverksfeil)');
+                resolve(); // Still resolve so navigation continues
+            });
+        } else {
+            resolve(); // User cancelled, but that's fine
+        }
+    });
+}
+
+// Track reading time
+let startTime = Date.now();
+window.addEventListener('beforeunload', function() {
+    const timeSpent = Math.floor((Date.now() - startTime) / 1000 / 60); // minutes
+    if (timeSpent > 0) {
+        // TODO: Send time tracking data to server
+        navigator.sendBeacon('/api/learning/track-time', JSON.stringify({
+            submodule_id: {{ submodule.submodule_number }},
+            time_spent: timeSpent,
+            content_type: 'content'
+        }));
+    }
+});
+</script>
+{% endblock %}

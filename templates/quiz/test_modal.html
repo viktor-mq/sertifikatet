@@ -1,0 +1,257 @@
+{% extends "base.html" %}
+
+{% block title %}Test Quiz Results Modal - Sertifikatet{% endblock %}
+
+{% block content %}
+<div class="max-w-4xl mx-auto px-6 py-12">
+    <h1 class="text-3xl font-bold text-center mb-8">
+        <span class="bg-gradient-to-r from-purple-400 to-pink-400 bg-clip-text text-transparent">
+            Test Quiz Results Modal
+        </span>
+    </h1>
+    
+    <div class="glass rounded-2xl p-8 text-center">
+        <p class="text-gray-300 mb-8">Test the new modal-based quiz results system</p>
+        
+        <div class="space-y-4">
+            <button id="test-xp-integration" 
+                    class="w-full bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 
+                           text-white font-semibold py-3 px-6 rounded-lg transition-all duration-200">
+                🔧 Test XP Integration
+            </button>
+            
+            <button id="test-excellent-result" 
+                    class="w-full bg-gradient-to-r from-green-600 to-emerald-600 hover:from-green-700 hover:to-emerald-700 
+                           text-white font-semibold py-3 px-6 rounded-lg transition-all duration-200">
+                🌟 Test Excellent Result (95%)
+            </button>
+            
+            <button id="test-good-result" 
+                    class="w-full bg-gradient-to-r from-yellow-600 to-orange-600 hover:from-yellow-700 hover:to-orange-700 
+                           text-white font-semibold py-3 px-6 rounded-lg transition-all duration-200">
+                👍 Test Good Result (78%)
+            </button>
+            
+            <button id="test-poor-result" 
+                    class="w-full bg-gradient-to-r from-red-600 to-pink-600 hover:from-red-700 hover:to-pink-700 
+                           text-white font-semibold py-3 px-6 rounded-lg transition-all duration-200">
+                📚 Test Poor Result (45%)
+            </button>
+            
+            <button id="test-with-achievements" 
+                    class="w-full bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-700 hover:to-pink-700 
+                           text-white font-semibold py-3 px-6 rounded-lg transition-all duration-200">
+                🏆 Test With Achievements
+            </button>
+        </div>
+        
+        <div class="mt-8 p-4 bg-blue-500 bg-opacity-20 rounded-lg">
+            <p class="text-blue-100 text-sm">
+                <i class="fas fa-info-circle mr-2"></i>
+                This is a developer testing page. In production, the modal will be triggered automatically after quiz completion.
+            </p>
+        </div>
+    </div>
+</div>
+
+<!-- Gamification System JavaScript -->
+<script src="{{ url_for('static', filename='js/quiz-results-modal.js') }}"></script>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    // Test data for different scenarios
+    const testData = {
+        excellent: {
+            success: true,
+            session_id: 123,
+            results: {
+                correct_answers: 19,
+                total_questions: 20,
+                accuracy: 95,
+                score: 95,
+                total_time: 180
+            },
+            gamification: {
+                xp_earned: 45,
+                achievements: [],
+                level_ups: [],
+                daily_challenges: []
+            }
+        },
+        good: {
+            success: true,
+            session_id: 124,
+            results: {
+                correct_answers: 14,
+                total_questions: 18,
+                accuracy: 78,
+                score: 78,
+                total_time: 240
+            },
+            gamification: {
+                xp_earned: 28,
+                achievements: [],
+                level_ups: [],
+                daily_challenges: []
+            }
+        },
+        poor: {
+            success: true,
+            session_id: 125,
+            results: {
+                correct_answers: 9,
+                total_questions: 20,
+                accuracy: 45,
+                score: 45,
+                total_time: 320
+            },
+            gamification: {
+                xp_earned: 15,
+                achievements: [],
+                level_ups: [],
+                daily_challenges: []
+            }
+        },
+        withAchievements: {
+            success: true,
+            session_id: 126,
+            results: {
+                correct_answers: 15,
+                total_questions: 15,
+                accuracy: 100,
+                score: 100,
+                total_time: 150
+            },
+            gamification: {
+                xp_earned: 50,
+                achievements: [
+                    {
+                        name: "Perfekt Score",
+                        description: "Fikk alle spørsmål riktig på en quiz",
+                        points: 25
+                    },
+                    {
+                        name: "Lynrask",
+                        description: "Fullførte quiz på under 3 minutter",
+                        points: 15
+                    }
+                ],
+                level_ups: [],
+                daily_challenges: [
+                    {
+                        title: "Daily Quiz Master",
+                        description: "Complete 3 quizzes today"
+                    }
+                ]
+            }
+        }
+    };
+
+    // Mock review data for the session
+    window.mockReviewData = {
+        success: true,
+        questions: [
+            {
+                question_id: 1,
+                question_text: "Hva betyr dette skiltet?",
+                image_filename: "sign_example.jpg",
+                options: [
+                    { letter: 'a', text: 'Stopp' },
+                    { letter: 'b', text: 'Vikeplikt' },
+                    { letter: 'c', text: 'Forbudt' },
+                    { letter: 'd', text: 'Tillatt' }
+                ],
+                correct_answer: 'b',
+                user_answer: 'b',
+                is_correct: true,
+                time_spent: 25,
+                explanation: "Dette skiltet betyr vikeplikt. Du må gi andre trafikanter fri passasje."
+            },
+            {
+                question_id: 2,
+                question_text: "Hvor langt fra et fotgjengerpassage må du parkere?",
+                image_filename: null,
+                options: [
+                    { letter: 'a', text: '3 meter' },
+                    { letter: 'b', text: '5 meter' },
+                    { letter: 'c', text: '10 meter' },
+                    { letter: 'd', text: '15 meter' }
+                ],
+                correct_answer: 'b',
+                user_answer: 'a',
+                is_correct: false,
+                time_spent: 32,
+                explanation: "Du må holde minst 5 meter avstand fra fotgjengerkrysning når du parkerer."
+            }
+        ]
+    };
+
+    // Mock the fetch function for review data
+    const originalFetch = window.fetch;
+    window.fetch = function(url, options) {
+        if (url.includes('/review')) {
+            return Promise.resolve({
+                ok: true,
+                json: () => Promise.resolve(window.mockReviewData)
+            });
+        }
+        return originalFetch(url, options);
+    };
+
+    // Event listeners for test buttons
+    document.getElementById('test-xp-integration').addEventListener('click', async function() {
+        try {
+            const response = await fetch('/quiz/test-xp-integration');
+            const data = await response.json();
+            
+            if (data.success) {
+                alert(`✅ XP Integration Working!\n\nTest Calculation: ${data.test_calculation.total_xp} XP\nYour Current XP: ${data.current_user_xp}\n\nMethods Available:\n${Object.entries(data.gamification_methods_available).map(([key, value]) => `${key}: ${value ? '✅' : '❌'}`).join('\n')}`);
+            } else {
+                alert(`❌ XP Integration Error:\n${data.error}`);
+            }
+        } catch (error) {
+            alert(`❌ Network Error: ${error.message}`);
+        }
+    });
+
+    document.getElementById('test-excellent-result').addEventListener('click', function() {
+        if (window.QuizResultsModal) {
+            window.QuizResultsModal.show(testData.excellent);
+        } else {
+            alert('Quiz Results Modal system not loaded');
+        }
+    });
+
+    document.getElementById('test-good-result').addEventListener('click', function() {
+        if (window.QuizResultsModal) {
+            window.QuizResultsModal.show(testData.good);
+        } else {
+            alert('Quiz Results Modal system not loaded');
+        }
+    });
+
+    document.getElementById('test-poor-result').addEventListener('click', function() {
+        if (window.QuizResultsModal) {
+            window.QuizResultsModal.show(testData.poor);
+        } else {
+            alert('Quiz Results Modal system not loaded');
+        }
+    });
+
+    document.getElementById('test-with-achievements').addEventListener('click', function() {
+        if (window.QuizResultsModal) {
+            window.QuizResultsModal.show(testData.withAchievements);
+        } else {
+            alert('Quiz Results Modal system not loaded');
+        }
+    });
+
+    // Log when system is ready
+    if (window.QuizResultsModal) {
+        console.log('✅ Quiz Results Modal system loaded and ready for testing');
+    } else {
+        console.warn('❌ Quiz Results Modal system not available');
+    }
+});
+</script>
+{% endblock %}

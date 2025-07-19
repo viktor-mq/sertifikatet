@@ -3,7 +3,7 @@
  * Phase 10: Offline Support and PWA
  */
 
-const CACHE_NAME = 'sertifikatet-v1.0.1'; // Updated to force service worker refresh
+const CACHE_NAME = 'sertifikatet-v1.0.2'; // Updated to fix quiz submission issue
 const OFFLINE_PAGE = '/offline';
 
 // Files to cache for offline functionality
@@ -98,6 +98,21 @@ self.addEventListener('fetch', (event) => {
     if (url.pathname.startsWith('/admin/') || url.pathname.startsWith('/auth/')) {
         console.log('Service Worker: Skipping ALL admin and auth requests:', url.pathname);
         return; // Let the request go through normally without any service worker intervention
+    }
+    
+    // CRITICAL: Skip quiz submission requests to prevent interference with modal system
+    if (url.pathname.includes('/quiz/session/') && url.pathname.includes('/submit')) {
+        console.log('Service Worker: Skipping quiz submission request:', url.pathname);
+        return; // Let quiz submissions go through normally
+    }
+    
+    // Skip any quiz-related POST requests that should use AJAX
+    if (request.method === 'POST' && (
+        url.pathname.startsWith('/quiz/') || 
+        url.pathname.includes('/submit')
+    )) {
+        console.log('Service Worker: Skipping quiz POST request:', url.pathname);
+        return; // Let quiz requests go through normally
     }
     
     // Handle different types of requests

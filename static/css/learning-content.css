@@ -1,0 +1,221 @@
+/* Learning Content Enhancements */
+
+/* Content Toggle Styles */
+.content-toggle {
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    user-select: none;
+}
+
+.content-toggle:hover {
+    transform: translateY(-1px);
+    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.3);
+}
+
+.content-toggle.active {
+    transform: scale(1.05);
+}
+
+/* Content Panel Transitions */
+.content-panel {
+    opacity: 1;
+    transition: opacity 0.3s ease-in-out, transform 0.3s ease-in-out;
+}
+
+.content-panel.hidden {
+    opacity: 0;
+    transform: translateY(10px);
+}
+
+/* Enhanced Typography */
+.content-text {
+    line-height: 1.7;
+    transition: font-size 0.3s ease;
+}
+
+.content-text h1, .content-text h2, .content-text h3 {
+    margin-top: 2rem;
+    margin-bottom: 1rem;
+    font-weight: 700;
+}
+
+.content-text h1 {
+    font-size: 2.25rem;
+    color: #ffffff;
+    border-bottom: 2px solid #8b5cf6;
+    padding-bottom: 0.5rem;
+}
+
+.content-text h2 {
+    font-size: 1.875rem;
+    color: #e0e7ff;
+}
+
+.content-text h3 {
+    font-size: 1.5rem;
+    color: #c7d2fe;
+}
+
+.content-text p {
+    margin-bottom: 1.5rem;
+    color: #cbd5e1;
+}
+
+.content-text ul, .content-text ol {
+    margin-bottom: 1.5rem;
+    padding-left: 1.5rem;
+}
+
+.content-text li {
+    margin-bottom: 0.5rem;
+    color: #cbd5e1;
+}
+
+.content-text blockquote {
+    border-left: 4px solid #8b5cf6;
+    padding-left: 1rem;
+    margin: 1.5rem 0;
+    background: rgba(139, 92, 246, 0.1);
+    border-radius: 0 0.5rem 0.5rem 0;
+    padding: 1rem;
+}
+
+.content-text blockquote p {
+    margin: 0;
+    font-style: italic;
+    font-weight: 600;
+    color: #e0e7ff;
+}
+
+/* Code blocks */
+.content-text code {
+    background: rgba(30, 41, 59, 0.5);
+    padding: 0.2rem 0.4rem;
+    border-radius: 0.25rem;
+    font-size: 0.875rem;
+    color: #f1f5f9;
+}
+
+.content-text pre {
+    background: rgba(30, 41, 59, 0.7);
+    padding: 1rem;
+    border-radius: 0.5rem;
+    overflow-x: auto;
+    margin: 1.5rem 0;
+}
+
+/* Dark mode support */
+.content-container.dark-mode .content-text {
+    color: #f8fafc;
+}
+
+.content-container.dark-mode .content-text h1,
+.content-container.dark-mode .content-text h2,
+.content-container.dark-mode .content-text h3 {
+    color: #ffffff;
+}
+
+.content-container.dark-mode .content-text p,
+.content-container.dark-mode .content-text li {
+    color: #e2e8f0;
+}
+
+/* Mobile responsive adjustments */
+@media (max-width: 768px) {
+    .content-text h1 {
+        font-size: 1.875rem;
+    }
+    
+    .content-text h2 {
+        font-size: 1.5rem;
+    }
+    
+    .content-text h3 {
+        font-size: 1.25rem;
+    }
+    
+    .content-toggle {
+        padding: 0.5rem 0.75rem;
+        font-size: 0.875rem;
+    }
+    
+    .content-toggle .ml-2 {
+        margin-left: 0.25rem;
+    }
+}
+
+/* Loading states */
+.content-loading {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    min-height: 200px;
+    opacity: 0.7;
+}
+
+.content-loading::after {
+    content: '';
+    width: 40px;
+    height: 40px;
+    border: 3px solid rgba(139, 92, 246, 0.3);
+    border-top: 3px solid #8b5cf6;
+    border-radius: 50%;
+    animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+    0% { transform: rotate(0deg); }
+    100% { transform: rotate(360deg); }
+}
+
+/* Progress indicator */
+.reading-progress {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 0%;
+    height: 3px;
+    background: linear-gradient(90deg, #8b5cf6, #ec4899);
+    z-index: 1000;
+    transition: width 0.3s ease;
+}
+
+/* Accessibility improvements */
+.content-toggle:focus {
+    outline: 2px solid #8b5cf6;
+    outline-offset: 2px;
+}
+
+.content-text a {
+    color: #a78bfa;
+    text-decoration: underline;
+    transition: color 0.2s;
+}
+
+.content-text a:hover {
+    color: #c4b5fd;
+}
+
+/* Dark-theme table header fix */
+.content-text table thead th {
+    background: transparent;     /* or #1e293b; same blue as body */
+    color: #e2e8f0;              /* optional: header text colour */
+}
+
+/* Print styles */
+@media print {
+    .content-toggle,
+    .content-control-bar,
+    .navigation-buttons {
+        display: none !important;
+    }
+    
+    .content-panel {
+        display: block !important;
+        opacity: 1 !important;
+    }
+    
+    .content-text {
+        color: #000 !important;
+        font-size: 12pt !important;
+    }
+}
