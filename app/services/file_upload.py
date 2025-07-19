@@ -7,7 +7,7 @@ from datetime import datetime
 from werkzeug.utils import secure_filename
 from flask import current_app
 from .. import db
-from ..models import LearningModules, LearningSubmodules, VideoShorts
+from ..models import LearningModules, LearningSubmodules, Video
 import subprocess
 from PIL import Image
 import tempfile
@@ -365,32 +365,38 @@ class FileUploadService:
             
             thumbnail_generated = FileUploadService.generate_video_thumbnail(video_path, thumbnail_path)
             
-            # Create database record for video short
-            next_sequence = VideoShorts.query.filter_by(
-                submodule_id=submodule.submodule_number
+            # Create database record for video short using extended Video model
+            next_sequence = Video.query.filter(
+                Video.theory_module_ref == str(submodule.submodule_number),
+                Video.aspect_ratio == '9:16'
             ).count() + 1
             
-            video_short = VideoShorts(
-                submodule_id=float(submodule.submodule_number),
+            video_short = Video(
                 title=video_metadata.get('title', f'Video {next_sequence}'),
                 description=video_metadata.get('description', ''),
                 filename=safe_filename,
-                file_path=os.path.join(submodule.shorts_directory, safe_filename),
+                youtube_url=None,  # For uploaded videos
                 duration_seconds=video_metadata.get('duration_seconds', 60),
-                sequence_order=next_sequence,
-                aspect_ratio='9:16',  # Default for shorts
+                category='learning_short',
                 difficulty_level=video_metadata.get('difficulty_level', 1),
-                thumbnail_path=os.path.join(submodule.shorts_directory, thumbnail_filename) if thumbnail_generated else None,
-                is_active=True
+                order_index=next_sequence,
+                thumbnail_filename=thumbnail_filename if thumbnail_generated else None,
+                is_active=True,
+                # Extended fields for short videos
+                aspect_ratio='9:16',  # TikTok-style
+                content_type='short',
+                theory_module_ref=str(submodule.submodule_number),
+                sequence_order=next_sequence
             )
             
             db.session.add(video_short)
             
             # Update submodule counts
             submodule.has_video_shorts = True
-            submodule.shorts_count = VideoShorts.query.filter_by(
-                submodule_id=submodule.submodule_number
-            ).count() + 1
+            submodule.shorts_count = Video.query.filter(
+                Video.theory_module_ref == str(submodule.submodule_number),
+                Video.aspect_ratio == '9:16'
+            ).count()
             submodule.last_content_update = datetime.utcnow()
             
             db.session.commit()
@@ -437,12 +443,12 @@ class FileUploadService:
                     db.session.delete(submodule)
             
             elif content_type == 'video_short':
-                video_short = VideoShorts.query.get(content_id)
+                video_short = Video.query.get(content_id)
                 if video_short:
                     # Delete video file
-                    if video_short.file_path:
+                    if video_short.filename:
                         learning_base = os.path.join(current_app.root_path, '..', 'learning')
-                        full_path = os.path.join(learning_base, video_short.file_path)
+                        full_path = os.path.join(learning_base, f"static/videos/{video_short.filename}")
                         if os.path.exists(full_path):
                             os.remove(full_path)
                     
@@ -489,12 +495,15 @@ class FileUploadService:
                             issues.append(f"Content file missing: {submodule.content_file_path}")
             
             # Check video shorts
-            video_shorts = VideoShorts.query.filter_by(is_active=True).all()
+            video_shorts = Video.query.filter(
+                Video.is_active == True,
+                Video.aspect_ratio == '9:16'
+            ).all()
             for video in video_shorts:
-                if video.file_path:
-                    full_path = os.path.join(learning_base, video.file_path)
+                if video.filename:
+                    full_path = os.path.join(learning_base, f"static/videos/{video.filename}")
                     if not os.path.exists(full_path):
-                        issues.append(f"Video file missing: {video.file_path}")
+                        issues.append(f"Video file missing: {video.filename}")
             
             return issues
             

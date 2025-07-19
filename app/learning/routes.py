@@ -526,6 +526,62 @@ def get_recommendations():
 
 
 # Video Shorts API Endpoints
+@learning_bp.route('/api/shorts/mock/progress', methods=['POST'])
+@login_required  
+def update_mock_shorts_progress_api():
+    """Handle progress updates for mock videos (no database save)"""
+    try:
+        data = request.get_json()
+        # For mock videos, just return success without database save
+        return jsonify({
+            'success': True,
+            'message': 'Mock progress tracked (not saved to database)',
+            'watch_percentage': data.get('watch_percentage', 0)
+        })
+    except Exception as e:
+        return jsonify({
+            'success': False,
+            'error': 'Mock progress tracking failed'
+        }), 400
+
+@learning_bp.route('/api/shorts/mock/like', methods=['POST'])
+@login_required  
+def toggle_mock_shorts_like():
+    """Handle like toggle for mock videos (no database save)"""
+    try:
+        data = request.get_json()
+        # For mock videos, just return success without database save
+        return jsonify({
+            'success': True,
+            'liked': True,  # Always return liked for mock
+            'message': 'Mock like tracked (not saved to database)'
+        })
+    except Exception as e:
+        return jsonify({
+            'success': False,
+            'error': 'Mock like tracking failed'
+        }), 400
+
+@learning_bp.route('/api/shorts/all-session', methods=['GET'])
+@login_required
+def get_session_shorts_api():
+    """Get all shorts for cross-module session"""
+    try:
+        starting_submodule = request.args.get('start')
+        videos = LearningService.get_all_shorts_for_session(current_user, starting_submodule)
+        
+        return jsonify({
+            'success': True,
+            'videos': videos,
+            'count': len(videos)
+        })
+    except Exception as e:
+        logger.error(f"Error getting session shorts: {e}")
+        return jsonify({
+            'success': False,
+            'error': 'Could not load session videos'
+        }), 500
+
 @learning_bp.route('/api/shorts/<int:shorts_id>/progress', methods=['POST'])
 @login_required
 def update_shorts_progress(shorts_id):
@@ -589,27 +645,27 @@ def toggle_shorts_like(shorts_id):
 def get_shorts_analytics(shorts_id):
     """Get analytics data for a video short"""
     try:
-        from app.models import VideoShorts, UserShortsProgress
+        from app.models import Video, VideoProgress
         
         # Get video short
-        video_short = VideoShorts.query.get_or_404(shorts_id)
+        video_short = Video.query.get_or_404(shorts_id)
         
         # Get user progress
-        progress = UserShortsProgress.query.filter_by(
+        progress = VideoProgress.query.filter_by(
             user_id=current_user.id,
-            shorts_id=shorts_id
+            video_id=shorts_id
         ).first()
         
         analytics_data = {
             'total_views': video_short.view_count,
-            'total_likes': video_short.like_count,
-            'completion_rate': video_short.completion_rate,
-            'average_watch_time': video_short.average_watch_time,
+            'total_likes': 0,  # TODO: Add like tracking field in future
+            'completion_rate': 0,  # TODO: Calculate from VideoProgress records
+            'average_watch_time': video_short.duration_seconds,
             'user_progress': {
-                'watch_status': progress.watch_status if progress else 'not_watched',
+                'watch_status': 'completed' if progress and progress.completed else 'not_watched',
                 'watch_percentage': progress.watch_percentage if progress else 0,
-                'liked': progress.liked if progress else False,
-                'watch_time': progress.watch_time_seconds if progress else 0
+                'liked': progress.interaction_quality > 0 if progress else False,
+                'watch_time': progress.last_position_seconds if progress else 0
             }
         }
         
@@ -624,3 +680,46 @@ def get_shorts_analytics(shorts_id):
             'success': False,
             'error': 'Kunne ikke hente analytics'
         }), 500
+
+
+# NEW API ROUTES FOR VIDEO SHORTS USING VIDEO/VIDEOPROGRESS MODELS
+
+@learning_bp.route('/api/shorts/all-session', methods=['GET'])
+@login_required
+def get_all_session_shorts():
+    """Get all shorts for cross-module session"""
+    try:
+        starting_submodule = request.args.get('start')
+        videos = LearningService.get_all_shorts_for_session(current_user, starting_submodule)
+        
+        return jsonify({
+            'success': True,
+            'videos': videos,
+            'count': len(videos)
+        })
+    except Exception as e:
+        logger.error(f"Error getting session shorts: {e}")
+        return jsonify({
+            'success': False,
+            'error': 'Could not load session videos'
+        }), 500
+
+
+@learning_bp.route('/api/shorts/mock/progress', methods=['POST'])
+@login_required  
+def update_mock_shorts_progress():
+    """Handle progress updates for mock videos (no database save)"""
+    try:
+        data = request.get_json()
+        # For mock videos, just return success without database save
+        return jsonify({
+            'success': True,
+            'message': 'Mock progress tracked (not saved to database)',
+            'watch_percentage': data.get('watch_percentage', 0)
+        })
+    except Exception as e:
+        return jsonify({
+            'success': False,
+            'error': 'Mock progress tracking failed'
+        }), 400
+

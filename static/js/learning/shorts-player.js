@@ -4,7 +4,7 @@
  */
 
 class ShortsPlayer {
-    constructor(container, videos = []) {
+    constructor(container, videos = [], options = {}) {
         this.container = container;
         this.videos = videos;
         this.currentIndex = 0;
@@ -18,6 +18,8 @@ class ShortsPlayer {
         this.isTransitioning = false;
         this.progressUpdateInterval = null;
         this.autoplayTimeout = null;
+        this.crossModuleEnabled = options.crossModuleEnabled || false;
+        this.startingSubmodule = options.startingSubmodule || null;
         
         // Player settings
         this.settings = {
@@ -35,8 +37,14 @@ class ShortsPlayer {
     init() {
         this.createPlayerStructure();
         this.setupEventListeners();
-        this.loadVideos();
-        this.loadCurrentVideo();
+        
+        // Load all videos if cross-module enabled
+        if (this.crossModuleEnabled) {
+            this.loadAllVideosForSession();
+        } else {
+            this.loadVideos();
+            this.loadCurrentVideo();
+        }
         
         // Make container focusable and focused
         this.container.setAttribute('tabindex', '0');
@@ -569,7 +577,11 @@ class ShortsPlayer {
     
     async toggleLike(videoId) {
         try {
-            const response = await fetch('/learning/api/shorts/like', {
+            const endpoint = videoId >= 9000 ? 
+                '/learning/api/shorts/mock/like' : 
+                `/learning/api/shorts/${videoId}/like`;
+                
+            const response = await fetch(endpoint, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ shorts_id: videoId })
@@ -621,7 +633,11 @@ class ShortsPlayer {
         if (!video) return;
         
         try {
-            await fetch('/learning/api/shorts/watch', {
+            const endpoint = video.id >= 9000 ? 
+                '/learning/api/shorts/mock/progress' : 
+                `/learning/api/shorts/${video.id}/progress`;
+                
+            await fetch(endpoint, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
@@ -643,7 +659,12 @@ class ShortsPlayer {
         if (!video || !videoElement) return;
         
         try {
-            await fetch('/learning/api/shorts/watch', {
+            // 🎯 ADD MOCK DETECTION HERE
+            const endpoint = video.id >= 9000 ? 
+                '/learning/api/shorts/mock/progress' :  // Use mock endpoint
+                '/learning/api/shorts/watch';           // Use real endpoint
+                
+            await fetch(endpoint, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
@@ -658,6 +679,25 @@ class ShortsPlayer {
         }
     }
     
+    async loadAllVideosForSession() {
+        try {
+            const response = await fetch(`/learning/api/shorts/all-session${this.startingSubmodule ? `?start=${this.startingSubmodule}` : ''}`);
+            const data = await response.json();
+            
+            if (data.success) {
+                this.videos = data.videos;
+                this.loadVideos(); // Rebuild video elements
+                this.loadCurrentVideo();
+                this.updateVideoInfo(this.currentIndex);
+            }
+        } catch (error) {
+            console.error('Error loading all session videos:', error);
+            // Fallback to provided videos
+            this.loadVideos();
+            this.loadCurrentVideo();
+        }
+    }
+
     // Public Methods
     
     getCurrentVideo() {
@@ -687,7 +727,10 @@ document.addEventListener('DOMContentLoaded', function() {
     const videosData = window.shortsData || [];
     
     if (playerContainer && videosData.length > 0) {
-        window.shortsPlayer = new ShortsPlayer(playerContainer, videosData);
+        window.shortsPlayer = new ShortsPlayer(playerContainer, videosData, {
+            crossModuleEnabled: true,  // Enable cross-module navigation
+            startingSubmodule: window.submoduleId
+        });
         
         // Auto-play first video after 500ms
         setTimeout(() => {

@@ -725,131 +725,158 @@ class LearningService:
     
     @staticmethod
     def get_submodule_shorts(submodule_id, user):
-        """Get video shorts for a submodule with user progress from database with mock fallback"""
+        """Get video shorts for submodule - mock or database based on config"""
+        from flask import current_app
+        
+        if current_app.config.get('SHORT_VIDEOS_MOCK', False):
+            return LearningService._get_mock_shorts(submodule_id, user)
+        else:
+            return LearningService._get_database_shorts(submodule_id, user)
+
+    @staticmethod  
+    def _get_database_shorts(submodule_id, user):
+        """Real database video data for production"""
         try:
-            # Import models from main models file
-            from app.models import VideoShorts, UserShortsProgress
-            from flask import current_app
+            from app.models import Video, VideoProgress
             
-            # Query database for shorts matching this submodule
-            # Convert submodule_id to match database format (decimal number)
-            shorts = VideoShorts.query.filter_by(
-                submodule_id=float(submodule_id),
-                is_active=True
-            ).order_by(VideoShorts.sequence_order).all()
+            # Get videos for this submodule
+            shorts = Video.query.filter(
+                Video.theory_module_ref == str(submodule_id),
+                Video.is_active == True,
+                Video.aspect_ratio == '9:16'
+            ).order_by(Video.sequence_order).all()
             
-            # If no database videos exist, provide mock videos for testing
-            if not shorts:
-                logger.info(f"No video shorts found for submodule {submodule_id} in database, using mock videos")
-                return LearningService._get_mock_shorts_data(submodule_id, user)
-            
-            # Build response with user progress - flatten structure for JavaScript
-            shorts_with_progress = []
+            shorts_data = []
             for short in shorts:
-                # Get user progress for this short
-                progress_record = UserShortsProgress.query.filter_by(
+                # Get user progress
+                progress = VideoProgress.query.filter_by(
                     user_id=user.id,
-                    shorts_id=short.id
+                    video_id=short.id
                 ).first()
                 
-                # Build video file path - check if file exists, fallback to mock if not
-                video_file_path = short.file_path
-                thumbnail_file_path = short.thumbnail_path
-                
-                # Check if actual video file exists
-                try:
-                    learning_base = os.path.join(current_app.root_path, '..', 'learning')
-                    full_video_path = os.path.join(learning_base, short.file_path) if short.file_path else None
-                    
-                    if full_video_path and os.path.exists(full_video_path):
-                        # Use actual uploaded video
-                        video_file_path = f"/static/learning/{short.file_path}"
-                        
-                        # Check for thumbnail
-                        if short.thumbnail_path:
-                            full_thumb_path = os.path.join(learning_base, short.thumbnail_path)
-                            if os.path.exists(full_thumb_path):
-                                thumbnail_file_path = f"/static/learning/{short.thumbnail_path}"
-                            else:
-                                thumbnail_file_path = None
-                    else:
-                        # Fallback to mock video if file doesn't exist
-                        logger.warning(f"Video file not found: {short.file_path}, using mock video")
-                        mock_videos = [
-                            'https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/BigBuckBunny.mp4',
-                            'https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/ElephantsDream.mp4',
-                            'https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/ForBiggerBlazes.mp4'
-                        ]
-                        video_file_path = mock_videos[short.sequence_order % len(mock_videos)]
-                        thumbnail_file_path = None
-                        
-                except Exception as file_check_error:
-                    logger.warning(f"Error checking video file: {str(file_check_error)}, using mock video")
-                    video_file_path = 'https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/BigBuckBunny.mp4'
-                    thumbnail_file_path = None
-                
-                # Build flattened video data with progress included at top level
-                video_data = {
-                    # Video properties at top level for JavaScript compatibility
+                shorts_data.append({
                     'id': short.id,
                     'title': short.title,
                     'description': short.description,
-                    'file_path': video_file_path,
-                    'thumbnail_path': thumbnail_file_path,
+                    'file_path': short.file_path,
                     'duration_seconds': short.duration_seconds,
-                    'view_count': short.view_count,
-                    'like_count': short.like_count,
-                    'sequence_order': short.sequence_order,
-                    'difficulty_level': short.difficulty_level,
-                    'topic_tags': short.get_topic_tags_list() if hasattr(short, 'get_topic_tags_list') else [],
-                    
-                    # Progress properties at top level for JavaScript compatibility
-                    'watch_status': progress_record.watch_status if progress_record else 'not_watched',
-                    'watch_percentage': progress_record.watch_percentage if progress_record else 0,
-                    'liked': progress_record.liked if progress_record else False,
-                    'watch_time_seconds': progress_record.watch_time_seconds if progress_record else 0,
-                    'replay_count': progress_record.replay_count if progress_record else 0
-                }
-                
-                shorts_with_progress.append(video_data)
+                    'watch_percentage': progress.watch_percentage if progress else 0,
+                    'is_completed': progress.completed if progress else False,
+                    'sequence_order': short.sequence_order
+                })
             
-            logger.info(f"Found {len(shorts)} video shorts for submodule {submodule_id}")
-            return shorts_with_progress
+            return shorts_data
             
         except Exception as e:
-            logger.error(f"Error getting submodule shorts for {submodule_id}: {str(e)}")
-            # Return fallback mock data on error
-            return LearningService._get_mock_shorts_data(submodule_id, user)
-    
+            logger.error(f"Error getting database shorts: {e}")
+            # Fallback to mock data on error
+            return LearningService._get_mock_shorts(submodule_id, user)
+
     @staticmethod
-    def _get_mock_shorts_data(submodule_id, user):
-        """Fallback mock data if database query fails - flat structure for JavaScript"""
-        # Use integer IDs for mock data to match database structure
-        mock_video_data = [
-            {
-                # Video properties at top level
-                'id': 999,  # Use integer ID that won't conflict with real data
-                'title': f'Modul {submodule_id} - Grunnleggende',
-                'description': f'Lær grunnleggende konsepter for modul {submodule_id}',
-                'file_path': 'https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/BigBuckBunny.mp4',
-                'duration_seconds': 45,
-                'thumbnail_path': '/static/images/thumbnails/default-1.jpg',
-                'view_count': 0,
-                'like_count': 0,
-                'sequence_order': 1,
-                'difficulty_level': 1,
-                'topic_tags': ['grunnleggende'],
-                
-                # Progress properties at top level
-                'watch_status': 'not_watched',
-                'watch_percentage': 0,
-                'liked': False,
-                'watch_time_seconds': 0,
-                'replay_count': 0
-            }
+    def get_all_shorts_for_session(user, starting_submodule=None):
+        """Get ALL video shorts across modules for continuous playback"""
+        from flask import current_app
+        
+        if current_app.config.get('SHORT_VIDEOS_MOCK', False):
+            return LearningService._get_all_mock_shorts(user, starting_submodule)
+        else:
+            return LearningService._get_all_database_shorts(user, starting_submodule)
+
+    @staticmethod
+    def _get_all_mock_shorts(user, starting_submodule=None):
+        """Generate mock videos for all submodules 1.1 through 5.4"""
+        all_videos = []
+        
+        # Define submodule structure
+        submodules = [
+            '1.1', '1.2', '1.3', '1.4', '1.5',
+            '2.1', '2.2', '2.3', '2.4', '2.5', 
+            '3.1', '3.2', '3.3', '3.4', '3.5',
+            '4.1', '4.2', '4.3', '4.4',
+            '5.1', '5.2', '5.3', '5.4'
         ]
         
-        return mock_video_data
+        mock_video_files = [
+            'https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/BigBuckBunny.mp4',
+            'https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/ElephantsDream.mp4', 
+            'https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/ForBiggerBlazes.mp4'
+        ]
+        
+        video_counter = 0
+        for submodule in submodules:
+            # Parse submodule (e.g., "1.1" -> module=1, sub=1)
+            module = int(float(submodule))  # 1.1 -> 1
+            sub_decimal = float(submodule) % 1  # 1.1 -> 0.1
+            sub = int(sub_decimal * 10) if sub_decimal > 0 else 1  # 0.1 -> 1
+            
+            # 2-3 videos per submodule
+            videos_per_submodule = 2 if float(submodule) % 1 != 0.5 else 3
+            
+            for i in range(videos_per_submodule):
+                video_counter += 1
+                all_videos.append({
+                    'id': 9000 + (module * 100) + (sub * 10) + (i + 1),  # 🎯 INTEGER ID!
+                    'title': f'Modul {submodule} - Del {i+1}',
+                    'description': f'Video {i+1} for submodule {submodule}',
+                    'file_path': mock_video_files[video_counter % len(mock_video_files)],
+                    'duration_seconds': 45 + (i * 7),  # Vary duration
+                    'submodule_id': submodule,
+                    'watch_percentage': 0,
+                    'is_completed': False,
+                    'sequence_order': i + 1
+                })
+        
+        # If starting_submodule specified, reorder to start from there
+        if starting_submodule:
+            start_index = next((i for i, v in enumerate(all_videos) if v['submodule_id'] == str(starting_submodule)), 0)
+            all_videos = all_videos[start_index:] + all_videos[:start_index]
+        
+        return all_videos
+
+    @staticmethod
+    def _get_all_database_shorts(user, starting_submodule=None):
+        """Get all database shorts ordered for continuous playback"""
+        try:
+            from app.models import Video, VideoProgress
+            
+            # Get all short videos ordered by theory module reference
+            query = Video.query.filter(
+                Video.is_active == True,
+                Video.aspect_ratio == '9:16',
+                Video.theory_module_ref.isnot(None)
+            ).order_by(Video.theory_module_ref, Video.sequence_order)
+            
+            if starting_submodule:
+                # Start from specific submodule
+                query = query.filter(Video.theory_module_ref >= str(starting_submodule))
+            
+            shorts = query.all()
+            
+            # Get all progress records for user efficiently
+            progress_records = {p.video_id: p for p in VideoProgress.query.filter_by(user_id=user.id).all()}
+            
+            shorts_data = []
+            for short in shorts:
+                progress = progress_records.get(short.id)
+                
+                shorts_data.append({
+                    'id': short.id,
+                    'title': short.title,
+                    'description': short.description,
+                    'file_path': short.file_path,
+                    'duration_seconds': short.duration_seconds,
+                    'submodule_id': short.theory_module_ref,
+                    'watch_percentage': progress.watch_percentage if progress else 0,
+                    'is_completed': progress.completed if progress else False,
+                    'sequence_order': short.sequence_order
+                })
+            
+            return shorts_data
+            
+        except Exception as e:
+            logger.error(f"Error getting all database shorts: {e}")
+            # Fallback to mock data
+            return LearningService._get_all_mock_shorts(user, starting_submodule)
     
     @staticmethod
     def track_content_access(user, submodule_id, content_type):
@@ -1153,12 +1180,13 @@ class LearningService:
     def has_shorts(submodule_id):
         """Check if submodule has video shorts"""
         try:
-            from app.models import VideoShorts
+            from app.models import Video
             
             # Check if shorts exist for this submodule
-            shorts_exist = VideoShorts.query.filter_by(
-                submodule_id=str(submodule_id),
-                is_active=True
+            shorts_exist = Video.query.filter(
+                Video.theory_module_ref == str(submodule_id),
+                Video.is_active == True,
+                Video.aspect_ratio == '9:16'
             ).first() is not None
             
             return shorts_exist
@@ -1174,110 +1202,242 @@ class LearningService:
     
     @staticmethod
     def update_shorts_progress(user, shorts_id, watch_data):
-        """Update user progress for watching a video short"""
+        """Update user progress for watching a video short using extended VideoProgress model"""
         try:
-            # Import models from main models file
-            from app.models import VideoShorts, UserShortsProgress
+            from app.models import Video, VideoProgress
+
+            video = Video.query.get(shorts_id)
             
             # Find or create progress record
-            progress = UserShortsProgress.query.filter_by(
+            progress = VideoProgress.query.filter_by(
                 user_id=user.id,
-                shorts_id=shorts_id
+                video_id=shorts_id
             ).first()
             
             if not progress:
-                # Create new progress record
-                progress = UserShortsProgress(
+                progress = VideoProgress(
                     user_id=user.id,
-                    shorts_id=shorts_id,
-                    first_watched_at=datetime.utcnow()
+                    video_id=shorts_id,
                 )
                 db.session.add(progress)
             
-            # Update progress data
-            if 'watch_percentage' in watch_data:
-                progress.watch_percentage = watch_data['watch_percentage']
+            if 'watch_percentage' in watch_data and video and video.duration_seconds:
+                # Convert percentage to seconds using actual video duration
+                progress.last_position_seconds = int((watch_data['watch_percentage'] / 100) * video.duration_seconds)
             
             if 'watch_time_seconds' in watch_data:
-                progress.watch_time_seconds = watch_data['watch_time_seconds']
-            
-            if 'watch_status' in watch_data:
-                progress.watch_status = watch_data['watch_status']
-            
-            # Set completion timestamp if completed
-            if progress.watch_percentage >= 100 and not progress.completed_at:
+                progress.last_position_seconds = watch_data['watch_time_seconds']
+                
+            # Mark as completed if >= 95% watched
+            if progress.watch_percentage >= 95 and not progress.completed:
+                progress.completed = True
                 progress.completed_at = datetime.utcnow()
-                progress.watch_status = 'completed'
             
-            # Update last watched timestamp
-            progress.last_watched_at = datetime.utcnow()
+            progress.updated_at = datetime.utcnow()
             
-            # Increment view count on video
-            if not progress.first_watched_at or progress.first_watched_at == progress.last_watched_at:
-                video_short = VideoShorts.query.get(shorts_id)
-                if video_short:
-                    video_short.view_count += 1
+            # Update video view count
+            if video and not progress.started_at:  # First time watching
+                video.view_count += 1
+                progress.started_at = datetime.utcnow()
             
             db.session.commit()
             
-            logger.info(f"Updated shorts progress for user {user.id}, shorts {shorts_id}")
             return {
                 'success': True,
                 'watch_percentage': progress.watch_percentage,
-                'watch_status': progress.watch_status
+                'completed': progress.completed
             }
             
         except Exception as e:
-            logger.error(f"Error updating shorts progress: {str(e)}")
+            logger.error(f"Error updating video progress: {e}")
             db.session.rollback()
             return {'success': False, 'error': str(e)}
+
+    @staticmethod
+    def update_video_progress(user, video_id, watch_data):
+        """Generic method for updating video progress - wrapper for update_shorts_progress"""
+        return LearningService.update_shorts_progress(user, video_id, watch_data)
     
     @staticmethod
-    def toggle_shorts_like(user, shorts_id):
-        """Toggle like status for a video short"""
+    def toggle_shorts_like(user, video_id):
+        """Toggle like status for a video short using extended VideoProgress model"""
         try:
-            # Import models from main models file
-            from app.models import VideoShorts, UserShortsProgress
+            from app.models import Video, VideoProgress
             
             # Find or create progress record
-            progress = UserShortsProgress.query.filter_by(
+            progress = VideoProgress.query.filter_by(
                 user_id=user.id,
-                shorts_id=shorts_id
+                video_id=video_id
             ).first()
             
             if not progress:
-                # Create new progress record
-                progress = UserShortsProgress(
+                progress = VideoProgress(
                     user_id=user.id,
-                    shorts_id=shorts_id,
-                    first_watched_at=datetime.utcnow()
+                    video_id=video_id,
                 )
                 db.session.add(progress)
             
-            # Toggle like status
-            old_liked = progress.liked
-            progress.liked = not progress.liked
-            
-            # Update like count on video
-            video_short = VideoShorts.query.get(shorts_id)
-            if video_short:
-                if progress.liked and not old_liked:
-                    # User liked the video
-                    video_short.like_count += 1
-                elif not progress.liked and old_liked:
-                    # User unliked the video
-                    video_short.like_count = max(0, video_short.like_count - 1)
+            # For now, use interaction_quality field to store like status
+            # TODO: Add proper like tracking field in future migration
+            old_liked = progress.interaction_quality > 0
+            new_liked = not old_liked
+            progress.interaction_quality = 1.0 if new_liked else 0.0
             
             db.session.commit()
             
-            logger.info(f"Toggled like for user {user.id}, shorts {shorts_id}: {progress.liked}")
+            logger.info(f"Toggled like for user {user.id}, video {video_id}: {new_liked}")
             return {
                 'success': True,
-                'liked': progress.liked,
-                'like_count': video_short.like_count if video_short else 0
+                'liked': new_liked
             }
             
         except Exception as e:
-            logger.error(f"Error toggling shorts like: {str(e)}")
+            logger.error(f"Error toggling video like: {str(e)}")
             db.session.rollback()
             return {'success': False, 'liked': False}
+    
+    @staticmethod
+    def get_submodule_shorts(submodule_id, user):
+        """Get video shorts for submodule - mock or database based on config"""
+        from flask import current_app
+        
+        if current_app.config.get('SHORT_VIDEOS_MOCK', False):
+            return LearningService._get_mock_shorts(submodule_id, user)
+        else:
+            return LearningService._get_database_shorts(submodule_id, user)
+    
+    @staticmethod
+    def _get_mock_shorts(submodule_id, user):
+        """Mock video data with integer IDs using 9XXX encoding"""
+        # Parse submodule_id (e.g., "1.1" -> module=1, sub=1)
+        module = int(float(submodule_id))  # 1.1 -> 1
+        sub_decimal = float(submodule_id) % 1  # 1.1 -> 0.1
+        sub = int(sub_decimal * 10) if sub_decimal > 0 else 1  # 0.1 -> 1, 0.2 -> 2
+        
+        mock_videos = [
+            {
+                'id': 9000 + (module * 100) + (sub * 10) + 1,  # e.g., 9111 for module 1.1 video 1
+                'title': f'Modul {submodule_id} - Del 1',
+                'description': f'Første video for modul {submodule_id}',
+                'file_path': 'https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/BigBuckBunny.mp4',
+                'duration_seconds': 45,
+                'watch_percentage': 0,
+                'is_completed': False,
+                'sequence_order': 1
+            },
+            {
+                'id': 9000 + (module * 100) + (sub * 10) + 2,  # e.g., 9112 for module 1.1 video 2
+                'title': f'Modul {submodule_id} - Del 2',
+                'description': f'Andre video for modul {submodule_id}',
+                'file_path': 'https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/ElephantsDream.mp4',
+                'duration_seconds': 52,
+                'watch_percentage': 0,
+                'is_completed': False,
+                'sequence_order': 2
+            },
+            {
+                'id': 9000 + (module * 100) + (sub * 10) + 3,  # e.g., 9113 for module 1.1 video 3
+                'title': f'Modul {submodule_id} - Del 3',
+                'description': f'Tredje video for modul {submodule_id}',
+                'file_path': 'https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/ForBiggerBlazes.mp4',
+                'duration_seconds': 38,
+                'watch_percentage': 0,
+                'is_completed': False,
+                'sequence_order': 3
+            }
+        ]
+        return mock_videos
+    
+    @staticmethod  
+    def _get_database_shorts(submodule_id, user):
+        """Real database video data for production"""
+        try:
+            from app.models import Video, VideoProgress
+            
+            # Get videos for this submodule
+            shorts = Video.query.filter(
+                Video.theory_module_ref == str(submodule_id),
+                Video.is_active == True,
+                Video.aspect_ratio == '9:16'
+            ).order_by(Video.sequence_order).all()
+            
+            shorts_data = []
+            for short in shorts:
+                # Get user progress
+                progress = VideoProgress.query.filter_by(
+                    user_id=user.id,
+                    video_id=short.id
+                ).first()
+                
+                shorts_data.append({
+                    'id': short.id,
+                    'title': short.title,
+                    'description': short.description,
+                    'file_path': short.file_path,
+                    'duration_seconds': short.duration_seconds,
+                    'watch_percentage': progress.watch_percentage if progress else 0,
+                    'is_completed': progress.completed if progress else False,
+                    'sequence_order': short.sequence_order
+                })
+            
+            return shorts_data
+            
+        except Exception as e:
+            logger.error(f"Error getting database shorts: {e}")
+            # Fallback to mock data on error
+            return LearningService._get_mock_shorts(submodule_id, user)
+    
+    @staticmethod
+    def get_all_shorts_for_session(user, starting_submodule=None):
+        """Get ALL video shorts across modules for continuous playback"""
+        from flask import current_app
+        
+        if current_app.config.get('SHORT_VIDEOS_MOCK', False):
+            return LearningService._get_all_mock_shorts(user, starting_submodule)
+        else:
+            return LearningService._get_all_database_shorts(user, starting_submodule)
+    
+    @staticmethod
+    def _get_all_database_shorts(user, starting_submodule=None):
+        """Get all database shorts ordered for continuous playback"""
+        try:
+            from app.models import Video, VideoProgress
+            
+            # Get all short videos ordered by theory module reference
+            query = Video.query.filter(
+                Video.is_active == True,
+                Video.aspect_ratio == '9:16',
+                Video.theory_module_ref.isnot(None)
+            ).order_by(Video.theory_module_ref, Video.sequence_order)
+            
+            if starting_submodule:
+                # Start from specific submodule
+                query = query.filter(Video.theory_module_ref >= str(starting_submodule))
+            
+            shorts = query.all()
+            
+            # Get all progress records for user efficiently
+            progress_records = {p.video_id: p for p in VideoProgress.query.filter_by(user_id=user.id).all()}
+            
+            shorts_data = []
+            for short in shorts:
+                progress = progress_records.get(short.id)
+                
+                shorts_data.append({
+                    'id': short.id,
+                    'title': short.title,
+                    'description': short.description,
+                    'file_path': short.file_path,
+                    'duration_seconds': short.duration_seconds,
+                    'submodule_id': short.theory_module_ref,
+                    'watch_percentage': progress.watch_percentage if progress else 0,
+                    'is_completed': progress.completed if progress else False,
+                    'sequence_order': short.sequence_order
+                })
+            
+            return shorts_data
+            
+        except Exception as e:
+            logger.error(f"Error getting all database shorts: {e}")
+            # Fallback to mock data
+            return LearningService._get_all_mock_shorts(user, starting_submodule)

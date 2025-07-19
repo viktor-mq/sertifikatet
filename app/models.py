@@ -37,7 +37,7 @@ class User(UserMixin, db.Model):
                                 primaryjoin='User.id == UserLearningModule.user_id',
                                 backref='user', 
                                 cascade='all, delete-orphan')
-    shorts_progress = db.relationship('UserShortsProgress', backref='user', cascade='all, delete-orphan')
+    # shorts_progress relationship removed - using extended VideoProgress model instead
     leaderboard_entries = db.relationship('LeaderboardEntry', backref='user', cascade='all, delete-orphan')
     feedback = db.relationship('UserFeedback', backref='user', cascade='all, delete-orphan')
     
@@ -233,27 +233,7 @@ class GameSession(db.Model):
     completed_at = db.Column(db.DateTime)
 
 
-class Video(db.Model):
-    __tablename__ = 'videos'
-    
-    id = db.Column(db.Integer, primary_key=True)
-    title = db.Column(db.String(255), nullable=False)
-    description = db.Column(db.Text)
-    filename = db.Column(db.String(255))
-    youtube_url = db.Column(db.String(255))
-    duration_seconds = db.Column(db.Integer)
-    category = db.Column(db.String(100))
-    category_id = db.Column(db.Integer, db.ForeignKey('video_categories.id'))
-    difficulty_level = db.Column(db.Integer, default=1)
-    order_index = db.Column(db.Integer)
-    thumbnail_filename = db.Column(db.String(255))
-    created_at = db.Column(db.DateTime, default=datetime.utcnow)
-    is_active = db.Column(db.Boolean, default=True)
-    view_count = db.Column(db.Integer, default=0)
-    
-    # Relationships
-    checkpoints = db.relationship('VideoCheckpoint', backref='video', cascade='all, delete-orphan')
-    progress = db.relationship('VideoProgress', backref='video')
+# Video model definition moved to end of file to avoid conflicts
 
 
 class VideoCheckpoint(db.Model):
@@ -266,21 +246,7 @@ class VideoCheckpoint(db.Model):
     is_mandatory = db.Column(db.Boolean, default=False)
 
 
-class VideoProgress(db.Model):
-    __tablename__ = 'video_progress'
-    
-    id = db.Column(db.Integer, primary_key=True)
-    user_id = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=False)
-    video_id = db.Column(db.Integer, db.ForeignKey('videos.id'), nullable=False)
-    last_position_seconds = db.Column(db.Integer, default=0)
-    completed = db.Column(db.Boolean, default=False)
-    checkpoints_passed = db.Column(db.Integer, default=0)
-    total_checkpoints = db.Column(db.Integer)
-    started_at = db.Column(db.DateTime, default=datetime.utcnow)
-    completed_at = db.Column(db.DateTime)
-    updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
-    
-    __table_args__ = (db.UniqueConstraint('user_id', 'video_id', name='_user_video_uc'),)
+# VideoProgress model definition moved to end of file to avoid conflicts
 
 class LearningModuleItem(db.Model):
     __tablename__ = 'learning_module_items'
@@ -541,56 +507,7 @@ class SystemSettings(db.Model):
         return cls.query.filter_by(is_public=True).all()
 
 
-class VideoShorts(db.Model):
-    """Short-form educational videos (TikTok-style)"""
-    __tablename__ = 'video_shorts'
-    
-    id = db.Column(db.Integer, primary_key=True)
-    submodule_id = db.Column(db.String(10))  # e.g., '1.1', '1.2' 
-    title = db.Column(db.String(255), nullable=False)
-    description = db.Column(db.Text)
-    filename = db.Column(db.String(255), nullable=False)
-    file_path = db.Column(db.String(500), nullable=False)
-    duration_seconds = db.Column(db.Integer)
-    sequence_order = db.Column(db.Integer, default=1)
-    aspect_ratio = db.Column(db.String(10), default='9:16')  # TikTok-style
-    resolution = db.Column(db.String(20))
-    file_size_mb = db.Column(db.Float)
-    thumbnail_path = db.Column(db.String(500))
-    has_captions = db.Column(db.Boolean, default=False)
-    caption_file_path = db.Column(db.String(500))
-    topic_tags = db.Column(db.Text)  # JSON string
-    difficulty_level = db.Column(db.Integer, default=1)
-    engagement_score = db.Column(db.Float, default=0.0)
-    view_count = db.Column(db.Integer, default=0)
-    completion_rate = db.Column(db.Float, default=0.0)
-    average_watch_time = db.Column(db.Float, default=0.0)
-    like_count = db.Column(db.Integer, default=0)
-    ai_generated = db.Column(db.Boolean, default=False)
-    is_active = db.Column(db.Boolean, default=True)
-    created_at = db.Column(db.DateTime, default=datetime.utcnow)
-    updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
-    
-    # Relationships
-    user_progress = db.relationship('UserShortsProgress', backref='video_short', cascade='all, delete-orphan')
-    
-    def __repr__(self):
-        return f'<VideoShorts {self.submodule_id}: {self.title}>'
-    
-    def get_topic_tags_list(self):
-        """Parse topic_tags JSON string to list"""
-        if self.topic_tags:
-            try:
-                import json
-                return json.loads(self.topic_tags)
-            except:
-                return []
-        return []
-    
-    def set_topic_tags_list(self, tags_list):
-        """Set topic_tags from list"""
-        import json
-        self.topic_tags = json.dumps(tags_list)
+# VideoShorts model removed - using extended Video model instead per implementation plan
 
 
 class UserLearningProgress(db.Model):
@@ -688,7 +605,7 @@ class UserLearningProgress(db.Model):
             elif progress_type == 'summary':
                 progress.summary_viewed = True
             elif progress_type == 'shorts':
-                progress.shorts_watched += 1
+                progress.shorts_watched = (progress.shorts_watched or 0) + 1
                 
             db.session.commit()
             return progress
@@ -753,31 +670,7 @@ class UserLearningProgress(db.Model):
             raise e
 
 
-class UserShortsProgress(db.Model):
-    """User progress tracking for video shorts"""
-    __tablename__ = 'user_shorts_progress'
-    
-    id = db.Column(db.Integer, primary_key=True)
-    user_id = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=False)
-    shorts_id = db.Column(db.Integer, db.ForeignKey('video_shorts.id'), nullable=False)
-    watch_status = db.Column(db.Enum('not_watched', 'started', 'completed', 'skipped'), default='not_watched')
-    watch_percentage = db.Column(db.Float, default=0.0)
-    watch_time_seconds = db.Column(db.Float, default=0.0)
-    replay_count = db.Column(db.Integer, default=0)
-    liked = db.Column(db.Boolean, default=False)
-    swipe_direction = db.Column(db.Enum('up', 'down', 'left', 'right'))
-    interaction_quality = db.Column(db.Float, default=0.0)
-    first_watched_at = db.Column(db.DateTime)
-    last_watched_at = db.Column(db.DateTime)
-    completed_at = db.Column(db.DateTime)
-    created_at = db.Column(db.DateTime, default=datetime.utcnow)
-    updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
-    
-    # Composite unique constraint - one progress record per user per video
-    __table_args__ = (db.UniqueConstraint('user_id', 'shorts_id', name='unique_user_short_progress'),)
-    
-    def __repr__(self):
-        return f'<UserShortsProgress user:{self.user_id} short:{self.shorts_id} status:{self.watch_status}>'
+# UserShortsProgress model removed - using extended VideoProgress model instead per implementation plan
 
 class LearningSubmodules(db.Model):
     __tablename__ = 'learning_submodules'
@@ -810,9 +703,7 @@ class LearningSubmodules(db.Model):
     
     # Relationships - Remove the old Learninmodule relationship
     # The 'module' backref will be created by LearningModules.submodules relationship
-    video_shorts = db.relationship('VideoShorts', 
-        primaryjoin="LearningSubmodules.submodule_number == foreign(func.cast(VideoShorts.submodule_id, Float))",
-        backref='submodule')
+    # video_shorts relationship removed - using extended Video model instead
     
 class LearningModules(db.Model):
     """
@@ -978,3 +869,129 @@ class LearningModules(db.Model):
                 module.user_status = 'enrolled'
         
         return modules
+
+
+class Video(db.Model):
+    """Extended Video model for TikTok-style short videos and regular content"""
+    __tablename__ = 'videos'
+    
+    id = db.Column(db.Integer, primary_key=True)
+    title = db.Column(db.String(200), nullable=False)
+    description = db.Column(db.Text)
+    filename = db.Column(db.String(255), nullable=False)
+    youtube_url = db.Column(db.String(500))
+    duration_seconds = db.Column(db.Integer, default=0)
+    category = db.Column(db.String(100))
+    category_id = db.Column(db.Integer, db.ForeignKey('video_categories.id'))
+    difficulty_level = db.Column(db.Integer, default=1)
+    order_index = db.Column(db.Integer, default=0)
+    thumbnail_filename = db.Column(db.String(255))
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+    is_active = db.Column(db.Boolean, default=True)
+    view_count = db.Column(db.Integer, default=0)
+    
+    # Extended fields for short videos (from migration)
+    aspect_ratio = db.Column(db.String(10))  # '9:16' for TikTok-style
+    content_type = db.Column(db.String(20), default='video')
+    theory_module_ref = db.Column(db.String(10))  # '1.1', '1.2', etc.
+    sequence_order = db.Column(db.Integer, default=0)
+    
+    # Relationships
+    progress_records = db.relationship('VideoProgress', backref='video', cascade='all, delete-orphan')
+    
+    @property
+    def is_short_video(self):
+        """Check if this is a TikTok-style short video"""
+        return self.aspect_ratio == '9:16' or self.content_type == 'short'
+    
+    @property 
+    def file_path(self):
+        """Get the file path for this video"""
+        if self.youtube_url:
+            return self.youtube_url
+        return f"/static/videos/{self.filename}" if self.filename else None
+    
+    def get_user_progress(self, user_id):
+        """Get progress for specific user"""
+        return VideoProgress.query.filter_by(
+            user_id=user_id,
+            video_id=self.id
+        ).first()
+    
+    def to_dict(self, user_id=None):
+        """Convert to dictionary for API responses"""
+        progress = self.get_user_progress(user_id) if user_id else None
+        
+        return {
+            'id': self.id,
+            'title': self.title,
+            'description': self.description,
+            'file_path': self.file_path,
+            'duration_seconds': self.duration_seconds,
+            'submodule_id': self.theory_module_ref,
+            'watch_percentage': progress.watch_percentage if progress else 0,
+            'is_completed': progress.completed if progress else False,
+            'sequence_order': self.sequence_order,
+            'aspect_ratio': self.aspect_ratio,
+            'content_type': self.content_type,
+            'view_count': self.view_count
+        }
+    
+    @classmethod
+    def get_shorts_for_submodule(cls, submodule_id):
+        """Get all short videos for a specific submodule"""
+        return cls.query.filter(
+            cls.theory_module_ref == str(submodule_id),
+            cls.is_active == True,
+            cls.aspect_ratio == '9:16'
+        ).order_by(cls.sequence_order).all()
+    
+    @classmethod
+    def get_all_shorts_ordered(cls):
+        """Get all short videos ordered by theory module reference and sequence"""
+        return cls.query.filter(
+            cls.is_active == True,
+            cls.aspect_ratio == '9:16',
+            cls.theory_module_ref.isnot(None)
+        ).order_by(cls.theory_module_ref, cls.sequence_order).all()
+
+
+class VideoProgress(db.Model):
+    """Extended VideoProgress model for tracking video watch progress including shorts"""
+    __tablename__ = 'video_progress'
+    
+    id = db.Column(db.Integer, primary_key=True)
+    user_id = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=False)
+    video_id = db.Column(db.Integer, db.ForeignKey('videos.id'), nullable=False)
+    last_position_seconds = db.Column(db.Integer, default=0)
+    completed = db.Column(db.Boolean, default=False)
+    checkpoints_passed = db.Column(db.Integer, default=0)
+    total_checkpoints = db.Column(db.Integer, default=0)
+    started_at = db.Column(db.DateTime, default=datetime.utcnow)
+    completed_at = db.Column(db.DateTime)
+    updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+    
+    # Unique constraint to prevent duplicate progress records
+    __table_args__ = (db.UniqueConstraint('user_id', 'video_id', name='_user_video_uc'),)
+
+    @property
+    def watch_percentage(self):
+        """Calculate watch percentage from position and video duration"""
+        if self.video and self.video.duration_seconds > 0:
+            return min(100.0, (self.last_position_seconds / self.video.duration_seconds) * 100)
+        return 0.0
+    
+    def to_dict(self):
+        """Convert to dictionary for API responses"""
+        return {
+            'id': self.id,
+            'user_id': self.user_id,
+            'video_id': self.video_id,
+            'watch_percentage': self.watch_percentage,
+            'completed': self.completed,
+            'last_position_seconds': self.last_position_seconds,
+            'interaction_quality': self.interaction_quality,
+            'started_at': self.started_at.isoformat() if self.started_at else None,
+            'completed_at': self.completed_at.isoformat() if self.completed_at else None,
+            'updated_at': self.updated_at.isoformat() if self.updated_at else None
+        }

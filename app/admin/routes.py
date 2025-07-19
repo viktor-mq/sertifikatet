@@ -11,7 +11,7 @@ from functools import wraps
 
 from .utils import validate_question
 from .. import db
-from ..models import Question, Option, TrafficSign, QuizImage, User, AdminAuditLog, AdminReport, UserFeedback, QuizSession, QuizResponse, LearningModules, LearningSubmodules, VideoShorts, UserShortsProgress, Achievement, UserAchievement
+from ..models import Question, Option, TrafficSign, QuizImage, User, AdminAuditLog, AdminReport, UserFeedback, QuizSession, QuizResponse, LearningModules, LearningSubmodules, Achievement, UserAchievement, Video
 from ..gamification_models import WeeklyTournament, TournamentParticipant, DailyChallenge, UserDailyChallenge, XPReward, XPTransaction, UserLevel
 from ..marketing_models import MarketingEmail, MarketingTemplate, MarketingEmailLog
 from ..marketing_service import MarketingEmailService
@@ -2262,12 +2262,13 @@ def get_learning_modules():
             ).count()
             
             # Get video count for this module
-            video_count = db.session.query(VideoShorts).join(
+            video_count = db.session.query(Video).join(
                 LearningSubmodules,
-                func.cast(VideoShorts.submodule_id, db.Float) == LearningSubmodules.submodule_number
+                Video.theory_module_ref == func.cast(LearningSubmodules.submodule_number, db.String)
             ).filter(
                 LearningSubmodules.module_id == module.id,
-                VideoShorts.is_active == True
+                Video.is_active == True,
+                Video.aspect_ratio == '9:16'  # Only count short videos
             ).count()
             
             module_dict = module.to_dict()
@@ -2278,7 +2279,7 @@ def get_learning_modules():
         # Calculate overall statistics
         total_modules = LearningModules.query.count()
         total_submodules = LearningSubmodules.query.filter_by(is_active=True).count()
-        total_videos = VideoShorts.query.filter_by(is_active=True).count()
+        total_videos = Video.query.filter_by(is_active=True).count()
         
         # Calculate average completion rate
         avg_completion = db.session.query(func.avg(LearningModules.completion_rate)).scalar() or 0
@@ -2432,8 +2433,8 @@ def delete_learning_module(module_id):
         submodules = LearningSubmodules.query.filter_by(module_id=module_id).all()
         for submodule in submodules:
             # Delete videos associated with this submodule
-            videos = VideoShorts.query.filter(
-                func.cast(VideoShorts.submodule_id, db.Float) == submodule.submodule_number
+            videos = Video.query.filter(
+                func.cast(Video.submodule_id, db.Float) == submodule.submodule_number
             ).all()
             for video in videos:
                 # Delete video progress records
@@ -2509,7 +2510,7 @@ def api_learning_modules():
     """API endpoint for learning modules with filtering and stats"""
     try:
         # Import here to avoid circular imports
-        from ..models import LearningModules, LearningSubmodules, VideoShorts
+        from ..models import LearningModules, LearningSubmodules, Video
         
         # Get filter parameters
         status = request.args.get('status', '')
@@ -2540,12 +2541,12 @@ def api_learning_modules():
             submodule_count = LearningSubmodules.query.filter_by(module_id=module.id, is_active=True).count()
             
             # Count videos (through submodules)
-            video_count = db.session.query(VideoShorts).join(
+            video_count = db.session.query(Video).join(
                 LearningSubmodules, 
-                VideoShorts.submodule_id == LearningSubmodules.submodule_number
+                Video.submodule_id == LearningSubmodules.submodule_number
             ).filter(
                 LearningSubmodules.module_id == module.id,
-                VideoShorts.is_active == True
+                Video.is_active == True
             ).count()
             
             modules_data.append({
@@ -2565,7 +2566,7 @@ def api_learning_modules():
         # Calculate stats
         total_modules = len(modules)
         total_submodules = LearningSubmodules.query.filter_by(is_active=True).count()
-        total_videos = VideoShorts.query.filter_by(is_active=True).count()
+        total_videos = Video.query.filter_by(is_active=True).count()
         avg_completion_rate = db.session.query(func.avg(LearningModules.completion_rate)).scalar() or 0
         
         stats = {
@@ -3724,12 +3725,12 @@ def admin_api_learning_modules():
             ).count()
             
             # Get video shorts count
-            video_count = db.session.query(VideoShorts).join(
+            video_count = db.session.query(Video).join(
                 LearningSubmodules, 
-                VideoShorts.submodule_id == LearningSubmodules.submodule_number
+                Video.submodule_id == LearningSubmodules.submodule_number
             ).filter(
                 LearningSubmodules.module_id == module.id,
-                VideoShorts.is_active == True
+                Video.is_active == True
             ).count()
             
             modules_data.append({
@@ -3930,7 +3931,7 @@ def admin_get_module_submodules(module_id):
         submodules_data = []
         for submodule in submodules:
             # Count video shorts for this submodule
-            video_count = VideoShorts.query.filter_by(
+            video_count = Video.query.filter_by(
                 submodule_id=submodule.submodule_number,
                 is_active=True
             ).count()
@@ -4246,9 +4247,9 @@ def export_learning_content():
                     
                     # Add video data if requested
                     if include_videos:
-                        videos = VideoShorts.query.filter(
-                            func.cast(VideoShorts.submodule_id, db.Float) == submodule.submodule_number,
-                            VideoShorts.is_active == True
+                        videos = Video.query.filter(
+                            func.cast(Video.submodule_id, db.Float) == submodule.submodule_number,
+                            Video.is_active == True
                         ).all()
                         submodule_data['videos'] = [{
                             'id': video.id,
