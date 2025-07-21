@@ -771,17 +771,332 @@ class LearningService:
             logger.error(f"Error getting database shorts: {e}")
             # Fallback to mock data on error
             return LearningService._get_mock_shorts(submodule_id, user)
-
+    
     @staticmethod
-    def get_all_shorts_for_session(user, starting_submodule=None):
-        """Get ALL video shorts across modules for continuous playback"""
-        from flask import current_app
+    def track_video_access(user, submodule_id):
+        """Track that user started watching videos for this submodule (mirrors track_content_access)"""
+        try:
+            # Get the first video for this submodule to track access
+            videos = LearningService.get_submodule_shorts(submodule_id, user)
+            
+            if not videos:
+                logger.warning(f"No videos found for submodule {submodule_id}")
+                return None
+            
+            first_video = videos[0]
+            
+            # Create or update progress for first video to mark access
+            from app.models import VideoProgress
+            
+            progress = VideoProgress.query.filter_by(
+                user_id=user.id,
+                video_id=first_video['id']
+            ).first()
+            
+            if not progress:
+                progress = VideoProgress(
+                    user_id=user.id,
+                    video_id=first_video['id'],
+                    started_at=datetime.utcnow()
+                )
+                db.session.add(progress)
+            
+            progress.updated_at = datetime.utcnow()
+            db.session.commit()
+            
+            logger.info(f"User {user.id} accessed videos for submodule {submodule_id}")
+            return progress
+            
+        except Exception as e:
+            logger.error(f"Error tracking video access: {str(e)}")
+            db.session.rollback()
+            return None
+    
+    @staticmethod
+    def mark_submodule_videos_complete(user, submodule_id):
+        """Mark all videos in submodule as 100% complete (mirrors mark_content_complete)"""
+        try:
+            # Get all videos for this submodule
+            videos = LearningService.get_submodule_shorts(submodule_id, user)
+            
+            if not videos:
+                logger.warning(f"No videos found for submodule {submodule_id}")
+                return {'success': False, 'error': 'No videos found'}
+            
+            from app.models import VideoProgress, Video
+            
+            completed_count = 0
+            
+            for video in videos:
+                video_id = video['id']
+                
+                # Find or create progress record
+                progress = VideoProgress.query.filter_by(
+                    user_id=user.id,
+                    video_id=video_id
+                ).first()
+                
+                if not progress:
+                    progress = VideoProgress(
+                        user_id=user.id,
+                        video_id=video_id,
+                        started_at=datetime.utcnow()
+                    )
+                    db.session.add(progress)
+                
+                # Mark as completed
+                progress.completed = True
+                progress.completed_at = datetime.utcnow()
+                progress.updated_at = datetime.utcnow()
+                
+                # Set to 100% watch percentage
+                video_obj = Video.query.get(video_id)
+                if video_obj and video_obj.duration_seconds:
+                    progress.last_position_seconds = video_obj.duration_seconds
+                
+                completed_count += 1
+            
+            db.session.commit()
+            
+            logger.info(f"User {user.id} marked {completed_count} videos complete in submodule {submodule_id}")
+            return {
+                'success': True,
+                'videos_completed': completed_count,
+                'completion_percentage': 100
+            }
+            
+        except Exception as e:
+            logger.error(f"Error marking submodule videos complete: {str(e)}")
+            db.session.rollback()
+            return {'success': False, 'error': str(e)}
+    
+    @staticmethod
+    def get_submodule_video_progress(user, submodule_id):
+        """Get aggregated video progress for a submodule (mirrors reading progress structure)"""
+        try:
+            # Get all videos for this submodule
+            videos = LearningService.get_submodule_shorts(submodule_id, user)
+            
+            if not videos:
+                return {
+                    'status': 'not_started',
+                    'completion_percentage': 0,
+                    'videos_completed': 0,
+                    'total_videos': 0,
+                    'last_accessed': None,
+                    'time_spent': 0
+                }
+            
+            # Calculate aggregate progress
+            total_videos = len(videos)
+            completed_videos = sum(1 for v in videos if v.get('is_completed', False))
+            total_watch_percentage = sum(v.get('watch_percentage', 0) for v in videos)
+            
+            # Overall completion = average of all video watch percentages
+            completion_percentage = int(total_watch_percentage / total_videos) if total_videos > 0 else 0
+            
+            # Determine status
+            if completion_percentage >= 95:
+                status = 'completed'
+            elif completion_percentage > 0:
+                status = 'in_progress'
+            else:
+                status = 'not_started'
+            
+            # Get last accessed time from VideoProgress table
+            try:
+                from app.models import VideoProgress, Video
+                
+                # Get video IDs for this submodule
+                video_ids = [v['id'] for v in videos]
+                
+                # Get most recent access time
+                last_progress = VideoProgress.query.filter(
+                    VideoProgress.user_id == user.id,
+                    VideoProgress.video_id.in_(video_ids)
+                ).order_by(VideoProgress.updated_at.desc()).first()
+                
+                last_accessed = last_progress.updated_at if last_progress else None
+                
+            except Exception as e:
+                logger.warning(f"Could not get video last accessed time: {e}")
+                last_accessed = None
+            
+            result = {
+                'status': status,
+                'completion_percentage': completion_percentage,
+                'videos_completed': completed_videos,
+                'total_videos': total_videos,
+                'last_accessed': last_accessed,
+                'time_spent': 0  # Could be calculated from video durations if needed
+            }
+            
+            logger.info(f"Video progress for submodule {submodule_id}: {completion_percentage}% ({completed_videos}/{total_videos})")
+            return result
+            
+        except Exception as e:
+            logger.error(f"Error getting submodule video progress: {str(e)}")
+            return {
+                'status': 'not_started',
+                'completion_percentage': 0,
+                'videos_completed': 0,
+                'total_videos': 0,
+                'last_accessed': None,
+                'time_spent': 0
+            }
+    
+    
+    @staticmethod
+    def get_submodule_details(submodule_id, user):
+        """Get submodule details with BOTH reading and video progress"""
+        try:
+            from app.learning.content_manager import ContentManager
+            
+            logger.info(f"Getting submodule details for {submodule_id}")
+            
+            # Get reading completion status from database (EXISTING LOGIC - UNCHANGED)
+            try:
+                from app.models import UserLearningProgress, LearningSubmodules
+                
+                # Extract module_id from submodule_id (1.1 -> 1)
+                module_id = int(float(submodule_id))
+                
+                # Get submodule_id for database lookup
+                submodule_record = LearningSubmodules.query.filter_by(submodule_number=float(submodule_id)).first()
+                submodule_db_id = submodule_record.id if submodule_record else None
+                
+                # Check if user has completed reading content
+                reading_progress_record = UserLearningProgress.query.filter_by(
+                    user_id=user.id,
+                    module_id=module_id,
+                    submodule_id=submodule_db_id,
+                    progress_type='content'
+                ).first()
+                
+                # Extract reading progress data
+                if reading_progress_record:
+                    reading_progress = {
+                        'status': reading_progress_record.status,
+                        'completion_percentage': reading_progress_record.completion_percentage,
+                        'time_spent': reading_progress_record.time_spent_minutes or 0,
+                        'last_accessed': reading_progress_record.last_accessed,
+                        'is_completed': reading_progress_record.status == 'completed'
+                    }
+                else:
+                    reading_progress = {
+                        'status': 'not_started',
+                        'completion_percentage': 0,
+                        'time_spent': 0,
+                        'last_accessed': None,
+                        'is_completed': False
+                    }
+                    
+                logger.info(f"Reading progress for {submodule_id}: {reading_progress['status']} ({reading_progress['completion_percentage']}%)")
+                
+            except Exception as db_error:
+                logger.warning(f"Could not get reading progress for {submodule_id}: {str(db_error)}")
+                # Fallback to default values if database query fails
+                reading_progress = {
+                    'status': 'not_started',
+                    'completion_percentage': 0,
+                    'time_spent': 0,
+                    'last_accessed': None,
+                    'is_completed': False
+                }
+            
+            # Get video progress using new method (NEW FUNCTIONALITY)
+            video_progress = LearningService.get_submodule_video_progress(user, submodule_id)
+            
+            # Build submodule details with BOTH reading and video progress
+            submodule_details = {
+                'submodule_number': submodule_id,
+                'title': f'Modul {submodule_id}',
+                'description': f'Beskrivelse for modul {submodule_id}',
+                'estimated_minutes': 30,
+                'difficulty_level': 2,
+                'has_video_shorts': True,
+                'shorts_count': video_progress.get('total_videos', 0),
+                'has_quiz': True,
+                'content_available': {
+                    'detailed': True,
+                    'kort': True
+                },
+                'learning_objectives': [
+                    'Læringsmål 1',
+                    'Læringsmål 2',
+                    'Læringsmål 3'
+                ],
+                'tags': ['tag1', 'tag2'],
+                
+                # SEPARATE PROGRESS FOR READING AND VIDEO
+                'reading_progress': reading_progress,
+                'video_progress': video_progress,
+                
+                # OVERALL SUBMODULE STATUS (based on both formats)
+                'overall_progress': LearningService._calculate_overall_progress(reading_progress, video_progress),
+                
+                'module': {
+                    'id': int(submodule_id),
+                    'title': f'Modul {int(submodule_id)}',
+                    'number': int(submodule_id)
+                },
+                
+                # BACKWARD COMPATIBILITY (keep existing fields for templates that expect them)
+                'status': reading_progress['status'],  # Default to reading status for compatibility
+                'completion_percentage': reading_progress['completion_percentage'],
+                'is_completed': reading_progress['is_completed'],
+                'time_spent': reading_progress['time_spent']
+            }
+            
+            # Try to load actual content metadata, but don't fail if it doesn't work
+            try:
+                content_data = ContentManager.get_submodule_content(submodule_id)
+                if content_data and content_data.get('metadata'):
+                    metadata = content_data['metadata']
+                    submodule_details.update({
+                        'title': metadata.get('title', submodule_details['title']),
+                        'description': metadata.get('description', submodule_details['description']),
+                        'estimated_minutes': metadata.get('estimated_minutes', submodule_details['estimated_minutes']),
+                        'difficulty_level': metadata.get('difficulty_level', submodule_details['difficulty_level']),
+                        'learning_objectives': metadata.get('learning_objectives', submodule_details['learning_objectives']),
+                        'tags': metadata.get('tags', submodule_details['tags'])
+                    })
+                    logger.info(f"Successfully loaded metadata for {submodule_id}")
+                else:
+                    logger.warning(f"No content data found for {submodule_id}, using mock data")
+            except Exception as content_error:
+                logger.warning(f"Could not load content for {submodule_id}: {str(content_error)}")
+            
+            return submodule_details
+            
+        except Exception as e:
+            logger.error(f"Error getting submodule details for {submodule_id}: {str(e)}")
+            return None
+    
+    @staticmethod
+    def _calculate_overall_progress(reading_progress, video_progress):
+        """Calculate overall progress considering both reading and video"""
+        reading_completion = reading_progress.get('completion_percentage', 0)
+        video_completion = video_progress.get('completion_percentage', 0)
         
-        if current_app.config.get('SHORT_VIDEOS_MOCK', False):
-            return LearningService._get_all_mock_shorts(user, starting_submodule)
+        # Overall progress = average of both formats
+        overall_percentage = (reading_completion + video_completion) / 2
+        
+        # Determine overall status
+        if overall_percentage >= 95:
+            overall_status = 'completed'
+        elif overall_percentage > 0:
+            overall_status = 'in_progress' 
         else:
-            return LearningService._get_all_database_shorts(user, starting_submodule)
-
+            overall_status = 'not_started'
+            
+        return {
+            'status': overall_status,
+            'completion_percentage': int(overall_percentage),
+            'reading_percentage': reading_completion,
+            'video_percentage': video_completion
+        }
+    
     @staticmethod
     def _get_all_mock_shorts(user, starting_submodule=None):
         """Generate mock videos for all submodules 1.1 through 5.4"""
@@ -834,51 +1149,6 @@ class LearningService:
         return all_videos
 
     @staticmethod
-    def _get_all_database_shorts(user, starting_submodule=None):
-        """Get all database shorts ordered for continuous playback"""
-        try:
-            from app.models import Video, VideoProgress
-            
-            # Get all short videos ordered by theory module reference
-            query = Video.query.filter(
-                Video.is_active == True,
-                Video.aspect_ratio == '9:16',
-                Video.theory_module_ref.isnot(None)
-            ).order_by(Video.theory_module_ref, Video.sequence_order)
-            
-            if starting_submodule:
-                # Start from specific submodule
-                query = query.filter(Video.theory_module_ref >= str(starting_submodule))
-            
-            shorts = query.all()
-            
-            # Get all progress records for user efficiently
-            progress_records = {p.video_id: p for p in VideoProgress.query.filter_by(user_id=user.id).all()}
-            
-            shorts_data = []
-            for short in shorts:
-                progress = progress_records.get(short.id)
-                
-                shorts_data.append({
-                    'id': short.id,
-                    'title': short.title,
-                    'description': short.description,
-                    'file_path': short.file_path,
-                    'duration_seconds': short.duration_seconds,
-                    'submodule_id': short.theory_module_ref,
-                    'watch_percentage': progress.watch_percentage if progress else 0,
-                    'is_completed': progress.completed if progress else False,
-                    'sequence_order': short.sequence_order
-                })
-            
-            return shorts_data
-            
-        except Exception as e:
-            logger.error(f"Error getting all database shorts: {e}")
-            # Fallback to mock data
-            return LearningService._get_all_mock_shorts(user, starting_submodule)
-    
-    @staticmethod
     def track_content_access(user, submodule_id, content_type):
         """Track that user accessed content with database storage"""
         try:
@@ -905,118 +1175,6 @@ class LearningService:
             
         except Exception as e:
             logger.error(f"Error tracking content access: {str(e)}")
-            return None
-    
-    # Add missing methods that are called by routes
-    @staticmethod
-    def get_submodule_details(submodule_id, user):
-        """Get submodule details with content from ContentManager"""
-        try:
-            from app.learning.content_manager import ContentManager
-            
-            logger.info(f"Getting submodule details for {submodule_id}")
-            
-            # Get completion status from database
-            try:
-                from app.models import UserLearningProgress, LearningSubmodules
-                
-                # Extract module_id from submodule_id (1.1 -> 1)
-                module_id = int(float(submodule_id))
-                
-                # Get submodule_id for database lookup
-                submodule_record = LearningSubmodules.query.filter_by(submodule_number=float(submodule_id)).first()
-                submodule_db_id = submodule_record.id if submodule_record else None
-                
-                # Check if user has completed this content
-                progress = UserLearningProgress.query.filter_by(
-                    user_id=user.id,
-                    module_id=module_id,
-                    submodule_id=submodule_db_id,
-                    progress_type='content'
-                ).first()
-                
-                # Extract progress data
-                if progress:
-                    completion_status = progress.status
-                    completion_percentage = progress.completion_percentage
-                    time_spent = progress.time_spent_minutes or 0
-                    is_completed = progress.status == 'completed'
-                else:
-                    completion_status = 'not_started'
-                    completion_percentage = 0
-                    time_spent = 0
-                    is_completed = False
-                    
-                logger.info(f"User {user.id} progress for {submodule_id}: {completion_status} ({completion_percentage}%)")
-                
-            except Exception as db_error:
-                logger.warning(f"Could not get completion status for {submodule_id}: {str(db_error)}")
-                # Fallback to default values if database query fails
-                completion_status = 'not_started'
-                completion_percentage = 0
-                time_spent = 0
-                is_completed = False
-            
-            # Build submodule details with real progress data
-            submodule_details = {
-                'submodule_number': submodule_id,
-                'title': f'Modul {submodule_id}',
-                'description': f'Beskrivelse for modul {submodule_id}',
-                'estimated_minutes': 30,
-                'difficulty_level': 2,
-                'has_video_shorts': True,
-                'shorts_count': 2,
-                'has_quiz': True,
-                'content_available': {
-                    'detailed': True,
-                    'kort': True
-                },
-                'learning_objectives': [
-                    'Læringsmål 1',
-                    'Læringsmål 2',
-                    'Læringsmål 3'
-                ],
-                'tags': ['tag1', 'tag2'],
-                'progress': {
-                    'status': completion_status,
-                    'completion_percentage': completion_percentage,
-                    'time_spent': time_spent
-                },
-                'module': {
-                    'id': int(submodule_id),
-                    'title': f'Modul {int(submodule_id)}',
-                    'number': int(submodule_id)
-                },
-                # Add these new fields for template use
-                'status': completion_status,
-                'completion_percentage': completion_percentage,
-                'is_completed': is_completed,
-                'time_spent': time_spent
-            }
-            
-            # Try to load actual content, but don't fail if it doesn't work
-            try:
-                content_data = ContentManager.get_submodule_content(submodule_id)
-                if content_data and content_data.get('metadata'):
-                    metadata = content_data['metadata']
-                    submodule_details.update({
-                        'title': metadata.get('title', submodule_details['title']),
-                        'description': metadata.get('description', submodule_details['description']),
-                        'estimated_minutes': metadata.get('estimated_minutes', submodule_details['estimated_minutes']),
-                        'difficulty_level': metadata.get('difficulty_level', submodule_details['difficulty_level']),
-                        'learning_objectives': metadata.get('learning_objectives', submodule_details['learning_objectives']),
-                        'tags': metadata.get('tags', submodule_details['tags'])
-                    })
-                    logger.info(f"Successfully loaded metadata for {submodule_id}")
-                else:
-                    logger.warning(f"No content data found for {submodule_id}, using mock data")
-            except Exception as content_error:
-                logger.warning(f"Could not load content for {submodule_id}: {str(content_error)}")
-            
-            return submodule_details
-            
-        except Exception as e:
-            logger.error(f"Error getting submodule details for {submodule_id}: {str(e)}")
             return None
     
     @staticmethod
@@ -1399,7 +1557,7 @@ class LearningService:
     
     @staticmethod
     def _get_all_database_shorts(user, starting_submodule=None):
-        """Get all database shorts ordered for continuous playback"""
+        """Get all database shorts ordered for continuous playbook"""
         try:
             from app.models import Video, VideoProgress
             
@@ -1441,3 +1599,51 @@ class LearningService:
             logger.error(f"Error getting all database shorts: {e}")
             # Fallback to mock data
             return LearningService._get_all_mock_shorts(user, starting_submodule)
+    
+    @staticmethod
+    def get_dashboard_video_progress(user):
+        """Get video progress for all modules for dashboard display"""
+        try:
+            # Get all modules for user
+            modules = LearningService.get_user_modules_progress(user)
+            
+            # Add video progress to each module
+            for module in modules:
+                # Get all submodules for this module (1.1, 1.2, etc.)
+                module_id = module['id']
+                total_videos = 0
+                completed_videos = 0
+                
+                # Calculate submodules based on module structure
+                submodule_counts = [5, 5, 5, 4, 4]  # As defined in mock data
+                num_submodules = submodule_counts[module_id - 1] if module_id <= len(submodule_counts) else 5
+                
+                for sub_num in range(1, num_submodules + 1):
+                    submodule_id = f"{module_id}.{sub_num}"
+                    
+                    # Get video progress for this submodule
+                    video_progress = LearningService.get_submodule_video_progress(user, submodule_id)
+                    total_videos += video_progress.get('total_videos', 0)
+                    completed_videos += video_progress.get('videos_completed', 0)
+                
+                # Calculate module video completion percentage
+                if total_videos > 0:
+                    module['completion_percentage'] = int((completed_videos / total_videos) * 100)
+                    module['progress'] = module['completion_percentage']
+                    
+                    if completed_videos == total_videos:
+                        module['status'] = 'completed'
+                    elif completed_videos > 0:
+                        module['status'] = 'in_progress'
+                    else:
+                        module['status'] = 'not_started'
+                else:
+                    module['completion_percentage'] = 0
+                    module['progress'] = 0
+                    module['status'] = 'not_started'
+                    
+            return modules
+            
+        except Exception as e:
+            logger.error(f"Error getting dashboard video progress: {str(e)}")
+            return []
