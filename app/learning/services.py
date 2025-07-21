@@ -1098,55 +1098,75 @@ class LearningService:
         }
     
     @staticmethod
-    def _get_all_mock_shorts(user, starting_submodule=None):
-        """Generate mock videos for all submodules 1.1 through 5.4"""
-        all_videos = []
-        
-        # Define submodule structure
-        submodules = [
-            '1.1', '1.2', '1.3', '1.4', '1.5',
-            '2.1', '2.2', '2.3', '2.4', '2.5', 
-            '3.1', '3.2', '3.3', '3.4', '3.5',
-            '4.1', '4.2', '4.3', '4.4',
-            '5.1', '5.2', '5.3', '5.4'
-        ]
-        
-        mock_video_files = [
-            'https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/BigBuckBunny.mp4',
-            'https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/ElephantsDream.mp4', 
-            'https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/ForBiggerBlazes.mp4'
-        ]
-        
-        video_counter = 0
-        for submodule in submodules:
-            # Parse submodule (e.g., "1.1" -> module=1, sub=1)
-            module = int(float(submodule))  # 1.1 -> 1
-            sub_decimal = float(submodule) % 1  # 1.1 -> 0.1
-            sub = int(sub_decimal * 10) if sub_decimal > 0 else 1  # 0.1 -> 1
+    def _get_all_mock_shorts(user, starting_submodule=None, starting_video_id=None):
+        """Get all mock videos from database (ID 9000+ series) for cross-module sessions"""
+        try:
+            from app.models import Video, VideoProgress
             
-            # 2-3 videos per submodule
-            videos_per_submodule = 2 if float(submodule) % 1 != 0.5 else 3
+            # Get all mock videos from database (ID >= 9000)
+            all_shorts = Video.query.filter(
+                Video.is_active == True,
+                Video.aspect_ratio == '9:16',
+                Video.id >= 9000  # Mock video identifier
+            ).order_by(Video.theory_module_ref, Video.sequence_order).all()
             
-            for i in range(videos_per_submodule):
-                video_counter += 1
-                all_videos.append({
-                    'id': 9000 + (module * 100) + (sub * 10) + (i + 1),  # 🎯 INTEGER ID!
-                    'title': f'Modul {submodule} - Del {i+1}',
-                    'description': f'Video {i+1} for submodule {submodule}',
-                    'file_path': mock_video_files[video_counter % len(mock_video_files)],
-                    'duration_seconds': 45 + (i * 7),  # Vary duration
-                    'submodule_id': submodule,
-                    'watch_percentage': 0,
-                    'is_completed': False,
-                    'sequence_order': i + 1
+            if not all_shorts:
+                logger.warning("No mock videos found in database for cross-module session")
+                return []
+            
+            # Format video data with user progress
+            formatted_videos = []
+            for video in all_shorts:
+                # Get user progress for this video
+                progress = VideoProgress.query.filter_by(
+                    user_id=user.id,
+                    video_id=video.id
+                ).first()
+                
+                # Calculate progress data
+                watch_percentage = 0
+                is_completed = False
+                if progress:
+                    watch_percentage = progress.watch_percentage or 0
+                    is_completed = progress.completed or False
+                
+                formatted_videos.append({
+                    'id': video.id,
+                    'title': video.title,
+                    'description': video.description,
+                    'file_path': video.youtube_url or video.filename,  # Use youtube_url or filename
+                    'duration_seconds': video.duration_seconds,
+                    'submodule_id': video.theory_module_ref,  # e.g., '1.1', '1.2'
+                    'watch_percentage': watch_percentage,
+                    'is_completed': is_completed,
+                    'sequence_order': video.sequence_order
                 })
-        
-        # If starting_submodule specified, reorder to start from there
-        if starting_submodule:
-            start_index = next((i for i, v in enumerate(all_videos) if v['submodule_id'] == str(starting_submodule)), 0)
-            all_videos = all_videos[start_index:] + all_videos[:start_index]
-        
-        return all_videos
+            
+            # Determine the starting index
+            start_index = 0
+            if starting_video_id:
+                # Find specific video ID in the array
+                start_index = next((i for i, v in enumerate(formatted_videos) if v['id'] == starting_video_id), 0)
+                logger.info(f"Found starting video {starting_video_id} at index {start_index} (mock shorts)")
+            elif starting_submodule:
+                # Fallback to submodule if specific video ID is not provided
+                start_index = next(
+                    (i for i, v in enumerate(formatted_videos) 
+                     if v['submodule_id'] == str(starting_submodule)), 0
+                )
+                logger.info(f"Found starting submodule {starting_submodule} at index {start_index} (mock shorts)")
+            
+            # Reorder the playlist to start from the correct video
+            if start_index > 0:
+                formatted_videos = formatted_videos[start_index:] + formatted_videos[:start_index]
+                logger.info(f"Reordered mock playlist to start from index {start_index}")
+            
+            return formatted_videos
+            
+        except Exception as e:
+            logger.error(f"Error getting all mock shorts from database: {str(e)}")
+            # Fallback to empty list if database query fails
+            return []
 
     @staticmethod
     def track_content_access(user, submodule_id, content_type):
@@ -1238,28 +1258,71 @@ class LearningService:
     
     @staticmethod
     def get_user_last_position(user):
-        """Get user's last learning position"""
+        """Get user's last learning position including specific video position"""
         try:
-            from app.models import UserLearningProgress, LearningSubmodules
+            from app.models import UserLearningProgress, LearningSubmodules, VideoProgress, Video
             
-            # Get user's last accessed content
-            progress = UserLearningProgress.get_user_last_position(user.id)
+            # Check both content progress and video progress to find the true last position
+            content_progress = UserLearningProgress.get_user_last_position(user.id)
             
-            if progress:
+            # Get most recent video progress
+            video_progress = VideoProgress.query.filter_by(
+                user_id=user.id
+            ).order_by(VideoProgress.updated_at.desc()).first()
+            
+            # Determine which is more recent
+            last_position = None
+            use_video_progress = False
+            
+            if video_progress and content_progress:
+                # Compare timestamps to find the most recent activity
+                video_time = video_progress.updated_at or video_progress.started_at
+                content_time = content_progress.last_accessed
+                
+                if video_time and content_time:
+                    use_video_progress = video_time > content_time
+                elif video_time:
+                    use_video_progress = True
+            elif video_progress:
+                use_video_progress = True
+            
+            if use_video_progress and video_progress:
+                # Get video details to determine submodule
+                video = Video.query.get(video_progress.video_id)
+                if video and video.theory_module_ref:
+                    return {
+                        'module_id': int(float(video.theory_module_ref)),  # 1.3 -> 1
+                        'submodule_id': None,  # Not needed for video continuation
+                        'submodule_number': video.theory_module_ref,  # e.g., '1.3'
+                        'progress_type': 'shorts',
+                        'last_accessed': video_progress.updated_at or video_progress.started_at,
+                        'status': 'completed' if video_progress.completed else 'in_progress',
+                        # Enhanced fields for video-specific continuation
+                        'last_video_id': video_progress.video_id,
+                        'video_position_seconds': video_progress.last_position_seconds or 0,
+                        'video_submodule_ref': video.theory_module_ref
+                    }
+            
+            # Fallback to content progress
+            if content_progress:
                 # Get submodule number for URL routing
                 submodule_number = None
-                if progress.submodule_id:
-                    submodule = LearningSubmodules.query.get(progress.submodule_id)
+                if content_progress.submodule_id:
+                    submodule = LearningSubmodules.query.get(content_progress.submodule_id)
                     if submodule:
                         submodule_number = submodule.submodule_number
                 
                 return {
-                    'module_id': progress.module_id,
-                    'submodule_id': progress.submodule_id,
+                    'module_id': content_progress.module_id,
+                    'submodule_id': content_progress.submodule_id,
                     'submodule_number': submodule_number,
-                    'progress_type': progress.progress_type,
-                    'last_accessed': progress.last_accessed,
-                    'status': progress.status
+                    'progress_type': content_progress.progress_type,
+                    'last_accessed': content_progress.last_accessed,
+                    'status': content_progress.status,
+                    # No video-specific fields for content progress
+                    'last_video_id': None,
+                    'video_position_seconds': 0,
+                    'video_submodule_ref': None
                 }
             
             return None
@@ -1466,45 +1529,55 @@ class LearningService:
     
     @staticmethod
     def _get_mock_shorts(submodule_id, user):
-        """Mock video data with integer IDs using 9XXX encoding"""
-        # Parse submodule_id (e.g., "1.1" -> module=1, sub=1)
-        module = int(float(submodule_id))  # 1.1 -> 1
-        sub_decimal = float(submodule_id) % 1  # 1.1 -> 0.1
-        sub = int(sub_decimal * 10) if sub_decimal > 0 else 1  # 0.1 -> 1, 0.2 -> 2
-        
-        mock_videos = [
-            {
-                'id': 9000 + (module * 100) + (sub * 10) + 1,  # e.g., 9111 for module 1.1 video 1
-                'title': f'Modul {submodule_id} - Del 1',
-                'description': f'Første video for modul {submodule_id}',
-                'file_path': 'https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/BigBuckBunny.mp4',
-                'duration_seconds': 45,
-                'watch_percentage': 0,
-                'is_completed': False,
-                'sequence_order': 1
-            },
-            {
-                'id': 9000 + (module * 100) + (sub * 10) + 2,  # e.g., 9112 for module 1.1 video 2
-                'title': f'Modul {submodule_id} - Del 2',
-                'description': f'Andre video for modul {submodule_id}',
-                'file_path': 'https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/ElephantsDream.mp4',
-                'duration_seconds': 52,
-                'watch_percentage': 0,
-                'is_completed': False,
-                'sequence_order': 2
-            },
-            {
-                'id': 9000 + (module * 100) + (sub * 10) + 3,  # e.g., 9113 for module 1.1 video 3
-                'title': f'Modul {submodule_id} - Del 3',
-                'description': f'Tredje video for modul {submodule_id}',
-                'file_path': 'https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/ForBiggerBlazes.mp4',
-                'duration_seconds': 38,
-                'watch_percentage': 0,
-                'is_completed': False,
-                'sequence_order': 3
-            }
-        ]
-        return mock_videos
+        """Mock video data from database (ID 9000+ series)"""
+        try:
+            from app.models import Video, VideoProgress
+            
+            # Get mock videos for this submodule (ID >= 9000)
+            shorts = Video.query.filter(
+                Video.theory_module_ref == str(submodule_id),
+                Video.is_active == True,
+                Video.aspect_ratio == '9:16',
+                Video.id >= 9000  # Mock video identifier
+            ).order_by(Video.sequence_order).all()
+            
+            if not shorts:
+                logger.warning(f"No mock videos found for submodule {submodule_id}")
+                return []
+            
+            # Format video data with user progress
+            formatted_shorts = []
+            for video in shorts:
+                # Get user progress for this video
+                progress = VideoProgress.query.filter_by(
+                    user_id=user.id,
+                    video_id=video.id
+                ).first()
+                
+                # Calculate progress data
+                watch_percentage = 0
+                is_completed = False
+                if progress:
+                    watch_percentage = progress.watch_percentage or 0
+                    is_completed = progress.completed or False
+                
+                formatted_shorts.append({
+                    'id': video.id,
+                    'title': video.title,
+                    'description': video.description,
+                    'file_path': video.youtube_url or video.filename,  # Use youtube_url or filename
+                    'duration_seconds': video.duration_seconds,
+                    'watch_percentage': watch_percentage,
+                    'is_completed': is_completed,
+                    'sequence_order': video.sequence_order
+                })
+            
+            return formatted_shorts
+            
+        except Exception as e:
+            logger.error(f"Error getting mock shorts from database: {str(e)}")
+            # Fallback to empty list if database query fails
+            return []
     
     @staticmethod  
     def _get_database_shorts(submodule_id, user):
@@ -1546,17 +1619,17 @@ class LearningService:
             return LearningService._get_mock_shorts(submodule_id, user)
     
     @staticmethod
-    def get_all_shorts_for_session(user, starting_submodule=None):
+    def get_all_shorts_for_session(user, starting_submodule=None, starting_video_id=None):
         """Get ALL video shorts across modules for continuous playback"""
         from flask import current_app
         
         if current_app.config.get('SHORT_VIDEOS_MOCK', False):
-            return LearningService._get_all_mock_shorts(user, starting_submodule)
+            return LearningService._get_all_mock_shorts(user, starting_submodule, starting_video_id)
         else:
-            return LearningService._get_all_database_shorts(user, starting_submodule)
+            return LearningService._get_all_database_shorts(user, starting_submodule, starting_video_id)
     
     @staticmethod
-    def _get_all_database_shorts(user, starting_submodule=None):
+    def _get_all_database_shorts(user, starting_submodule=None, starting_video_id=None):
         """Get all database shorts ordered for continuous playbook"""
         try:
             from app.models import Video, VideoProgress
@@ -1593,16 +1666,32 @@ class LearningService:
                     'sequence_order': short.sequence_order
                 })
             
+            # Determine the starting index
+            start_index = 0
+            if starting_video_id:
+                # Find specific video ID in the array
+                start_index = next((i for i, v in enumerate(shorts_data) if v['id'] == starting_video_id), 0)
+                logger.info(f"Found starting video {starting_video_id} at index {start_index}")
+            elif starting_submodule:
+                # Fallback to submodule if specific video ID is not provided
+                start_index = next((i for i, v in enumerate(shorts_data) if v['submodule_id'] == str(starting_submodule)), 0)
+                logger.info(f"Found starting submodule {starting_submodule} at index {start_index}")
+            
+            # Reorder the playlist to start from the correct video
+            if start_index > 0:
+                shorts_data = shorts_data[start_index:] + shorts_data[:start_index]
+                logger.info(f"Reordered playlist to start from index {start_index}")
+            
             return shorts_data
             
         except Exception as e:
             logger.error(f"Error getting all database shorts: {e}")
-            # Fallback to mock data
-            return LearningService._get_all_mock_shorts(user, starting_submodule)
+            # Fallback to mock data, passing along the starting parameters
+            return LearningService._get_all_mock_shorts(user, starting_submodule, starting_video_id)
     
     @staticmethod
     def get_dashboard_video_progress(user):
-        """Get video progress for all modules for dashboard display"""
+        """Get video progress for all modules for dashboard display with smart video navigation"""
         try:
             # Get all modules for user
             modules = LearningService.get_user_modules_progress(user)
@@ -1613,10 +1702,14 @@ class LearningService:
                 module_id = module['id']
                 total_videos = 0
                 completed_videos = 0
+                next_video_submodule = f"{module_id}.1"  # Default to first submodule
                 
                 # Calculate submodules based on module structure
                 submodule_counts = [5, 5, 5, 4, 4]  # As defined in mock data
                 num_submodules = submodule_counts[module_id - 1] if module_id <= len(submodule_counts) else 5
+                
+                # Track submodule progress for smart navigation
+                submodule_progress_list = []
                 
                 for sub_num in range(1, num_submodules + 1):
                     submodule_id = f"{module_id}.{sub_num}"
@@ -1625,6 +1718,15 @@ class LearningService:
                     video_progress = LearningService.get_submodule_video_progress(user, submodule_id)
                     total_videos += video_progress.get('total_videos', 0)
                     completed_videos += video_progress.get('videos_completed', 0)
+                    
+                    # Store submodule progress for navigation logic
+                    submodule_progress_list.append({
+                        'submodule_id': submodule_id,
+                        'completion_percentage': video_progress.get('completion_percentage', 0),
+                        'status': video_progress.get('status', 'not_started'),
+                        'videos_completed': video_progress.get('videos_completed', 0),
+                        'total_videos': video_progress.get('total_videos', 0)
+                    })
                 
                 # Calculate module video completion percentage
                 if total_videos > 0:
@@ -1641,9 +1743,68 @@ class LearningService:
                     module['completion_percentage'] = 0
                     module['progress'] = 0
                     module['status'] = 'not_started'
+                
+                # Determine smart video navigation target with video-specific continuation
+                next_video_submodule = f"{module_id}.1"  # Default fallback
+                next_video_id = None
+                
+                # Check if user has recent video progress in this module
+                last_position = LearningService.get_user_last_position(user)
+                if (last_position and 
+                    last_position.get('last_video_id') and 
+                    last_position.get('submodule_number') and 
+                    str(last_position.get('module_id')) == str(module_id)):
+                    # User has recent video progress in this specific module
+                    next_video_submodule = last_position['submodule_number']
+                    next_video_id = last_position['last_video_id']
+                    logger.info(f"Dashboard: Module {module_id} will continue from video {next_video_id} in submodule {next_video_submodule}")
+                else:
+                    # Use traditional logic for next incomplete submodule
+                    next_video_submodule = LearningService._determine_next_video_submodule(
+                        module_id, submodule_progress_list
+                    )
+                    logger.info(f"Dashboard: Module {module_id} will start from submodule {next_video_submodule} (no recent video progress)")
+                
+                # Add video-specific navigation data
+                module['next_video_submodule'] = next_video_submodule
+                module['next_video_id'] = next_video_id  # None if no specific video continuation
+                module['video_button_text'] = LearningService._get_video_button_text(module['status'])
                     
             return modules
             
         except Exception as e:
             logger.error(f"Error getting dashboard video progress: {str(e)}")
             return []
+    
+    @staticmethod
+    def _determine_next_video_submodule(module_id, submodule_progress_list):
+        """Determine which submodule video to show next based on progress"""
+        try:
+            # Sort by submodule_id to ensure proper order
+            sorted_submodules = sorted(submodule_progress_list, key=lambda x: float(x['submodule_id']))
+            
+            # Find first incomplete submodule
+            for submodule in sorted_submodules:
+                if submodule['status'] in ['not_started', 'in_progress']:
+                    return submodule['submodule_id']
+            
+            # If all completed, return first submodule for review
+            if sorted_submodules:
+                return sorted_submodules[0]['submodule_id']
+            
+            # Fallback to first submodule
+            return f"{module_id}.1"
+            
+        except Exception as e:
+            logger.error(f"Error determining next video submodule: {str(e)}")
+            return f"{module_id}.1"
+    
+    @staticmethod
+    def _get_video_button_text(status):
+        """Get appropriate button text for video mode based on module status"""
+        if status == 'completed':
+            return 'Se videoer igjen'
+        elif status == 'in_progress':
+            return 'Fortsett videoer'
+        else:
+            return 'Start videoer'

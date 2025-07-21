@@ -105,6 +105,7 @@ window.playerConfig = {
     enableSwipeControls: true,
     showProgressBars: true,
     trackProgress: true,
+    startVideoIndex: {{ start_video_index if start_video_index is defined else 0 }},
     apiEndpoints: {
         like: '{{ url_for("learning.api_shorts_like") }}',
         watch: '{{ url_for("learning.api_shorts_watch") }}',

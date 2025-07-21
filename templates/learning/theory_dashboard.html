@@ -79,6 +79,27 @@
                     {% endif %}
 
                     <!-- Action Button -->
+                    {% if content_type == 'video' %}
+                    <!-- Video Mode: Link to shorts player with continuation support -->
+                    <a href="{{ url_for('learning.shorts_player', submodule_id=module.next_video_submodule) }}{% if module.next_video_id %}?start_video={{ module.next_video_id }}{% endif %}" 
+                       class="block w-full text-center py-3 rounded-lg font-semibold transition-all duration-300
+                              {% if module.status == 'completed' %}
+                              bg-green-600 hover:bg-green-700 text-white
+                              {% elif module.status == 'in_progress' %}
+                              bg-blue-600 hover:bg-blue-700 text-white
+                              {% else %}
+                              bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-700 hover:to-pink-700 text-white
+                              {% endif %}">
+                        {% if module.status == 'completed' %}
+                            <i class="fas fa-video mr-2"></i>{{ module.video_button_text }}
+                        {% elif module.status == 'in_progress' %}
+                            <i class="fas fa-play mr-2"></i>{{ module.video_button_text }}
+                        {% else %}
+                            <i class="fas fa-video mr-2"></i>{{ module.video_button_text }}
+                        {% endif %}
+                    </a>
+                    {% else %}
+                    <!-- Reading Mode: Link to module overview -->
                     <a href="{{ url_for('learning.module_overview', module_id=module.id) }}" 
                        class="block w-full text-center py-3 rounded-lg font-semibold transition-all duration-300
                               {% if module.status == 'completed' %}
@@ -96,6 +117,7 @@
                             <i class="fas fa-plus mr-2"></i>Start nå
                         {% endif %}
                     </a>
+                    {% endif %}
                 </div>
                 {% endfor %}
             </div>

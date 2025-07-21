@@ -7,7 +7,7 @@ class ShortsPlayer {
     constructor(container, videos = [], options = {}) {
         this.container = container;
         this.videos = videos;
-        this.currentIndex = 0;
+        this.currentIndex = options.startVideoIndex || 0;  // Use starting index from options
         this.isPlaying = false;
         this.videoElements = [];
         this.touchStartY = 0;
@@ -729,7 +729,8 @@ document.addEventListener('DOMContentLoaded', function() {
     if (playerContainer && videosData.length > 0) {
         window.shortsPlayer = new ShortsPlayer(playerContainer, videosData, {
             crossModuleEnabled: true,  // Enable cross-module navigation
-            startingSubmodule: window.submoduleId
+            startingSubmodule: window.submoduleId,
+            startVideoIndex: window.playerConfig.startVideoIndex
         });
         
         // Auto-play first video after 500ms

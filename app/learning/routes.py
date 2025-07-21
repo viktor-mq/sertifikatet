@@ -125,12 +125,27 @@ def shorts_player(submodule_id):
             flash('Ingen videoer funnet for denne undermodulen ennå', 'info')
             return redirect(url_for('learning.submodule_content', submodule_id=submodule_id))
         
+        # Check for specific video to start from (continue functionality)
+        start_video_id = request.args.get('start_video', type=int)
+        start_video_index = 0  # Default to first video
+        
+        if start_video_id:
+            # Find the index of the video to start from
+            for i, video in enumerate(shorts_data):
+                if video.get('id') == start_video_id:
+                    start_video_index = i
+                    logger.info(f"Starting shorts player from video {start_video_id} at index {i}")
+                    break
+            else:
+                logger.warning(f"Start video {start_video_id} not found in submodule {submodule_id}, starting from beginning")
+        
         # Track shorts access for progress tracking
         LearningService.track_content_access(current_user, submodule_id, 'shorts')
         
         return render_template('learning/shorts_player.html',
                              submodule=submodule_data,
-                             shorts=shorts_data)
+                             shorts=shorts_data,
+                             start_video_index=start_video_index)
     except Exception as e:
         logger.error(f"Error loading shorts for submodule {submodule_id}: {str(e)}")
         flash('Det oppstod en feil ved lasting av videoene', 'error')
@@ -148,8 +163,15 @@ def continue_learning():
         if last_position and last_position['submodule_number']:
             # Redirect based on progress type
             if last_position['progress_type'] == 'shorts':
-                return redirect(url_for('learning.shorts_player', 
-                                      submodule_id=last_position['submodule_number']))
+                # For video progress, include the specific video ID to resume from
+                shorts_url = url_for('learning.shorts_player', 
+                                    submodule_id=last_position['submodule_number'])
+                
+                # Add video ID parameter if we have specific video position
+                if last_position.get('last_video_id'):
+                    shorts_url += f"?start_video={last_position['last_video_id']}"
+                
+                return redirect(shorts_url)
             else:
                 return redirect(url_for('learning.submodule_content', 
                                       submodule_id=last_position['submodule_number']))
@@ -679,16 +701,34 @@ def get_recommendations():
 @learning_bp.route('/api/shorts/mock/progress', methods=['POST'])
 @login_required  
 def update_mock_shorts_progress_api():
-    """Handle progress updates for mock videos (no database save)"""
+    """Handle progress updates for mock videos - saves to database in development mode"""
     try:
         data = request.get_json()
-        # For mock videos, just return success without database save
+        
+        # In development mode, save mock progress to database for testing
+        from flask import current_app
+        if current_app.config.get('ENVIRONMENT') == 'development':
+            video_id = data.get('video_id') or data.get('shorts_id')
+            if video_id:
+                # Use the real progress tracking service
+                # Filter to only allowed fields to match the real endpoint
+                allowed_fields = ['watch_percentage', 'watch_time_seconds', 'watch_status']
+                filtered_data = {k: v for k, v in data.items() if k in allowed_fields}
+                
+                if filtered_data:
+                    result = LearningService.update_shorts_progress(
+                        current_user, video_id, filtered_data
+                    )
+                    return jsonify(result)
+        
+        # Fallback to mock response for production or missing data
         return jsonify({
             'success': True,
-            'message': 'Mock progress tracked (not saved to database)',
+            'message': 'Mock progress tracked',
             'watch_percentage': data.get('watch_percentage', 0)
         })
     except Exception as e:
+        logger.error(f"Error in mock progress tracking: {str(e)}")
         return jsonify({
             'success': False,
             'error': 'Mock progress tracking failed'
@@ -697,16 +737,29 @@ def update_mock_shorts_progress_api():
 @learning_bp.route('/api/shorts/mock/like', methods=['POST'])
 @login_required  
 def toggle_mock_shorts_like():
-    """Handle like toggle for mock videos (no database save)"""
+    """Handle like toggle for mock videos - saves to database in development mode"""
     try:
         data = request.get_json()
-        # For mock videos, just return success without database save
+        
+        # In development mode, save mock likes to database for testing
+        from flask import current_app
+        if current_app.config.get('ENVIRONMENT') == 'development':
+            video_id = data.get('video_id') or data.get('shorts_id')
+            if video_id:
+                # Use the real like toggle service
+                result = LearningService.toggle_shorts_like(
+                    current_user, video_id
+                )
+                return jsonify(result)
+        
+        # Fallback to mock response for production or missing data
         return jsonify({
             'success': True,
             'liked': True,  # Always return liked for mock
-            'message': 'Mock like tracked (not saved to database)'
+            'message': 'Mock like tracked'
         })
     except Exception as e:
+        logger.error(f"Error in mock like tracking: {str(e)}")
         return jsonify({
             'success': False,
             'error': 'Mock like tracking failed'
@@ -715,10 +768,16 @@ def toggle_mock_shorts_like():
 @learning_bp.route('/api/shorts/all-session', methods=['GET'])
 @login_required
 def get_session_shorts_api():
-    """Get all shorts for cross-module session"""
+    """Get all shorts for cross-module session with continuation support"""
     try:
         starting_submodule = request.args.get('start')
-        videos = LearningService.get_all_shorts_for_session(current_user, starting_submodule)
+        starting_video_id = request.args.get('start_video', type=int)
+        
+        videos = LearningService.get_all_shorts_for_session(
+            current_user, 
+            starting_submodule, 
+            starting_video_id=starting_video_id
+        )
         
         return jsonify({
             'success': True,
@@ -834,40 +893,40 @@ def get_shorts_analytics(shorts_id):
 
 # NEW API ROUTES FOR VIDEO SHORTS USING VIDEO/VIDEOPROGRESS MODELS
 
-@learning_bp.route('/api/shorts/all-session', methods=['GET'])
-@login_required
-def get_all_session_shorts():
-    """Get all shorts for cross-module session"""
-    try:
-        starting_submodule = request.args.get('start')
-        videos = LearningService.get_all_shorts_for_session(current_user, starting_submodule)
-        
-        return jsonify({
-            'success': True,
-            'videos': videos,
-            'count': len(videos)
-        })
-    except Exception as e:
-        logger.error(f"Error getting session shorts: {e}")
-        return jsonify({
-            'success': False,
-            'error': 'Could not load session videos'
-        }), 500
+# Duplicate route removed - using get_session_shorts_api above
 
 
 @learning_bp.route('/api/shorts/mock/progress', methods=['POST'])
 @login_required  
 def update_mock_shorts_progress():
-    """Handle progress updates for mock videos (no database save)"""
+    """Handle progress updates for mock videos - saves to database in development mode"""
     try:
         data = request.get_json()
-        # For mock videos, just return success without database save
+        
+        # In development mode, save mock progress to database for testing
+        from flask import current_app
+        if current_app.config.get('ENVIRONMENT') == 'development':
+            video_id = data.get('video_id') or data.get('shorts_id')
+            if video_id:
+                # Use the real progress tracking service
+                # Filter to only allowed fields to match the real endpoint
+                allowed_fields = ['watch_percentage', 'watch_time_seconds', 'watch_status']
+                filtered_data = {k: v for k, v in data.items() if k in allowed_fields}
+                
+                if filtered_data:
+                    result = LearningService.update_shorts_progress(
+                        current_user, video_id, filtered_data
+                    )
+                    return jsonify(result)
+        
+        # Fallback to mock response for production or missing data
         return jsonify({
             'success': True,
-            'message': 'Mock progress tracked (not saved to database)',
+            'message': 'Mock progress tracked',
             'watch_percentage': data.get('watch_percentage', 0)
         })
     except Exception as e:
+        logger.error(f"Error in mock progress tracking: {str(e)}")
         return jsonify({
             'success': False,
             'error': 'Mock progress tracking failed'

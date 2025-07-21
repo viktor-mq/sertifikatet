@@ -4,6 +4,7 @@
 Påbudsskilt gir deg en direkte og obligatorisk instruksjon. De er runde med blå bakgrunn og et hvitt symbol. De fjerner tvil og forteller deg nøyaktig hva du *skal* gjøre for å sikre trygg trafikkflyt.
 
 ## Forstå Påbudene
+![Påbudt kjøreretning](/static/images/signs/påbuds/sf200510071219402601_gif.gif)
 
 ### 1. **Designet**
 - **Blå sirkel:** Betyr en obligatorisk handling. Dette er en ordre.
@@ -15,6 +16,13 @@ Påbudsskilt gir deg en direkte og obligatorisk instruksjon. De er runde med bl�
 - **Planlegg ut fra påbudet:** Bruk skiltet til å forstå hvordan trafikken er organisert.
 
 ### 3. **De Viktigste Påbudene**
+<div style="display:flex; gap:6px; margin-left:30px; margin-bottom:10px">
+  <img src="/static/images/signs/påbuds/sf200510071219402301_gif.gif" alt="Rett frem" style="width:100px; height:auto;">
+  <img src="/static/images/signs/påbuds/sf20051007121940601_gif.gif" alt="Rundkjøring" style="width:100px; height:auto;">
+  <img src="/static/images/signs/opplysnings/sf200510071219508201_gif.gif" alt="Reservert buss- og taxi" style="width:100px; height:auto;">
+  <img src="/static/images/signs/opplysnings/sf20051007121952201_gif.gif" alt="Påbudt gang-/sykkelvei" style="width:100px; height:auto;">
+    </div>
+
 - **Påbudt kjøreretning:** Du MÅ kjøre i pilens retning. Brukes for å unngå farlige konflikter i kryss.
 - **Påbudt rundkjøring:** Du MÅ følge rundkjøringens trafikkflyt og vike for de som er inni.
 - **Påbudt kjørefelt:** Feltet er reservert for spesifikke kjøretøy (f.eks. buss/taxi). Hold deg unna.

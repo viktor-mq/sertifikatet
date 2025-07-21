@@ -4,6 +4,13 @@
 Fareskilt varsler om farer på veien. De er trekantede med rød kant og et symbol som viser faren. Hensikten er å gi deg tid til å tilpasse farten og være forberedt.
 
 ## Gjenkjenn Mønstrene
+<div style="display:flex; gap:6px; margin-left:30px;">
+  <img src="/static/images/signs/fare/danger_sign.gif" alt="fareskilt" style="width:100px; height:auto;">
+  <img src="/static/images/signs/fare/sf20051007121911001_gif.gif" alt="Veiarbeid" style="width:100px; height:auto;">
+    <img src="/static/images/signs/fare/sf200510071219100101_gif.gif" alt="knapp sving til høyre" style="width:100px; height:auto;">
+    <img src="/static/images/signs/fare/sf200510071219146301_gif.gif" alt="Dyr i veien" style="width:100px; height:auto;">
+    <img src="/static/images/signs/fare/sf20051007121911601_gif.gif" alt="Glatt kjørebane" style="width:100px; height:auto;">
+</div>
 
 ### 1. **Form og Farge**
 - **Trekant:** Betyr alltid en fare.
@@ -22,6 +29,7 @@ Fareskilt varsler om farer på veien. De er trekantede med rød kant og et symbo
 - **Glatt kjørebane:** Kan skyldes mer enn bare is og snø.
 
 ## ⚠️ Vær obs på avstanden!
+![Avstand 100m](/static/images/signs/under/sf20051007121980201_gif.gif) 
 Skiltet står vanligvis 150-250m før faren på raske veier, og 50-150m i tettbygde strøk. Underskilt kan angi nøyaktig avstand.
 
 ## Sjekkliste for Fareskilt
