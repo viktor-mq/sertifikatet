@@ -506,195 +506,562 @@ class LearningService:
     
     @staticmethod
     def get_dual_action_recommendations(user):
-        """Get recommended next steps with dual reading/video action buttons"""
+        """Get recommended next steps with foundation-first dual reading/video action buttons"""
         try:
             from app.models import UserLearningProgress, LearningModules, LearningSubmodules
             
             recommendations = []
             
-            # Get user's current progress
-            current_progress = UserLearningProgress.query.filter_by(
-                user_id=user.id
-            ).order_by(UserLearningProgress.last_accessed.desc()).first()
+            # Get all modules ordered by module number (foundation-first approach)
+            all_modules = LearningModules.query.filter_by(
+                is_active=True
+            ).order_by(LearningModules.module_number).all()
             
-            if current_progress:
-                # Get submodule details for progress calculation
-                submodule = None
-                if current_progress.submodule_id:
-                    submodule = LearningSubmodules.query.get(current_progress.submodule_id)
-                
-                if submodule:
-                    submodule_number = submodule.submodule_number
+            if not all_modules:
+                logger.warning("No active modules found")
+                return []
+            
+            # Calculate progress for each module
+            modules_with_progress = []
+            for module in all_modules:
+                combined_progress = LearningService._calculate_module_combined_progress(user, module)
+                modules_with_progress.append({
+                    'module': module,
+                    'progress': combined_progress,
+                    'started': combined_progress > 0,
+                    'completed': combined_progress >= 95
+                })
+            
+            # FOUNDATION-FIRST LOGIC
+            recommended_module_data = None
+            recommendation_reason = None
+            
+            # Step 1: Look for foundation gaps (unstarted modules with higher modules having <35% progress)
+            for i, module_data in enumerate(modules_with_progress):
+                if not module_data['started']:  # Found unstarted module
+                    # Check if any higher modules have low progress (<35%)
+                    higher_modules_with_low_progress = any(
+                        higher['started'] and higher['progress'] < 35 
+                        for higher in modules_with_progress[i+1:]
+                    )
                     
-                    # Get reading progress
+                    if higher_modules_with_low_progress:  # Fill foundation gap
+                        recommended_module_data = module_data
+                        recommendation_reason = "foundation_gap"
+                        break
+            
+            # Step 2: If no foundation gaps, find lowest incomplete started module
+            if not recommended_module_data:
+                for module_data in modules_with_progress:
+                    if module_data['started'] and not module_data['completed']:
+                        recommended_module_data = module_data
+                        recommendation_reason = "continue_lowest"
+                        break
+            
+            # Step 3: If all started modules complete, recommend next sequential unstarted module
+            if not recommended_module_data:
+                for module_data in modules_with_progress:
+                    if not module_data['started']:
+                        recommended_module_data = module_data
+                        recommendation_reason = "next_sequential"
+                        break
+            
+            # Create primary recommendation with smart messaging
+            if recommended_module_data:
+                module = recommended_module_data['module']
+                progress = recommended_module_data['progress']
+                
+                # Get first submodule of recommended module
+                first_submodule = LearningSubmodules.query.filter_by(
+                    module_id=module.id
+                ).order_by(LearningSubmodules.submodule_number).first()
+                
+                if first_submodule:
+                    # Smart title and description based on reason
+                    if recommendation_reason == "foundation_gap":
+                        title = f"Start {module.title}"
+                        description = "Bygg grunnlaget først - viktig for videre læring"
+                        icon = "fas fa-foundation"
+                    elif recommendation_reason == "continue_lowest":
+                        title = f"Fortsett {module.title}"
+                        description = f"Fullfør dette modulet - {progress}% ferdig"
+                        icon = "fas fa-play"
+                    else:  # next_sequential
+                        title = f"Start {module.title}"
+                        description = "Neste steg i læringsveien din"
+                        icon = "fas fa-arrow-right"
+                    
+                    # Get detailed progress for the recommended module's first submodule
+                    submodule_number = first_submodule.submodule_number
                     reading_progress = LearningService.get_submodule_details(submodule_number, user)
                     reading_percentage = reading_progress['reading_progress']['completion_percentage'] if reading_progress else 0
                     reading_completed = reading_progress['reading_progress']['is_completed'] if reading_progress else False
                     
-                    # Get video progress
                     video_progress = LearningService.get_submodule_video_progress(user, submodule_number)
                     video_percentage = video_progress.get('completion_percentage', 0)
                     video_completed = video_progress.get('status', 'not_started') == 'completed'
                     
-                    # Create continue recommendation with dual actions
+                    # Smart action button text
+                    if progress == 0:  # Not started
+                        reading_text = "Start Lesing"
+                        video_text = "Start Videoer"
+                        reading_badge = "Ikke Startet"
+                        video_badge = "Ikke Startet"
+                    else:  # In progress
+                        reading_text = "Gjennomgå Lesing" if reading_completed else ("Fortsett Lesing" if reading_percentage > 0 else "Start Lesing")
+                        video_text = "Se Videoene Igjen" if video_completed else ("Fortsett Videoer" if video_percentage > 0 else "Start Videoer")
+                        reading_badge = "Fullført" if reading_completed else ("Pågår" if reading_percentage > 0 else "Ikke Startet")
+                        video_badge = "Fullført" if video_completed else ("Pågår" if video_percentage > 0 else "Ikke Startet")
+                    
                     recommendations.append({
-                        'type': 'continue',
-                        'title': f'Fortsett {submodule.title}',
-                        'description': f'Fullfør innholdet i modul {submodule_number}',
+                        'type': 'foundation_first',
+                        'title': title,
+                        'description': description,
                         'priority': 'høy',
-                        'icon': 'fas fa-play',
+                        'icon': icon,
                         'progress_context': {
                             'reading_percentage': reading_percentage,
                             'video_percentage': video_percentage,
                             'reading_completed': reading_completed,
                             'video_completed': video_completed,
-                            'last_activity': 'reading' if current_progress.progress_type == 'content' else 'video'
+                            'module_progress': progress,
+                            'recommendation_reason': recommendation_reason
                         },
                         'actions': {
                             'reading': {
                                 'url': f'/learning/module/{submodule_number}',
-                                'text': 'Gjennomgå Lesing' if reading_completed else 'Fortsett Lesing',
+                                'text': reading_text,
                                 'enabled': True,
-                                'badge': 'Complete' if reading_completed else ('In Progress' if reading_percentage > 0 else 'Not Started')
+                                'badge': reading_badge
                             },
                             'video': {
                                 'url': f'/learning/shorts/{submodule_number}?scope=submodule',
-                                'text': 'Se Videoene Igjen' if video_completed else ('Fortsett Videoer' if video_percentage > 0 else 'Se Videoer'),
+                                'text': video_text,
                                 'enabled': True,
-                                'badge': 'Complete' if video_completed else ('In Progress' if video_percentage > 0 else 'Not Started')
+                                'badge': video_badge
                             }
                         }
                     })
-                
-                # Check for next module recommendation
-                completed_modules = UserLearningProgress.query.filter_by(
-                    user_id=user.id,
-                    progress_type='content',
-                    status='completed'
-                ).count()
-                
-                if completed_modules > 0:
-                    next_module = LearningModules.query.filter(
-                        LearningModules.module_number > completed_modules
-                    ).order_by(LearningModules.module_number).first()
-                    
-                    if next_module:
-                        # Get first submodule of next module
-                        first_submodule = LearningSubmodules.query.filter_by(
-                            module_id=next_module.id
-                        ).order_by(LearningSubmodules.submodule_number).first()
-                        
-                        if first_submodule:
-                            recommendations.append({
-                                'type': 'next_module',
-                                'title': f'Start {next_module.title}',
-                                'description': 'Neste modul i læringsveien',
-                                'priority': 'medium',
-                                'icon': 'fas fa-arrow-right',
-                                'progress_context': {
-                                    'reading_percentage': 0,
-                                    'video_percentage': 0,
-                                    'reading_completed': False,
-                                    'video_completed': False,
-                                    'last_activity': 'none'
-                                },
-                                'actions': {
-                                    'reading': {
-                                        'url': f'/learning/module/{first_submodule.submodule_number}',
-                                        'text': 'Start Lesing',
-                                        'enabled': True,
-                                        'badge': 'Not Started'
-                                    },
-                                    'video': {
-                                        'url': f'/learning/shorts/{first_submodule.submodule_number}?scope=submodule',
-                                        'text': 'Start Videoer',
-                                        'enabled': True,
-                                        'badge': 'Not Started'
-                                    }
-                                }
-                            })
             
-            else:
-                # New user - recommend starting with first module
-                first_module = LearningModules.query.filter_by(
-                    module_number=1,
-                    is_active=True
-                ).first()
-                
-                if first_module:
-                    first_submodule = LearningSubmodules.query.filter_by(
-                        module_id=first_module.id
-                    ).order_by(LearningSubmodules.submodule_number).first()
-                    
-                    if first_submodule:
-                        recommendations.append({
-                            'type': 'start',
-                            'title': 'Start med grunnleggende trafikk',
-                            'description': 'Begynn læringsveien med det første modulet',
-                            'priority': 'høy',
-                            'icon': 'fas fa-play',
-                            'progress_context': {
-                                'reading_percentage': 0,
-                                'video_percentage': 0,
-                                'reading_completed': False,
-                                'video_completed': False,
-                                'last_activity': 'none'
-                            },
-                            'actions': {
-                                'reading': {
-                                    'url': f'/learning/module/{first_submodule.submodule_number}',
-                                    'text': 'Start Lesing',
-                                    'enabled': True,
-                                    'badge': 'Not Started'
-                                },
-                                'video': {
-                                    'url': f'/learning/shorts/{first_submodule.submodule_number}?scope=submodule',
-                                    'text': 'Start Videoer',
-                                    'enabled': True,
-                                    'badge': 'Not Started'
-                                }
-                            }
-                        })
+            # Add ML recommendation card (when confident) - with error isolation
+            try:
+                ml_recommendation = LearningService.get_ml_recommendation(user)
+                if ml_recommendation:
+                    recommendations.append(ml_recommendation)
+            except Exception as e:
+                logger.error(f"ML recommendation failed for user {user.id}, continuing without ML card: {str(e)}")
+                # Continue without ML card - don't break other recommendations
             
-            # Add dynamic quiz recommendation (replaces static quiz)
+            # Add dynamic quiz recommendation
             quiz_recommendation = LearningService.get_dynamic_quiz_recommendation(user)
             if quiz_recommendation:
                 recommendations.append(quiz_recommendation)
             
-            logger.info(f"Generated {len(recommendations)} dual-action recommendations for user {user.id}")
+            logger.info(f"Generated {len(recommendations)} foundation-first recommendations for user {user.id}")
             return recommendations
             
         except Exception as e:
-            logger.error(f"Error getting dual-action recommendations: {str(e)}")
-            # Return basic recommendation on error
-            return [{
-                'type': 'start',
-                'title': 'Start læringsveien',
-                'description': 'Begynn med det første modulet',
+            logger.error(f"Error getting foundation-first recommendations: {str(e)}")
+            # Return basic fallback recommendation
+            return LearningService._get_fallback_recommendation()
+
+    @staticmethod
+    def _calculate_module_combined_progress(user, module):
+        """Calculate combined reading and video progress for a module"""
+        try:
+            from app.models import UserLearningProgress, LearningSubmodules, Video, VideoProgress
+            
+            # Get all submodules for this module
+            submodules = LearningSubmodules.query.filter_by(
+                module_id=module.id,
+                is_active=True
+            ).all()
+            
+            if not submodules:
+                return 0
+            
+            total_reading_progress = 0
+            total_video_progress = 0
+            submodule_count = len(submodules)
+            
+            for submodule in submodules:
+                # Get reading progress for this submodule
+                reading_progress = UserLearningProgress.query.filter_by(
+                    user_id=user.id,
+                    submodule_id=submodule.id,
+                    progress_type='content'
+                ).first()
+                
+                reading_percentage = 0
+                if reading_progress and reading_progress.status == 'completed':
+                    reading_percentage = 100
+                elif reading_progress and reading_progress.content_viewed:
+                    reading_percentage = 50  # Partial progress
+                
+                # Get video progress for this submodule
+                submodule_videos = Video.query.filter(
+                    Video.theory_module_ref == str(submodule.submodule_number),
+                    Video.is_active == True
+                ).all()
+                
+                video_percentage = 0
+                if submodule_videos:
+                    completed_videos = 0
+                    for video in submodule_videos:
+                        video_progress = VideoProgress.query.filter_by(
+                            user_id=user.id,
+                            video_id=video.id,
+                            completed=True
+                        ).first()
+                        if video_progress:
+                            completed_videos += 1
+                    
+                    video_percentage = (completed_videos / len(submodule_videos)) * 100
+                
+                total_reading_progress += reading_percentage
+                total_video_progress += video_percentage
+            
+            # Calculate combined progress (average of reading and video across all submodules)
+            avg_reading = total_reading_progress / submodule_count if submodule_count > 0 else 0
+            avg_video = total_video_progress / submodule_count if submodule_count > 0 else 0
+            combined_progress = (avg_reading + avg_video) / 2
+            
+            return round(combined_progress, 1)
+            
+        except Exception as e:
+            logger.error(f"Error calculating module progress: {str(e)}")
+            return 0
+
+    @staticmethod
+    def _get_fallback_recommendation():
+        """Get basic fallback recommendation when main logic fails"""
+        return [{
+            'type': 'start',
+            'title': 'Start læringsveien',
+            'description': 'Begynn med det første modulet',
+            'priority': 'høy',
+            'icon': 'fas fa-play',
+            'progress_context': {
+                'reading_percentage': 0,
+                'video_percentage': 0,
+                'reading_completed': False,
+                'video_completed': False,
+                'module_progress': 0,
+                'recommendation_reason': 'fallback'
+            },
+            'actions': {
+                'reading': {
+                    'url': '/learning/dashboard',
+                    'text': 'Start Lesing',
+                    'enabled': True,
+                    'badge': 'Not Started'
+                },
+                'video': {
+                    'url': '/learning/dashboard',
+                    'text': 'Start Videoer',
+                    'enabled': True,
+                    'badge': 'Not Started'
+                }
+            }
+        }]
+
+    @staticmethod
+    def get_ml_recommendation(user):
+        """Get ML-powered personalized recommendation when confidence is high"""
+        try:
+            from app.ml.service import ml_service
+            
+            # Check if ML system is enabled and initialized
+            if not ml_service.is_ml_enabled():
+                logger.info(f"ML system disabled for user {user.id}, skipping ML recommendation")
+                return None
+            
+            # Get ML insights and skill profile
+            ml_insights = ml_service.get_user_learning_insights(user.id)
+            skill_assessment = ml_service.get_skill_assessment(user.id)
+            study_recommendations = ml_service.get_study_recommendations(user.id)
+            
+            if not ml_insights or not skill_assessment:
+                logger.info(f"Insufficient ML data for user {user.id}: insights={bool(ml_insights)}, assessment={bool(skill_assessment)}")
+                return None
+            
+            # Calculate ML confidence based on data quality
+            confidence = LearningService._calculate_ml_confidence(user, skill_assessment)
+            logger.info(f"ML confidence calculated for user {user.id}: {confidence:.2f}")
+            
+            # Standard confidence threshold for production
+            confidence_threshold = 0.7
+            if confidence < confidence_threshold:
+                logger.info(f"ML confidence too low for user {user.id}: {confidence:.2f} < {confidence_threshold}, skipping ML recommendation")
+                return None
+            
+            # Determine learning style and optimal content type
+            learning_style = LearningService._determine_learning_style(user, skill_assessment)
+            logger.info(f"Determined learning style for user {user.id}: {learning_style}")
+            
+            optimal_content = LearningService._get_ml_optimal_content(user, ml_insights, learning_style)
+            logger.info(f"Optimal content result for user {user.id}: {bool(optimal_content)}")
+            
+            if not optimal_content:
+                logger.info(f"No optimal content found for user {user.id} with learning style {learning_style}")
+                return None
+            
+            # Create ML recommendation with personalized insights
+            ml_recommendation = {
+                'type': 'ml_personalized',
+                'title': 'Personalisert for deg',
+                'description': f'Basert på din læringsstil og prestasjon',
                 'priority': 'høy',
-                'icon': 'fas fa-play',
+                'icon': 'fas fa-brain',
+                'confidence_score': confidence,
                 'progress_context': {
-                    'reading_percentage': 0,
-                    'video_percentage': 0,
-                    'reading_completed': False,
-                    'video_completed': False,
-                    'last_activity': 'none'
+                    'reading_percentage': optimal_content.get('reading_progress', 0),
+                    'video_percentage': optimal_content.get('video_progress', 0),
+                    'reading_completed': optimal_content.get('reading_completed', False),
+                    'video_completed': optimal_content.get('video_completed', False),
+                    'ml_confidence': confidence,
+                    'learning_style': learning_style,
+                    'skill_level': skill_assessment.get('skill_description', 'Developing')
+                },
+                'ml_insights': {
+                    'learning_style': learning_style,
+                    'skill_level': skill_assessment.get('overall_skill_level', 0.5),
+                    'weak_areas': ml_insights.get('weak_areas', [])[:2],  # Top 2 weak areas
+                    'next_difficulty': ml_insights.get('next_difficulty_level', 0.5),
+                    'study_recommendations': study_recommendations[:2]  # Top 2 recommendations
                 },
                 'actions': {
                     'reading': {
-                        'url': '/learning/dashboard',
-                        'text': 'Start Reading',
+                        'url': optimal_content['reading_url'],
+                        'text': optimal_content['reading_text'],
                         'enabled': True,
-                        'badge': 'Not Started'
+                        'badge': optimal_content['reading_badge']
                     },
                     'video': {
-                        'url': '/learning/dashboard',
-                        'text': 'Start Videos',
+                        'url': optimal_content['video_url'], 
+                        'text': optimal_content['video_text'],
                         'enabled': True,
-                        'badge': 'Not Started'
+                        'badge': optimal_content['video_badge']
                     }
+                },
+                'reasoning': optimal_content['reasoning']
+            }
+            
+            logger.info(f"Generated ML recommendation for user {user.id} with {confidence:.2f} confidence")
+            return ml_recommendation
+            
+        except Exception as e:
+            logger.error(f"Error getting ML recommendation: {str(e)}")
+            return None
+
+    @staticmethod
+    def _calculate_ml_confidence(user, skill_assessment):
+        """Calculate ML confidence based on available data quality"""
+        try:
+            from app.models import QuizSession, VideoProgress
+            
+            # Base confidence factors
+            confidence_factors = []
+            
+            # Factor 1: Number of quiz sessions (more data = higher confidence)
+            quiz_sessions = QuizSession.query.filter_by(user_id=user.id).count()
+            if quiz_sessions >= 10:
+                confidence_factors.append(0.9)
+            elif quiz_sessions >= 5:
+                confidence_factors.append(0.7)
+            elif quiz_sessions >= 2:
+                confidence_factors.append(0.5)
+            else:
+                confidence_factors.append(0.2)
+            
+            # Factor 2: Video engagement data
+            video_sessions = VideoProgress.query.filter_by(user_id=user.id).count()
+            if video_sessions >= 10:
+                confidence_factors.append(0.8)
+            elif video_sessions >= 5:
+                confidence_factors.append(0.6)
+            else:
+                confidence_factors.append(0.3)
+            
+            # Factor 3: Skill assessment quality
+            total_questions = skill_assessment.get('total_practice_questions', 0)
+            if total_questions >= 50:
+                confidence_factors.append(0.9)
+            elif total_questions >= 20:
+                confidence_factors.append(0.7)
+            elif total_questions >= 10:
+                confidence_factors.append(0.5)
+            else:
+                confidence_factors.append(0.2)
+            
+            # Factor 4: Learning consistency (recent activity)
+            from datetime import datetime, timedelta
+            recent_activity = QuizSession.query.filter(
+                QuizSession.user_id == user.id,
+                QuizSession.completed_at >= datetime.now() - timedelta(days=7)
+            ).count()
+            
+            if recent_activity >= 3:
+                confidence_factors.append(0.8)
+            elif recent_activity >= 1:
+                confidence_factors.append(0.6)
+            else:
+                confidence_factors.append(0.3)
+            
+            # Calculate weighted average confidence
+            confidence = sum(confidence_factors) / len(confidence_factors)
+            return round(confidence, 2)
+            
+        except Exception as e:
+            logger.error(f"Error calculating ML confidence: {str(e)}")
+            return 0.3
+
+    @staticmethod
+    def _determine_learning_style(user, skill_assessment):
+        """Determine user's learning style based on engagement patterns"""
+        try:
+            from app.models import VideoProgress, UserLearningProgress
+            
+            # Get video vs reading engagement
+            video_completions = VideoProgress.query.filter_by(
+                user_id=user.id, completed=True
+            ).count()
+            
+            reading_completions = UserLearningProgress.query.filter_by(
+                user_id=user.id, progress_type='content', status='completed'
+            ).count()
+            
+            total_engagement = video_completions + reading_completions
+            
+            if total_engagement == 0:
+                return 'mixed'
+            
+            video_ratio = video_completions / total_engagement
+            
+            # Determine learning style preference
+            if video_ratio > 0.7:
+                return 'visual'
+            elif video_ratio < 0.3:
+                return 'reading'
+            else:
+                return 'mixed'
+                
+        except Exception as e:
+            logger.error(f"Error determining learning style: {str(e)}")
+            return 'mixed'
+
+    @staticmethod
+    def _get_ml_optimal_content(user, ml_insights, learning_style):
+        """Get ML-optimized content recommendation"""
+        try:
+            from app.models import LearningModules, LearningSubmodules
+            
+            # Get weak areas from ML insights
+            weak_areas = ml_insights.get('weak_areas', [])
+            skill_level = ml_insights.get('skill_level', 0.5)
+            
+            # Find module that addresses weak areas
+            target_module = None
+            target_reason = "Fortsett læringen"
+            
+            if weak_areas:
+                # Map weak areas to modules (simplified mapping)
+                weak_area_module_map = {
+                    'traffic_signs': 2,  # Module 2: Signs and Markings
+                    'road_rules': 1,     # Module 1: Basic Traffic Rules  
+                    'safety': 4,         # Module 4: Human in Traffic
+                    'parking': 3,        # Module 3: Vehicle and Technology
+                    'alcohol_drugs': 4   # Module 4: Human in Traffic
                 }
-            }]
+                
+                for weak_area in weak_areas:
+                    module_number = weak_area_module_map.get(weak_area)
+                    if module_number:
+                        target_module = LearningModules.query.filter_by(
+                            module_number=module_number, is_active=True
+                        ).first()
+                        target_reason = f"Styrk svake områder: {weak_area}"
+                        break
+            
+            # Fallback to skill-based recommendation
+            if not target_module:
+                if skill_level < 0.5:
+                    # Beginner - recommend first module
+                    target_module = LearningModules.query.filter_by(
+                        module_number=1, is_active=True
+                    ).first()
+                    target_reason = "Bygg grunnleggende ferdigheter"
+                else:
+                    # Advanced - find next incomplete module
+                    target_module = LearningModules.query.filter_by(
+                        is_active=True
+                    ).order_by(LearningModules.module_number).first()
+                    target_reason = "Utfordre deg selv videre"
+            
+            if not target_module:
+                return None
+            
+            # Get first submodule
+            first_submodule = LearningSubmodules.query.filter_by(
+                module_id=target_module.id
+            ).order_by(LearningSubmodules.submodule_number).first()
+            
+            if not first_submodule:
+                return None
+            
+            submodule_number = first_submodule.submodule_number
+            
+            # Get progress for this submodule
+            reading_progress = LearningService.get_submodule_details(submodule_number, user)
+            video_progress = LearningService.get_submodule_video_progress(user, submodule_number)
+            
+            reading_percentage = reading_progress['reading_progress']['completion_percentage'] if reading_progress else 0
+            video_percentage = video_progress.get('completion_percentage', 0)
+            
+            # Personalize based on learning style
+            if learning_style == 'visual':
+                primary_action = 'video'
+                secondary_action = 'reading'
+                style_reason = "Du lærer best visuelt"
+            elif learning_style == 'reading':
+                primary_action = 'reading'
+                secondary_action = 'video'
+                style_reason = "Du foretrekker tekstbasert læring"
+            else:  # mixed
+                # Choose based on progress
+                if video_percentage < reading_percentage:
+                    primary_action = 'video'
+                    secondary_action = 'reading'
+                else:
+                    primary_action = 'reading'
+                    secondary_action = 'video'
+                style_reason = "Balansert tilnærming anbefales"
+            
+            # Create action texts
+            reading_text = "Fortsett Lesing" if reading_percentage > 0 else "Start Lesing"
+            video_text = "Fortsett Videoer" if video_percentage > 0 else "Start Videoer"
+            
+            reading_badge = "In Progress" if reading_percentage > 0 else "ML Anbefalt"
+            video_badge = "In Progress" if video_percentage > 0 else "ML Anbefalt"
+            
+            return {
+                'reading_url': f'/learning/module/{submodule_number}',
+                'video_url': f'/learning/shorts/{submodule_number}?scope=submodule',
+                'reading_text': reading_text,
+                'video_text': video_text,
+                'reading_badge': reading_badge,
+                'video_badge': video_badge,
+                'reading_progress': reading_percentage,
+                'video_progress': video_percentage,
+                'reading_completed': reading_percentage >= 95,
+                'video_completed': video_percentage >= 95,
+                'reasoning': f"{target_reason} - {style_reason}",
+                'target_module': target_module.title
+            }
+            
+        except Exception as e:
+            logger.error(f"Error getting ML optimal content: {str(e)}")
+            return None
 
     @staticmethod
     def get_dynamic_quiz_recommendation(user):
