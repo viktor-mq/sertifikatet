@@ -1567,13 +1567,17 @@ class LearningService:
                 Video.aspect_ratio == '9:16'
             ).order_by(Video.sequence_order).all()
             
+            # Get all progress records for user efficiently (fixes N+1 query issue)
+            video_ids = [short.id for short in shorts]
+            progress_records = {p.video_id: p for p in VideoProgress.query.filter(
+                VideoProgress.user_id == user.id,
+                VideoProgress.video_id.in_(video_ids)
+            ).all()} if video_ids else {}
+            
             shorts_data = []
             for short in shorts:
-                # Get user progress
-                progress = VideoProgress.query.filter_by(
-                    user_id=user.id,
-                    video_id=short.id
-                ).first()
+                # Use dictionary lookup instead of individual DB query
+                progress = progress_records.get(short.id)
                 
                 shorts_data.append({
                     'id': short.id,
@@ -1646,16 +1650,25 @@ class LearningService:
             
             from app.models import VideoProgress, Video
             
+            # Get video IDs for batch operations (fix N+1 query issue)
+            video_ids = [video['id'] for video in videos]
+            
+            # Get existing progress records in one query
+            existing_progress = {p.video_id: p for p in VideoProgress.query.filter(
+                VideoProgress.user_id == user.id,
+                VideoProgress.video_id.in_(video_ids)
+            ).all()}
+            
+            # Get video objects for duration info in one query
+            video_objects = {v.id: v for v in Video.query.filter(Video.id.in_(video_ids)).all()}
+            
             completed_count = 0
             
             for video in videos:
                 video_id = video['id']
                 
-                # Find or create progress record
-                progress = VideoProgress.query.filter_by(
-                    user_id=user.id,
-                    video_id=video_id
-                ).first()
+                # Find or create progress record using dictionary lookup
+                progress = existing_progress.get(video_id)
                 
                 if not progress:
                     progress = VideoProgress(
@@ -1670,8 +1683,8 @@ class LearningService:
                 progress.completed_at = datetime.utcnow()
                 progress.updated_at = datetime.utcnow()
                 
-                # Set to 100% watch percentage
-                video_obj = Video.query.get(video_id)
+                # Set to 100% watch percentage using dictionary lookup
+                video_obj = video_objects.get(video_id)
                 if video_obj and video_obj.duration_seconds:
                     progress.last_position_seconds = video_obj.duration_seconds
                 
