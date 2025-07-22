@@ -607,8 +607,34 @@ class UserLearningProgress(db.Model):
             elif progress_type == 'shorts':
                 progress.shorts_watched = (progress.shorts_watched or 0) + 1
                 
-            db.session.commit()
-            return progress
+            try:
+                db.session.commit()
+                return progress
+            except Exception as commit_error:
+                db.session.rollback()
+                # Handle duplicate key error - fetch existing record instead
+                if "Duplicate entry" in str(commit_error) or "IntegrityError" in str(commit_error):
+                    progress = cls.query.filter_by(
+                        user_id=user_id,
+                        module_id=module_id, 
+                        submodule_id=submodule_id,
+                        progress_type=progress_type
+                    ).first()
+                    
+                    if progress:
+                        # Update the existing record
+                        progress.last_accessed = datetime.utcnow()
+                        if progress.status != 'completed':
+                            progress.status = 'in_progress'
+                        
+                        if progress_type == 'shorts':
+                            progress.shorts_watched = (progress.shorts_watched or 0) + 1
+                        
+                        db.session.commit()
+                        return progress
+                
+                # Re-raise if not a duplicate key error
+                raise commit_error
             
         except Exception as e:
             db.session.rollback()

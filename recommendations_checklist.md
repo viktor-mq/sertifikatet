@@ -303,6 +303,63 @@
 - [ ] **User testing with different progress states needed**
 - [ ] **Cross-browser compatibility testing needed**
 
+## Phase 8: Recommended Videos Completion Pop-up ✅ COMPLETED
+
+### 8.1 Smart Submodule Completion Detection
+- [x] **Submodule completion trigger implemented:**
+  - [x] Detects when user completes the LAST video in a recommended submodule (95% completion)
+  - [x] Only triggers for recommended sessions (when `start_video` parameter exists)
+  - [x] Dynamic detection works for any submodule size (2 videos, 5 videos, etc.)
+  - [x] Smart logic identifies current submodule from video metadata
+
+### 8.2 Two-Button Completion Modal
+- [x] **Clean, focused completion popup:**
+  - [x] **Visual Design**: Green gradient with celebration styling and check icon
+  - [x] **Completion Message**: "Gratulerer! Du har fullført anbefalingen!" with submodule info
+  - [x] **Two Action Buttons**: "Fortsett læring" and "Tilbake til oversikt"
+  - [x] **Norwegian Localization**: All text in Norwegian for user experience
+
+### 8.3 Smart Continue Learning Logic
+- [x] **Intelligent continuation system:**
+  - [x] **Backend API**: `/api/shorts/incomplete-session` endpoint created
+  - [x] **Service Method**: `get_incomplete_videos_ordered()` implemented
+  - [x] **Completion Filter**: Only returns videos < 95% completion
+  - [x] **Module Ordering**: Videos ordered from lowest to highest (1.1, 1.2, 1.3, 2.1, 2.2, etc.)
+  - [x] **Seamless Transition**: Rebuilds video player with incomplete videos and starts playing
+
+### 8.4 Backend Implementation
+- [x] **Database Integration:**
+  ```python
+  def get_incomplete_videos_ordered(user):
+      # Joins Video and VideoProgress tables
+      # Filters for < 95% completion
+      # Orders by module progression (CAST theory_module_ref as FLOAT)
+      # Returns structured video data with completion status
+  ```
+
+### 8.5 Frontend Integration
+- [x] **JavaScript Implementation:**
+  - [x] **Submodule Detection**: Identifies current submodule from video metadata
+  - [x] **Last Video Check**: Detects when user completes final video in submodule
+  - [x] **Modal Creation**: Dynamic modal with celebration and action buttons
+  - [x] **Continue Logic**: Fetches incomplete videos and rebuilds player
+  - [x] **Error Handling**: Graceful fallback to dashboard if no incomplete videos
+
+### 8.6 User Experience Flow
+- [x] **Complete recommendation flow:**
+  1. **User clicks recommendation**: Dashboard → Video player with `start_video` parameter
+  2. **User watches videos**: Normal TikTok-style experience in recommended submodule
+  3. **Completion detection**: When last video in submodule reaches 95% completion
+  4. **Modal appears**: Celebration popup with two clear action options
+  5. **Continue learning**: Seamlessly transitions to next incomplete videos across all modules
+  6. **Back to dashboard**: Clean exit to theory dashboard
+
+### 8.7 Analytics Integration
+- [x] **Event tracking implemented:**
+  - [x] `submodule_completion` event with submodule identifier
+  - [x] Video count and completion metrics
+  - [x] Google Analytics integration for learning analytics
+
 ---
 
 ## COMPLETED IMPLEMENTATION SUMMARY
@@ -315,6 +372,8 @@
 - **User Experience**: Users can now choose between reading/video per recommendation instead of global mode switching
 - **Dynamic Quiz System**: Smart quiz recommendations based on recently completed content (reading OR video)
 - **Card Type Detection**: Frontend automatically renders different card types (dual-action vs quiz)
+- **Completion Pop-up System**: Smart submodule completion detection with continuation flow
+- **Incomplete Videos API**: Intelligent continuation to next unfinished content across all modules
 
 ### 🎯 Key Features Delivered
 1. **Smart Button Text**: "Continue Reading" vs "Review Reading" vs "Start Reading" based on progress
@@ -325,6 +384,8 @@
 6. **Dynamic Quiz Intelligence**: Automatically suggests quizzes based on most recent completed content
 7. **Multi-Card System**: Primary continuation + Dynamic quiz cards working together
 8. **Future-Ready ML**: Placeholder integration ready for ML-driven recommendations
+9. **Smart Completion Flow**: Submodule completion detection with seamless continuation to incomplete videos
+10. **Intelligent Video Ordering**: Incomplete videos served in logical module progression (1.1 → 1.2 → 2.1, etc.)
 
 ### 🔧 Technical Implementation
 - **Zero Breaking Changes**: Original recommendations API preserved for backward compatibility

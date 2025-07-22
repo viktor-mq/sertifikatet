@@ -190,6 +190,36 @@ def continue_learning():
         return redirect(url_for('learning.dashboard'))
 
 
+@learning_bp.route('/shorts/continue-learning')
+@login_required
+def shorts_continue_learning():
+    """Continue learning with unseen videos from all modules"""
+    try:
+        # Get unseen videos ordered from lowest to highest module
+        unseen_videos = LearningService.get_unseen_videos_ordered(current_user)
+        
+        if not unseen_videos:
+            # No unseen videos - user has watched everything!
+            flash('Gratulerer, alle videoene er sett! 🎉', 'success')
+            return redirect(url_for('learning.theory_dashboard'))
+        
+        # Render shorts player with unseen videos
+        return render_template('learning/shorts_player.html',
+                             submodule={
+                                 'title': 'Fortsett læring', 
+                                 'submodule_number': 'continue',
+                                 'id': 'continue'
+                             },
+                             shorts=unseen_videos,
+                             start_video_index=0,
+                             submodule_id='continue')
+                             
+    except Exception as e:
+        logger.error(f"Error loading continue learning: {str(e)}")
+        flash('Det oppstod en feil ved lasting av videoer', 'error')
+        return redirect(url_for('learning.theory_dashboard'))
+
+
 # Also add a route name fix for the shorts player
 @learning_bp.route('/theory/shorts/<float:submodule_id>')
 @login_required
@@ -807,6 +837,26 @@ def get_session_shorts_api():
         return jsonify({
             'success': False,
             'error': 'Could not load session videos'
+        }), 500
+
+
+@learning_bp.route('/api/shorts/incomplete-session', methods=['GET'])
+@login_required
+def get_incomplete_shorts_api():
+    """Get all unseen videos (not completed) ordered from lowest to highest module"""
+    try:
+        videos = LearningService.get_unseen_videos_ordered(current_user)
+        
+        return jsonify({
+            'success': True,
+            'videos': videos,
+            'count': len(videos)
+        })
+    except Exception as e:
+        logger.error(f"Error getting incomplete videos: {e}")
+        return jsonify({
+            'success': False,
+            'error': 'Could not load incomplete videos'
         }), 500
 
 @learning_bp.route('/api/shorts/<int:shorts_id>/progress', methods=['POST'])

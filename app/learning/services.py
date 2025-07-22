@@ -1964,6 +1964,100 @@ class LearningService:
             return []
     
     @staticmethod
+    def get_incomplete_videos_ordered(user):
+        """Get all incomplete videos (< 95% completion) ordered from lowest to highest module"""
+        try:
+            from app.models import Video, VideoProgress
+            
+            # Get all videos with their progress
+            videos_query = db.session.query(Video, VideoProgress).outerjoin(
+                VideoProgress, 
+                db.and_(
+                    VideoProgress.video_id == Video.id,
+                    VideoProgress.user_id == user.id
+                )
+            ).filter(
+                Video.theory_module_ref.isnot(None),  # Only theory videos
+                Video.is_active == True
+            ).order_by(
+                # Order by module progression (1.1, 1.2, 1.3, 2.1, 2.2, etc.)
+                db.cast(Video.theory_module_ref, db.Float)
+            )
+            
+            incomplete_videos = []
+            
+            for video, progress in videos_query:
+                # Calculate completion percentage
+                completion_percentage = 0
+                if progress and progress.last_position_seconds and video.duration_seconds:
+                    completion_percentage = (progress.last_position_seconds / video.duration_seconds) * 100
+                
+                # Include videos that are less than 95% complete
+                if completion_percentage < 95:
+                    video_data = {
+                        'id': video.id,
+                        'title': video.title,
+                        'description': video.description or '',
+                        'file_path': video.file_path,
+                        'duration_seconds': video.duration_seconds,
+                        'theory_module_ref': video.theory_module_ref,
+                        'completion_percentage': completion_percentage,
+                        'last_position': progress.last_position_seconds if progress else 0
+                    }
+                    incomplete_videos.append(video_data)
+            
+            logger.info(f"Found {len(incomplete_videos)} incomplete videos for user {user.id}")
+            return incomplete_videos
+            
+        except Exception as e:
+            logger.error(f"Error getting incomplete videos: {str(e)}")
+            return []
+
+    @staticmethod
+    def get_unseen_videos_ordered(user):
+        """Get all unseen videos (completed = False) ordered from lowest to highest module"""
+        try:
+            from app.models import Video, VideoProgress
+            
+            # Get all videos with their progress
+            videos_query = db.session.query(Video, VideoProgress).outerjoin(
+                VideoProgress, 
+                db.and_(
+                    VideoProgress.video_id == Video.id,
+                    VideoProgress.user_id == user.id
+                )
+            ).filter(
+                Video.theory_module_ref.isnot(None),  # Only theory videos
+                Video.is_active == True
+            ).order_by(
+                # Order by module progression (1.1, 1.2, 1.3, 2.1, 2.2, etc.)
+                db.cast(Video.theory_module_ref, db.Float)
+            )
+            
+            unseen_videos = []
+            
+            for video, progress in videos_query:
+                # Include videos that are NOT marked as completed
+                if not (progress and progress.completed):
+                    video_data = {
+                        'id': video.id,
+                        'title': video.title,
+                        'description': video.description or '',
+                        'file_path': video.file_path,
+                        'duration_seconds': video.duration_seconds,
+                        'theory_module_ref': video.theory_module_ref,
+                        'last_position': progress.last_position_seconds if progress else 0
+                    }
+                    unseen_videos.append(video_data)
+            
+            logger.info(f"Found {len(unseen_videos)} unseen videos for user {user.id}")
+            return unseen_videos
+            
+        except Exception as e:
+            logger.error(f"Error getting unseen videos: {str(e)}")
+            return []
+
+    @staticmethod
     def get_all_shorts_for_session(user, starting_submodule=None, starting_video_id=None):
         """Get ALL video shorts across modules for continuous playback"""
         from flask import current_app

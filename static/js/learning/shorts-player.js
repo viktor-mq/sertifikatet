@@ -24,6 +24,11 @@ class ShortsPlayer {
         this.crossModuleEnabled = options.crossModuleEnabled || false;
         this.startingSubmodule = options.startingSubmodule || null;
         
+        // Track recommended session state
+        this.isRecommendedSession = false;
+        this.recommendedSessionCompleted = false;
+        this.lastVideoInRecommendedSession = null;
+        
         // Player settings
         this.settings = {
             swipeThreshold: 50,
@@ -49,6 +54,9 @@ class ShortsPlayer {
             this.loadCurrentVideo();
         }
         
+        // Check if this is a recommended session and identify the last video (AFTER videos are loaded)
+        this.initializeRecommendedSession();
+        
         // Show video info initially
         setTimeout(() => {
             this.showVideoInfo();
@@ -60,6 +68,29 @@ class ShortsPlayer {
         
         // Add visual focus indicator
         this.container.style.outline = 'none';
+    }
+    
+    initializeRecommendedSession() {
+        const urlParams = new URLSearchParams(window.location.search);
+        const scopeParam = urlParams.get('scope');
+
+        if (scopeParam === 'submodule' && !this.crossModuleEnabled) {
+            this.isRecommendedSession = true;
+
+            // For scope=submodule sessions, find the last video in the submodule
+            if (this.videos.length > 0) {
+                // Get the submodule of the first video (they should all be the same in a submodule session)
+                const submodule = this.videos[0].theory_module_ref;
+
+                // Filter to get all videos for the submodule
+                const submoduleVideos = this.videos.filter(v => v.theory_module_ref === submodule);
+                
+                if (submoduleVideos.length > 0) {
+                    this.lastVideoInRecommendedSession = submoduleVideos[submoduleVideos.length - 1].id;
+                    console.log(`Recommended session for submodule ${submodule} initialized. Last video ID: ${this.lastVideoInRecommendedSession}`);
+                }
+            }
+        }
     }
     
     createPlayerStructure() {
@@ -545,7 +576,22 @@ class ShortsPlayer {
         
         // Track progress periodically and check for completion
         const isCompleted = progress >= 95;
-        this.trackVideoProgress(this.currentIndex, currentVideo.currentTime, isCompleted);
+        
+        // Check for recommended session completion FIRST (before stopping progress tracking)
+        if (this.isRecommendedSession && !this.recommendedSessionCompleted && progress >= 100) {
+            const currentVideo = this.videos[this.currentIndex];
+            if (currentVideo && currentVideo.id === this.lastVideoInRecommendedSession) {
+                console.log('Last video in recommended session completed!');
+                this.recommendedSessionCompleted = true;
+                this.stopProgressTracking(); // Stop all further updates
+                this.showRecommendedSessionCompletionPopup();
+            }
+        }
+        
+        // Only track progress if recommended session is not completed
+        if (!this.recommendedSessionCompleted) {
+            this.trackVideoProgress(this.currentIndex, currentVideo.currentTime, isCompleted);
+        }
         
         // Track completion when reaching 95% (only once per video)
         if (isCompleted && !this.videoCompletionTracked) {
@@ -736,8 +782,137 @@ class ShortsPlayer {
                     swipe_direction: 'up'
                 })
             });
+            
+            // Only check submodule completion if not already handled in updateProgress
+            if (!this.isRecommendedSession || !this.recommendedSessionCompleted) {
+                this.checkSubmoduleCompletion(index);
+            }
+            
         } catch (error) {
             console.error('Error tracking video completion:', error);
+        }
+    }
+    
+    checkSubmoduleCompletion(completedIndex) {
+        console.log('checkSubmoduleCompletion called:', { 
+            completedIndex, 
+            totalVideos: this.videos.length, 
+            isRecommendedSession: this.isRecommendedSession 
+        });
+        
+        // Use existing state variables instead of re-parsing URL parameters
+        if (this.isRecommendedSession && completedIndex === this.videos.length - 1) {
+            const currentVideo = this.videos[completedIndex];
+            if (currentVideo && currentVideo.theory_module_ref) {
+                const currentSubmodule = currentVideo.theory_module_ref;
+                console.log('Showing completion popup for submodule:', currentSubmodule);
+                this.showSubmoduleCompletionPopup(currentSubmodule, this.videos.length);
+            }
+        }
+    }
+    
+    showRecommendedSessionCompletionPopup() {
+        // Get current video info for display
+        const currentVideo = this.videos[this.currentIndex];
+        const submodule = currentVideo.theory_module_ref;
+        const submoduleVideos = this.videos.filter(v => v.theory_module_ref === submodule);
+        
+        this.showSubmoduleCompletionPopup(submodule, submoduleVideos.length);
+    }
+    
+    showSubmoduleCompletionPopup(submodule, videosCompleted) {
+        // Create completion modal with two-button design
+        const modal = document.createElement('div');
+        modal.className = 'fixed inset-0 bg-black/80 flex items-center justify-center z-50 p-4';
+        modal.innerHTML = `
+            <div class="bg-gradient-to-br from-green-500 to-teal-600 rounded-2xl p-8 max-w-md w-full text-center text-white shadow-2xl">
+                <div class="mb-8">
+                    <div class="w-24 h-24 bg-white/20 rounded-full flex items-center justify-center mx-auto mb-6">
+                        <i class="fas fa-check-circle fa-4x text-white"></i>
+                    </div>
+                    <h2 class="text-3xl font-bold mb-3">Gratulerer! 🎉</h2>
+                    <p class="text-green-100 text-lg mb-2">Du har fullført anbefalingen!</p>
+                    <p class="text-green-200 text-sm">Modul ${submodule} - ${videosCompleted} videoer sett</p>
+                </div>
+                
+                <div class="space-y-4">
+                    <button id="continue-learning" class="w-full bg-white text-green-600 font-bold py-4 px-6 rounded-xl hover:bg-green-50 transition-all duration-300 transform hover:scale-105">
+                        <i class="fas fa-play mr-2"></i>
+                        Fortsett læring
+                    </button>
+                    <button id="back-to-dashboard" class="w-full bg-transparent border-2 border-white text-white font-bold py-4 px-6 rounded-xl hover:bg-white hover:text-green-600 transition-all duration-300">
+                        <i class="fas fa-home mr-2"></i>
+                        Tilbake til oversikt
+                    </button>
+                </div>
+            </div>
+        `;
+        
+        // Add modal to page
+        document.body.appendChild(modal);
+        
+        // Add event listeners
+        modal.querySelector('#continue-learning').addEventListener('click', async () => {
+            modal.remove();
+            await this.continueToNextIncompleteVideos();
+        });
+        
+        modal.querySelector('#back-to-dashboard').addEventListener('click', () => {
+            modal.remove();
+            window.location.href = '/learning/theory';
+        });
+        
+        // Track completion event for analytics
+        if (window.gtag) {
+            gtag('event', 'submodule_completion', {
+                'event_category': 'learning',
+                'event_label': `submodule_${submodule}`,
+                'value': videosCompleted
+            });
+        }
+    }
+    
+    async continueToNextIncompleteVideos() {
+        try {
+            // Call the backend to get all incomplete videos ordered from lowest to highest
+            const response = await fetch('/learning/api/shorts/incomplete-session');
+            const data = await response.json();
+            
+            if (data.success && data.videos && data.videos.length > 0) {
+                // Transition to incomplete videos session
+                this.videos = data.videos;
+                this.currentIndex = 0;
+                this.videoCompletionTracked = false;
+                
+                // Reset recommendation session state for normal tracking
+                this.isRecommendedSession = false;
+                this.recommendedSessionCompleted = false;
+                this.lastVideoInRecommendedSession = null;
+                
+                // Change URL to reflect the new session type
+                window.history.replaceState({}, '', '/learning/shorts/continue-learning');
+                
+                // Rebuild video elements
+                this.videoStack.innerHTML = '';
+                this.videoElements = [];
+                this.loadVideos();
+                this.loadCurrentVideo();
+                this.updateVideoInfo(0);
+                
+                // Start playing the first incomplete video
+                setTimeout(() => {
+                    this.play();
+                }, 500);
+                
+            } else {
+                // No incomplete videos found - redirect to dashboard
+                window.location.href = '/learning/theory';
+            }
+            
+        } catch (error) {
+            console.error('Error loading incomplete videos:', error);
+            // Fallback to dashboard
+            window.location.href = '/learning/theory';
         }
     }
     
