@@ -1526,16 +1526,6 @@ class LearningService:
             return {'success': False, 'liked': False}
     
     @staticmethod
-    def get_submodule_shorts(submodule_id, user):
-        """Get video shorts for submodule - mock or database based on config"""
-        from flask import current_app
-        
-        if current_app.config.get('SHORT_VIDEOS_MOCK', False):
-            return LearningService._get_mock_shorts(submodule_id, user)
-        else:
-            return LearningService._get_database_shorts(submodule_id, user)
-    
-    @staticmethod
     def _get_mock_shorts(submodule_id, user):
         """Mock video data from database (ID 9000+ series)"""
         try:
@@ -1586,45 +1576,6 @@ class LearningService:
             logger.error(f"Error getting mock shorts from database: {str(e)}")
             # Fallback to empty list if database query fails
             return []
-    
-    @staticmethod  
-    def _get_database_shorts(submodule_id, user):
-        """Real database video data for production"""
-        try:
-            from app.models import Video, VideoProgress
-            
-            # Get videos for this submodule
-            shorts = Video.query.filter(
-                Video.theory_module_ref == str(submodule_id),
-                Video.is_active == True,
-                Video.aspect_ratio == '9:16'
-            ).order_by(Video.sequence_order).all()
-            
-            shorts_data = []
-            for short in shorts:
-                # Get user progress
-                progress = VideoProgress.query.filter_by(
-                    user_id=user.id,
-                    video_id=short.id
-                ).first()
-                
-                shorts_data.append({
-                    'id': short.id,
-                    'title': short.title,
-                    'description': short.description,
-                    'file_path': short.file_path,
-                    'duration_seconds': short.duration_seconds,
-                    'watch_percentage': progress.watch_percentage if progress else 0,
-                    'is_completed': progress.completed if progress else False,
-                    'sequence_order': short.sequence_order
-                })
-            
-            return shorts_data
-            
-        except Exception as e:
-            logger.error(f"Error getting database shorts: {e}")
-            # Fallback to mock data on error
-            return LearningService._get_mock_shorts(submodule_id, user)
     
     @staticmethod
     def get_all_shorts_for_session(user, starting_submodule=None, starting_video_id=None):
