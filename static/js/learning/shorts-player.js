@@ -18,6 +18,9 @@ class ShortsPlayer {
         this.isTransitioning = false;
         this.progressUpdateInterval = null;
         this.autoplayTimeout = null;
+        this.infoTimeout = null;
+        this.infoVisible = true;
+        this.videoCompletionTracked = false;
         this.crossModuleEnabled = options.crossModuleEnabled || false;
         this.startingSubmodule = options.startingSubmodule || null;
         
@@ -45,6 +48,11 @@ class ShortsPlayer {
             this.loadVideos();
             this.loadCurrentVideo();
         }
+        
+        // Show video info initially
+        setTimeout(() => {
+            this.showVideoInfo();
+        }, 500);
         
         // Make container focusable and focused
         this.container.setAttribute('tabindex', '0');
@@ -76,7 +84,7 @@ class ShortsPlayer {
                     </div>
                     
                     <!-- Video Info -->
-                    <div class="absolute bottom-0 left-0 right-0 p-4 bg-gradient-to-t from-black/80 via-black/40 to-transparent pointer-events-auto">
+                    <div id="video-info-overlay" class="absolute bottom-0 left-0 right-0 p-4 bg-gradient-to-t from-black/80 via-black/40 to-transparent pointer-events-auto transition-opacity duration-300">
                         <div class="flex items-end justify-between">
                             <div class="flex-1 mr-4">
                                 <h3 id="video-title" class="text-white font-bold text-lg mb-1"></h3>
@@ -183,8 +191,13 @@ class ShortsPlayer {
             });
             
             videoElement.addEventListener('ended', () => {
-                if (index === this.currentIndex && this.settings.autoplayNext) {
-                    this.nextVideo();
+                if (index === this.currentIndex) {
+                    // Track completion when video ends naturally
+                    this.trackVideoCompletion(index);
+                    
+                    if (this.settings.autoplayNext) {
+                        this.nextVideo();
+                    }
                 }
             });
             
@@ -356,7 +369,20 @@ class ShortsPlayer {
     
     handleClick(e) {
         if (e.target.closest('.action-btn') || e.target.closest('#play-pause-btn')) return;
-        this.togglePlayPause();
+        
+        // Check if clicking in bottom area (video info zone)
+        const rect = this.container.getBoundingClientRect();
+        const clickY = e.clientY - rect.top;
+        const containerHeight = rect.height;
+        const bottomThreshold = containerHeight * 0.7; // Bottom 30% of screen
+        
+        if (clickY > bottomThreshold) {
+            // Clicked in bottom area - toggle video info
+            this.toggleVideoInfo();
+        } else {
+            // Clicked elsewhere - play/pause
+            this.togglePlayPause();
+        }
     }
     
     handleLike(e) {
@@ -438,6 +464,8 @@ class ShortsPlayer {
             this.currentIndex = newIndex;
             this.updateVideoInfo(newIndex);
             this.updateProgressBars();
+            this.showVideoInfo(); // Show info when video changes
+            this.videoCompletionTracked = false; // Reset completion tracking for new video
             this.isTransitioning = false;
             
             // Auto-play new video
@@ -515,8 +543,15 @@ class ShortsPlayer {
             progressBar.style.width = `${progress}%`;
         }
         
-        // Track progress periodically
-        this.trackVideoProgress(this.currentIndex, currentVideo.currentTime, progress >= 95);
+        // Track progress periodically and check for completion
+        const isCompleted = progress >= 95;
+        this.trackVideoProgress(this.currentIndex, currentVideo.currentTime, isCompleted);
+        
+        // Track completion when reaching 95% (only once per video)
+        if (isCompleted && !this.videoCompletionTracked) {
+            this.trackVideoCompletion(this.currentIndex);
+            this.videoCompletionTracked = true;
+        }
     }
     
     updateProgressBars() {
@@ -573,13 +608,45 @@ class ShortsPlayer {
         return `${mins}:${secs.toString().padStart(2, '0')}`;
     }
     
+    // Video Info Visibility Methods
+    
+    showVideoInfo() {
+        const infoOverlay = this.container.querySelector('#video-info-overlay');
+        if (!infoOverlay) return;
+        
+        infoOverlay.style.opacity = '1';
+        this.infoVisible = true;
+        
+        // Auto-hide after 3 seconds
+        clearTimeout(this.infoTimeout);
+        this.infoTimeout = setTimeout(() => {
+            this.hideVideoInfo();
+        }, 3000);
+    }
+    
+    hideVideoInfo() {
+        const infoOverlay = this.container.querySelector('#video-info-overlay');
+        if (!infoOverlay) return;
+        
+        infoOverlay.style.opacity = '0';
+        this.infoVisible = false;
+    }
+    
+    toggleVideoInfo() {
+        clearTimeout(this.infoTimeout); // Cancel auto-hide when manually toggling
+        
+        if (this.infoVisible) {
+            this.hideVideoInfo();
+        } else {
+            this.showVideoInfo();
+        }
+    }
+    
     // API Integration Methods
     
     async toggleLike(videoId) {
         try {
-            const endpoint = videoId >= 9000 ? 
-                '/learning/api/shorts/mock/like' : 
-                `/learning/api/shorts/${videoId}/like`;
+            const endpoint = `/learning/api/shorts/${videoId}/like`;
                 
             const response = await fetch(endpoint, {
                 method: 'POST',
@@ -633,9 +700,7 @@ class ShortsPlayer {
         if (!video) return;
         
         try {
-            const endpoint = video.id >= 9000 ? 
-                '/learning/api/shorts/mock/progress' : 
-                `/learning/api/shorts/${video.id}/progress`;
+            const endpoint = `/learning/api/shorts/${video.id}/progress`;
                 
             await fetch(endpoint, {
                 method: 'POST',
@@ -659,10 +724,7 @@ class ShortsPlayer {
         if (!video || !videoElement) return;
         
         try {
-            // 🎯 ADD MOCK DETECTION HERE
-            const endpoint = video.id >= 9000 ? 
-                '/learning/api/shorts/mock/progress' :  // Use mock endpoint
-                '/learning/api/shorts/watch';           // Use real endpoint
+            const endpoint = `/learning/api/shorts/${video.id}/progress`;
                 
             await fetch(endpoint, {
                 method: 'POST',
@@ -681,7 +743,26 @@ class ShortsPlayer {
     
     async loadAllVideosForSession() {
         try {
-            const response = await fetch(`/learning/api/shorts/all-session${this.startingSubmodule ? `?start=${this.startingSubmodule}` : ''}`);
+            // Extract start_video parameter from URL
+            const urlParams = new URLSearchParams(window.location.search);
+            const startVideoId = urlParams.get('start_video');
+            
+            // Build API URL with both submodule and video parameters
+            let apiUrl = '/learning/api/shorts/all-session';
+            const params = new URLSearchParams();
+            
+            if (this.startingSubmodule) {
+                params.set('start', this.startingSubmodule);
+            }
+            if (startVideoId) {
+                params.set('start_video', startVideoId);
+            }
+            
+            if (params.toString()) {
+                apiUrl += '?' + params.toString();
+            }
+            
+            const response = await fetch(apiUrl);
             const data = await response.json();
             
             if (data.success) {
@@ -710,6 +791,7 @@ class ShortsPlayer {
     
     destroy() {
         this.stopProgressTracking();
+        clearTimeout(this.infoTimeout);
         this.videoElements.forEach(video => {
             video.pause();
             video.src = '';

@@ -1449,8 +1449,9 @@ class LearningService:
             if 'watch_time_seconds' in watch_data:
                 progress.last_position_seconds = watch_data['watch_time_seconds']
                 
-            # Mark as completed if >= 95% watched
-            if progress.watch_percentage >= 95 and not progress.completed:
+            # Mark as completed if >= 95% watched (use request data directly)
+            request_percentage = watch_data.get('watch_percentage', 0)
+            if request_percentage >= 95 and not progress.completed:
                 progress.completed = True
                 progress.completed_at = datetime.utcnow()
             
@@ -1463,9 +1464,16 @@ class LearningService:
             
             db.session.commit()
             
+            # Calculate watch percentage from stored position and video duration
+            calculated_watch_percentage = 0
+            if video and video.duration_seconds > 0 and progress.last_position_seconds:
+                calculated_watch_percentage = (progress.last_position_seconds / video.duration_seconds) * 100
+                # Cap at 100% to avoid display issues
+                calculated_watch_percentage = min(calculated_watch_percentage, 100)
+            
             return {
                 'success': True,
-                'watch_percentage': progress.watch_percentage,
+                'watch_percentage': calculated_watch_percentage,
                 'completed': progress.completed
             }
             
@@ -1744,30 +1752,25 @@ class LearningService:
                     module['progress'] = 0
                     module['status'] = 'not_started'
                 
-                # Determine smart video navigation target with video-specific continuation
-                next_video_submodule = f"{module_id}.1"  # Default fallback
-                next_video_id = None
+                # Get last video position specifically for THIS module
+                last_video_in_module = LearningService.get_last_video_position_for_module(user, module_id)
                 
-                # Check if user has recent video progress in this module
-                last_position = LearningService.get_user_last_position(user)
-                if (last_position and 
-                    last_position.get('last_video_id') and 
-                    last_position.get('submodule_number') and 
-                    str(last_position.get('module_id')) == str(module_id)):
-                    # User has recent video progress in this specific module
-                    next_video_submodule = last_position['submodule_number']
-                    next_video_id = last_position['last_video_id']
+                if last_video_in_module:
+                    # User has video progress in this specific module
+                    next_video_submodule = last_video_in_module['submodule_id']
+                    next_video_id = last_video_in_module['video_id']
                     logger.info(f"Dashboard: Module {module_id} will continue from video {next_video_id} in submodule {next_video_submodule}")
                 else:
-                    # Use traditional logic for next incomplete submodule
+                    # No video progress in this module - start from first incomplete submodule
                     next_video_submodule = LearningService._determine_next_video_submodule(
                         module_id, submodule_progress_list
                     )
-                    logger.info(f"Dashboard: Module {module_id} will start from submodule {next_video_submodule} (no recent video progress)")
+                    next_video_id = None  # Will start from first video
+                    logger.info(f"Dashboard: Module {module_id} will start from submodule {next_video_submodule} (no video progress)")
                 
                 # Add video-specific navigation data
                 module['next_video_submodule'] = next_video_submodule
-                module['next_video_id'] = next_video_id  # None if no specific video continuation
+                module['next_video_id'] = next_video_id
                 module['video_button_text'] = LearningService._get_video_button_text(module['status'])
                     
             return modules
@@ -1798,6 +1801,117 @@ class LearningService:
         except Exception as e:
             logger.error(f"Error determining next video submodule: {str(e)}")
             return f"{module_id}.1"
+    
+    @staticmethod
+    def get_last_video_position_for_module(user, module_id):
+        """Smart video continuation: next unwatched, then incomplete, then next submodule"""
+        try:
+            from app.models import VideoProgress, Video
+            from sqlalchemy import and_, or_
+            
+            # Step 1: Find the last completed video in this module (highest sequence)
+            last_completed = db.session.query(VideoProgress)\
+                .join(Video, VideoProgress.video_id == Video.id)\
+                .filter(
+                    VideoProgress.user_id == user.id,
+                    Video.theory_module_ref.like(f"{module_id}.%"),
+                    VideoProgress.completed == True
+                )\
+                .order_by(Video.theory_module_ref, Video.sequence_order.desc())\
+                .first()
+            
+            if last_completed:
+                # Step 2: Find next video after the last completed one in the same submodule
+                next_video = Video.query.filter(
+                    Video.theory_module_ref == last_completed.video.theory_module_ref,  # Same submodule
+                    Video.sequence_order > last_completed.video.sequence_order,
+                    Video.is_active == True
+                ).order_by(Video.sequence_order).first()
+                
+                if next_video:
+                    logger.info(f"Module {module_id}: Next video {next_video.id} after completed video {last_completed.video_id}")
+                    return {
+                        'video_id': next_video.id,
+                        'submodule_id': next_video.theory_module_ref,
+                        'last_position_seconds': 0,
+                        'continuation_type': 'next_in_sequence'
+                    }
+            
+            # Step 3: No next video in sequence - find any incomplete video in this module
+            incomplete_video = db.session.query(Video)\
+                .outerjoin(VideoProgress, and_(
+                    VideoProgress.video_id == Video.id,
+                    VideoProgress.user_id == user.id
+                ))\
+                .filter(
+                    Video.theory_module_ref.like(f"{module_id}.%"),
+                    Video.is_active == True,
+                    or_(
+                        VideoProgress.completed == False,
+                        VideoProgress.completed.is_(None)  # Never watched
+                    )
+                )\
+                .order_by(Video.theory_module_ref, Video.sequence_order)\
+                .first()
+            
+            if incomplete_video:
+                logger.info(f"Module {module_id}: Found incomplete video {incomplete_video.id} in {incomplete_video.theory_module_ref}")
+                return {
+                    'video_id': incomplete_video.id,
+                    'submodule_id': incomplete_video.theory_module_ref,
+                    'last_position_seconds': 0,
+                    'continuation_type': 'incomplete_video'
+                }
+            
+            # Step 4: Everything complete in this module - find first video of next submodule
+            # Get the highest submodule number in this module
+            highest_submodule = db.session.query(Video.theory_module_ref)\
+                .filter(
+                    Video.theory_module_ref.like(f"{module_id}.%"),
+                    Video.is_active == True
+                )\
+                .order_by(Video.theory_module_ref.desc())\
+                .first()
+            
+            if highest_submodule:
+                # Try to find next submodule (e.g., if highest is 1.3, look for 1.4)
+                current_sub = float(highest_submodule[0])
+                next_sub = round(current_sub + 0.1, 1)
+                
+                next_submodule_video = Video.query.filter(
+                    Video.theory_module_ref == str(next_sub),
+                    Video.is_active == True
+                ).order_by(Video.sequence_order).first()
+                
+                if next_submodule_video:
+                    logger.info(f"Module {module_id}: All complete, moving to next submodule {next_sub}")
+                    return {
+                        'video_id': next_submodule_video.id,
+                        'submodule_id': next_submodule_video.theory_module_ref,
+                        'last_position_seconds': 0,
+                        'continuation_type': 'next_submodule'
+                    }
+            
+            # Step 5: No next submodule - restart from first video in module
+            first_video = Video.query.filter(
+                Video.theory_module_ref.like(f"{module_id}.%"),
+                Video.is_active == True
+            ).order_by(Video.theory_module_ref, Video.sequence_order).first()
+            
+            if first_video:
+                logger.info(f"Module {module_id}: Restarting from first video {first_video.id}")
+                return {
+                    'video_id': first_video.id,
+                    'submodule_id': first_video.theory_module_ref,
+                    'last_position_seconds': 0,
+                    'continuation_type': 'restart_module'
+                }
+            
+            return None
+            
+        except Exception as e:
+            logger.error(f"Error getting smart video position for module {module_id}: {str(e)}")
+            return None
     
     @staticmethod
     def _get_video_button_text(status):
