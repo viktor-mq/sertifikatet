@@ -446,7 +446,7 @@ class GamificationService:
         if achievements_earned:
             db.session.commit()
         
-        return achievements_earned
+        return [achievement.to_dict() for achievement in achievements_earned]
     
     @classmethod
     def get_achievement_analytics_data(cls, achievements_earned, user):

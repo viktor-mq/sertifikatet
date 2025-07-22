@@ -38,9 +38,16 @@
                 </div>
             </div>
             
-            <!-- Progress Bar -->
-            <div class="w-full bg-gray-700 rounded-full h-3 mb-4">
-                <div id="progress-bar" class="bg-gradient-to-r from-blue-400 to-purple-500 h-3 rounded-full transition-all duration-700 ease-out" style="width: 0%"></div>
+            <!-- Progress Bar with Integrated Continue Button -->
+            <div class="relative w-full bg-gray-700 rounded-full h-10 mb-4 flex items-center">
+                <div id="progress-bar" class="bg-gradient-to-r from-blue-400 to-purple-500 h-full rounded-full transition-all duration-700 ease-out" style="width: 0%"></div>
+                
+                <!-- Integrated Continue Button -->
+                <button id="continue-btn" onclick="handleContinueAction()" 
+                        class="absolute right-2 bg-gradient-to-r from-green-500 to-emerald-600 hover:from-green-600 hover:to-emerald-700 text-white font-semibold px-3 py-1.5 rounded-lg transition-all duration-300 transform hover:scale-105 flex items-center space-x-2 text-sm shadow-lg">
+                    <i class="fas fa-play text-xs" id="continue-icon"></i>
+                    <span id="continue-text">Fortsett</span>
+                </button>
             </div>
             
             <!-- Detailed Progress Stats -->
@@ -173,8 +180,21 @@ document.addEventListener('DOMContentLoaded', function() {
     updateToggleState(contentType);
     
     // Initialize progress bar with server data
-    const progressStats = {{ progress_stats | tojson }};
-    updateProgressBar(contentType, progressStats);
+    try {
+        const progressStats = {{ progress_stats | tojson | safe }} || {
+            reading: { percentage: 0, completed: 0, total: 0 },
+            video: { percentage: 0, completed: 0, total: 0 }
+        };
+        updateProgressBar(contentType, progressStats);
+    } catch (error) {
+        console.error('Error with progress stats:', error);
+        // Fallback progress stats
+        const fallbackStats = {
+            reading: { percentage: 0, completed: 0, total: 0 },
+            video: { percentage: 0, completed: 0, total: 0 }
+        };
+        updateProgressBar(contentType, fallbackStats);
+    }
     
     // Load personalized dual-action recommendations
     fetch('{{ url_for("learning.get_dual_action_recommendations") }}')
@@ -305,9 +325,16 @@ function createQuizCard(rec) {
 });
 
 function switchContentType(type) {
-    // Update progress bar for new content type
-    const progressStats = {{ progress_stats | tojson }};
-    updateProgressBar(type, progressStats);
+    // Update progress bar for new content type  
+    try {
+        const progressStats = {{ progress_stats | tojson | safe }} || {
+            reading: { percentage: 0, completed: 0, total: 0 },
+            video: { percentage: 0, completed: 0, total: 0 }
+        };
+        updateProgressBar(type, progressStats);
+    } catch (error) {
+        console.error('Error with progress stats in switchContentType:', error);
+    }
     
     // Update URL and reload with new content type
     const url = new URL(window.location);
@@ -371,6 +398,35 @@ function updateProgressBar(contentType, progressStats) {
     setTimeout(() => {
         progressBar.style.width = displayPercentage + '%';
     }, 100);
+}
+
+function handleContinueAction() {
+    const urlParams = new URLSearchParams(window.location.search);
+    const contentType = urlParams.get('type') || 'reading';
+    
+    if (contentType === 'video') {
+        // For video mode: redirect to continue learning
+        window.location.href = '/learning/shorts/continue-learning';
+    } else {
+        // For reading mode: redirect to next submodule
+        // We'll use an API call to get the next submodule
+        fetch('{{ url_for("learning.get_next_submodule") }}')
+            .then(response => response.json())
+            .then(data => {
+                if (data.success && data.next_submodule_id) {
+                    // Go directly to theory submodule content page
+                    window.location.href = `/learning/theory/module/${data.next_submodule_id}`;
+                } else {
+                    // If no next submodule, show message and stay on dashboard
+                    alert(data.message || 'Du har fullført alle tilgjengelige moduler!');
+                }
+            })
+            .catch(error => {
+                console.error('Error getting next submodule:', error);
+                // Stay on current page instead of showing alert
+                console.log('No next submodule available or API error');
+            });
+    }
 }
 </script>
 {% endblock %}

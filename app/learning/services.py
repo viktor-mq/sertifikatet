@@ -2421,3 +2421,63 @@ class LearningService:
             return 'Fortsett videoer'
         else:
             return 'Start videoer'
+    
+    @staticmethod
+    def get_next_reading_submodule(user):
+        """Get the next available submodule for reading continuation"""
+        try:
+            from app.models import UserLearningProgress, LearningSubmodules
+            
+            # 1. First check for any "in_progress" submodules
+            in_progress = db.session.query(LearningSubmodules).join(
+                UserLearningProgress,
+                db.and_(
+                    UserLearningProgress.user_id == user.id,
+                    UserLearningProgress.submodule_id == LearningSubmodules.id,
+                    UserLearningProgress.progress_type == 'content'
+                )
+            ).filter(
+                LearningSubmodules.is_active == True,
+                UserLearningProgress.status == 'in_progress'
+            ).order_by(LearningSubmodules.id).first()
+            
+            if in_progress:
+                return in_progress.submodule_number
+            
+            # 2. Find the highest completed submodule
+            last_completed = db.session.query(LearningSubmodules).join(
+                UserLearningProgress,
+                db.and_(
+                    UserLearningProgress.user_id == user.id,
+                    UserLearningProgress.submodule_id == LearningSubmodules.id,
+                    UserLearningProgress.progress_type == 'content'
+                )
+            ).filter(
+                LearningSubmodules.is_active == True,
+                UserLearningProgress.status == 'completed'
+            ).order_by(LearningSubmodules.id.desc()).first()
+            
+            if last_completed:
+                # Find first submodule after the last completed one
+                next_after_completed = LearningSubmodules.query.filter(
+                    LearningSubmodules.is_active == True,
+                    LearningSubmodules.id > last_completed.id
+                ).order_by(LearningSubmodules.id).first()
+                
+                if next_after_completed:
+                    return next_after_completed.submodule_number
+            
+            # 3. If no progress at all, return first submodule
+            first_submodule = LearningSubmodules.query.filter(
+                LearningSubmodules.is_active == True
+            ).order_by(LearningSubmodules.id).first()
+            
+            if first_submodule:
+                # Return the submodule_number (like 1.1, 1.2, etc.)
+                return first_submodule.submodule_number
+            
+            return None
+            
+        except Exception as e:
+            logger.error(f"Error getting next reading submodule: {str(e)}")
+            return None

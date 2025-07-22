@@ -111,6 +111,17 @@ class Achievement(db.Model):
     
     # Relationships
     user_achievements = db.relationship('UserAchievement', backref='achievement', cascade='all, delete-orphan')
+    
+    def to_dict(self):
+        """Convert achievement to a serializable dictionary."""
+        return {
+            'id': self.id,
+            'name': self.name,
+            'description': self.description,
+            'icon': self.icon_filename,
+            'points': self.points,
+            'category': self.category
+        }
 
 
 class UserAchievement(db.Model):

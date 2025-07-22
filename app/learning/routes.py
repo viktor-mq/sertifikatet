@@ -31,7 +31,7 @@ def enroll_in_module(module_id):
     except Exception as e:
         logger.error(f"Error enrolling in module {module_id}: {str(e)}")
         flash('Det oppstod en feil ved påmelding', 'error')
-        return redirect(url_for('learning.dashboard'))
+        return redirect(url_for('learning.theory_dashboard'))
 
 
 @learning_bp.route('/module/<int:module_id>')
@@ -44,7 +44,7 @@ def module_overview(module_id):
         
         if not module_data:
             flash('Modulen ble ikke funnet', 'error')
-            return redirect(url_for('learning.dashboard'))
+            return redirect(url_for('learning.theory_dashboard'))
         
         # Get submodules with progress
         submodules_data = LearningService.get_submodules_progress(module_id, current_user)
@@ -55,7 +55,7 @@ def module_overview(module_id):
     except Exception as e:
         logger.error(f"Error loading module {module_id}: {str(e)}")
         flash('Det oppstod en feil ved lasting av modulen', 'error')
-        return redirect(url_for('learning.dashboard'))
+        return redirect(url_for('learning.theory_dashboard'))
 
 
 @learning_bp.route('/module/<float:submodule_id>')
@@ -116,7 +116,7 @@ def shorts_player(submodule_id):
         
         if not submodule_data:
             flash('Undermodulen ble ikke funnet', 'error')
-            return redirect(url_for('learning.dashboard'))
+            return redirect(url_for('learning.theory_dashboard'))
         
         # Get video shorts for this submodule
         shorts_data = LearningService.get_submodule_shorts(submodule_id, current_user)
@@ -182,12 +182,12 @@ def continue_learning():
         else:
             # First time user - redirect to dashboard
             flash('Velkommen! Start med å utforske læringsmodulene.', 'info')
-            return redirect(url_for('learning.dashboard'))
+            return redirect(url_for('learning.theory_dashboard'))
             
     except Exception as e:
         logger.error(f"Error getting continue position: {str(e)}")
         flash('Kunne ikke finne din siste posisjon. Starter fra begynnelsen.', 'warning')
-        return redirect(url_for('learning.dashboard'))
+        return redirect(url_for('learning.theory_dashboard'))
 
 
 @learning_bp.route('/shorts/continue-learning')
@@ -328,7 +328,7 @@ def progress_tracker():
     except Exception as e:
         logger.error(f"Error loading progress tracker: {str(e)}")
         flash('Det oppstod en feil ved lasting av fremgangsdata', 'error')
-        return redirect(url_for('learning.dashboard'))
+        return redirect(url_for('learning.theory_dashboard'))
 
 
 # API routes for progress tracking and interactions
@@ -861,6 +861,30 @@ def get_incomplete_shorts_api():
         return jsonify({
             'success': False,
             'error': 'Could not load incomplete videos'
+        }), 500
+
+@learning_bp.route('/api/next-submodule', methods=['GET'])
+@login_required
+def get_next_submodule():
+    """Get next available submodule for reading continuation"""
+    try:
+        next_submodule = LearningService.get_next_reading_submodule(current_user)
+        
+        if next_submodule:
+            return jsonify({
+                'success': True,
+                'next_submodule_id': next_submodule
+            })
+        else:
+            return jsonify({
+                'success': False,
+                'message': 'Ingen flere moduler tilgjengelig'
+            })
+    except Exception as e:
+        logger.error(f"Error getting next submodule: {e}")
+        return jsonify({
+            'success': False,
+            'error': 'Could not get next submodule'
         }), 500
 
 @learning_bp.route('/api/shorts/<int:shorts_id>/progress', methods=['POST'])
