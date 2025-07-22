@@ -336,6 +336,74 @@ class LearningService:
             }
     
     @staticmethod
+    def get_overall_progress_stats(user):
+        """Get overall progress statistics for both reading and video content"""
+        try:
+            from app.models import UserLearningProgress, Video, VideoProgress, LearningSubmodules
+            
+            # Calculate reading progress based on TOTAL available submodules
+            reading_total = LearningSubmodules.query.filter_by(
+                is_active=True
+            ).count()
+            
+            reading_completed = UserLearningProgress.query.filter_by(
+                user_id=user.id,
+                progress_type='content',
+                status='completed'
+            ).count()
+            
+            reading_progress_percentage = int((reading_completed / reading_total) * 100) if reading_total > 0 else 0
+            
+            # Calculate video progress based on TOTAL available videos
+            video_total = Video.query.filter(
+                Video.theory_module_ref.isnot(None),
+                Video.is_active == True
+            ).count()
+            
+            video_completed = db.session.query(VideoProgress).join(Video).filter(
+                VideoProgress.user_id == user.id,
+                VideoProgress.completed == True,
+                Video.theory_module_ref.isnot(None),
+                Video.is_active == True
+            ).count()
+            
+            video_progress_percentage = int((video_completed / video_total) * 100) if video_total > 0 else 0
+            
+            # Calculate overall combined progress
+            total_content = reading_total + video_total
+            total_completed = reading_completed + video_completed
+            overall_progress_percentage = int((total_completed / total_content) * 100) if total_content > 0 else 0
+            
+            progress_stats = {
+                'reading': {
+                    'completed': reading_completed,
+                    'total': reading_total,
+                    'percentage': reading_progress_percentage
+                },
+                'video': {
+                    'completed': video_completed,
+                    'total': video_total,
+                    'percentage': video_progress_percentage
+                },
+                'overall': {
+                    'completed': total_completed,
+                    'total': total_content,
+                    'percentage': overall_progress_percentage
+                }
+            }
+            
+            logger.info(f"Overall progress stats for user {user.id}: {progress_stats}")
+            return progress_stats
+            
+        except Exception as e:
+            logger.error(f"Error getting overall progress stats: {str(e)}")
+            return {
+                'reading': {'completed': 0, 'total': 0, 'percentage': 0},
+                'video': {'completed': 0, 'total': 0, 'percentage': 0},
+                'overall': {'completed': 0, 'total': 0, 'percentage': 0}
+            }
+    
+    @staticmethod
     def get_recommendations(user):
         """Get recommended next steps for user based on progress"""
         try:
@@ -485,13 +553,13 @@ class LearningService:
                         'actions': {
                             'reading': {
                                 'url': f'/learning/module/{submodule_number}',
-                                'text': 'Review Reading' if reading_completed else 'Continue Reading',
+                                'text': 'Gjennomgå Lesing' if reading_completed else 'Fortsett Lesing',
                                 'enabled': True,
                                 'badge': 'Complete' if reading_completed else ('In Progress' if reading_percentage > 0 else 'Not Started')
                             },
                             'video': {
                                 'url': f'/learning/shorts/{submodule_number}?scope=submodule',
-                                'text': 'Rewatch Videos' if video_completed else ('Continue Videos' if video_percentage > 0 else 'Watch Videos'),
+                                'text': 'Se Videoene Igjen' if video_completed else ('Fortsett Videoer' if video_percentage > 0 else 'Se Videoer'),
                                 'enabled': True,
                                 'badge': 'Complete' if video_completed else ('In Progress' if video_percentage > 0 else 'Not Started')
                             }
@@ -533,13 +601,13 @@ class LearningService:
                                 'actions': {
                                     'reading': {
                                         'url': f'/learning/module/{first_submodule.submodule_number}',
-                                        'text': 'Start Reading',
+                                        'text': 'Start Lesing',
                                         'enabled': True,
                                         'badge': 'Not Started'
                                     },
                                     'video': {
                                         'url': f'/learning/shorts/{first_submodule.submodule_number}?scope=submodule',
-                                        'text': 'Start Videos',
+                                        'text': 'Start Videoer',
                                         'enabled': True,
                                         'badge': 'Not Started'
                                     }
@@ -575,13 +643,13 @@ class LearningService:
                             'actions': {
                                 'reading': {
                                     'url': f'/learning/module/{first_submodule.submodule_number}',
-                                    'text': 'Start Reading',
+                                    'text': 'Start Lesing',
                                     'enabled': True,
                                     'badge': 'Not Started'
                                 },
                                 'video': {
                                     'url': f'/learning/shorts/{first_submodule.submodule_number}?scope=submodule',
-                                    'text': 'Start Videos',
+                                    'text': 'Start Videoer',
                                     'enabled': True,
                                     'badge': 'Not Started'
                                 }

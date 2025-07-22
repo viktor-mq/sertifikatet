@@ -616,6 +616,9 @@ def theory_dashboard():
         # Get user learning stats
         learning_stats = LearningService.get_user_learning_stats(current_user)
         
+        # Get overall progress stats for reading vs video
+        progress_stats = LearningService.get_overall_progress_stats(current_user)
+        
         # Get recommended next steps
         recommendations = LearningService.get_recommendations(current_user)
         
@@ -623,6 +626,7 @@ def theory_dashboard():
         return render_template('learning/theory_dashboard.html',
                              modules=modules_data,
                              stats=learning_stats,
+                             progress_stats=progress_stats,
                              recommendations=recommendations,
                              content_type=content_type)
     except Exception as e:

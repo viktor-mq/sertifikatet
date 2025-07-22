@@ -814,8 +814,8 @@ class ShortsPlayer {
     showRecommendedSessionCompletionPopup() {
         // Get current video info for display
         const currentVideo = this.videos[this.currentIndex];
-        const submodule = currentVideo.theory_module_ref;
-        const submoduleVideos = this.videos.filter(v => v.theory_module_ref === submodule);
+        const submodule = currentVideo ? (currentVideo.theory_module_ref || currentVideo.submodule_id || 'Anbefaling') : 'Anbefaling';
+        const submoduleVideos = this.videos.filter(v => (v.theory_module_ref || v.submodule_id) === (currentVideo.theory_module_ref || currentVideo.submodule_id));
         
         this.showSubmoduleCompletionPopup(submodule, submoduleVideos.length);
     }
@@ -832,7 +832,7 @@ class ShortsPlayer {
                     </div>
                     <h2 class="text-3xl font-bold mb-3">Gratulerer! 🎉</h2>
                     <p class="text-green-100 text-lg mb-2">Du har fullført anbefalingen!</p>
-                    <p class="text-green-200 text-sm">Modul ${submodule} - ${videosCompleted} videoer sett</p>
+                    <p class="text-green-200 text-sm">Modul ${submodule || 'Anbefaling'} - ${videosCompleted || 0} videoer sett</p>
                 </div>
                 
                 <div class="space-y-4">
