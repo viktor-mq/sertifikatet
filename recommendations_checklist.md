@@ -133,7 +133,7 @@
   - [x] Reading mode: `/learning/module/{submodule}` 
   - [x] Both actions available per recommendation
 
-## Phase 5: ML Integration (Secondary Card Implementation)
+## Phase 5: ML Integration (Secondary Card Implementation) 🚧 IN PROGRESS
 
 ### 5.1 ML Recommendation Card (When Sufficient Data Available)
 - [ ] **Create `get_ml_recommendations()` in `app/learning/services.py`**
@@ -181,22 +181,22 @@
   - [ ] Integrate quiz performance data from existing analytics
   - [ ] Use video watch patterns and reading completion rates
 
-## Phase 5.5: Dynamic Quiz Card (Third Card Implementation)
+## Phase 5.5: Dynamic Quiz Card (Third Card Implementation) ✅ COMPLETED
 
 ### 5.5.1 Smart Quiz Recommendations
-- [ ] **Create `get_dynamic_quiz_recommendations()` in `app/learning/services.py`**
-  - [ ] **Early Learning Phase** (0-2 completed modules):
+- [x] **Create `get_dynamic_quiz_recommendations()` in `app/learning/services.py`**
+  - [x] **Early Learning Phase** (0-2 completed modules):
     - Base quiz on most recently completed module (reading OR video)
     - Example: "Test your knowledge of Traffic Rules" (if user completed module 1.1)
     - Fallback to general practice if no completions yet
   
-  - [ ] **Mature Learning Phase** (2+ completed modules with quiz data):
+  - [x] **Mature Learning Phase** (2+ completed modules with quiz data):
     - Use ML recommendations when available and confident
     - Base on weakest areas identified by quiz performance
     - Example: "Focus on Road Signs" (if quiz data shows 60% accuracy in signs)
 
 ### 5.5.2 Quiz Card Logic Flow
-- [ ] **Dynamic quiz selection algorithm:**
+- [x] **Dynamic quiz selection algorithm:**
   ```python
   def get_dynamic_quiz_recommendations(user):
       # Check if ML recommendations are available and confident
@@ -214,7 +214,7 @@
   ```
 
 ### 5.5.3 Quiz Card Data Structure
-- [ ] **Quiz recommendation format:**
+- [x] **Quiz recommendation format:**
   ```python
   {
       'type': 'quiz_dynamic',
@@ -247,24 +247,24 @@
   ```
 
 ### 5.5.4 Quiz Card Intelligence
-- [ ] **Smart quiz targeting:**
-  - [ ] Track which modules user has completed (reading OR video)
-  - [ ] Identify weak areas from previous quiz attempts
-  - [ ] Suggest review quizzes for modules completed >7 days ago
-  - [ ] Offer mixed practice when user has broad completion
-  - [ ] Include motivational elements (streaks, previous scores)
+- [x] **Smart quiz targeting:**
+  - [x] Track which modules user has completed (reading OR video)
+  - [x] Identify weak areas from previous quiz attempts (ML placeholder ready)
+  - [ ] Suggest review quizzes for modules completed >7 days ago (future enhancement)
+  - [x] Offer mixed practice when user has broad completion
+  - [ ] Include motivational elements (streaks, previous scores) (future enhancement)
 
 ### 5.5.5 Quiz Card Positioning Logic
-- [ ] **Card order strategy:**
+- [x] **Card order strategy:**
   1. **Primary Card**: Always first - immediate next step
-  2. **ML Card**: Second when available - personalized insights
+  2. **ML Card**: Second when available - personalized insights  
   3. **Quiz Card**: Third - knowledge reinforcement
   
-- [ ] **Quiz card visibility rules:**
-  - [ ] Always show (unlike ML card which needs data)
-  - [ ] Content adapts based on available progress data
-  - [ ] Early users get general practice
-  - [ ] Advanced users get targeted/ML-driven quizzes
+- [x] **Quiz card visibility rules:**
+  - [x] Always show (unlike ML card which needs data)
+  - [x] Content adapts based on available progress data
+  - [x] Early users get general practice
+  - [x] Advanced users get targeted/ML-driven quizzes
 
 ## Phase 6: UI/UX Polish ✅ COMPLETED
 
@@ -273,18 +273,21 @@
   - [x] Reading icon (📖) with progress percentage
   - [x] Video icon (🎥) with progress percentage  
   - [x] Color-coded badges for completion status
+  - [x] **NEW**: Quiz card with distinct green styling and focus info
 
 ### 6.2 Progress Context Display
 - [x] **Recommendation reasoning implemented:**
   - [x] Progress percentages shown for both content types
   - [x] Smart button text explains next action
   - [x] Completion badges provide clear status indicators
+  - [x] **NEW**: Quiz focus information with module context
 
 ### 6.3 Action Button Enhancement
 - [x] **Context-aware button text implemented:**
   - [x] "Continue Reading" vs "Review Reading" vs "Start Reading"
   - [x] "Watch Videos" vs "Continue Videos" vs "Rewatch Videos"  
   - [x] Progress-based text generation
+  - [x] **NEW**: Quiz-specific buttons ("Test [Module]" vs "Blandet øving")
 
 ## Phase 7: Testing & Validation ✅ COMPLETED
 
@@ -310,6 +313,8 @@
 - **Frontend UI**: Dual-button recommendation cards with progress indicators and smart action text
 - **Progress Integration**: Reading and video progress seamlessly integrated into recommendation logic
 - **User Experience**: Users can now choose between reading/video per recommendation instead of global mode switching
+- **Dynamic Quiz System**: Smart quiz recommendations based on recently completed content (reading OR video)
+- **Card Type Detection**: Frontend automatically renders different card types (dual-action vs quiz)
 
 ### 🎯 Key Features Delivered
 1. **Smart Button Text**: "Continue Reading" vs "Review Reading" vs "Start Reading" based on progress
@@ -317,6 +322,9 @@
 3. **Completion Badges**: "Complete", "In Progress", "Not Started" badges with color coding
 4. **Cross-Format Intelligence**: Recommendations aware of both content types simultaneously
 5. **User Agency**: Individual choice per recommendation instead of forced system suggestions
+6. **Dynamic Quiz Intelligence**: Automatically suggests quizzes based on most recent completed content
+7. **Multi-Card System**: Primary continuation + Dynamic quiz cards working together
+8. **Future-Ready ML**: Placeholder integration ready for ML-driven recommendations
 
 ### 🔧 Technical Implementation
 - **Zero Breaking Changes**: Original recommendations API preserved for backward compatibility

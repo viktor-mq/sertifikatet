@@ -810,7 +810,7 @@ document.addEventListener('DOMContentLoaded', function() {
     
     if (playerContainer && videosData.length > 0) {
         window.shortsPlayer = new ShortsPlayer(playerContainer, videosData, {
-            crossModuleEnabled: true,  // Enable cross-module navigation
+            crossModuleEnabled: window.playerConfig.crossModuleEnabled || false,  // Use dynamic setting
             startingSubmodule: window.submoduleId,
             startVideoIndex: window.playerConfig.startVideoIndex
         });

@@ -697,6 +697,24 @@ def get_recommendations():
         }), 400
 
 
+@learning_bp.route('/api/recommendations/dual-action')
+@login_required
+def get_dual_action_recommendations():
+    """Get personalized recommendations with dual reading/video actions (AJAX)"""
+    try:
+        recommendations = LearningService.get_dual_action_recommendations(current_user)
+        return jsonify({
+            'success': True,
+            'recommendations': recommendations
+        })
+    except Exception as e:
+        logger.error(f"Error getting dual-action recommendations: {str(e)}")
+        return jsonify({
+            'success': False,
+            'error': 'Kunne ikke hente anbefalinger'
+        }), 400
+
+
 # Video Shorts API Endpoints
 @learning_bp.route('/api/shorts/mock/progress', methods=['POST'])
 @login_required  

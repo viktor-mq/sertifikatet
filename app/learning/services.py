@@ -437,6 +437,392 @@ class LearningService:
             }]
     
     @staticmethod
+    def get_dual_action_recommendations(user):
+        """Get recommended next steps with dual reading/video action buttons"""
+        try:
+            from app.models import UserLearningProgress, LearningModules, LearningSubmodules
+            
+            recommendations = []
+            
+            # Get user's current progress
+            current_progress = UserLearningProgress.query.filter_by(
+                user_id=user.id
+            ).order_by(UserLearningProgress.last_accessed.desc()).first()
+            
+            if current_progress:
+                # Get submodule details for progress calculation
+                submodule = None
+                if current_progress.submodule_id:
+                    submodule = LearningSubmodules.query.get(current_progress.submodule_id)
+                
+                if submodule:
+                    submodule_number = submodule.submodule_number
+                    
+                    # Get reading progress
+                    reading_progress = LearningService.get_submodule_details(submodule_number, user)
+                    reading_percentage = reading_progress['reading_progress']['completion_percentage'] if reading_progress else 0
+                    reading_completed = reading_progress['reading_progress']['is_completed'] if reading_progress else False
+                    
+                    # Get video progress
+                    video_progress = LearningService.get_submodule_video_progress(user, submodule_number)
+                    video_percentage = video_progress.get('completion_percentage', 0)
+                    video_completed = video_progress.get('status', 'not_started') == 'completed'
+                    
+                    # Create continue recommendation with dual actions
+                    recommendations.append({
+                        'type': 'continue',
+                        'title': f'Fortsett {submodule.title}',
+                        'description': f'Fullfør innholdet i modul {submodule_number}',
+                        'priority': 'høy',
+                        'icon': 'fas fa-play',
+                        'progress_context': {
+                            'reading_percentage': reading_percentage,
+                            'video_percentage': video_percentage,
+                            'reading_completed': reading_completed,
+                            'video_completed': video_completed,
+                            'last_activity': 'reading' if current_progress.progress_type == 'content' else 'video'
+                        },
+                        'actions': {
+                            'reading': {
+                                'url': f'/learning/module/{submodule_number}',
+                                'text': 'Review Reading' if reading_completed else 'Continue Reading',
+                                'enabled': True,
+                                'badge': 'Complete' if reading_completed else ('In Progress' if reading_percentage > 0 else 'Not Started')
+                            },
+                            'video': {
+                                'url': f'/learning/shorts/{submodule_number}?scope=submodule',
+                                'text': 'Rewatch Videos' if video_completed else ('Continue Videos' if video_percentage > 0 else 'Watch Videos'),
+                                'enabled': True,
+                                'badge': 'Complete' if video_completed else ('In Progress' if video_percentage > 0 else 'Not Started')
+                            }
+                        }
+                    })
+                
+                # Check for next module recommendation
+                completed_modules = UserLearningProgress.query.filter_by(
+                    user_id=user.id,
+                    progress_type='content',
+                    status='completed'
+                ).count()
+                
+                if completed_modules > 0:
+                    next_module = LearningModules.query.filter(
+                        LearningModules.module_number > completed_modules
+                    ).order_by(LearningModules.module_number).first()
+                    
+                    if next_module:
+                        # Get first submodule of next module
+                        first_submodule = LearningSubmodules.query.filter_by(
+                            module_id=next_module.id
+                        ).order_by(LearningSubmodules.submodule_number).first()
+                        
+                        if first_submodule:
+                            recommendations.append({
+                                'type': 'next_module',
+                                'title': f'Start {next_module.title}',
+                                'description': 'Neste modul i læringsveien',
+                                'priority': 'medium',
+                                'icon': 'fas fa-arrow-right',
+                                'progress_context': {
+                                    'reading_percentage': 0,
+                                    'video_percentage': 0,
+                                    'reading_completed': False,
+                                    'video_completed': False,
+                                    'last_activity': 'none'
+                                },
+                                'actions': {
+                                    'reading': {
+                                        'url': f'/learning/module/{first_submodule.submodule_number}',
+                                        'text': 'Start Reading',
+                                        'enabled': True,
+                                        'badge': 'Not Started'
+                                    },
+                                    'video': {
+                                        'url': f'/learning/shorts/{first_submodule.submodule_number}?scope=submodule',
+                                        'text': 'Start Videos',
+                                        'enabled': True,
+                                        'badge': 'Not Started'
+                                    }
+                                }
+                            })
+            
+            else:
+                # New user - recommend starting with first module
+                first_module = LearningModules.query.filter_by(
+                    module_number=1,
+                    is_active=True
+                ).first()
+                
+                if first_module:
+                    first_submodule = LearningSubmodules.query.filter_by(
+                        module_id=first_module.id
+                    ).order_by(LearningSubmodules.submodule_number).first()
+                    
+                    if first_submodule:
+                        recommendations.append({
+                            'type': 'start',
+                            'title': 'Start med grunnleggende trafikk',
+                            'description': 'Begynn læringsveien med det første modulet',
+                            'priority': 'høy',
+                            'icon': 'fas fa-play',
+                            'progress_context': {
+                                'reading_percentage': 0,
+                                'video_percentage': 0,
+                                'reading_completed': False,
+                                'video_completed': False,
+                                'last_activity': 'none'
+                            },
+                            'actions': {
+                                'reading': {
+                                    'url': f'/learning/module/{first_submodule.submodule_number}',
+                                    'text': 'Start Reading',
+                                    'enabled': True,
+                                    'badge': 'Not Started'
+                                },
+                                'video': {
+                                    'url': f'/learning/shorts/{first_submodule.submodule_number}?scope=submodule',
+                                    'text': 'Start Videos',
+                                    'enabled': True,
+                                    'badge': 'Not Started'
+                                }
+                            }
+                        })
+            
+            # Add dynamic quiz recommendation (replaces static quiz)
+            quiz_recommendation = LearningService.get_dynamic_quiz_recommendation(user)
+            if quiz_recommendation:
+                recommendations.append(quiz_recommendation)
+            
+            logger.info(f"Generated {len(recommendations)} dual-action recommendations for user {user.id}")
+            return recommendations
+            
+        except Exception as e:
+            logger.error(f"Error getting dual-action recommendations: {str(e)}")
+            # Return basic recommendation on error
+            return [{
+                'type': 'start',
+                'title': 'Start læringsveien',
+                'description': 'Begynn med det første modulet',
+                'priority': 'høy',
+                'icon': 'fas fa-play',
+                'progress_context': {
+                    'reading_percentage': 0,
+                    'video_percentage': 0,
+                    'reading_completed': False,
+                    'video_completed': False,
+                    'last_activity': 'none'
+                },
+                'actions': {
+                    'reading': {
+                        'url': '/learning/dashboard',
+                        'text': 'Start Reading',
+                        'enabled': True,
+                        'badge': 'Not Started'
+                    },
+                    'video': {
+                        'url': '/learning/dashboard',
+                        'text': 'Start Videos',
+                        'enabled': True,
+                        'badge': 'Not Started'
+                    }
+                }
+            }]
+
+    @staticmethod
+    def get_dynamic_quiz_recommendation(user):
+        """Get dynamic quiz recommendation based on user progress and ML data"""
+        try:
+            from app.models import UserLearningProgress, LearningModules
+            
+            # Check if ML recommendations are available and confident
+            ml_quiz = LearningService._get_ml_quiz_suggestion(user)
+            if ml_quiz and ml_quiz.get('confidence', 0) > 0.7:
+                return ml_quiz
+            
+            # Fallback to progress-based quiz
+            last_completed = LearningService._get_last_completed_content(user)
+            if last_completed:
+                return LearningService._create_module_quiz_recommendation(last_completed)
+            
+            # Ultimate fallback to general practice
+            return LearningService._create_general_quiz_recommendation()
+            
+        except Exception as e:
+            logger.error(f"Error getting dynamic quiz recommendation: {str(e)}")
+            return LearningService._create_general_quiz_recommendation()
+
+    @staticmethod
+    def _get_ml_quiz_suggestion(user):
+        """Get ML-based quiz suggestion (placeholder for future ML integration)"""
+        try:
+            # TODO: Integrate with app/ml/service.py when ML data is sufficient
+            # For now, return None to fall back to progress-based recommendations
+            return None
+        except Exception as e:
+            logger.error(f"Error getting ML quiz suggestion: {str(e)}")
+            return None
+
+    @staticmethod
+    def _get_last_completed_content(user):
+        """Get the most recently completed content (reading OR video)"""
+        try:
+            from app.models import UserLearningProgress, VideoProgress, Video, LearningSubmodules
+            
+            # Get most recent completed reading content
+            last_reading = UserLearningProgress.query.filter_by(
+                user_id=user.id,
+                progress_type='content',
+                status='completed'
+            ).order_by(UserLearningProgress.last_accessed.desc()).first()
+            
+            # Get most recent completed video
+            last_video_progress = VideoProgress.query.filter_by(
+                user_id=user.id,
+                completed=True
+            ).order_by(VideoProgress.completed_at.desc()).first()
+            
+            # Determine which is more recent
+            if last_reading and last_video_progress:
+                reading_time = last_reading.last_accessed
+                video_time = last_video_progress.completed_at
+                
+                if video_time > reading_time:
+                    # Most recent completion was a video
+                    video = Video.query.get(last_video_progress.video_id)
+                    if video and video.theory_module_ref:
+                        module_id = int(float(video.theory_module_ref))
+                        return {
+                            'module_id': module_id,
+                            'type': 'video',
+                            'completed_at': video_time,
+                            'submodule_ref': video.theory_module_ref
+                        }
+                else:
+                    # Most recent completion was reading
+                    return {
+                        'module_id': last_reading.module_id,
+                        'type': 'reading',
+                        'completed_at': reading_time,
+                        'submodule_id': last_reading.submodule_id
+                    }
+            elif last_reading:
+                return {
+                    'module_id': last_reading.module_id,
+                    'type': 'reading',
+                    'completed_at': last_reading.last_accessed,
+                    'submodule_id': last_reading.submodule_id
+                }
+            elif last_video_progress:
+                video = Video.query.get(last_video_progress.video_id)
+                if video and video.theory_module_ref:
+                    module_id = int(float(video.theory_module_ref))
+                    return {
+                        'module_id': module_id,
+                        'type': 'video',
+                        'completed_at': last_video_progress.completed_at,
+                        'submodule_ref': video.theory_module_ref
+                    }
+            
+            return None
+            
+        except Exception as e:
+            logger.error(f"Error getting last completed content: {str(e)}")
+            return None
+
+    @staticmethod
+    def _create_module_quiz_recommendation(last_completed):
+        """Create quiz recommendation based on recently completed module"""
+        try:
+            from app.models import LearningModules
+            
+            module_id = last_completed['module_id']
+            completion_type = last_completed['type']
+            
+            # Get module details
+            module = LearningModules.query.get(module_id)
+            module_name = module.title if module else f'Modul {module_id}'
+            
+            # Create targeted quiz recommendation
+            return {
+                'type': 'quiz_dynamic',
+                'title': 'Test din kunnskap',
+                'description': f'Basert på nylig fullført {completion_type}',
+                'priority': 'medium',
+                'icon': 'fas fa-question-circle',
+                'progress_context': {
+                    'reading_percentage': 100,
+                    'video_percentage': 100,
+                    'reading_completed': True,
+                    'video_completed': True,
+                    'last_activity': 'quiz'
+                },
+                'quiz_focus': {
+                    'module_id': module_id,
+                    'module_name': module_name,
+                    'reason': f'Nylig fullført {completion_type}',
+                    'question_count': 15,
+                    'estimated_minutes': 8
+                },
+                'actions': {
+                    'reading': {
+                        'url': f'/quiz?module={module_id}&type=focused',
+                        'text': f'Test {module_name}',
+                        'enabled': True,
+                        'badge': 'Anbefalt'
+                    },
+                    'video': {
+                        'url': '/quiz?type=mixed',
+                        'text': 'Blandet øving',
+                        'enabled': True,
+                        'badge': 'Alternativ'
+                    }
+                }
+            }
+            
+        except Exception as e:
+            logger.error(f"Error creating module quiz recommendation: {str(e)}")
+            return LearningService._create_general_quiz_recommendation()
+
+    @staticmethod
+    def _create_general_quiz_recommendation():
+        """Create general quiz recommendation for new users"""
+        return {
+            'type': 'quiz_dynamic',
+            'title': 'Øv med quiz',
+            'description': 'Test kunnskapen din med øvingsspørsmål',
+            'priority': 'low',
+            'icon': 'fas fa-question-circle',
+            'progress_context': {
+                'reading_percentage': 100,
+                'video_percentage': 100,
+                'reading_completed': True,
+                'video_completed': True,
+                'last_activity': 'quiz'
+            },
+            'quiz_focus': {
+                'module_id': None,
+                'module_name': 'Generell øving',
+                'reason': 'Kom i gang med quiz',
+                'question_count': 20,
+                'estimated_minutes': 10
+            },
+            'actions': {
+                'reading': {
+                    'url': '/quiz',
+                    'text': 'Start Quiz',
+                    'enabled': True,
+                    'badge': 'Tilgjengelig'
+                },
+                'video': {
+                    'url': '/quiz?type=mixed',
+                    'text': 'Blandet øving',
+                    'enabled': True,
+                    'badge': 'Tilgjengelig'
+                }
+            }
+        }
+    
+    @staticmethod
     def get_module_details(module_id, user):
         """Get detailed module information with user progress from database"""
         try:
