@@ -70,6 +70,194 @@
                 yearSpan.textContent = new Date().getFullYear();
             }
         });
+
+        // Global Admin Pagination Utility
+        window.AdminPagination = {
+            // Get CSRF token
+            getCSRFToken: function() {
+                return document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') || '';
+            },
+
+            // Generic fetch with CSRF token
+            fetchWithCSRF: function(url, options = {}) {
+                const defaultOptions = {
+                    headers: {
+                        'X-CSRFToken': this.getCSRFToken(),
+                        'Content-Type': 'application/json',
+                        ...options.headers
+                    }
+                };
+                return fetch(url, { ...defaultOptions, ...options });
+            },
+
+            // Initialize pagination for any section
+            init: function(config) {
+                const {
+                    apiEndpoint,           // e.g., '/admin/api/questions'
+                    paginationContainer,   // e.g., '#paginationButtons'
+                    tableContainer,        // e.g., '#questionsTable tbody'
+                    updateCallback,        // function to update table content
+                    currentFilters = {},   // current filter state
+                    currentSort = {}       // current sort state
+                } = config;
+
+                // Store config globally for this section
+                window[`${config.sectionName}Config`] = config;
+
+                // Add click handlers to pagination buttons
+                document.addEventListener('click', function(e) {
+                    if (e.target.matches(`${paginationContainer} .admin-page-btn`)) {
+                        e.preventDefault();
+                        const page = parseInt(e.target.dataset.page);
+                        if (page && !isNaN(page)) {
+                            AdminPagination.goToPage(config.sectionName, page);
+                        }
+                    }
+                });
+            },
+
+            // Navigate to specific page
+            goToPage: function(sectionName, page) {
+                const config = window[`${sectionName}Config`];
+                if (!config) {
+                    console.error(`No config found for section: ${sectionName}`);
+                    return;
+                }
+
+                // Build query parameters
+                const params = new URLSearchParams();
+                params.append('page', page);
+                
+                // Add current filters
+                Object.entries(config.currentFilters || {}).forEach(([key, value]) => {
+                    if (value) params.append(key, value);
+                });
+
+                // Add current sort
+                Object.entries(config.currentSort || {}).forEach(([key, value]) => {
+                    if (value) params.append(key, value);
+                });
+
+                // Make API call
+                this.fetchWithCSRF(`${config.apiEndpoint}?${params.toString()}`)
+                    .then(response => response.json())
+                    .then(data => {
+                        if (data.success) {
+                            // Update table content
+                            if (config.updateCallback) {
+                                config.updateCallback(data);
+                            }
+                            // Update pagination controls
+                            this.updatePaginationControls(config.paginationContainer, data.pagination);
+                        } else {
+                            console.error('API Error:', data.error);
+                            this.showError('Failed to load page: ' + (data.error || 'Unknown error'));
+                        }
+                    })
+                    .catch(error => {
+                        console.error('Network Error:', error);
+                        this.showError('Network error occurred');
+                    });
+            },
+
+            // Update pagination controls HTML
+            updatePaginationControls: function(containerSelector, pagination) {
+                console.log('AdminPagination.updatePaginationControls called with:', containerSelector, pagination);
+                const container = document.querySelector(containerSelector);
+                if (!container) {
+                    console.error('Container not found:', containerSelector);
+                    return;
+                }
+
+                let html = '';
+
+                // Previous button
+                if (pagination.has_prev) {
+                    html += `<button class="admin-page-btn pagination-btn" data-page="${pagination.page - 1}" title="Previous">
+                        <span class="pagination-arrow">‹</span> Forrige
+                    </button>`;
+                } else {
+                    html += `<button class="admin-page-btn pagination-btn disabled" disabled title="No previous page">
+                        <span class="pagination-arrow">‹</span> Forrige
+                    </button>`;
+                }
+
+                // Page numbers
+                const maxVisible = 5;
+                let startPage = Math.max(1, pagination.page - Math.floor(maxVisible / 2));
+                let endPage = Math.min(pagination.pages, startPage + maxVisible - 1);
+
+                if (endPage - startPage + 1 < maxVisible) {
+                    startPage = Math.max(1, endPage - maxVisible + 1);
+                }
+
+                // First page + ellipsis
+                if (startPage > 1) {
+                    html += `<button class="admin-page-btn page-btn" data-page="1">1</button>`;
+                    if (startPage > 2) {
+                        html += `<span class="pagination-ellipsis">…</span>`;
+                    }
+                }
+
+                // Page numbers
+                for (let i = startPage; i <= endPage; i++) {
+                    if (i === pagination.page) {
+                        html += `<button class="admin-page-btn page-btn active" disabled>${i}</button>`;
+                    } else {
+                        html += `<button class="admin-page-btn page-btn" data-page="${i}">${i}</button>`;
+                    }
+                }
+
+                // Last page + ellipsis
+                if (endPage < pagination.pages) {
+                    if (endPage < pagination.pages - 1) {
+                        html += `<span class="pagination-ellipsis">…</span>`;
+                    }
+                    html += `<button class="admin-page-btn page-btn" data-page="${pagination.pages}">${pagination.pages}</button>`;
+                }
+
+                // Next button
+                if (pagination.has_next) {
+                    html += `<button class="admin-page-btn pagination-btn" data-page="${pagination.page + 1}" title="Next">
+                        Neste <span class="pagination-arrow">›</span>
+                    </button>`;
+                } else {
+                    html += `<button class="admin-page-btn pagination-btn disabled" disabled title="No next page">
+                        Neste <span class="pagination-arrow">›</span>
+                    </button>`;
+                }
+
+                console.log('Setting pagination HTML:', html);
+                container.innerHTML = html;
+            },
+
+            // Show error message
+            showError: function(message) {
+                // Try to find existing toast container or create one
+                let container = document.getElementById('admin-toast-container');
+                if (!container) {
+                    container = document.createElement('div');
+                    container.id = 'admin-toast-container';
+                    container.style.cssText = 'position: fixed; top: 20px; right: 20px; z-index: 9999;';
+                    document.body.appendChild(container);
+                }
+
+                const toast = document.createElement('div');
+                toast.className = 'alert alert-danger alert-dismissible fade show';
+                toast.innerHTML = `
+                    ${message}
+                    <button type="button" class="btn-close" onclick="this.parentElement.remove()"></button>
+                `;
+                container.appendChild(toast);
+
+                // Auto remove after 5 seconds
+                setTimeout(() => {
+                    if (toast.parentElement) {
+                        toast.remove();
+                    }
+                }, 5000);
+            }
+        };
     </script>
 </body>
 </html>

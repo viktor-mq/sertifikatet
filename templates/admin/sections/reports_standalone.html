@@ -193,22 +193,22 @@
   </div>
 
   <!-- Pagination and Per-page Controls -->
-  <div class="pagination-controls" id="reportsPaginationControls">
-    <div class="pagination-info">
-      <span id="reportsPaginationInfo">Showing reports</span>
+  <div class="pagination-controls" style="margin-top: 20px; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 15px;">
+    <div class="pagination-info" style="color: #374151; font-size: 14px;">
+      <span id="reports-pagination-info">Showing reports</span>
     </div>
-    <div class="pagination-center">
-      <div class="pagination-buttons" id="reportsPaginationButtons">
-        <!-- Pagination buttons will be inserted here by JavaScript -->
+    <div class="pagination-center" style="display: flex; justify-content: center; flex: 1;">
+      <div class="pagination-buttons" id="reports-pagination" style="display: inline-flex; gap: 5px; align-items: center;">
+        <!-- Dynamic pagination loaded via AJAX -->
       </div>
     </div>
-    <div class="pagination-per-page">
-      <label for="reportsPerPageSelector">Show per page:</label>
-      <select id="reportsPerPageSelector" onchange="changeReportsPerPage()">
+    <div class="pagination-per-page" style="display: flex; align-items: center; gap: 8px; color: #374151; font-size: 14px;">
+      <label>Show per page:</label>
+      <select id="reports-per-page" style="padding: 6px 10px; border: 1px solid #d1d5db; border-radius: 4px; background: white; font-size: 14px;">
         <option value="20">20</option>
         <option value="50" selected>50</option>
         <option value="100">100</option>
-        <option value="-1">All</option>
+        <option value="-1">Alle</option>
       </select>
     </div>
   </div>
@@ -253,7 +253,7 @@ function initializeReportsSection() {
     // Initialize sorting
     initializeReportsSorting();
     
-    // Initialize pagination
+    // Initialize global pagination
     initializeReportsPagination();
     
     // Initialize enhanced features
@@ -356,7 +356,12 @@ function filterReportsTable() {
             }
         }
         
-        row.style.display = shouldShow ? '' : 'none';
+        // Use data attribute instead of direct style manipulation (for pagination compatibility)
+        if (shouldShow) {
+            row.removeAttribute('data-filtered-out');
+        } else {
+            row.setAttribute('data-filtered-out', 'true');
+        }
         if (shouldShow) visibleCount++;
     });
     
@@ -468,25 +473,143 @@ function getReportsCellValue(row, field) {
     return '';
 }
 
-// Pagination system (simplified)
+// Client-side pagination system (like Database section)
 function initializeReportsPagination() {
-    // Simple pagination - just per-page selector for now
-    updateReportsPerPageSelector();
+    const table = document.getElementById('reportsTable');
+    if (!table) {
+        console.error('Reports table not found');
+        return;
+    }
+    const tbody = table.querySelector('tbody');
+    if (!tbody) {
+        console.error('Reports tbody not found');
+        return;
+    }
+    
+    // Filter out "No reports found" rows and empty rows
+    const getAllDataRows = () => {
+        return Array.from(tbody.querySelectorAll('tr')).filter(row => {
+            const firstCell = row.querySelector('td');
+            return firstCell && !firstCell.textContent.includes('No reports found') && firstCell.textContent.trim() !== '';
+        });
+    };
+    
+    const pagContainer = document.querySelector('.pagination-controls');
+    const perPageSelect = document.getElementById('reports-per-page');
+    
+    let currentPage = 1;
+    
+    // Store pagination function on tbody for external access (for filters)
+    tbody._currentPage = currentPage;
+    tbody._paginationRender = renderPage;
+    
+    function renderPage() {
+        const rows = getAllDataRows();
+        const perPage = perPageSelect ? parseInt(perPageSelect.value) : 50;
+        
+        // Get rows that are not filtered out (integrate with existing filter system)
+        const visibleRows = rows.filter(row => {
+            return !row.hasAttribute('data-filtered-out') && row.style.display !== 'none';
+        });
+        
+        const totalItems = visibleRows.length;
+        const totalPages = perPage === -1 ? 1 : Math.ceil(totalItems / perPage);
+        const start = (currentPage - 1) * perPage + 1;
+        const end = perPage === -1 ? totalItems : Math.min(currentPage * perPage, totalItems);
+
+        // Reset all data rows to visible first
+        rows.forEach(row => {
+            if (!row.hasAttribute('data-filtered-out')) {
+                row.style.display = '';
+            }
+        });
+
+        // Then apply pagination hiding (only if not showing all)
+        if (perPage !== -1 && totalItems > 0) {
+            visibleRows.forEach((row, idx) => {
+                if (idx < start - 1 || idx >= end) {
+                    row.style.display = 'none';
+                }
+            });
+        }
+
+        // Update pagination controls using global AdminPagination UI
+        if (typeof AdminPagination !== 'undefined' && totalItems > 0) {
+            const pagination = {
+                page: currentPage,
+                per_page: perPage,
+                total: totalItems,
+                pages: totalPages,
+                has_prev: currentPage > 1,
+                has_next: currentPage < totalPages
+            };
+            AdminPagination.updatePaginationControls('#reports-pagination', pagination);
+            AdminPagination.updatePaginationInfo('#reports-pagination-info', pagination);
+        } else if (totalItems === 0) {
+            // Clear pagination when no data
+            const paginationContainer = document.getElementById('reports-pagination');
+            const infoContainer = document.getElementById('reports-pagination-info');
+            if (paginationContainer) paginationContainer.innerHTML = '';
+            if (infoContainer) infoContainer.textContent = 'No reports to display';
+        }
+    }
+
+    // Add event listeners for pagination buttons (using global event delegation)
+    if (typeof AdminPagination !== 'undefined') {
+        // Store pagination function for global access
+        window.reportsGoToPage = function(page) {
+            const rows = getAllDataRows();
+            const visibleRows = rows.filter(row => !row.hasAttribute('data-filtered-out') && row.style.display !== 'none');
+            const perPage = parseInt(perPageSelect?.value || 50);
+            const maxPages = perPage === -1 ? 1 : Math.ceil(visibleRows.length / perPage);
+            
+            if (page >= 1 && page <= maxPages) {
+                currentPage = page;
+                tbody._currentPage = currentPage;
+                renderPage();
+            }
+        };
+        
+        // Override global AdminPagination for this section to use client-side
+        document.addEventListener('click', function(e) {
+            if (e.target.classList.contains('admin-page-btn') && 
+                e.target.closest('#reports-pagination')) {
+                e.preventDefault();
+                const page = parseInt(e.target.dataset.page);
+                if (page && !isNaN(page)) {
+                    reportsGoToPage(page);
+                }
+            }
+        });
+    }
+
+    // Per-page selector
+    if (perPageSelect) {
+        perPageSelect.addEventListener('change', function() {
+            currentPage = 1;
+            tbody._currentPage = currentPage;
+            renderPage();
+        });
+    }
+
+    // Initial render
+    setTimeout(renderPage, 100); // Small delay to ensure DOM is ready
 }
 
+// Client-side pagination helper functions
 function updateReportsPerPageSelector() {
-    const selector = document.getElementById('reportsPerPageSelector');
+    const selector = document.getElementById('reports-per-page');
     if (selector) {
         selector.value = reportsCurrentPagination.perPage;
     }
 }
 
+// Legacy function for fallback
 function changeReportsPerPage() {
-    const selector = document.getElementById('reportsPerPageSelector');
+    const selector = document.getElementById('reports-per-page');
     if (selector) {
         reportsCurrentPagination.perPage = parseInt(selector.value);
         reportsCurrentPagination.page = 1;
-        // For now, just show all results (no actual pagination)
         console.log(`Changed to ${reportsCurrentPagination.perPage} per page`);
     }
 }

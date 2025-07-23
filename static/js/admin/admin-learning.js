@@ -68,7 +68,11 @@
         if (statusFilter) params.append('status', statusFilter);
         if (searchFilter) params.append('search', searchFilter);
         
-        fetch(`/admin/api/learning-modules?${params.toString()}`)
+        fetch(`/admin/api/learning-modules?${params.toString()}`, {
+                headers: {
+                    'X-CSRFToken': getCSRFToken()
+                }
+            })
             .then(response => response.json())
             .then(data => {
                 updateModulesTable(data.modules || []);
@@ -197,7 +201,11 @@
 
     function editModule(moduleId) {
         // Load module data and show edit modal
-        fetch(`/admin/api/learning-modules/${moduleId}`)
+        fetch(`/admin/api/learning-modules/${moduleId}`, {
+                headers: {
+                    'X-CSRFToken': getCSRFToken()
+                }
+            })
             .then(response => response.json())
             .then(module => {
                 if (module.error) {
@@ -253,7 +261,11 @@
 
     // Utility Functions
     function loadModulesForDropdown() {
-        fetch('/admin/api/learning-modules')
+        fetch('/admin/api/learning-modules', {
+                headers: {
+                    'X-CSRFToken': getCSRFToken()
+                }
+            })
             .then(response => response.json())
             .then(data => {
                 const select = document.getElementById('videoModule');
@@ -283,7 +295,11 @@
             return;
         }
         
-        fetch(`/admin/api/learning-modules/${moduleId}/submodules`)
+        fetch(`/admin/api/learning-modules/${moduleId}/submodules`, {
+                headers: {
+                    'X-CSRFToken': getCSRFToken()
+                }
+            })
             .then(response => response.json())
             .then(data => {
                 if (data.submodules && data.submodules.length > 0) {
@@ -705,7 +721,11 @@
     }
 
     function loadModulesForExport() {
-        fetch('/admin/api/learning-modules')
+        fetch('/admin/api/learning-modules', {
+                headers: {
+                    'X-CSRFToken': getCSRFToken()
+                }
+            })
             .then(response => response.json())
             .then(data => {
                 const select = document.getElementById('exportModule');
@@ -720,7 +740,11 @@
     }
 
     function loadModulesForContentUpload() {
-        fetch('/admin/api/learning-modules')
+        fetch('/admin/api/learning-modules', {
+                headers: {
+                    'X-CSRFToken': getCSRFToken()
+                }
+            })
             .then(response => response.json())
             .then(data => {
                 if (data.modules) {
@@ -762,7 +786,11 @@
             return;
         }
         
-        fetch(`/admin/api/learning-modules/${moduleId}/submodules`)
+        fetch(`/admin/api/learning-modules/${moduleId}/submodules`, {
+                headers: {
+                    'X-CSRFToken': getCSRFToken()
+                }
+            })
             .then(response => response.json())
             .then(data => {
                 if (data.submodules && data.submodules.length > 0) {
@@ -1073,13 +1101,90 @@
     window.clearModuleFilters = clearModuleFilters;
     window.changeModuleTableDensity = changeModuleTableDensity;
     
+    // Initialize global pagination for learning modules
+    function initializeLearningPagination() {
+        if (typeof AdminPagination !== 'undefined') {
+            AdminPagination.init({
+                sectionName: 'learning-modules',
+                apiEndpoint: '/admin/api/learning-modules',
+                paginationContainer: '#modules-pagination',
+                tableContainer: '#modules-table tbody',
+                perPageSelector: '#modulesPerPageSelector',
+                paginationInfo: '#modules-pagination-info',
+                currentFilters: {},
+                currentSort: {},
+                currentPerPage: 20,
+                updateCallback: function(data) {
+                    // Update modules table
+                    updateModulesTable(data.modules);
+                }
+            });
+        }
+    }
+
+    // Update modules table with new data
+    function updateModulesTable(modules) {
+        const tbody = document.querySelector('#modules-table tbody');
+        if (!tbody) return;
+        
+        // Clear existing rows
+        tbody.innerHTML = '';
+        
+        // Add new rows
+        modules.forEach(module => {
+            const row = document.createElement('tr');
+            row.innerHTML = `
+                <td>${module.module_number}</td>
+                <td>${module.title}</td>
+                <td>${module.description || ''}</td>
+                <td>${module.estimated_hours || 0}h</td>
+                <td>${module.submodule_count || 0}</td>
+                <td>
+                    <span class="status-badge ${module.is_active ? 'active' : 'inactive'}">
+                        ${module.is_active ? 'Active' : 'Inactive'}
+                    </span>
+                </td>
+                <td style="padding: 12px 16px;">
+                    <div style="display: flex; gap: 8px;">
+                        <button onclick="editModule(${module.id})" 
+                            style="background: #3b82f6; color: white; border: none; padding: 4px 8px; border-radius: 4px; cursor: pointer; font-size: 12px;"
+                            class="fas fa-edit" 
+                        </button>
+                        <button onclick="deleteModule(${module.id})" 
+                            style="background: #ef4444; color: white; border: none; padding: 4px 8px; border-radius: 4px; cursor: pointer; font-size: 12px;">
+                            <i class="fas fa-trash"></i>
+                        </button>
+                    </div>
+                </td>
+            `;
+            tbody.appendChild(row);
+        });
+        
+        // Add highlight effect
+        tbody.style.opacity = '0.7';
+        setTimeout(() => {
+            tbody.style.opacity = '1';
+        }, 200);
+    }
+
     // Initialize when DOM is ready
     if (document.readyState === 'loading') {
         document.addEventListener('DOMContentLoaded', function() {
-            // Don't auto-initialize, wait for section to be shown
+            // Delay initialization to ensure AdminPagination is available
+            setTimeout(function() {
+                if (typeof AdminPagination !== 'undefined') {
+                    initializeLearningPagination();
+                }
+            }, 100);
             console.log('Learning modules JS loaded');
         });
     } else {
+        // Delay initialization to ensure AdminPagination is available
+        setTimeout(function() {
+            if (typeof AdminPagination !== 'undefined') {
+                initializeLearningPagination();
+            }
+        }, 100);
         console.log('Learning modules JS loaded');
     }
 })(window);

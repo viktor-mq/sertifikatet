@@ -52,6 +52,213 @@ def logout():
     # Use the main logout
     return redirect(url_for('auth.logout'))
 
+@admin_bp.route('/api/questions', methods=['GET'])
+@admin_required
+def api_questions():
+    """API endpoint for questions with filtering and pagination"""
+    try:
+        # Handle search/filter parameters
+        search_query = request.args.get('search', '').strip()
+        category_filter = request.args.get('category', '').strip()
+        subcategory_filter = request.args.get('subcategory', '').strip()
+        difficulty_filter = request.args.get('difficulty', '').strip()
+        
+        # Pagination parameters
+        page = request.args.get('page', 1, type=int)
+        per_page = request.args.get('per_page', 50, type=int)
+        sort_by = request.args.get('sort_by', 'id')
+        sort_order = request.args.get('sort_order', 'asc')
+        
+        # Validate per_page options
+        if per_page not in [20, 50, 100] and per_page != -1:
+            per_page = 50
+        
+        # Build query with filters
+        query = Question.query.filter_by(is_active=True)
+        
+        if search_query:
+            query = query.filter(Question.question.contains(search_query))
+        if category_filter:
+            query = query.filter_by(category=category_filter)
+        if subcategory_filter:
+            query = query.filter_by(subcategory=subcategory_filter)
+        if difficulty_filter:
+            query = query.filter_by(difficulty_level=int(difficulty_filter))
+        
+        # Apply sorting
+        if sort_by in ['id', 'question', 'category', 'subcategory', 'difficulty_level']:
+            sort_column = getattr(Question, sort_by)
+            if sort_order == 'desc':
+                query = query.order_by(sort_column.desc())
+            else:
+                query = query.order_by(sort_column.asc())
+        
+        # Get total count
+        total = query.count()
+        
+        # Apply pagination
+        if per_page == -1:
+            questions = query.all()
+            pagination_data = {
+                'page': 1,
+                'per_page': -1,
+                'total': total,
+                'pages': 1,
+                'has_prev': False,
+                'has_next': False
+            }
+        else:
+            pagination = query.paginate(page=page, per_page=per_page, error_out=False)
+            questions = pagination.items
+            pagination_data = {
+                'page': pagination.page,
+                'per_page': pagination.per_page,
+                'total': pagination.total,
+                'pages': pagination.pages,
+                'has_prev': pagination.has_prev,
+                'has_next': pagination.has_next
+            }
+        
+        # Format questions for JSON
+        questions_data = []
+        for q in questions:
+            # Get options for this question
+            opts = {opt.option_letter: opt.option_text for opt in q.options}
+            
+            questions_data.append({
+                'id': q.id,
+                'question': q.question,
+                'option_a': opts.get('a', ''),
+                'option_b': opts.get('b', ''),
+                'option_c': opts.get('c', ''),
+                'option_d': opts.get('d', ''),
+                'correct_option': q.correct_option,
+                'category': q.category,
+                'subcategory': q.subcategory,
+                'difficulty_level': q.difficulty_level,
+                'explanation': q.explanation,
+                'image_filename': q.image_filename
+            })
+        
+        # Calculate stats
+        stats = {
+            'total': total,
+            'with_images': Question.query.filter_by(is_active=True).filter(Question.image_filename.isnot(None)).count(),
+            'without_images': Question.query.filter_by(is_active=True).filter(Question.image_filename.is_(None)).count()
+        }
+        
+        return jsonify({
+            'success': True,
+            'questions': questions_data,
+            'pagination': pagination_data,
+            'stats': stats
+        })
+        
+    except Exception as e:
+        logger.error(f"Error in api_questions: {str(e)}")
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+@admin_bp.route('/api/subcategories', methods=['GET'])
+@admin_required
+def api_subcategories():
+    """API endpoint for subcategories with optional category filter"""
+    try:
+        category_filter = request.args.get('category', '').strip()
+        
+        if category_filter:
+            # Get subcategories for specific category
+            subcategories = db.session.query(Question.subcategory).filter(
+                Question.category == category_filter,
+                Question.subcategory.isnot(None),
+                Question.subcategory != ''
+            ).distinct().order_by(Question.subcategory).all()
+        else:
+            # Get all subcategories
+            subcategories = db.session.query(Question.subcategory).filter(
+                Question.subcategory.isnot(None),
+                Question.subcategory != ''
+            ).distinct().order_by(Question.subcategory).all()
+        
+        subcategories_list = [sub[0] for sub in subcategories if sub[0]]
+        
+        return jsonify({
+            'success': True,
+            'subcategories': subcategories_list
+        })
+        
+    except Exception as e:
+        logger.error(f"Error in api_subcategories: {str(e)}")
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+
+@admin_bp.route('/api/tournaments', methods=['GET'])
+@admin_required
+def api_tournaments():
+    """API endpoint for tournaments with filtering and pagination"""
+    try:
+        from app.gamification_models import WeeklyTournament as Tournament
+        
+        # Pagination parameters
+        page = request.args.get('page', 1, type=int)
+        per_page = request.args.get('per_page', 20, type=int)
+        
+        # Validate per_page options
+        if per_page not in [20, 50, 100] and per_page != -1:
+            per_page = 20
+        
+        # Build query
+        query = Tournament.query.order_by(Tournament.created_at.desc())
+        
+        # Get total count
+        total = query.count()
+        
+        # Apply pagination
+        if per_page == -1:
+            tournaments = query.all()
+            pagination_data = {
+                'page': 1,
+                'per_page': -1,
+                'total': total,
+                'pages': 1,
+                'has_prev': False,
+                'has_next': False
+            }
+        else:
+            pagination = query.paginate(page=page, per_page=per_page, error_out=False)
+            tournaments = pagination.items
+            pagination_data = {
+                'page': pagination.page,
+                'per_page': pagination.per_page,
+                'total': pagination.total,
+                'pages': pagination.pages,
+                'has_prev': pagination.has_prev,
+                'has_next': pagination.has_next
+            }
+        
+        # Format tournaments for JSON
+        tournaments_data = []
+        for tournament in tournaments:
+            tournaments_data.append({
+                'id': tournament.id,
+                'name': tournament.name,
+                'description': tournament.description,
+                'start_date': tournament.start_date.isoformat() if tournament.start_date else None,
+                'end_date': tournament.end_date.isoformat() if tournament.end_date else None,
+                'is_active': tournament.is_active,
+                'participant_count': tournament.participant_count if hasattr(tournament, 'participant_count') else 0
+            })
+        
+        return jsonify({
+            'success': True,
+            'tournaments': tournaments_data,
+            'pagination': pagination_data
+        })
+        
+    except Exception as e:
+        logger.error(f"Error in api_tournaments: {str(e)}")
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+
 @admin_bp.route('/dashboard', methods=['GET', 'POST'])
 @admin_required
 def admin_dashboard():
@@ -2134,7 +2341,7 @@ def get_marketing_template():
 # Enhanced Admin API Endpoints
 # ===========================
 
-@admin_bp.route('/api/reports')
+@admin_bp.route('/api/reports', methods=['GET'])
 @admin_required
 def api_reports():
     """API endpoint for reports with filtering, sorting, and pagination"""
@@ -2156,7 +2363,7 @@ def api_reports():
             query = query.filter(
                 AdminReport.title.contains(search) |
                 AdminReport.description.contains(search) |
-                AdminReport.additional_info.contains(search)
+                AdminReport.metadata_json.contains(search)
             )
         
         if report_type:
@@ -2191,7 +2398,7 @@ def api_reports():
                 'priority': report.priority,
                 'status': report.status,
                 'created_at': report.created_at.isoformat(),
-                'additional_info': report.additional_info,
+                'additional_info': report.metadata_json,
                 'reported_by': {
                     'id': report.reported_by.id,
                     'username': report.reported_by.username
@@ -2203,6 +2410,7 @@ def api_reports():
             })
         
         return jsonify({
+            'success': True,  
             'reports': reports_data,
             'pagination': {
                 'page': reports.page,
@@ -3261,7 +3469,7 @@ def api_report_details(report_id):
                 'priority': report.priority,
                 'status': report.status,
                 'created_at': report.created_at.isoformat(),
-                'additional_info': report.additional_info,
+                'additional_info': report.metadata_json,
                 'reported_by': {
                     'id': report.reported_by.id,
                     'username': report.reported_by.username

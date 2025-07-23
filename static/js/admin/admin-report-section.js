@@ -6,6 +6,97 @@
     function getCSRFToken() {
         return document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') || '';
     }
+
+    // Modern toast notification system
+    function showModernToast(message, type = 'info', options = {}) {
+        const {
+            duration = 4000,
+            position = 'top-right'
+        } = options;
+
+        // Create toast container if it doesn't exist
+        let container = document.getElementById('toast-container');
+        if (!container) {
+            container = document.createElement('div');
+            container.id = 'toast-container';
+            container.style.cssText = `
+                position: fixed;
+                top: 20px;
+                right: 20px;
+                z-index: 10000;
+                display: flex;
+                flex-direction: column;
+                gap: 10px;
+                max-width: 400px;
+            `;
+            document.body.appendChild(container);
+        }
+
+        // Create toast element
+        const toast = document.createElement('div');
+        toast.className = `toast toast-${type}`;
+        
+        const colors = {
+            success: { bg: '#d4edda', border: '#28a745', text: '#155724' },
+            error: { bg: '#f8d7da', border: '#dc3545', text: '#721c24' },
+            warning: { bg: '#fff3cd', border: '#ffc107', text: '#856404' },
+            info: { bg: '#d1ecf1', border: '#17a2b8', text: '#0c5460' }
+        };
+        
+        const color = colors[type] || colors.info;
+        
+        toast.style.cssText = `
+            background: ${color.bg};
+            color: ${color.text};
+            border: 1px solid ${color.border};
+            border-left: 4px solid ${color.border};
+            padding: 15px 20px;
+            border-radius: 8px;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+            transform: translateX(100%);
+            transition: all 0.3s ease;
+            font-size: 14px;
+            font-weight: 500;
+            position: relative;
+            cursor: pointer;
+        `;
+
+        toast.innerHTML = `
+            <div style="display: flex; align-items: center; gap: 10px;">
+                <span>${message}</span>
+                <button onclick="this.parentElement.parentElement.remove()" 
+                        style="background: none; border: none; color: ${color.text}; font-size: 18px; cursor: pointer; padding: 0; margin-left: auto;">×</button>
+            </div>
+        `;
+
+        // Add to container and animate in
+        container.appendChild(toast);
+        
+        // Trigger animation
+        setTimeout(() => {
+            toast.style.transform = 'translateX(0)';
+        }, 10);
+
+        // Auto remove
+        setTimeout(() => {
+            toast.style.transform = 'translateX(100%)';
+            setTimeout(() => {
+                if (toast.parentElement) {
+                    toast.remove();
+                }
+            }, 300);
+        }, duration);
+
+        // Click to dismiss
+        toast.addEventListener('click', function() {
+            this.style.transform = 'translateX(100%)';
+            setTimeout(() => {
+                if (this.parentElement) {
+                    this.remove();
+                }
+            }, 300);
+        });
+    }
     let currentReportId = null;
 
     // Reports table state
@@ -123,13 +214,16 @@
             });
         });
         
+        // Initialize client-side pagination for reports table
+        initializeReportsPagination();
+        
         // Initialize per-page selector
         const perPageSelect = document.getElementById('reports-per-page');
         if (perPageSelect) {
             perPageSelect.addEventListener('change', function() {
                 reportsPerPage = parseInt(this.value);
                 reportsCurrentPage = 1;
-                performReportsSearch();
+                renderReportsPage();
             });
         }
         
@@ -264,9 +358,9 @@
         rows.forEach(row => row.style.display = 'none');
         filteredRows.forEach(row => row.style.display = '');
         
-        // Update results info
-        const totalRows = rows.length;
-        updateReportsResultsInfo(filteredRows.length, totalRows);
+        // Reset to page 1 after filtering and re-render pagination
+        reportsCurrentPage = 1;
+        renderReportsPage();
         
         // Update status cards to reflect filtered data
         updateStatusCards();
@@ -348,62 +442,96 @@
         return badges[status] || `<span class="btn btn-secondary btn-small" style="cursor: default;">${status.toUpperCase()}</span>`;
     }
 
-    function updateReportsPagination(pagination) {
-        const container = document.getElementById('reports-pagination');
-        if (!container || !pagination) return;
+    // Client-side pagination functions for reports
+    function initializeReportsPagination() {
+        console.log('Initializing reports pagination...');
+        renderReportsPage();
+    }
+    
+    function renderReportsPage() {
+        const table = document.getElementById('reports-table');
+        if (!table) return;
         
-        let html = '<div class="pagination">';
+        const rows = Array.from(table.querySelectorAll('tbody tr'));
+        const visibleRows = rows.filter(row => row.style.display !== 'none');
+        const totalItems = visibleRows.length;
+        const perPage = reportsPerPage === -1 ? totalItems : reportsPerPage;
+        const totalPages = Math.ceil(totalItems / perPage);
+        
+        // Calculate pagination bounds
+        const start = (reportsCurrentPage - 1) * perPage;
+        const end = Math.min(start + perPage, totalItems);
+        
+        // Show/hide rows based on current page
+        visibleRows.forEach((row, index) => {
+            if (index >= start && index < end) {
+                row.style.display = '';
+            } else {
+                row.style.display = 'none';
+            }
+        });
+        
+        // Update pagination info
+        updateReportsPaginationInfo(start + 1, end, totalItems);
+        
+        // Update pagination buttons
+        updateReportsPaginationButtons(reportsCurrentPage, totalPages);
+    }
+    
+    function updateReportsPaginationInfo(start, end, total) {
+        const infoElement = document.getElementById('reports-pagination-info');
+        if (infoElement) {
+            if (reportsPerPage === -1) {
+                infoElement.textContent = `Showing all ${total} reports`;
+            } else {
+                infoElement.textContent = `Showing ${start}-${end} of ${total} reports`;
+            }
+        }
+    }
+    
+    function updateReportsPaginationButtons(currentPage, totalPages) {
+        const container = document.getElementById('reports-pagination');
+        if (!container) return;
+        
+        let html = '';
         
         // Previous button
-        if (pagination.has_prev) {
-            html += `<button class="page-btn" onclick="goToReportsPage(${pagination.prev_num})">← Previous</button>`;
+        if (currentPage > 1) {
+            html += `<button onclick="goToReportsPage(${currentPage - 1})" class="page-btn">‹ Previous</button>`;
         } else {
-            html += '<button class="page-btn" disabled>← Previous</button>';
+            html += `<button class="page-btn disabled" disabled>‹ Previous</button>`;
         }
         
-        // Page numbers
-        const startPage = Math.max(1, pagination.page - 2);
-        const endPage = Math.min(pagination.pages, pagination.page + 2);
+        // Page numbers (show max 7 pages)
+        const maxVisible = 7;
+        let startPage = Math.max(1, currentPage - Math.floor(maxVisible / 2));
+        let endPage = Math.min(totalPages, startPage + maxVisible - 1);
         
-        if (startPage > 1) {
-            html += '<button class="page-btn" onclick="goToReportsPage(1)">1</button>';
-            if (startPage > 2) html += '<span class="page-btn" disabled>...</span>';
+        if (endPage - startPage + 1 < maxVisible) {
+            startPage = Math.max(1, endPage - maxVisible + 1);
         }
         
         for (let i = startPage; i <= endPage; i++) {
-            const activeClass = i === pagination.page ? 'active' : '';
-            html += `<button class="page-btn ${activeClass}" onclick="goToReportsPage(${i})">${i}</button>`;
-        }
-        
-        if (endPage < pagination.pages) {
-            if (endPage < pagination.pages - 1) html += '<span class="page-btn" disabled>...</span>';
-            html += `<button class="page-btn" onclick="goToReportsPage(${pagination.pages})">${pagination.pages}</button>`;
+            if (i === currentPage) {
+                html += `<button class="page-btn active" disabled>${i}</button>`;
+            } else {
+                html += `<button onclick="goToReportsPage(${i})" class="page-btn">${i}</button>`;
+            }
         }
         
         // Next button
-        if (pagination.has_next) {
-            html += `<button class="page-btn" onclick="goToReportsPage(${pagination.next_num})">Next →</button>`;
+        if (currentPage < totalPages) {
+            html += `<button onclick="goToReportsPage(${currentPage + 1})" class="page-btn">Next ›</button>`;
         } else {
-            html += '<button class="page-btn" disabled>Next →</button>';
+            html += `<button class="page-btn disabled" disabled>Next ›</button>`;
         }
         
-        html += '</div>';
         container.innerHTML = html;
     }
-
+    
     function goToReportsPage(page) {
-        currentPage = page;
-        performReportsSearch();
-    }
-
-    function updateResultsInfo(pagination) {
-        const infoDiv = document.getElementById('reports-results-info');
-        if (!infoDiv || !pagination) return;
-        
-        const start = (pagination.page - 1) * pagination.per_page + 1;
-        const end = Math.min(pagination.page * pagination.per_page, pagination.total);
-        
-        infoDiv.innerHTML = `Showing ${start}-${end} of ${pagination.total} reports`;
+        reportsCurrentPage = page;
+        renderReportsPage();
     }
 
     function updateSortIndicators() {
@@ -830,20 +958,28 @@
             const result = await response.json();
             
             if (result.success) {
-                alert(`Report ${reportId} assigned! - This would make an API call`);
+                // Show modern toast notification
+                showModernToast(`✅ Rapport ${reportId} tildelt til deg!`, 'success');
                 
-                // Redirect to the HTML view of the report after assignment
+                // Refresh the current table data to reflect changes
+                if (typeof performReportsSearch === 'function') {
+                    performReportsSearch();
+                }
+                
+                // Optionally redirect to the report view after a short delay
                 setTimeout(() => {
-                    window.location.href = `/admin/reports/${reportId}`;
-                }, 1000);
+                    if (confirm('Vil du se rapporten nå?')) {
+                        window.location.href = `/admin/reports/${reportId}`;
+                    }
+                }, 1500);
                 
             } else {
-                alert(`❌ Error: ${result.error || 'Failed to assign report'}`);
+                showModernToast(`❌ Feil: ${result.error || 'Kunne ikke tildele rapport'}`, 'error');
             }
             
         } catch (error) {
             console.error('Error assigning report:', error);
-            alert(`❌ Network error: ${error.message}`);
+            showModernToast(`❌ Nettverksfeil: ${error.message}`, 'error');
         } finally {
             setReportsLoading(false);
         }
@@ -945,6 +1081,7 @@
     window.assignReportAjax = assignReportAjax;
     window.updateStatusCards = updateStatusCards;
     window.openReportModal = openReportModal;
+    window.goToReportsPage = goToReportsPage;
     window.viewReport = function(reportId) {
         window.location.href = `/admin/reports/${reportId}`;
     };

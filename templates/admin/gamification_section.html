@@ -157,6 +157,27 @@
                             </tbody>
                         </table>
                     </div>
+                    
+                    <!-- Tournament Pagination -->
+                    <div class="pagination-controls" style="margin-top: 20px; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 15px;">
+                        <div class="pagination-info" style="color: #374151; font-size: 14px;">
+                            <span id="tournaments-pagination-info">Showing tournaments</span>
+                        </div>
+                        <div class="pagination-center" style="display: flex; justify-content: center; flex: 1;">
+                            <div class="pagination-buttons" id="tournament-pagination" style="display: inline-flex; gap: 5px; align-items: center;">
+                                <!-- Dynamic pagination loaded via AJAX -->
+                            </div>
+                        </div>
+                        <div class="pagination-per-page" style="display: flex; align-items: center; gap: 8px; color: #374151; font-size: 14px;">
+                            <label>Show per page:</label>
+                            <select id="tournamentsPerPageSelector" style="padding: 6px 10px; border: 1px solid #d1d5db; border-radius: 4px; background: white; font-size: 14px;">
+                                <option value="20" selected>20</option>
+                                <option value="50">50</option>
+                                <option value="100">100</option>
+                                <option value="-1">Alle</option>
+                            </select>
+                        </div>
+                    </div>
                 </div>
             </div>
         </div>
@@ -273,6 +294,27 @@
                             </tbody>
                         </table>
                     </div>
+                    
+                    <!-- Challenge Pagination -->
+                    <div class="pagination-controls" style="margin-top: 20px; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 15px;">
+                        <div class="pagination-info" style="color: #374151; font-size: 14px;">
+                            <span id="challenges-pagination-info">Showing challenges</span>
+                        </div>
+                        <div class="pagination-center" style="display: flex; justify-content: center; flex: 1;">
+                            <div class="pagination-buttons" id="challenge-pagination" style="display: inline-flex; gap: 5px; align-items: center;">
+                                <!-- Dynamic pagination loaded via AJAX -->
+                            </div>
+                        </div>
+                        <div class="pagination-per-page" style="display: flex; align-items: center; gap: 8px; color: #374151; font-size: 14px;">
+                            <label>Show per page:</label>
+                            <select id="challengesPerPageSelector" style="padding: 6px 10px; border: 1px solid #d1d5db; border-radius: 4px; background: white; font-size: 14px;">
+                                <option value="20" selected>20</option>
+                                <option value="50">50</option>
+                                <option value="100">100</option>
+                                <option value="-1">Alle</option>
+                            </select>
+                        </div>
+                    </div>
                 </div>
             </div>
         </div>
@@ -377,6 +419,27 @@
                                 <!-- Dynamic content loaded via AJAX -->
                             </tbody>
                         </table>
+                    </div>
+                    
+                    <!-- Achievement Pagination -->
+                    <div class="pagination-controls" style="margin-top: 20px; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 15px;">
+                        <div class="pagination-info" style="color: #374151; font-size: 14px;">
+                            <span id="achievements-pagination-info">Showing achievements</span>
+                        </div>
+                        <div class="pagination-center" style="display: flex; justify-content: center; flex: 1;">
+                            <div class="pagination-buttons" id="achievement-pagination" style="display: inline-flex; gap: 5px; align-items: center;">
+                                <!-- Dynamic pagination loaded via AJAX -->
+                            </div>
+                        </div>
+                        <div class="pagination-per-page" style="display: flex; align-items: center; gap: 8px; color: #374151; font-size: 14px;">
+                            <label>Show per page:</label>
+                            <select id="achievementsPerPageSelector" style="padding: 6px 10px; border: 1px solid #d1d5db; border-radius: 4px; background: white; font-size: 14px;">
+                                <option value="20" selected>20</option>
+                                <option value="50">50</option>
+                                <option value="100">100</option>
+                                <option value="-1">Alle</option>
+                            </select>
+                        </div>
                     </div>
                 </div>
             </div>

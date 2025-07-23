@@ -27,11 +27,10 @@
     </div>
   </div>
 
-  <!-- Validation Errors -->
+  <!-- Validation Errors (will be converted to toasts by JS) -->
   {% if validation_errors %}
-  <div class="validation-errors">
-    <strong>⚠️ Feil i skjemaet:</strong>
-    <ul>
+  <div class="validation-errors" style="display: none;">
+    <ul id="validationErrorList">
       {% for error in validation_errors %}
       <li>{{ error }}</li>
       {% endfor %}
@@ -329,7 +328,7 @@
     </div>
     <div class="pagination-center">
       <div class="pagination-buttons" id="paginationButtons">
-        <!-- Pagination buttons will be inserted here by JavaScript -->
+        <!-- Pagination buttons will be inserted here by AdminPagination -->
       </div>
     </div>
     <div class="pagination-per-page">
@@ -808,6 +807,9 @@ document.addEventListener('DOMContentLoaded', function() {
   // Setup AJAX form submission
   setupAjaxForm();
   
+  // Initialize global pagination system
+  initializeGlobalPagination();
+  
   // Initialize enhanced filtering (Phase 3)
   initializeEnhancedFiltering();
   
@@ -1234,14 +1236,14 @@ function changeTableDensity() {
 }
 
 function applyTableDensity(density) {
-  const tableContainer = document.querySelector('.table-container');
-  if (!tableContainer) return;
+  const table = document.querySelector('#questionsSection table');
+  if (!table) return;
   
   // Remove existing density classes
-  tableContainer.classList.remove('density-compact', 'density-comfortable', 'density-spacious');
+  table.classList.remove('questions-table-compact', 'questions-table-comfortable', 'questions-table-spacious');
   
   // Add new density class
-  tableContainer.classList.add(`density-${density}`);
+  table.classList.add(`questions-table-${density}`);
 }
 
 // Advanced Search Implementation
@@ -1601,6 +1603,17 @@ function initializePhase6Enhancements() {
       showToast('Admin panel enhancements loaded', 'success', { duration: 3000 });
     }, 500);
     
+    // Process server-rendered validation errors as toasts
+    const validationErrorList = document.getElementById('validationErrorList');
+    if (validationErrorList) {
+      const errors = validationErrorList.querySelectorAll('li');
+      errors.forEach(errorItem => {
+        showToast(`⚠️ ${errorItem.textContent}`, 'error', { duration: 0, allowClose: true }); // Duration 0 means persistent
+      });
+      // Optionally hide the original validation errors div if it's not already hidden by CSS
+      validationErrorList.parentElement.style.display = 'none';
+    }
+
   } catch (error) {
     console.error('❌ Error initializing Phase 6 enhancements:', error);
     showToast('Error loading enhancements', 'error');
@@ -1798,6 +1811,30 @@ let questionsCurrentSort = {
 // Debounce timer for search
 let searchTimeout = null;
 
+// Initialize global pagination system
+function initializeGlobalPagination() {
+  // Initialize AdminPagination for questions section
+  AdminPagination.init({
+    sectionName: 'questions',
+    apiEndpoint: '/admin/api/questions',
+    paginationContainer: '#paginationButtons',
+    tableContainer: '#questionsSection table tbody',
+    perPageSelector: '#perPageSelector',
+    paginationInfo: '#paginationInfo',
+    currentFilters: questionsCurrentFilters,
+    currentSort: questionsCurrentSort,
+    currentPerPage: questionsCurrentPagination.per_page || 50,
+    updateCallback: function(data) {
+      // Update table content
+      updateQuestionsTable(data.questions);
+      // Update stats
+      updateQuestionStats(data.stats);
+      // Update pagination state
+      questionsCurrentPagination = data.pagination;
+    }
+  });
+}
+
 // Initialize enhanced filtering
 function initializeEnhancedFiltering() {
   const searchInput = document.getElementById('realTimeSearch');
@@ -1878,7 +1915,11 @@ function performFilteredSearch(resetPage = false) {
     params.append('sort_order', questionsCurrentSort.sort_order);
   }
   
-  fetch(`/admin/api/questions?${params.toString()}`)
+  fetch(`/admin/api/questions?${params.toString()}`, {
+      headers: {
+        'X-CSRFToken': document.querySelector('meta[name="csrf-token"]').content
+      }
+    })
     .then(response => response.json())
     .then(result => {
       if (result.success) {
@@ -1908,7 +1949,11 @@ function updateSubcategoryFilter() {
   
   if (!selectedCategory) {
     // Show all subcategories when no category is selected
-    fetch('/admin/api/subcategories')
+    fetch('/admin/api/subcategories', {
+        headers: {
+          'X-CSRFToken': document.querySelector('meta[name="csrf-token"]').content
+        }
+      })
       .then(response => response.json())
       .then(result => {
         populateSubcategoryOptions(result.subcategories);
@@ -1918,7 +1963,11 @@ function updateSubcategoryFilter() {
       });
   } else {
     // Show subcategories for selected category
-    fetch(`/admin/api/subcategories?category=${encodeURIComponent(selectedCategory)}`)
+    fetch(`/admin/api/subcategories?category=${encodeURIComponent(selectedCategory)}`, {
+        headers: {
+          'X-CSRFToken': document.querySelector('meta[name="csrf-token"]').content
+        }
+      })
       .then(response => response.json())
       .then(result => {
         populateSubcategoryOptions(result.subcategories);
@@ -1961,6 +2010,10 @@ function populateSubcategoryOptions(subcategories) {
 function updateQuestionsTable(questions) {
   const tbody = document.querySelector('#questionsSection table tbody');
   if (!tbody) return;
+
+  // Re-apply current table density to ensure new rows inherit styling
+  const savedDensity = localStorage.getItem('adminTableDensity') || 'comfortable';
+  applyTableDensity(savedDensity);
   
   // Clear existing rows
   tbody.innerHTML = '';
@@ -1976,6 +2029,14 @@ function updateQuestionsTable(questions) {
   setTimeout(() => {
     tbody.style.opacity = '1';
   }, 200);
+}
+
+// Update question stats
+function updateQuestionStats(stats) {
+  if (stats) {
+    const totalElement = document.getElementById('totalQuestions');
+    if (totalElement) totalElement.textContent = stats.total || '0';
+  }
 }
 
 // Create a table row for a question
@@ -2127,117 +2188,26 @@ function updatePagination(pagination) {
   }
 }
 
-// Render pagination buttons
+// Render pagination buttons using global AdminPagination
 function renderPaginationButtons(pagination) {
-  const container = document.getElementById('paginationButtons');
-  if (!container) return;
-  
-  let buttonsHTML = '';
-  
-  // Previous button
-  if (pagination.has_prev) {
-    buttonsHTML += `<button class="pagination-btn" onclick="goToPage(${pagination.page - 1})" title="Forrige side">
-      <span class="pagination-arrow">‹</span> Forrige
-    </button>`;
-  } else {
-    buttonsHTML += `<button class="pagination-btn disabled" disabled title="Ingen forrige side">
-      <span class="pagination-arrow">‹</span> Forrige
-    </button>`;
-  }
-  
-  // Page number buttons
-  const maxVisiblePages = 5;
-  let startPage = Math.max(1, pagination.page - Math.floor(maxVisiblePages / 2));
-  let endPage = Math.min(pagination.pages, startPage + maxVisiblePages - 1);
-  
-  // Adjust start page if we're near the end
-  if (endPage - startPage + 1 < maxVisiblePages) {
-    startPage = Math.max(1, endPage - maxVisiblePages + 1);
-  }
-  
-  // First page + ellipsis
-  if (startPage > 1) {
-    buttonsHTML += `<button class="pagination-btn page-btn" onclick="goToPage(1)">1</button>`;
-    if (startPage > 2) {
-      buttonsHTML += `<span class="pagination-ellipsis">…</span>`;
-    }
-  }
-  
-  // Page number buttons
-  for (let i = startPage; i <= endPage; i++) {
-    if (i === pagination.page) {
-      buttonsHTML += `<button class="pagination-btn page-btn active" disabled>${i}</button>`;
-    } else {
-      buttonsHTML += `<button class="pagination-btn page-btn" onclick="goToPage(${i})">${i}</button>`;
-    }
-  }
-  
-  // Last page + ellipsis
-  if (endPage < pagination.pages) {
-    if (endPage < pagination.pages - 1) {
-      buttonsHTML += `<span class="pagination-ellipsis">…</span>`;
-    }
-    buttonsHTML += `<button class="pagination-btn page-btn" onclick="goToPage(${pagination.pages})">${pagination.pages}</button>`;
-  }
-  
-  // Next button
-  if (pagination.has_next) {
-    buttonsHTML += `<button class="pagination-btn" onclick="goToPage(${pagination.page + 1})" title="Neste side">
-      Neste <span class="pagination-arrow">›</span>
-    </button>`;
-  } else {
-    buttonsHTML += `<button class="pagination-btn disabled" disabled title="Ingen neste side">
-      Neste <span class="pagination-arrow">›</span>
-    </button>`;
-  }
-  
-  container.innerHTML = buttonsHTML;
+  console.log('renderPaginationButtons called with:', pagination);
+  AdminPagination.updatePaginationControls('#paginationButtons', pagination);
 }
 
-// Navigate to specific page
+// Navigate to specific page using global AdminPagination
 function goToPage(page) {
-  if (page < 1 || page > questionsCurrentPagination.pages || page === questionsCurrentPagination.page) {
-    return;
-  }
-  
+  // Update current pagination state
   questionsCurrentPagination.page = page;
   
-  // If we have active filters or sort, use AJAX
-  if (questionsCurrentFilters.search || questionsCurrentFilters.category || questionsCurrentFilters.subcategory || 
-      questionsCurrentFilters.difficulty || questionsCurrentSort.sort_by) {
-    performFilteredSearch(false); // Don't reset page since we're explicitly setting it
-  } else {
-    // No filters active - reload page with new page parameter
-    const currentUrl = new URL(window.location);
-    currentUrl.searchParams.set('page', page);
-    if (questionsCurrentPagination.per_page !== 50) {
-      currentUrl.searchParams.set('per_page', questionsCurrentPagination.per_page);
-    }
-    window.location.href = currentUrl.toString();
-  }
+  // Use global AdminPagination system
+  AdminPagination.goToPage('questions', page);
 }
 
-// Change per-page setting
+// Change per-page setting (now handled by global AdminPagination)
 function changePerPage() {
-  const perPageSelector = document.getElementById('perPageSelector');
-  if (!perPageSelector) return;
-  
-  const newPerPage = parseInt(perPageSelector.value);
-  if (newPerPage === questionsCurrentPagination.per_page) return;
-  
-  questionsCurrentPagination.per_page = newPerPage;
-  questionsCurrentPagination.page = 1; // Reset to first page when changing per-page
-  
-  // If we have active filters or sort, use AJAX
-  if (questionsCurrentFilters.search || questionsCurrentFilters.category || questionsCurrentFilters.subcategory || 
-      questionsCurrentFilters.difficulty || questionsCurrentSort.sort_by) {
-    performFilteredSearch(false);
-  } else {
-    // No filters active - reload page with new per_page parameter
-    const currentUrl = new URL(window.location);
-    currentUrl.searchParams.set('per_page', newPerPage);
-    window.location.href = currentUrl.toString();
-  }
+  // This function is now handled by the global AdminPagination system
+  // The event listener is automatically added in initializeGlobalPagination()
+  console.log('changePerPage called - now handled by AdminPagination');
 }
 
 // Clear all filters

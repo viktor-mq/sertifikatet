@@ -174,13 +174,19 @@ function showToast(message, type = 'info') {
                 }
             }
             
-            row.style.display = showRow ? '' : 'none';
+            // Use data attribute instead of direct style manipulation
+            if (showRow) {
+                row.removeAttribute('data-filtered-out');
+            } else {
+                row.setAttribute('data-filtered-out', 'true');
+            }
         });
         
-        // Reset pagination to page 1 after filtering
-        const perPageSelect = document.querySelector(`#${tableName}PerPageSelector`);
-        if (perPageSelect) {
-            perPageSelect.dispatchEvent(new Event('change'));
+        // Reset pagination to page 1 after filtering and trigger re-render
+        const section = document.querySelector(`.table-section[data-table="${tableName}"]`);
+        if (section && section._paginationRender) {
+            section._currentPage = 1;
+            section._paginationRender();
         }
     };
     
@@ -352,28 +358,46 @@ function showToast(message, type = 'info') {
     const perPageSelect = pagContainer ? pagContainer.querySelector('.per-page-selector') : null;
     if (!pagContainer) return;
     let currentPage = 1;
+    
+    // Store pagination function on section for external access
+    section._currentPage = currentPage;
+    section._paginationRender = renderPage;
 
     function renderPage() {
       const perPage = perPageSelect ? parseInt(perPageSelect.value) : rows.length;
-      const visibleRows = rows.filter(row => row.style.display !== 'none');
+      // Get rows that are not filtered out (but ignore pagination hiding)
+      const visibleRows = rows.filter(row => !row.hasAttribute('data-filtered-out'));
       const totalItems = visibleRows.length;
       const totalPages = perPage === 'all' || isNaN(perPage) ? 1 : Math.ceil(totalItems / perPage);
       const start = (currentPage - 1) * perPage + 1;
       const end = perPage === 'all' || isNaN(perPage) ? totalItems : Math.min(currentPage * perPage, totalItems);
 
-      // Show/hide rows according to current page
-      if (perPage === 'all' || isNaN(perPage)) {
-        visibleRows.forEach(row => row.style.display = '');
-      } else {
+      // First, show all visible rows, then hide pagination-excluded ones
+      rows.forEach(row => {
+        if (row.hasAttribute('data-filtered-out')) {
+          row.style.display = 'none';
+        } else {
+          row.style.display = '';
+        }
+      });
+
+      // Then apply pagination hiding
+      if (perPage !== 'all' && !isNaN(perPage)) {
         visibleRows.forEach((row, idx) => {
-          row.style.display = (idx >= start - 1 && idx < end) ? '' : 'none';
+          if (idx < start - 1 || idx >= end) {
+            row.style.display = 'none';
+          }
         });
       }
 
       // Update results info
       const infoDiv = pagContainer.querySelector('.pagination-info');
       if (infoDiv) {
-        infoDiv.textContent = `Viser ${start}-${end} av ${totalItems}`;
+        if (perPage === 'all' || isNaN(perPage)) {
+          infoDiv.textContent = `Viser alle ${totalItems} elementer`;
+        } else {
+          infoDiv.textContent = `Viser ${start}-${end} av ${totalItems} elementer`;
+        }
       }
 
       // Render page buttons inside the center container
@@ -386,8 +410,11 @@ function showToast(message, type = 'info') {
       // Previous button
       const prev = document.createElement('button');
       prev.className = 'page-btn';
-      prev.disabled = currentPage === 1;
-      prev.innerText = '‹ Forrige';
+      if (currentPage === 1) {
+        prev.disabled = true;
+        prev.classList.add('disabled');
+      }
+      prev.innerHTML = '<span class="pagination-arrow">‹</span> Forrige';
       prev.addEventListener('click', () => {
         if (currentPage > 1) {
           currentPage--;
@@ -430,8 +457,11 @@ function showToast(message, type = 'info') {
       // Next button
       const next = document.createElement('button');
       next.className = 'page-btn';
-      next.disabled = currentPage === totalPages;
-      next.innerText = 'Neste ›';
+      if (currentPage === totalPages) {
+        next.disabled = true;
+        next.classList.add('disabled');
+      }
+      next.innerHTML = 'Neste <span class="pagination-arrow">›</span>';
       next.addEventListener('click', () => {
         if (currentPage < totalPages) {
           currentPage++;

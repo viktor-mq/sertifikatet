@@ -6,6 +6,112 @@ function getCSRFToken() {
     return document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') || '';
 }
 
+// Initialize global pagination for gamification sections
+function initializeGamificationPagination() {
+    // Initialize pagination for tournaments
+    if (typeof AdminPagination !== 'undefined') {
+        AdminPagination.init({
+            sectionName: 'tournaments',
+            apiEndpoint: '/admin/api/tournaments',
+            paginationContainer: '#tournament-pagination',
+            tableContainer: '#tournament-tbody',
+            perPageSelector: '#tournamentsPerPageSelector',
+            paginationInfo: '#tournaments-pagination-info',
+            currentFilters: {},
+            currentSort: {},
+            currentPerPage: 20,
+            updateCallback: function(data) {
+                // Update tournaments table
+                updateTournamentsTable(data.tournaments);
+            }
+        });
+
+        // Initialize pagination for challenges (placeholder API)
+        AdminPagination.init({
+            sectionName: 'challenges',
+            apiEndpoint: '/admin/api/daily-challenges',
+            paginationContainer: '#challenge-pagination',
+            tableContainer: '#challenge-tbody',
+            perPageSelector: '#challengesPerPageSelector',
+            paginationInfo: '#challenges-pagination-info',
+            currentFilters: {},
+            currentSort: {},
+            currentPerPage: 20,
+            updateCallback: function(data) {
+                // Update challenges table using existing function
+                displayDailyChallengeData(data.challenges);
+            }
+        });
+
+        // Initialize pagination for achievements (placeholder API)
+        AdminPagination.init({
+            sectionName: 'achievements',
+            apiEndpoint: '/admin/api/achievements',
+            paginationContainer: '#achievement-pagination',
+            tableContainer: '#achievement-tbody',
+            perPageSelector: '#achievementsPerPageSelector',
+            paginationInfo: '#achievements-pagination-info',
+            currentFilters: {},
+            currentSort: {},
+            currentPerPage: 20,
+            updateCallback: function(data) {
+                // Update achievements table using existing function
+                displayAchievementData(data.achievements);
+            }
+        });
+    }
+}
+
+// Update tournaments table with new data
+function updateTournamentsTable(tournaments) {
+    const tbody = document.querySelector('#tournament-tbody');
+    if (!tbody) return;
+    
+    // Clear existing rows
+    tbody.innerHTML = '';
+    
+    // Add new rows
+    tournaments.forEach(tournament => {
+        const row = document.createElement('tr');
+        const startDate = tournament.start_date ? new Date(tournament.start_date).toLocaleDateString() : 'Not set';
+        const endDate = tournament.end_date ? new Date(tournament.end_date).toLocaleDateString() : 'Not set';
+        
+        row.innerHTML = `
+            <td>${tournament.name}</td>
+            <td>${tournament.description || ''}</td>
+            <td>${startDate}</td>
+            <td>${endDate}</td>
+            <td>
+                <span class="status-badge ${tournament.is_active ? 'active' : 'inactive'}">
+                    ${tournament.is_active ? 'Active' : 'Inactive'}
+                </span>
+            </td>
+            <td>${tournament.participant_count || 0}</td>
+            <td>
+                <button onclick="editTournament(${tournament.id})" class="btn btn-sm btn-primary">Edit</button>
+                <button onclick="deleteTournament(${tournament.id})" class="btn btn-sm btn-danger">Delete</button>
+            </td>
+        `;
+        tbody.appendChild(row);
+    });
+    
+    // Add highlight effect
+    tbody.style.opacity = '0.7';
+    setTimeout(() => {
+        tbody.style.opacity = '1';
+    }, 200);
+}
+
+// Initialize when DOM is ready (only if AdminPagination is available)
+document.addEventListener('DOMContentLoaded', function() {
+    // Delay initialization to ensure AdminPagination is available
+    setTimeout(function() {
+        if (typeof AdminPagination !== 'undefined') {
+            initializeGamificationPagination();
+        }
+    }, 100);
+});
+
 // Global variables for state management
 let tournamentCurrentPage = 1;
 let tournamentPerPage = 20;
@@ -123,7 +229,11 @@ function loadTournamentData() {
         ...tournamentFilters
     });
     
-    fetch(`/admin/api/tournaments?${params}`)
+    fetch(`/admin/api/tournaments?${params}`, {
+            headers: {
+                'X-CSRFToken': getCSRFToken()
+            }
+        })
         .then(response => response.json())
         .then(data => {
             if (loading) loading.style.display = 'none';
@@ -315,7 +425,11 @@ function deleteTournament(tournamentId, tournamentName) {
 }
 
 function loadTournamentStats() {
-    fetch('/admin/api/tournaments/stats')
+    fetch('/admin/api/tournaments/stats', {
+            headers: {
+                'X-CSRFToken': getCSRFToken()
+            }
+        })
         .then(response => response.json())
         .then(data => {
             if (data.success) {
@@ -346,8 +460,8 @@ function clearTournamentFilters() {
 }
 
 function updateTournamentPagination(pagination) {
-    // Implement pagination update logic
-    console.log('Tournament pagination:', pagination);
+    // Use global AdminPagination system
+    AdminPagination.updatePaginationControls('#tournament-pagination', pagination);
 }
 
 // =============================================================================
@@ -371,7 +485,11 @@ function loadDailyChallengeData() {
         ...challengeFilters
     });
     
-    fetch(`/admin/api/daily-challenges?${params}`)
+    fetch(`/admin/api/daily-challenges?${params}`, {
+            headers: {
+                'X-CSRFToken': getCSRFToken()
+            }
+        })
         .then(response => response.json())
         .then(data => {
             if (loading) loading.style.display = 'none';
@@ -564,7 +682,11 @@ function deleteDailyChallenge(challengeId, challengeTitle) {
 }
 
 function loadDailyChallengeStats() {
-    fetch('/admin/api/daily-challenges/stats')
+    fetch('/admin/api/daily-challenges/stats', {
+            headers: {
+                'X-CSRFToken': getCSRFToken()
+            }
+        })
         .then(response => response.json())
         .then(data => {
             if (data.success) {
@@ -597,7 +719,8 @@ function clearDailyChallengeFilters() {
 }
 
 function updateDailyChallengePagination(pagination) {
-    console.log('Challenge pagination:', pagination);
+    // Use global AdminPagination system
+    AdminPagination.updatePaginationControls('#challenge-pagination', pagination);
 }
 
 function loadDailyChallengeForEdit(challengeId) {
@@ -623,7 +746,11 @@ function loadAchievementData() {
         ...achievementFilters
     });
     
-    fetch(`/admin/api/achievements?${params}`)
+    fetch(`/admin/api/achievements?${params}`, {
+            headers: {
+                'X-CSRFToken': getCSRFToken()
+            }
+        })
         .then(response => response.json())
         .then(data => {
             if (data.success) {
@@ -801,7 +928,11 @@ function deleteAchievement(achievementId, achievementName) {
 }
 
 function loadAchievementStats() {
-    fetch('/admin/api/achievements/stats')
+    fetch('/admin/api/achievements/stats', {
+            headers: {
+                'X-CSRFToken': getCSRFToken()
+            }
+        })
         .then(response => response.json())
         .then(data => {
             if (data.success) {
@@ -832,7 +963,8 @@ function clearAchievementFilters() {
 }
 
 function updateAchievementPagination(pagination) {
-    console.log('Achievement pagination:', pagination);
+    // Use global AdminPagination system
+    AdminPagination.updatePaginationControls('#achievement-pagination', pagination);
 }
 
 function loadAchievementForEdit(achievementId) {
@@ -863,7 +995,11 @@ function loadXPRewardsData() {
     
     tbody.innerHTML = '<tr><td colspan="6" style="text-align: center; padding: 20px;">Loading XP rewards...</td></tr>';
     
-    fetch('/admin/api/xp-rewards')
+    fetch('/admin/api/xp-rewards', {
+            headers: {
+                'X-CSRFToken': getCSRFToken()
+            }
+        })
         .then(response => response.json())
         .then(data => {
             if (data.success) {
@@ -1006,7 +1142,11 @@ function resetXPDefaults() {
 }
 
 function loadXPRewardsStats() {
-    fetch('/admin/api/xp-rewards/stats')
+    fetch('/admin/api/xp-rewards/stats', {
+            headers: {
+                'X-CSRFToken': getCSRFToken()
+            }
+        })
         .then(response => response.json())
         .then(data => {
             if (data.success) {
