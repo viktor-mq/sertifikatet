@@ -13,6 +13,7 @@
             <div id="tournamentModalMessage"></div>
 
             <form id="tournamentModalForm" onsubmit="saveTournament(event)">
+                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
                 <input type="hidden" id="tournamentModalId" name="tournament_id">
 
                 <!-- Tournament Name -->

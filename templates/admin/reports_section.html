@@ -314,6 +314,7 @@
             <td>{{ feedback.created_at.strftime('%d.%m.%Y') }}</td>
             <td>
               <form method="POST" action="{{ url_for('admin.create_report_from_feedback', feedback_id=feedback.id) }}" class="d-inline">
+                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
                 <button type="submit" class="btn btn-success btn-small">
                   📄 Create Report
                 </button>

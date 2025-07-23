@@ -64,6 +64,7 @@
                     <div class="mb-4">
                         {% if tournament.entry_fee_xp == 0 or current_user.total_xp >= tournament.entry_fee_xp %}
                         <form action="{{ url_for('gamification.join_tournament', tournament_id=tournament.id) }}" method="POST">
+                            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
                             <button type="submit" class="px-6 py-3 bg-gradient-to-r from-green-600 to-blue-600 rounded-lg hover:from-green-700 hover:to-blue-700 transition">
                                 <i class="fas fa-plus mr-2"></i>Bli med!
                             </button>

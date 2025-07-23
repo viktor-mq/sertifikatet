@@ -1,6 +1,11 @@
 /* Enhanced Cookie Consent for Analytics + Ads */
 /* Extends your existing cookie-consent.js */
 
+// CSRF token utility
+function getCSRFToken() {
+    return document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') || '';
+}
+
 class EnhancedCookieConsentManager {
     constructor() {
         this.STORAGE_KEY = 'sertifikatet_cookie_banner_shown';
@@ -457,6 +462,7 @@ class EnhancedCookieConsentManager {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
+                    'X-CSRFToken': getCSRFToken()
                 },
                 body: JSON.stringify(this.currentPreferences)
             });

@@ -13,6 +13,7 @@
             <div id="challengeModalMessage"></div>
 
             <form id="challengeModalForm" onsubmit="saveDailyChallenge(event)">
+                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
                 <input type="hidden" id="challengeModalId" name="challenge_id">
 
                 <!-- Challenge Title -->

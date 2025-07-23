@@ -1,6 +1,11 @@
 (function () { 'use strict';
     // Marketing Section - Full AJAX Implementation
     
+    // CSRF token utility
+    function getCSRFToken() {
+        return document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') || '';
+    }
+    
     // State management
     let currentEmailId = null;
     let marketingCurrentFilters = { search: '', status: '' };
@@ -652,7 +657,8 @@
             method: 'DELETE',
             headers: {
                 'Accept': 'application/json',
-                'X-Requested-With': 'XMLHttpRequest'
+                'X-Requested-With': 'XMLHttpRequest',
+                'X-CSRFToken': getCSRFToken()
             }
         })
         .then(response => response.json())
@@ -891,7 +897,8 @@
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json',
-                'X-Requested-With': 'XMLHttpRequest'
+                'X-Requested-With': 'XMLHttpRequest',
+                'X-CSRFToken': getCSRFToken()
             },
             body: JSON.stringify({email_id: currentEmailId})
         })
@@ -1510,7 +1517,8 @@
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json',
-                'X-Requested-With': 'XMLHttpRequest'
+                'X-Requested-With': 'XMLHttpRequest',
+                'X-CSRFToken': getCSRFToken()
             },
             body: JSON.stringify({email_id: currentEmailId})
         })
@@ -1545,7 +1553,8 @@
             method: 'DELETE',
             headers: {
                 'Accept': 'application/json',
-                'X-Requested-With': 'XMLHttpRequest'
+                'X-Requested-With': 'XMLHttpRequest',
+                'X-CSRFToken': getCSRFToken()
             }
         })
         .then(response => response.json())

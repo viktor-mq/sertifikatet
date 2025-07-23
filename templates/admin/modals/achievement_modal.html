@@ -13,6 +13,7 @@
             <div id="achievementModalMessage"></div>
 
             <form id="achievementModalForm" onsubmit="saveAchievement(event)">
+                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
                 <input type="hidden" id="achievementModalId" name="achievement_id">
 
                 <!-- Achievement Name -->

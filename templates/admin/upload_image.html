@@ -13,6 +13,7 @@
     <!-- Upload Tab Content -->
     <div id="uploadContent" class="tab-content">
     <form method="POST" action="{{ url_for('admin.admin_dashboard') }}" enctype="multipart/form-data" id="uploadForm">
+      <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
       
       <!-- File Upload Section -->
       <div style="background: #f8f9fa; padding: 25px; border-radius: 12px; margin-bottom: 25px; border: 2px dashed #dee2e6; text-align: center; transition: all 0.3s ease;" id="uploadArea">

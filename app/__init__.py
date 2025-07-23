@@ -31,8 +31,8 @@ def create_app(config_class=None):
     # Initialize Flask-Login
     login_manager.init_app(app)
     
-    # Initialize CSRF protection (TODO: Implement properly across all forms)
-    # csrf.init_app(app)
+    # Initialize CSRF protection
+    csrf.init_app(app)
     
     # Initialize extensions
     db.init_app(app)

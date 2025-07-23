@@ -230,6 +230,7 @@
             </div>
             <div class="modal-body">
                 <form id="note-form">
+                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
                     <div class="mb-3">
                         <label class="form-label">Tidspunkt</label>
                         <input type="text" class="form-control bg-gray-700 text-white border-gray-600" id="note-timestamp" readonly>

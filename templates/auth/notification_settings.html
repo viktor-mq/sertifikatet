@@ -21,6 +21,7 @@
         </div>
 
         <form method="POST" action="{{ url_for('auth.notification_settings') }}">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
             <!-- Learning Notifications -->
             <div class="glass rounded-2xl p-8 mb-6">
                 <h2 class="text-2xl font-bold mb-6 flex items-center">

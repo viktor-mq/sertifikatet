@@ -15,6 +15,7 @@
             <div id="modalMessage"></div>
 
             <form id="questionModalForm" onsubmit="saveQuestion(event)">
+                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
                 <input type="hidden" id="questionModalId" name="question_id">
 
                 <!-- Question Text -->

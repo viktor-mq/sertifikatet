@@ -7,6 +7,14 @@
   const AdminEnhancements = {};
 
   /**
+   * Get CSRF token from meta tag
+   */
+  AdminEnhancements.getCSRFToken = function() {
+    const tokenEl = document.querySelector('meta[name="csrf-token"]');
+    return tokenEl ? tokenEl.getAttribute('content') : '';
+  };
+
+  /**
    * Fetch JSON data from the API with query parameters.
    * @param {string} resource
    * @param {object} params
@@ -15,7 +23,10 @@
     const query = new URLSearchParams(params).toString();
     const url = `/admin/api/${resource}` + (query ? `?${query}` : '');
     const response = await fetch(url, {
-      headers: { 'Accept': 'application/json' }
+      headers: { 
+        'Accept': 'application/json',
+        'X-CSRFToken': AdminEnhancements.getCSRFToken()
+      }
     });
     if (!response.ok) {
       throw new Error(`Failed to fetch ${resource}: ${response.statusText}`);
@@ -126,7 +137,10 @@
       try {
         const response = await fetch(`/admin/api/${resource}/update/${payload.id}`, {
           method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
+          headers: { 
+            'Content-Type': 'application/json',
+            'X-CSRFToken': AdminEnhancements.getCSRFToken()
+          },
           body: JSON.stringify(payload)
         });
         if (!response.ok) throw new Error(`Save failed: ${response.statusText}`);

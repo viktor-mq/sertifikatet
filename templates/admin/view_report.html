@@ -2,6 +2,7 @@
 <html lang="no">
 <head>
     <meta charset="UTF-8">
+    <meta name="csrf-token" content="{{ csrf_token() }}">
     <title>View Report #{{ report.id }} - Sertifikatet</title>
     <link rel="stylesheet" href="{{ url_for('static', filename='css/admin.css') }}">
 </head>
@@ -313,11 +314,17 @@
             }, 5000);
         }
 
+        // CSRF token utility
+        function getCSRFToken() {
+            return document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') || '';
+        }
+
         // AJAX helper function
         async function performAction(action, data = {}) {
             try {
                 const formData = new FormData();
                 formData.append('action', action);
+                formData.append('csrf_token', getCSRFToken());
                 Object.keys(data).forEach(key => {
                     formData.append(key, data[key]);
                 });

@@ -132,6 +132,7 @@
 
   <!-- Bulk Operations Panel -->
   <form method="POST" action="{{ url_for('admin.bulk_delete') }}" id="bulkForm">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
     <div id="bulkOperations" class="bulk-operations" style="display: none;">
       <p><strong>Bulk-operasjoner:</strong> Velg spørsmål nedenfor og bruk knappene her.</p>
       <button type="submit" onclick="return confirmBulkDelete()" class="btn btn-danger btn-small">🗑️ Slett valgte</button>
@@ -144,6 +145,7 @@
   <!-- Add/Edit Question Form -->
   <div id="questionForm" style="display: none; margin-top: 20px;">
     <form method="POST" action="{{ url_for('admin.admin_dashboard') }}" enctype="multipart/form-data" id="newQuestionForm">
+      <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
       <h2>Legg til / Rediger spørsmål</h2>
       <input type="hidden" name="question_id" id="questionId">
       
@@ -2466,6 +2468,7 @@ function initializeInitialPagination() {
       
       <!-- Import Form -->
       <form id="importForm" method="POST" action="{{ url_for('admin.import_questions') }}" enctype="multipart/form-data">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
         <div style="margin-bottom: 15px;">
           <label for="csvFile" style="display: block; font-weight: bold; margin-bottom: 5px;">Velg fil:</label>
           <input type="file" id="csvFile" name="csv_file" accept=".csv,.json" required 

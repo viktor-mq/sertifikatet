@@ -3,6 +3,11 @@
 // ENHANCED ACTIVITY TABLE FUNCTIONALITY
 // ============================================================================
 
+// CSRF token utility
+function getCSRFToken() {
+    return document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') || '';
+}
+
 (function() {
     'use strict';
     function initializeActivitySection() {
@@ -424,7 +429,8 @@
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
-                    'X-Requested-With': 'XMLHttpRequest'
+                    'X-Requested-With': 'XMLHttpRequest',
+                    'X-CSRFToken': getCSRFToken()
                 }
             });
             
@@ -470,7 +476,8 @@
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
-                    'X-Requested-With': 'XMLHttpRequest'
+                    'X-Requested-With': 'XMLHttpRequest',
+                    'X-CSRFToken': getCSRFToken()
                 }
             });
             
@@ -841,7 +848,10 @@
         try {
             const response = await fetch(`/admin/api/users/${userId}/grant-admin`, {
                 method: 'POST',
-                headers: { 'Content-Type': 'application/json' }
+                headers: { 
+                    'Content-Type': 'application/json',
+                    'X-CSRFToken': getCSRFToken()
+                }
             });
             
             if (!response.ok) throw new Error('Failed to grant admin privileges');
@@ -866,7 +876,10 @@
         try {
             const response = await fetch(`/admin/api/users/${userId}/revoke-admin`, {
                 method: 'POST',
-                headers: { 'Content-Type': 'application/json' }
+                headers: { 
+                    'Content-Type': 'application/json',
+                    'X-CSRFToken': getCSRFToken()
+                }
             });
             
             if (!response.ok) throw new Error('Failed to revoke admin privileges');

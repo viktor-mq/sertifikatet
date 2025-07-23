@@ -1,6 +1,11 @@
 // Admin Gamification Management JavaScript
 // Comprehensive gamification admin functionality
 
+// CSRF token utility
+function getCSRFToken() {
+    return document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') || '';
+}
+
 // Global variables for state management
 let tournamentCurrentPage = 1;
 let tournamentPerPage = 20;
@@ -255,7 +260,8 @@ function saveTournament(event) {
     fetch(url, {
         method: method,
         headers: {
-            'Content-Type': 'application/json'
+            'Content-Type': 'application/json',
+            'X-CSRFToken': getCSRFToken()
         },
         body: JSON.stringify(data)
     })
@@ -287,7 +293,10 @@ function deleteTournament(tournamentId, tournamentName) {
     }
     
     fetch(`/admin/api/tournaments/${tournamentId}`, {
-        method: 'DELETE'
+        method: 'DELETE',
+        headers: {
+            'X-CSRFToken': getCSRFToken()
+        }
     })
     .then(response => response.json())
     .then(result => {
@@ -501,7 +510,8 @@ function saveDailyChallenge(event) {
     fetch(url, {
         method: method,
         headers: {
-            'Content-Type': 'application/json'
+            'Content-Type': 'application/json',
+            'X-CSRFToken': getCSRFToken()
         },
         body: JSON.stringify(data)
     })
@@ -532,7 +542,10 @@ function deleteDailyChallenge(challengeId, challengeTitle) {
     }
     
     fetch(`/admin/api/daily-challenges/${challengeId}`, {
-        method: 'DELETE'
+        method: 'DELETE',
+        headers: {
+            'X-CSRFToken': getCSRFToken()
+        }
     })
     .then(response => response.json())
     .then(result => {
@@ -734,7 +747,8 @@ function saveAchievement(event) {
     fetch(url, {
         method: method,
         headers: {
-            'Content-Type': 'application/json'
+            'Content-Type': 'application/json',
+            'X-CSRFToken': getCSRFToken()
         },
         body: JSON.stringify(data)
     })
@@ -765,7 +779,10 @@ function deleteAchievement(achievementId, achievementName) {
     }
     
     fetch(`/admin/api/achievements/${achievementId}`, {
-        method: 'DELETE'
+        method: 'DELETE',
+        headers: {
+            'X-CSRFToken': getCSRFToken()
+        }
     })
     .then(response => response.json())
     .then(result => {
@@ -944,7 +961,8 @@ function saveXPRewardChanges(rewardId) {
     fetch(`/admin/api/xp-rewards/${rewardId}`, {
         method: 'PUT',
         headers: {
-            'Content-Type': 'application/json'
+            'Content-Type': 'application/json',
+            'X-CSRFToken': getCSRFToken()
         },
         body: JSON.stringify(data)
     })

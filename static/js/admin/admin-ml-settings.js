@@ -3,6 +3,11 @@
  * Handles ML dashboard functionality and admin controls
  */
 
+// CSRF token utility
+function getCSRFToken() {
+    return document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') || '';
+}
+
 // ML Configuration Batching System
 const MLConfigBatcher = {
     pendingChanges: {},
@@ -57,7 +62,8 @@ const MLConfigBatcher = {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json',
-                'X-Requested-With': 'XMLHttpRequest'
+                'X-Requested-With': 'XMLHttpRequest',
+                'X-CSRFToken': getCSRFToken()
             },
             body: JSON.stringify(this.pendingChanges)
         })

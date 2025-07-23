@@ -3,6 +3,11 @@
  * Phase 3 Implementation - Vertical Video Player with Swipe Navigation
  */
 
+// CSRF token utility
+function getCSRFToken() {
+    return document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') || '';
+}
+
 class ShortsPlayer {
     constructor(container, videos = [], options = {}) {
         this.container = container;
@@ -696,7 +701,10 @@ class ShortsPlayer {
                 
             const response = await fetch(endpoint, {
                 method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
+                headers: { 
+                    'Content-Type': 'application/json',
+                    'X-CSRFToken': getCSRFToken()
+                },
                 body: JSON.stringify({ shorts_id: videoId })
             });
             
@@ -750,7 +758,10 @@ class ShortsPlayer {
                 
             await fetch(endpoint, {
                 method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
+                headers: { 
+                    'Content-Type': 'application/json',
+                    'X-CSRFToken': getCSRFToken()
+                },
                 body: JSON.stringify({
                     shorts_id: video.id,
                     watch_percentage: completed ? 100 : (currentTime / this.videoElements[index].duration) * 100,
@@ -774,7 +785,10 @@ class ShortsPlayer {
                 
             await fetch(endpoint, {
                 method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
+                headers: { 
+                    'Content-Type': 'application/json',
+                    'X-CSRFToken': getCSRFToken()
+                },
                 body: JSON.stringify({
                     shorts_id: video.id,
                     watch_percentage: 100,

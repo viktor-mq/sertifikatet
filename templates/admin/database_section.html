@@ -81,6 +81,7 @@ th {
     {% endif %}
     
     <form method="POST" action="{{ url_for('admin.admin_dashboard') }}" style="background: #f8f9fa; padding: 20px; border-radius: 8px; margin-bottom: 30px;">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
         <h3 style="margin-top: 0;">💻 SQL-konsoll</h3>
         <textarea id="sql_query" name="sql_query" rows="5" style="width:100%; box-sizing:border-box; padding: 10px; border: 2px solid #e5e7eb; border-radius: 8px; font-family: 'Courier New', monospace;"></textarea>
         <button type="submit" class="btn" style="margin-top: 10px;">▶️ Kjør SQL</button>

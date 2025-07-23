@@ -2,6 +2,7 @@
 <html lang="no">
 <head>
     <meta charset="UTF-8">
+    <meta name="csrf-token" content="{{ csrf_token() }}">
     <title>Admin User Management - Sertifikatet</title>
     <link rel="stylesheet" href="{{ url_for('static', filename='css/admin.css') }}">
 </head>
@@ -117,6 +118,7 @@
                                 <form method="POST" action="{{ url_for('admin.revoke_admin_privileges', user_id=user.id) }}" 
                                       class="d-inline" 
                                       onsubmit="return confirm('Are you sure you want to REVOKE admin privileges from {{ user.username }}?\\n\\nThis action will:\\n- Remove all admin access\\n- Send email notifications to all admins\\n- Be logged in the security audit trail')">
+                                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
                                     <button type="submit" class="btn btn-danger btn-small">
                                         👤❌ Revoke Admin
                                     </button>
@@ -126,6 +128,7 @@
                                 <form method="POST" action="{{ url_for('admin.grant_admin_privileges', user_id=user.id) }}" 
                                       class="d-inline" 
                                       onsubmit="return confirm('Are you sure you want to GRANT admin privileges to {{ user.username }}?\\n\\nThis action will:\\n- Give full admin access\\n- Send email alerts to all existing admins\\n- Be permanently logged for security audit\\n\\nOnly proceed if you trust this user completely.')">
+                                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
                                     <button type="submit" class="btn btn-warning btn-small">
                                         🛡️ Grant Admin
                                     </button>

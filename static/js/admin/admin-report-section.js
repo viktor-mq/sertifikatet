@@ -1,6 +1,11 @@
 // Reports Section Enhancement JavaScript - Support for multiple tables
 (function() {
     'use strict';
+    
+    // CSRF token utility
+    function getCSRFToken() {
+        return document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') || '';
+    }
     let currentReportId = null;
 
     // Reports table state
@@ -501,7 +506,10 @@
         try {
             const response = await fetch(`/admin/api/reports/${reportId}/assign`, {
                 method: 'POST',
-                headers: { 'Content-Type': 'application/json' }
+                headers: { 
+                    'Content-Type': 'application/json',
+                    'X-CSRFToken': getCSRFToken()
+                }
             });
             
             if (!response.ok) throw new Error('Failed to assign report');
@@ -529,7 +537,10 @@
         try {
             const response = await fetch(`/admin/api/reports/${currentReportId}/resolve`, {
                 method: 'POST',
-                headers: { 'Content-Type': 'application/json' }
+                headers: { 
+                    'Content-Type': 'application/json',
+                    'X-CSRFToken': getCSRFToken()
+                }
             });
             
             if (!response.ok) throw new Error('Failed to resolve report');
@@ -807,7 +818,8 @@
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
-                    'X-Requested-With': 'XMLHttpRequest'
+                    'X-Requested-With': 'XMLHttpRequest',
+                    'X-CSRFToken': getCSRFToken()
                 }
             });
             
