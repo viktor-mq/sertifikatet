@@ -160,7 +160,11 @@
             }
         } catch (error) {
             console.error('Error loading audit data:', error);
-            alert('Error loading audit data: ' + error.message);
+            if (typeof showToast === 'function') {
+                showToast('Error loading audit data: ' + error.message, 'error');
+            } else if (typeof AdminEnhancements !== 'undefined' && AdminEnhancements.showToast) {
+                AdminEnhancements.showToast('Error loading audit data: ' + error.message, 'error');
+            }
         } finally {
             setAuditLoading(false);
         }
@@ -347,7 +351,11 @@
             })
             .catch(error => {
                 console.error('Export error:', error);
-                alert('Could not export data. ' + error.message);
+                if (typeof showToast === 'function') {
+                    showToast('Could not export data. ' + error.message, 'error');
+                } else if (typeof AdminEnhancements !== 'undefined' && AdminEnhancements.showToast) {
+                    AdminEnhancements.showToast('Could not export data. ' + error.message, 'error');
+                }
             })
             .finally(() => {
                 loadingIndicator.style.display = 'none';

@@ -27,15 +27,15 @@
     </header>
     
     <div class="container">
-        <!-- Security Alert -->
-        <div class="validation-errors" style="background: #fff3cd; color: #856404; border: 1px solid #ffeaa7; margin-bottom: 20px;">
-            <strong>🔒 Security Notice:</strong> Admin privilege management is a critical security operation. All admin changes are:
-            <ul style="margin: 10px 0 0 20px;">
+        <!-- Security Alert (will be converted to toasts by JS) -->
+        <div class="validation-errors" style="display: none;">
+            <ul id="securityNoticeList">
+                <li>🔒 <strong>Security Notice:</strong> Admin privilege management is a critical security operation. All admin changes are:</li>
                 <li>📧 <strong>Email notifications</strong> sent to all existing admins</li>
                 <li>📝 <strong>Audit logged</strong> with IP address and timestamp</li>
                 <li>🔒 <strong>Security validated</strong> to prevent unauthorized escalation</li>
+                <li><strong>Only grant admin privileges to trusted users.</strong></li>
             </ul>
-            <p style="margin: 10px 0 0 0;"><strong>Only grant admin privileges to trusted users.</strong></p>
         </div>
 
         <!-- Statistics Section -->
@@ -200,6 +200,18 @@
             var yearSpan = document.getElementById('currentYear');
             if (yearSpan) {
                 yearSpan.textContent = new Date().getFullYear();
+            }
+
+            // Process security notice as a toast
+            const securityNoticeList = document.getElementById('securityNoticeList');
+            if (securityNoticeList && typeof showToast !== 'undefined') {
+                let messageContent = '';
+                const listItems = securityNoticeList.querySelectorAll('li');
+                listItems.forEach(item => {
+                    messageContent += `${item.textContent}<br>`;
+                });
+                showToast(messageContent, 'warning', { duration: 0, allowClose: true }); // Persistent warning
+                securityNoticeList.parentElement.style.display = 'none'; // Hide original div
             }
         });
 

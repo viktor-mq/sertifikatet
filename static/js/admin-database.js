@@ -4,10 +4,27 @@
  */
 console.log('🚀 admin-database.js script started loading - FIXED VERSION v20250102');
 
-// Local toast notification function (accessible globally within this file)
+// Use global toast notification function
 function showToast(message, type = 'info') {
-    console.log(`${type.toUpperCase()}: ${message}`);
-    // You can enhance this later with actual toast UI if needed
+    // Try to use AdminUtils.showToast (from admin enhancements)
+    if (typeof AdminUtils !== 'undefined' && typeof AdminUtils.showToast === 'function') {
+        AdminUtils.showToast(message, type);
+    } else if (typeof AdminEnhancements !== 'undefined' && AdminEnhancements.showToast) {
+        AdminEnhancements.showToast(message, type);
+    } else {
+        // Fallback: create simple toast notification
+        const toast = document.createElement('div');
+        toast.style.cssText = `
+            position: fixed; top: 20px; right: 20px; z-index: 10001;
+            background: ${type === 'success' ? '#d4edda' : type === 'error' ? '#f8d7da' : '#d1ecf1'};
+            color: ${type === 'success' ? '#155724' : type === 'error' ? '#721c24' : '#0c5460'};
+            padding: 12px 20px; border-radius: 6px; box-shadow: 0 2px 8px rgba(0,0,0,0.2);
+            max-width: 300px; font-size: 14px;
+        `;
+        toast.textContent = message;
+        document.body.appendChild(toast);
+        setTimeout(() => toast.remove(), 4000);
+    }
 }
 
 (function(window) {

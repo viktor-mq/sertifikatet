@@ -293,7 +293,7 @@ class MLService:
                     'ml_enabled': False,
                     'skill_profiles': 0,
                     'question_profiles': 0,
-                    'algorithm_version': '1.0 (Inactive)',
+                    'algorithm_version': f'{current_app.config.get("ML_ALGORITHM_VERSION", "1.0")} (Inactive)',
                     'features_available': [],
                     'error': 'ML system not initialized'
                 }
@@ -306,7 +306,7 @@ class MLService:
                 'ml_enabled': self._initialized,
                 'skill_profiles': skill_profiles_count,
                 'question_profiles': difficulty_profiles_count,
-                'algorithm_version': 'v1.0',
+                'algorithm_version': f'v{current_app.config.get("ML_ALGORITHM_VERSION", "1.0")}',
                 'features_available': [
                     'adaptive_question_selection',
                     'personalized_difficulty',
@@ -322,7 +322,7 @@ class MLService:
                 'error': str(e),
                 'skill_profiles': 0,
                 'question_profiles': 0,
-                'algorithm_version': 'Error',
+                'algorithm_version': f'v{current_app.config.get("ML_ALGORITHM_VERSION", "1.0")} (Error)',
                 'features_available': []
             }
 
@@ -421,6 +421,87 @@ class MLService:
         except Exception as e:
             logger.error(f"Error getting recent ML activity: {e}", exc_info=True)
             return []
+
+    def get_skills_analysis(self) -> Dict:
+        """Get user skills analysis data for admin dashboard."""
+        try:
+            from sqlalchemy import func
+            from ..models import UserSkillProfile, QuizSession, Question
+            
+            # Get skill level distribution
+            skill_distribution = {}
+            profiles = UserSkillProfile.query.all()
+            
+            for profile in profiles:
+                level = profile.skill_level or 'beginner'
+                skill_distribution[level] = skill_distribution.get(level, 0) + 1
+            
+            # Get top performing categories (from quiz sessions)
+            top_categories = db.session.query(
+                Question.category,
+                func.avg(QuizSession.score).label('avg_score'),
+                func.count(QuizSession.id).label('session_count')
+            ).join(
+                QuizSession, Question.category == QuizSession.category
+            ).group_by(
+                Question.category
+            ).having(
+                func.count(QuizSession.id) >= 5  # At least 5 sessions
+            ).order_by(
+                func.avg(QuizSession.score).desc()
+            ).limit(5).all()
+            
+            # Get problem areas (lowest scoring categories)
+            problem_areas = db.session.query(
+                Question.category,
+                func.avg(QuizSession.score).label('avg_score'),
+                func.count(QuizSession.id).label('session_count')
+            ).join(
+                QuizSession, Question.category == QuizSession.category
+            ).group_by(
+                Question.category
+            ).having(
+                func.count(QuizSession.id) >= 5  # At least 5 sessions
+            ).order_by(
+                func.avg(QuizSession.score).asc()
+            ).limit(5).all()
+            
+            # Format the data
+            formatted_top_categories = [
+                {
+                    'category': cat.category,
+                    'avg_score': float(cat.avg_score) if cat.avg_score else 0.0,
+                    'session_count': cat.session_count
+                }
+                for cat in top_categories
+            ]
+            
+            formatted_problem_areas = [
+                {
+                    'category': cat.category,
+                    'avg_score': float(cat.avg_score) if cat.avg_score else 0.0,
+                    'session_count': cat.session_count
+                }
+                for cat in problem_areas
+            ]
+            
+            logger.info(f"[ML_SERVICE] Skills analysis: {len(profiles)} profiles, {len(top_categories)} top categories")
+            
+            return {
+                'skill_distribution': skill_distribution,
+                'top_categories': formatted_top_categories,
+                'problem_areas': formatted_problem_areas,
+                'total_profiles': len(profiles)
+            }
+            
+        except Exception as e:
+            logger.error(f"Error getting skills analysis: {e}", exc_info=True)
+            return {
+                'skill_distribution': {},
+                'top_categories': [],
+                'problem_areas': [],
+                'total_profiles': 0
+            }
 
     # Helper methods
     def _get_fallback_questions(self, category: str = None, num_questions: int = 10) -> List[Question]:
@@ -821,14 +902,17 @@ class MLService:
             difficulty_profiles_count = QuestionDifficultyProfile.query.count() if self._initialized else 0
             adaptive_sessions_count = AdaptiveQuizSession.query.count() if self._initialized else 0
             
+            # Calculate fallback usage based on ML system status
+            fallback_percentage = 100 if not self._initialized else 0
+            
             return {
                 'total_users': total_users,
                 'active_profiles': skill_profiles_count,
                 'ml_sessions': adaptive_sessions_count,
-                'algorithm_version': 'v1.0 (Inactive)' if not self._initialized else 'v1.0 (Active)',
-                'users_using_ml': skill_profiles_count,
+                'algorithm_version': f'v{current_app.config.get("ML_ALGORITHM_VERSION", "1.0")} ({"Inactive" if not self._initialized else "Active"})',
+                'users_using_ml': skill_profiles_count if self._initialized else 0,
                 'models_active': 3 if self._initialized else 0,
-                'fallback_usage': 0
+                'fallback_usage': fallback_percentage
             }
             
         except Exception as e:
@@ -837,10 +921,10 @@ class MLService:
                 'total_users': 0,
                 'active_profiles': 0,
                 'ml_sessions': 0,
-                'algorithm_version': 'v1.0 (Error)',
+                'algorithm_version': f'v{current_app.config.get("ML_ALGORITHM_VERSION", "1.0")} (Error)',
                 'users_using_ml': 0,
                 'models_active': 0,
-                'fallback_usage': 0
+                'fallback_usage': 100  # When there's an error, system falls back to non-ML
             }
     
     def get_model_performance_summary(self) -> Dict:

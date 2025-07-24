@@ -35,22 +35,119 @@
     </header>
     
     <main style="flex: 1; padding: 20px;">
-        <!-- Flash Messages -->
-        {% with messages = get_flashed_messages(with_categories=true) %}
-            {% if messages %}
-                <div class="container-fluid mb-4">
-                    {% for category, message in messages %}
-                        <div class="alert alert-{{ 'danger' if category == 'error' else category }} alert-dismissible fade show" role="alert">
-                            {{ message }}
-                            <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
-                        </div>
-                    {% endfor %}
-                </div>
-            {% endif %}
-        {% endwith %}
-        
         {% block content %}{% endblock %}
     </main>
+
+    <!-- Toast Notification Container (Global) -->
+    <div id="toastContainer" class="toast-container"></div>
+
+    <script>
+        // Global CSRF token retrieval function
+        window.getCSRFToken = function() {
+            const token = document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') || '';
+            console.log('getCSRFToken returning:', token);
+            return token;
+        };
+
+        // Global showToast function (if not already defined in included scripts)
+        if (typeof showToast === 'undefined') {
+            window.showToast = function(message, type = 'info', options = {}) {
+                const {
+                    duration = 5000,
+                    showProgress = true,
+                    allowClose = true,
+                    isUndo = false,
+                    onUndo = null
+                } = options;
+
+                const toast = document.createElement('div');
+                toast.className = `toast ${type} ${isUndo ? 'undo' : ''}`;
+
+                const iconMap = {
+                    success: '✅',
+                    error: '❌',
+                    warning: '⚠️',
+                    info: 'ℹ️',
+                    undo: '↩️'
+                };
+
+                let toastContent = `
+                    <div class="toast-icon">${iconMap[type] || iconMap.info}</div>
+                    <div class="toast-content">${message}</div>
+                `;
+
+                if (isUndo && onUndo) {
+                    toastContent += `<button class="toast-undo-btn" onclick="handleUndo()">Angre</button>`;
+                }
+
+                if (allowClose) {
+                    toastContent += `<button class="toast-close" onclick="removeToast(this.parentElement)">×</button>`;
+                }
+
+                if (showProgress && duration > 0) {
+                    toastContent += `<div class="toast-progress"></div>`;
+                }
+
+                toast.innerHTML = toastContent;
+
+                if (isUndo && onUndo) {
+                    window.currentUndoCallback = onUndo;
+                }
+
+                const container = document.getElementById('toastContainer');
+                if (container) {
+                    container.appendChild(toast);
+                } else {
+                    console.error('Toast container not found!');
+                    document.body.appendChild(toast); // Fallback
+                }
+
+                if (duration > 0) {
+                    setTimeout(() => {
+                        removeToast(toast);
+                    }, duration);
+                }
+
+                return toast;
+            };
+
+            window.removeToast = function(toast) {
+                if (toast && toast.parentElement) {
+                    toast.style.animation = 'slideOutToast 0.3s ease-in';
+                    setTimeout(() => {
+                        if (toast.parentElement) {
+                            toast.remove();
+                        }
+                    }, 300);
+                }
+            };
+
+            window.handleUndo = function() {
+                if (window.currentUndoCallback) {
+                    window.currentUndoCallback();
+                    window.currentUndoCallback = null;
+                    document.querySelectorAll('.toast.undo').forEach(toast => {
+                        removeToast(toast);
+                    });
+                }
+            };
+        }
+
+        // Process Flask flashed messages as toasts
+        document.addEventListener('DOMContentLoaded', function() {
+            const flashedMessages = JSON.parse('{{ get_flashed_messages(with_categories=true) | tojson | safe }}');
+            flashedMessages.forEach(function(message) {
+                const category = message[0];
+                const text = message[1];
+                let type = 'info';
+                if (category === 'success') type = 'success';
+                else if (category === 'error') type = 'error';
+                else if (category === 'warning') type = 'warning';
+
+                showToast(text, type, { duration: 5000, showProgress: true, allowClose: true });
+            });
+        });
+    </script>
     
     <footer class="admin-footer" style="padding: 15px 20px; text-align: center; background: #f8f9fa; border-top: 1px solid #dee2e6; margin-top: auto; flex-shrink: 0;">
         <p style="margin: 0; font-size: 0.9rem; color: rgb(176, 175, 175);">

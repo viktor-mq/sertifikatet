@@ -781,23 +781,15 @@
     }
     
     function showNotification(message, type = 'info') {
-        // Create notification element
-        const notification = document.createElement('div');
-        notification.className = `alert alert-${type} alert-dismissible fade show position-fixed`;
-        notification.style.cssText = 'top: 20px; right: 20px; z-index: 9999; min-width: 300px;';
-        notification.innerHTML = `
-            ${message}
-            <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
-        `;
-        
-        document.body.appendChild(notification);
-        
-        // Auto-remove after 5 seconds
-        setTimeout(() => {
-            if (notification.parentNode) {
-                notification.remove();
-            }
-        }, 5000);
+        // Use global toast system instead of Bootstrap alerts
+        if (typeof window.showToast === 'function') {
+            window.showToast(message, type);
+        } else if (typeof AdminEnhancements !== 'undefined' && AdminEnhancements.showToast) {
+            AdminEnhancements.showToast(message, type);
+        } else {
+            // Fallback to console if no global system available
+            console.log(`${type.toUpperCase()}: ${message}`);
+        }
     }
     
     // Template functions
@@ -1411,23 +1403,15 @@
     }
     
     function showNotification(message, type = 'info') {
-        // Create notification element
-        const notification = document.createElement('div');
-        notification.className = `alert alert-${type} alert-dismissible fade show position-fixed`;
-        notification.style.cssText = 'top: 20px; right: 20px; z-index: 9999; min-width: 300px;';
-        notification.innerHTML = `
-            ${message}
-            <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
-        `;
-        
-        document.body.appendChild(notification);
-        
-        // Auto-remove after 5 seconds
-        setTimeout(() => {
-            if (notification.parentNode) {
-                notification.remove();
-            }
-        }, 5000);
+        // Use global toast system instead of Bootstrap alerts
+        if (typeof window.showToast === 'function') {
+            window.showToast(message, type);
+        } else if (typeof AdminEnhancements !== 'undefined' && AdminEnhancements.showToast) {
+            AdminEnhancements.showToast(message, type);
+        } else {
+            // Fallback to console if no global system available
+            console.log(`${type.toUpperCase()}: ${message}`);
+        }
     }
     
     function initializeMarketing() {

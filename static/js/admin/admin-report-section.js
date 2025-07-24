@@ -7,96 +7,6 @@
         return document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') || '';
     }
 
-    // Modern toast notification system
-    function showModernToast(message, type = 'info', options = {}) {
-        const {
-            duration = 4000,
-            position = 'top-right'
-        } = options;
-
-        // Create toast container if it doesn't exist
-        let container = document.getElementById('toast-container');
-        if (!container) {
-            container = document.createElement('div');
-            container.id = 'toast-container';
-            container.style.cssText = `
-                position: fixed;
-                top: 20px;
-                right: 20px;
-                z-index: 10000;
-                display: flex;
-                flex-direction: column;
-                gap: 10px;
-                max-width: 400px;
-            `;
-            document.body.appendChild(container);
-        }
-
-        // Create toast element
-        const toast = document.createElement('div');
-        toast.className = `toast toast-${type}`;
-        
-        const colors = {
-            success: { bg: '#d4edda', border: '#28a745', text: '#155724' },
-            error: { bg: '#f8d7da', border: '#dc3545', text: '#721c24' },
-            warning: { bg: '#fff3cd', border: '#ffc107', text: '#856404' },
-            info: { bg: '#d1ecf1', border: '#17a2b8', text: '#0c5460' }
-        };
-        
-        const color = colors[type] || colors.info;
-        
-        toast.style.cssText = `
-            background: ${color.bg};
-            color: ${color.text};
-            border: 1px solid ${color.border};
-            border-left: 4px solid ${color.border};
-            padding: 15px 20px;
-            border-radius: 8px;
-            box-shadow: 0 4px 12px rgba(0,0,0,0.15);
-            transform: translateX(100%);
-            transition: all 0.3s ease;
-            font-size: 14px;
-            font-weight: 500;
-            position: relative;
-            cursor: pointer;
-        `;
-
-        toast.innerHTML = `
-            <div style="display: flex; align-items: center; gap: 10px;">
-                <span>${message}</span>
-                <button onclick="this.parentElement.parentElement.remove()" 
-                        style="background: none; border: none; color: ${color.text}; font-size: 18px; cursor: pointer; padding: 0; margin-left: auto;">×</button>
-            </div>
-        `;
-
-        // Add to container and animate in
-        container.appendChild(toast);
-        
-        // Trigger animation
-        setTimeout(() => {
-            toast.style.transform = 'translateX(0)';
-        }, 10);
-
-        // Auto remove
-        setTimeout(() => {
-            toast.style.transform = 'translateX(100%)';
-            setTimeout(() => {
-                if (toast.parentElement) {
-                    toast.remove();
-                }
-            }, 300);
-        }, duration);
-
-        // Click to dismiss
-        toast.addEventListener('click', function() {
-            this.style.transform = 'translateX(100%)';
-            setTimeout(() => {
-                if (this.parentElement) {
-                    this.remove();
-                }
-            }, 300);
-        });
-    }
     let currentReportId = null;
 
     // Reports table state
@@ -958,8 +868,12 @@
             const result = await response.json();
             
             if (result.success) {
-                // Show modern toast notification
-                showModernToast(`✅ Rapport ${reportId} tildelt til deg!`, 'success');
+                // Show toast notification
+                if (typeof showToast === 'function') {
+                    showToast(`✅ Rapport ${reportId} tildelt til deg!`, 'success');
+                } else if (typeof AdminEnhancements !== 'undefined' && AdminEnhancements.showToast) {
+                    AdminEnhancements.showToast(`✅ Rapport ${reportId} tildelt til deg!`, 'success');
+                }
                 
                 // Refresh the current table data to reflect changes
                 if (typeof performReportsSearch === 'function') {
@@ -974,12 +888,20 @@
                 }, 1500);
                 
             } else {
-                showModernToast(`❌ Feil: ${result.error || 'Kunne ikke tildele rapport'}`, 'error');
+                if (typeof showToast === 'function') {
+                    showToast(`❌ Feil: ${result.error || 'Kunne ikke tildele rapport'}`, 'error');
+                } else if (typeof AdminEnhancements !== 'undefined' && AdminEnhancements.showToast) {
+                    AdminEnhancements.showToast(`❌ Feil: ${result.error || 'Kunne ikke tildele rapport'}`, 'error');
+                }
             }
             
         } catch (error) {
             console.error('Error assigning report:', error);
-            showModernToast(`❌ Nettverksfeil: ${error.message}`, 'error');
+            if (typeof showToast === 'function') {
+                showToast(`❌ Nettverksfeil: ${error.message}`, 'error');
+            } else if (typeof AdminEnhancements !== 'undefined' && AdminEnhancements.showToast) {
+                AdminEnhancements.showToast(`❌ Nettverksfeil: ${error.message}`, 'error');
+            }
         } finally {
             setReportsLoading(false);
         }
