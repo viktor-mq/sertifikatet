@@ -58,7 +58,6 @@
     };
 
     function initializeReportsEnhancements() {
-        console.log('🔧 Initializing Reports section enhancements...');
         
         // Initialize search inputs with debouncing
         const reportsSearchInput = document.getElementById('reports-search');
@@ -160,7 +159,6 @@
             }
         });
         
-        console.log('✅ Reports section enhancements initialized successfully');
     }
 
     function debouncedReportsSearch() {
@@ -354,7 +352,6 @@
 
     // Client-side pagination functions for reports
     function initializeReportsPagination() {
-        console.log('Initializing reports pagination...');
         renderReportsPage();
     }
     
@@ -996,7 +993,7 @@
             statCards[3].textContent = highPriorityCount; // High Priority
         }
         
-        console.log(`Updated status cards: Total=${totalCount}, New=${newCount}, InProgress=${inProgressCount}, HighPriority=${highPriorityCount}`);
+        //console.log(`Updated status cards: Total=${totalCount}, New=${newCount}, InProgress=${inProgressCount}, HighPriority=${highPriorityCount}`);
     }
 
     // Make the function globally available

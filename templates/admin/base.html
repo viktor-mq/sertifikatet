@@ -259,7 +259,6 @@
 
             // Update pagination controls HTML
             updatePaginationControls: function(containerSelector, pagination) {
-                console.log('AdminPagination.updatePaginationControls called with:', containerSelector, pagination);
                 const container = document.querySelector(containerSelector);
                 if (!container) {
                     console.error('Container not found:', containerSelector);
@@ -323,8 +322,6 @@
                         Neste <span class="pagination-arrow">›</span>
                     </button>`;
                 }
-
-                console.log('Setting pagination HTML:', html);
                 container.innerHTML = html;
             },
 

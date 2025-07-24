@@ -12,7 +12,6 @@
 
     function initialize() {
         if (window.auditInitialized) return;
-        console.log('🔧 Initializing Audit Log enhancements...');
 
         const searchInput = document.getElementById('audit-search');
         if (searchInput) {
@@ -67,7 +66,6 @@
 
         performAuditSearch(); // Initial data load
         window.auditInitialized = true;
-        console.log('✅ Audit Log enhancements initialized.');
     }
 
     function initializeColumnToggles() {

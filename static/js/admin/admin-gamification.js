@@ -133,7 +133,6 @@ let xpRewardsChanged = false;
 // =============================================================================
 
 function initializeGamificationAdmin() {
-    console.log('Initializing Gamification Admin...');
     
     // Load initial overview data
     loadGamificationOverview();
@@ -725,7 +724,6 @@ function updateDailyChallengePagination(pagination) {
 
 function loadDailyChallengeForEdit(challengeId) {
     // Placeholder for loading challenge data for editing
-    console.log('Loading challenge for edit:', challengeId);
 }
 
 // =============================================================================
@@ -1228,4 +1226,3 @@ window.saveXPRewardChanges = saveXPRewardChanges;
 window.saveXPRewards = saveXPRewards;
 window.resetXPDefaults = resetXPDefaults;
 
-console.log('Admin Gamification JavaScript loaded successfully');

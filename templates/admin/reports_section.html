@@ -27,7 +27,6 @@ document.addEventListener('DOMContentLoaded', function() {
 });
 
 function initializeEnhancedReportsSection() {
-    console.log('🚀 Initializing Enhanced Reports Section...');
     
     // Initialize global AdminPagination
     if (typeof AdminPagination !== 'undefined') {
@@ -47,7 +46,6 @@ function initializeEnhancedReportsSection() {
                 reportsCurrentPagination = data.pagination;
             }
         });
-        console.log('✅ Global AdminPagination initialized for reports');
     }
     
     // Initialize enhanced features
@@ -57,7 +55,6 @@ function initializeEnhancedReportsSection() {
     initializeReportsSorting();
     initializeReportsKeyboardShortcuts();
     
-    console.log('✅ Enhanced Reports Section initialized successfully');
 }
 
 // Real-time search with debouncing
@@ -388,7 +385,6 @@ function updateReportsStats(stats) {
     }
 }
 
-console.log('📋 Enhanced Reports section loaded with Global AdminPagination');
 </script>
 
 <!-- Reports & Security Section -->

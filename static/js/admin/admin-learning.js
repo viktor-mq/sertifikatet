@@ -3,7 +3,6 @@
     'use strict';
     // Learning Modules JavaScript Functions
     function initializeLearningModules() {
-        console.log('Initializing Learning Modules section...');
         loadModulesData();
         loadModulesForDropdown();
         setupVideoUploadDropZone();
@@ -1176,7 +1175,6 @@
                     initializeLearningPagination();
                 }
             }, 100);
-            console.log('Learning modules JS loaded');
         });
     } else {
         // Delay initialization to ensure AdminPagination is available
@@ -1185,6 +1183,5 @@
                 initializeLearningPagination();
             }
         }, 100);
-        console.log('Learning modules JS loaded');
     }
 })(window);

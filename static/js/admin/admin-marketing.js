@@ -379,7 +379,6 @@
     
     // Marketing data loading
     function loadMarketingData() {
-        console.log('Loading marketing data with filters:', marketingCurrentFilters);
         
         showMarketingLoading(true);
         
@@ -841,13 +840,11 @@
 
     // Main initialization function
     function initializeMarketing() {
-        console.log('Marketing section initialized');
         
         // Ensure marketing section is visible
         const marketingSection = document.getElementById('marketingSection');
         if (marketingSection) {
             marketingSection.style.display = 'block';
-            console.log('Marketing section display set to block');
         } else {
             console.error('Marketing section not found!');
             return;
@@ -1003,7 +1000,7 @@
         .then(data => {
             recipientPagination = data.pagination || {};
             renderRecipientTable(data.recipients || []);
-            updateRecipientCount(data.total_count || 0);
+            updateRecipientCountFromServer(data.total_count || 0);
             renderRecipientPagination();
         })
         .catch(error => {
@@ -1079,8 +1076,6 @@
             const ths = table?.querySelectorAll('th');
             
             if (thead && ths && ths.length > 0) {
-                console.log('🎨 Applying Recipients Modal table styles...');
-                
                 // Apply styles with maximum specificity
                 thead.style.cssText = `
                     background: linear-gradient(135deg, #3b82f6 0%, #1d4ed8 100%);
@@ -1101,8 +1096,6 @@
                         text-align: left ;
                     `;
                 });
-                
-                console.log('✅ Recipients Modal table styles applied successfully!');
             }
         }, 50); // Small delay to ensure DOM is updated
         
@@ -1213,8 +1206,19 @@
         }
     }
 
-    function updateRecipientCount(totalCount) {
-        document.getElementById('recipientCount').textContent = totalCount || 0;
+    function updateRecipientCountFromServer(totalCount) {
+        // Try to update both possible recipient count elements
+        const countElement1 = document.getElementById('recipientsModalCount');
+        // Look for the span inside the modal specifically
+        const modal = document.getElementById('recipientsModal');
+        const countElement2 = modal ? modal.querySelector('#recipientCount') : document.getElementById('recipientCount');
+        
+        if (countElement1) {
+            countElement1.textContent = totalCount || 0;
+        }
+        if (countElement2) {
+            countElement2.textContent = totalCount || 0;
+        }
     }
 
     function exportRecipients(format) {
@@ -1411,12 +1415,10 @@
     }
     
     function initializeMarketing() {
-        console.log('Marketing section initialized');
         
         // Ensure marketing section is visible
         const marketingSection = document.getElementById('marketingSection');
         if (marketingSection) {
-            console.log('Marketing section display set to block');
         } else {
             console.error('Marketing section not found!');
             return;
@@ -1624,7 +1626,7 @@
     window.exportRecipients = exportRecipients;
     window.goToRecipientPage = goToRecipientPage;
     window.filterRecipients = filterRecipients;
-    window.updateRecipientCount = updateRecipientCount;
+    window.updateRecipientCountFromServer = updateRecipientCountFromServer;
     window.renderRecipientTable = renderRecipientTable;
     window.renderRecipientPagination = renderRecipientPagination;
     window.getSubscriptionBadgeClass = getSubscriptionBadgeClass;

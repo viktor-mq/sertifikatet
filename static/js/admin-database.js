@@ -2,7 +2,6 @@
  * Database Section Enhancements
  * Handles multi-table search, filtering, sorting, column toggles, pagination, and export.
  */
-console.log('🚀 admin-database.js script started loading - FIXED VERSION v20250102');
 
 // Use global toast notification function
 function showToast(message, type = 'info') {
@@ -31,9 +30,6 @@ function showToast(message, type = 'info') {
     
     // Create namespace for database-specific filtering
     const DatabaseFiltering = {};
-    
-    // Debug: Log that DatabaseFiltering is being created
-    console.log('🔧 DatabaseFiltering namespace created');
     
     /**
      * Initialize filtering for a specific table
@@ -130,7 +126,6 @@ function showToast(message, type = 'info') {
         initializeTablePagination(tableName);
     };
     
-    console.log('🔧 initializeTableFiltering function defined');
     
     /**
      * Apply all filters for a specific table
@@ -144,7 +139,6 @@ function showToast(message, type = 'info') {
             return;
         }
         
-        console.log(`🔍 Applying database filters for table: ${tableName}`);
         
         // SCOPE ALL SELECTORS to database section
         const form = databaseSection.querySelector(`#filter-form-${tableName}`);
@@ -207,8 +201,6 @@ function showToast(message, type = 'info') {
         }
     };
     
-    console.log('🔧 applyFilters function defined');
-    console.log('🔧 DEBUG: DatabaseFiltering now has:', Object.keys(DatabaseFiltering));
     
     /**
      * Clear all filters for a specific table
@@ -244,7 +236,6 @@ function showToast(message, type = 'info') {
         DatabaseFiltering.applyFilters(tableName);
     };
     
-    console.log('🔧 clearFilters function defined');
     
 
   
@@ -502,7 +493,6 @@ function showToast(message, type = 'info') {
   
   // Database Control Features
   DatabaseFiltering.initializeDatabaseControls = function() {
-  console.log('🎛️ Initializing database controls...');
   
   // Initialize multiselect dropdown
   DatabaseFiltering.initializeMultiselectDropdown();
@@ -579,7 +569,6 @@ function showToast(message, type = 'info') {
             // Add new mode class
             table.classList.add(mode);
         });
-        console.log(`🎨 Applied table display mode: ${mode}`);
     };
     
     DatabaseFiltering.saveTableVisibilityPreferences = function() {
@@ -589,12 +578,10 @@ function showToast(message, type = 'info') {
             preferences[checkbox.dataset.table] = checkbox.checked;
         });
         localStorage.setItem('database_table_visibility', JSON.stringify(preferences));
-        console.log('💾 Saved table visibility preferences:', preferences);
     };
     
     DatabaseFiltering.saveDisplayModePreference = function(mode) {
         localStorage.setItem('database_display_mode', mode);
-        console.log(`💾 Saved display mode preference: ${mode}`);
     };
     
     DatabaseFiltering.updateVisibilityStatus = function() {
@@ -625,7 +612,6 @@ function showToast(message, type = 'info') {
         const options = document.getElementById('tableVisibilityOptions');
         // GUARD: Prevent duplicate initialization 
         if (selected && selected.dataset.dropdownInitialized === 'true') {
-            console.log('🚫 Dropdown already initialized, skipping...');
             return;
         }
         
@@ -686,12 +672,10 @@ function showToast(message, type = 'info') {
             
             if (!isToggling && !dropdown.contains(e.target) && !e.target.closest('.btn[onclick*="showSection"]')) {
                 if (dropdown.classList.contains('open')) {
-                    console.log('🔧 Dropdown closed by outside click');
                     dropdown.classList.remove('open');
                     options.style.display = 'none';
                 }
             } else {
-                console.log('🚫 Outside click ignored - isToggling:', isToggling, 'contains:', dropdown.contains(e.target));
             }
         });
         
@@ -704,7 +688,6 @@ function showToast(message, type = 'info') {
             selected.dataset.dropdownInitialized = 'true';
         }
         
-        console.log('✅ Multiselect dropdown initialized successfully');
     };
     
     DatabaseFiltering.updateDropdownSelectedText = function() {
@@ -773,7 +756,5 @@ function showToast(message, type = 'info') {
     
     // Expose DatabaseFiltering globally
     window.DatabaseFiltering = DatabaseFiltering;
-    console.log('✅ FINAL: DatabaseFiltering exposed globally with functions:', Object.keys(DatabaseFiltering));
-    console.log('✅ FINAL: applyFilters type:', typeof DatabaseFiltering.applyFilters);
   
   })(window);

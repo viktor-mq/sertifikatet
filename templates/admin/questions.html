@@ -1581,7 +1581,6 @@ function initializeMobileEnhancements() {
 
 // Enhanced initialization for Phase 6
 function initializePhase6Enhancements() {
-  console.log('🚀 Initializing Phase 6: Polish & UX enhancements...');
   
   try {
     initializeTableDensity();
@@ -1597,12 +1596,7 @@ function initializePhase6Enhancements() {
     window.updateTableRow = enhancedUpdateTableRow;
     window.closeQuestionModal = enhancedCloseQuestionModal;
     
-    console.log('✅ Phase 6 enhancements initialized successfully');
     
-    // Show initialization complete toast
-    setTimeout(() => {
-      showToast('Admin panel enhancements loaded', 'success', { duration: 3000 });
-    }, 500);
     
     // Process server-rendered validation errors as toasts
     const validationErrorList = document.getElementById('validationErrorList');
@@ -1847,7 +1841,6 @@ function initializeEnhancedFiltering() {
   
   // Store images data globally for path construction
   window.adminImages = {{ images | tojson }};
-  console.log('Admin images loaded:', window.adminImages); // Debug log
   
   // Set initial filter state
   questionsCurrentFilters.search = searchInput.value;
@@ -2065,7 +2058,6 @@ function createQuestionTableRow(question) {
       const imageData = window.adminImages ? window.adminImages.find(img => img.filename === question.image_filename) : null;
       if (imageData && imageData.folder) {
         imageSrc = `/static/images/${imageData.folder}/${question.image_filename}`;
-        console.log('Found image with folder:', imageSrc);
       } else {
         imageSrc = `/static/images/${question.image_filename}`;
         console.log('Image without folder info:', imageSrc);
@@ -2191,7 +2183,7 @@ function updatePagination(pagination) {
 
 // Render pagination buttons using global AdminPagination
 function renderPaginationButtons(pagination) {
-  console.log('renderPaginationButtons called with:', pagination);
+  //console.log('renderPaginationButtons called with:', pagination);
   AdminPagination.updatePaginationControls('#paginationButtons', pagination);
 }
 
@@ -2370,7 +2362,6 @@ function initializeInitialPagination() {
     // Update pagination UI with server data
     updatePagination(questionsCurrentPagination);
     
-    console.log('Initial questions pagination initialized:', questionsCurrentPagination);
   } catch (error) {
     console.error('Error initializing pagination:', error);
   }

@@ -519,12 +519,6 @@ function getRecipientCount() {
     formData.append('target_pro_users', document.getElementById('target_pro').checked ? 'true' : 'false');
     formData.append('target_active_only', document.getElementById('target_active').checked ? 'true' : 'false');
     
-    console.log('Sending recipient count request with data:', {
-        target_free_users: document.getElementById('target_free').checked,
-        target_premium_users: document.getElementById('target_premium').checked,
-        target_pro_users: document.getElementById('target_pro').checked,
-        target_active_only: document.getElementById('target_active').checked
-    });
     
     fetch('{{ url_for("admin.get_marketing_recipients_count") }}', {
         method: 'POST',
@@ -534,11 +528,9 @@ function getRecipientCount() {
         body: formData
     })
     .then(response => {
-        console.log('Response status:', response.status);
         return response.json();
     })
     .then(data => {
-        console.log('Response data:', data);
         if (data.success !== false) {
             document.getElementById('recipient_count').innerHTML = 
                 `<div class="alert alert-info"><strong>${data.count}</strong> users will receive this email</div>`;

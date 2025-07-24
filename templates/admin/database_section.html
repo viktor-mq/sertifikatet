@@ -676,11 +676,9 @@ th {
                       getComputedStyle(databaseSection).display !== 'none';
       
       if (!isActive) {
-        console.log('🚫 Database section not active - deferring initialization');
         return;
       }
       
-      console.log('✅ Database section is active - initializing database filtering');
       
       // Initialize client-side database filtering system (scoped to database section)
       {% for table, rows in tables.items() %}
@@ -690,7 +688,6 @@ th {
       // Initialize database control features
       DatabaseFiltering.initializeDatabaseControls();
       
-      console.log('✅ DatabaseFiltering initialized for database section with controls');
     }
     
     // Try to initialize immediately
@@ -703,7 +700,6 @@ th {
         if (mutation.type === 'attributes' && mutation.attributeName === 'class') {
           const target = mutation.target;
           if (target.id === 'databaseSection' && target.classList.contains('active')) {
-            console.log('🔄 Database section became active - initializing');
             initializeDatabaseWhenActive();
           }
         }

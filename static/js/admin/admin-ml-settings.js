@@ -16,6 +16,7 @@ const MLConfigBatcher = window.MLConfigBatcher || {
     batchDelay: 10000, // 10 seconds
     isActive: false,
     notificationElement: null,
+    hideTimer: null, // Track the hide timeout
     
     // Queue a configuration change for batch processing
     queueChange(settingKey, value) {
@@ -355,8 +356,11 @@ const MLConfigBatcher = window.MLConfigBatcher || {
             </div>
         `;
         
-        // Auto-hide after 4 seconds
-        setTimeout(() => {
+        // Clear existing hide timer and set new one
+        if (this.hideTimer) {
+            clearTimeout(this.hideTimer);
+        }
+        this.hideTimer = setTimeout(() => {
             this.hideBatchingNotification();
         }, 4000);
     },
@@ -373,8 +377,11 @@ const MLConfigBatcher = window.MLConfigBatcher || {
             </div>
         `;
         
-        // Auto-hide after 6 seconds
-        setTimeout(() => {
+        // Clear existing hide timer and set new one
+        if (this.hideTimer) {
+            clearTimeout(this.hideTimer);
+        }
+        this.hideTimer = setTimeout(() => {
             this.hideBatchingNotification();
         }, 6000);
     },
@@ -390,14 +397,23 @@ const MLConfigBatcher = window.MLConfigBatcher || {
             </div>
         `;
         
-        // Auto-hide after 3 seconds
-        setTimeout(() => {
+        // Clear existing hide timer and set new one
+        if (this.hideTimer) {
+            clearTimeout(this.hideTimer);
+        }
+        this.hideTimer = setTimeout(() => {
             this.hideBatchingNotification();
         }, 3000);
     },
     
     // Hide batching notification
     hideBatchingNotification() {
+        // Clear any pending hide timer
+        if (this.hideTimer) {
+            clearTimeout(this.hideTimer);
+            this.hideTimer = null;
+        }
+        
         if (this.notificationElement) {
             this.notificationElement.style.opacity = '0';
             setTimeout(() => {
@@ -424,7 +440,6 @@ window.addEventListener('beforeunload', function(e) {
 
 // Initialize ML Settings section
 function initializeMLSettings() {
-    console.log('🤖 Initializing ML Settings section...');
     
     try {
         // Set up event listeners for ML controls
@@ -437,9 +452,7 @@ function initializeMLSettings() {
         loadMLConfiguration();
         
         // Initialize batching system
-        console.log('📝 Batching system ready for ML configuration changes');
         
-        console.log('✅ ML Settings section initialized successfully');
     } catch (error) {
         console.error('❌ Error initializing ML Settings:', error);
     }
@@ -506,7 +519,6 @@ function handleMLSettingUpdate(settingKey, value) {
 
 // NEW: Update dashboard sections when master toggle changes
 function updateDashboardSections(mlSystemEnabled) {
-    console.log(`🔄 Updating dashboard sections: ML System ${mlSystemEnabled ? 'Enabled' : 'Disabled'}`);
     
     // Calculate ML models count dynamically based on system state
     function calculateModelsActiveFromToggle(systemEnabled) {
@@ -526,20 +538,11 @@ function updateDashboardSections(mlSystemEnabled) {
         const adaptiveEnabled = adaptiveCheckbox?.checked === true;
         const skillTrackingEnabled = skillTrackingCheckbox?.checked === true;
         
-        console.log('🔍 ML Feature States:', {
-            difficultyEnabled,
-            adaptiveEnabled,
-            skillTrackingEnabled,
-            difficultyExists: !!difficultyCheckbox,
-            adaptiveExists: !!adaptiveCheckbox,
-            skillTrackingExists: !!skillTrackingCheckbox
-        });
         
         if (difficultyEnabled) activeCount++;
         if (adaptiveEnabled) activeCount++;
         if (skillTrackingEnabled) activeCount++; // This represents question_analyzer
         
-        console.log(`📊 Calculated active models count: ${activeCount}`);
         return activeCount;
     }
     
@@ -762,7 +765,6 @@ function setupMLSliders() {
 
 // Load ML configuration settings
 function loadMLConfiguration() {
-    console.log('Loading ML configuration...');
     
     fetch('/admin/api/ml/config')
         .then(response => {
@@ -773,7 +775,6 @@ function loadMLConfiguration() {
         })
         .then(config => {
             updateMLConfiguration(config);
-            console.log('✅ ML configuration loaded successfully');
         })
         .catch(error => {
             console.error('❌ Error loading ML configuration:', error);
@@ -788,7 +789,6 @@ function snakeToCamel(str) {
 
 // Update configuration form with loaded values
 function updateMLConfiguration(config) {
-    console.log('Updating ML configuration with:', config);
     
     // Define the mapping of API keys to their corresponding elements
     const toggleMappings = {
@@ -806,7 +806,6 @@ function updateMLConfiguration(config) {
             const toggle = document.getElementById(elementId);
             if (toggle) {
                 toggle.checked = config[apiKey];
-                console.log(`✅ Updated ${elementId}:`, config[apiKey]);
             } else {
                 console.warn(`❌ Toggle ${elementId} not found`);
             }
@@ -823,7 +822,6 @@ function updateMLConfiguration(config) {
             if (valueDisplay) {
                 valueDisplay.textContent = config.ml_learning_rate.toFixed(2);
             }
-            console.log('✅ Updated learning rate slider:', config.ml_learning_rate);
         } else {
             console.warn('❌ Learning rate slider not found');
         }
@@ -838,7 +836,6 @@ function updateMLConfiguration(config) {
             if (valueDisplay) {
                 valueDisplay.textContent = config.ml_adaptation_strength.toFixed(1);
             }
-            console.log('✅ Updated adaptation strength slider:', config.ml_adaptation_strength);
         } else {
             console.warn('❌ Adaptation strength slider not found');
         }
@@ -851,7 +848,6 @@ function updateMLConfiguration(config) {
                               document.getElementById('mlFallbackMode');
         if (fallbackSelect) {
             fallbackSelect.value = config.ml_fallback_mode;
-            console.log('✅ Updated fallback mode:', config.ml_fallback_mode);
         }
     }
     
@@ -860,7 +856,6 @@ function updateMLConfiguration(config) {
         const updateFrequencySelect = document.getElementById('mlUpdateFrequency');
         if (updateFrequencySelect) {
             updateFrequencySelect.value = config.ml_update_frequency;
-            console.log('✅ Updated update frequency:', config.ml_update_frequency);
         }
     }
     
@@ -876,7 +871,6 @@ function updateMLConfiguration(config) {
             const checkbox = document.getElementById(elementId);
             if (checkbox) {
                 checkbox.checked = config[apiKey];
-                console.log(`✅ Updated ${elementId}:`, config[apiKey]);
             }
         }
     });
@@ -884,12 +878,10 @@ function updateMLConfiguration(config) {
     // NEW: Apply master toggle dependency logic after loading configuration
     applyMasterToggleLogic(config);
     
-    console.log('🎯 ML Configuration update complete');
 }
 
 // NEW: Apply master toggle dependency logic
 function applyMasterToggleLogic(config) {
-    console.log('🔒 Applying master toggle dependency logic...');
     
     const masterToggleEnabled = config && config.ml_system_enabled;
     const featureControls = document.getElementById('mlFeatureControls');
@@ -902,7 +894,6 @@ function applyMasterToggleLogic(config) {
             document.querySelectorAll('#mlFeatureControls input[type="checkbox"]').forEach(input => {
                 input.disabled = false;
             });
-            console.log('✅ Individual features enabled (master toggle is ON)');
         } else {
             // Disable the feature controls section
             featureControls.classList.add('disabled');
@@ -930,12 +921,10 @@ function applyMasterToggleLogic(config) {
     // Update dashboard sections based on master toggle state
     updateDashboardSections(masterToggleEnabled);
     
-    console.log(`🎯 Master toggle logic applied: ${masterToggleEnabled ? 'System Active' : 'System Inactive'}`);
 }
 
 // Load ML data and refresh dashboard
 function loadMLData() {
-    console.log('Loading ML data...');
     
     // Show loading state
     setMLLoadingState(true);
@@ -962,7 +951,6 @@ function loadMLData() {
                 diagnostics: diagnosticsData
             };
             updateMLDashboard(combinedData);
-            console.log('✅ ML data loaded successfully from both endpoints');
         })
         .catch(error => {
             console.error('❌ Error loading ML data:', error);
@@ -975,8 +963,6 @@ function loadMLData() {
 
 // Update ML dashboard with fresh data
 function updateMLDashboard(data) {
-    console.log('Updating dashboard with data:', data);
-    console.log('Looking for element totalUsers:', document.getElementById('totalUsers'));
     
     // Calculate ML models active count dynamically from diagnostics data (same as modal)
     function calculateMLModelsActive(diagnostics) {
@@ -1040,7 +1026,7 @@ function updateMLStatusBanner(status) {
             <span style="margin-right: 10px;">✅</span>
             <div>
                 <strong>ML System Active</strong>
-                <span style="margin-left: 10px; font-size: 0.9em;">Algorithm v${status.algorithm_version}</span>
+                <span style="margin-left: 10px; font-size: 0.9em;">Algorithm ${status.algorithm_version}</span>
             </div>
         `;
     } else {
@@ -1148,7 +1134,6 @@ function updateRecentActivity(activities) {
 
 // Load skills analysis data
 function loadSkillsAnalysis() {
-    console.log('🔍 Loading skills analysis data...');
     
     fetch('/admin/api/ml/skills-analysis')
         .then(response => {
@@ -1159,7 +1144,6 @@ function loadSkillsAnalysis() {
         })
         .then(data => {
             updateSkillsAnalysis(data);
-            console.log('✅ Skills analysis data loaded successfully');
         })
         .catch(error => {
             console.error('❌ Error loading skills analysis data:', error);
@@ -1175,7 +1159,6 @@ function loadSkillsAnalysis() {
 
 // Update skills analysis display
 function updateSkillsAnalysis(data) {
-    console.log('📊 Updating skills analysis with data:', data);
     
     // Update skill level distribution
     const skillContainer = document.querySelector('.user-skills-analysis .skills-distribution');
@@ -1316,13 +1299,11 @@ function setMLLoadingState(loading) {
 
 // Action button functions
 function refreshMLData() {
-    console.log('🔄 Refreshing ML data...');
     showMLNotification('Refreshing ML data...', 'info');
     loadMLData();
 }
 
 function exportMLInsights() {
-    console.log('📊 Exporting ML insights...');
     
     setMLLoadingState(true);
     
@@ -1365,7 +1346,6 @@ function resetMLModels() {
         return;
     }
     
-    console.log('⚙️ Resetting ML models...');
     setMLLoadingState(true);
     
     fetch('/admin/api/ml/reset', {
@@ -1397,7 +1377,6 @@ function resetMLModels() {
 }
 
 function showMLDiagnostics() {
-    console.log('🔍 Showing ML diagnostics...');
     
     fetch('/admin/api/ml/diagnostics')
         .then(response => {

@@ -147,7 +147,6 @@
 
             // Update pagination controls HTML
             updatePaginationControls: function(containerSelector, pagination) {
-                console.log('AdminPagination.updatePaginationControls called with:', containerSelector, pagination);
                 const container = document.querySelector(containerSelector);
                 if (!container) {
                     console.error('Container not found:', containerSelector);
@@ -211,8 +210,6 @@
                         Neste <span class="pagination-arrow">›</span>
                     </button>`;
                 }
-
-                console.log('Setting pagination HTML:', html);
                 container.innerHTML = html;
             },
 
@@ -472,7 +469,7 @@
         
         // Initialize section-specific functionality
         function initializeSection(sectionName) {
-            console.log('Initializing section:', sectionName);
+            //console.log('Initializing section:', sectionName);
             
             switch(sectionName) {
                 case 'questions':
@@ -483,56 +480,48 @@
                     // Load standalone reports section
                     if (typeof initializeReportsSection === 'function') {
                         initializeReportsSection();
-                        console.log('Standalone Reports section initialized');
                     }
                     break;
                     
                 case 'manageUsers':
                     if (typeof initializeUsersEnhancements === 'function') {
                         initializeUsersEnhancements();
-                        console.log('Users section initialized');
                     }
                     break;
                     
                 case 'auditLog':
                     if (typeof initializeAuditEnhancements === 'function') {
                         initializeAuditEnhancements();
-                        console.log('Audit section initialized');
                     }
                     break;
                     
                 case 'mlSettings2':
                     if (typeof initializeMLSettings === 'function') {
                         initializeMLSettings();
-                        console.log('ML Settings section initialized');
                     }
                     break;
                     
                 case 'marketing':
                     if (typeof initializeMarketing === 'function') {
                         initializeMarketing();
-                        console.log('Marketing section initialized');
                     }
                     break;
                     
                 case 'gamification':
                     if (typeof initializeGamificationAdmin === 'function') {
                         initializeGamificationAdmin();
-                        console.log('Gamification section initialized');
                     }
                     break;
                     
                 case 'learningModules':
                     if (typeof initializeLearningModules === 'function') {
                         initializeLearningModules();
-                        console.log('Learning Modules section initialized');
                     }
                     break;
                     
                 case 'database':
                     // Database section uses its own DatabaseFiltering system
                     // Skip AdminEnhancements initialization to avoid conflicts
-                    console.log('Database section uses DatabaseFiltering - skipping AdminEnhancements');
                     break;
                     
                 default:
@@ -542,7 +531,6 @@
 
         // New ML Dashboard function - bypasses section management issues
         function showMLDashboard() {
-            console.log('Opening ML Dashboard...');
             
             // Hide all sections
             document.querySelectorAll('.section').forEach(section => {
@@ -564,15 +552,10 @@
                 mlSection.style.visibility = 'visible';
                 mlSection.classList.add('active');
                 
-                console.log('ML section shown, dimensions:', {
-                    width: mlSection.offsetWidth,
-                    height: mlSection.offsetHeight
-                });
                 
                 // Initialize ML functionality
                 if (typeof initializeMLSettings === 'function') {
                     initializeMLSettings();
-                    console.log('ML Settings initialized');
                 }
                 
                 // Make ML Dashboard button active if it exists
