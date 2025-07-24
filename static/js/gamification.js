@@ -1,4 +1,3 @@
-console.log('🔧 GAMIFICATION.JS LOADED!');
 // Gamification real-time updates
 class GamificationUpdater {
     constructor() {

@@ -91,7 +91,6 @@ class GTMHelper {
         }
         
         window.dataLayer.push(enhancedData);
-        console.log('📊 GTM Enhanced Event:', eventName, enhancedData);
     }
     
     /**

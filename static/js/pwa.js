@@ -27,8 +27,7 @@ class PWAInstaller {
                 const registration = await navigator.serviceWorker.register('/sw.js', {
                     scope: '/'
                 });
-                
-                console.log('Service Worker registered successfully:', registration);
+
                 
                 // Handle service worker updates
                 registration.addEventListener('updatefound', () => {

@@ -123,7 +123,6 @@ class EnhancedCookieConsentManager {
     loadGoogleAnalytics() {
         // Only load if not already loaded and user has consented
         if (window.gtag || document.querySelector(`script[src*="googletagmanager.com/gtag/js?id=${this.GOOGLE_ANALYTICS_ID}"]`)) {
-            console.log('Google Analytics already loaded');
             return;
         }
         

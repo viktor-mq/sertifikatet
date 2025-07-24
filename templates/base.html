@@ -483,12 +483,6 @@
     {% if config.DEBUG %}
     <script src="{{ url_for('static', filename='js/gtm-testing.js') }}"></script>
     <script>
-        // Add debug tools to console in development
-        console.log('🔧 GTM Debug Tools Available:');
-        console.log('  - testGTM() - Run comprehensive GTM tests');
-        console.log('  - testGTMTriggers() - Test GTM trigger firing');
-        console.log('  - window.gtmTestReport - View last test report');
-        console.log('  - Add ?gtm_debug=1 to URL for auto-testing');
     </script>
     {% endif %}
     
