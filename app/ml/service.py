@@ -426,7 +426,8 @@ class MLService:
         """Get user skills analysis data for admin dashboard."""
         try:
             from sqlalchemy import func
-            from ..models import UserSkillProfile, QuizSession, Question
+            from .models import UserSkillProfile
+            from ..models import QuizSession, Question
             
             # Get skill level distribution
             skill_distribution = {}

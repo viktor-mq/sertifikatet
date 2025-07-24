@@ -125,6 +125,7 @@ class MarketingEmailService:
         # Update email status
         email.status = 'sending'
         email.recipients_count = len(recipients)
+        email.sent_count = len(recipients) # Added this line to update sent_count
         db.session.commit()
         
         # Send emails in background thread with app context

@@ -2161,7 +2161,7 @@ def api_marketing_templates():
         logger.error(f'Error in api_marketing_templates: {e}')
         return jsonify({'success': False, 'error': str(e)}), 500
 
-@admin_bp.route('/api/marketing-recipients', methods=['GET', 'POST'])
+@admin_bp.route('/api/marketing-recipients-count', methods=['GET', 'POST'])
 @admin_required
 def get_marketing_recipients_count():
    """Get count of marketing email recipients"""
@@ -2994,11 +2994,14 @@ def get_marketing_recipients():
             )
         else:
             # Get all marketing-eligible recipients with basic targeting
+            # Read target_active_only from request arguments
+            target_active_only_arg = request.args.get('target_active_only', 'false').lower() == 'true'
+            
             recipients = MarketingEmailService.get_eligible_recipients(
-                target_free=True,
+                target_free=True, # Assuming these are always true for general count
                 target_premium=True,
                 target_pro=True,
-                target_active_only=False
+                target_active_only=target_active_only_arg
             )
         
         # Apply additional filters
@@ -3351,6 +3354,12 @@ def api_marketing_emails():
                 'success_rate': (email.sent_count / email.recipients_count * 100) if email.recipients_count > 0 else 0,
                 'created_at': email.created_at.strftime('%d.%m.%Y %H:%M') if email.created_at else '',
                 'sent_at': email.sent_at.strftime('%d.%m.%Y %H:%M') if email.sent_at else None,
+                'recipients_count': len(MarketingEmailService.get_eligible_recipients(
+                    email.target_free_users,
+                    email.target_premium_users,
+                    email.target_pro_users,
+                    email.target_active_only
+                )),
                 'created_by': {
                     'id': email.created_by.id,
                     'username': email.created_by.username
