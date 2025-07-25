@@ -1,0 +1,509 @@
+# Sertifikatet Mini-Games Architecture Plan
+# Modular game system with independent components and shared interfaces
+
+project_info:
+  name: "Sertifikatet Mini-Games System"
+  purpose: "Modular, scalable mini-games for Norwegian driving theory learning"
+  architecture: "Plugin-based with shared interfaces and connection points"
+  created: "2024"
+  
+architecture:
+  design_principles:
+    - "Separation of Concerns: Each game is completely independent"
+    - "Shared Interfaces: Common base classes and connection points"
+    - "Plugin Architecture: Easy to add/remove games without affecting others"
+    - "Lazy Loading: Games load only when needed"
+    - "Scalable Development: Multiple developers can work simultaneously"
+    
+  folder_structure:
+    root: "games/"
+    structure: |
+      games/
+      ├── __init__.py              # Game registry & common interfaces
+      ├── game_plan.yaml           # This file - master plan
+      ├── base/                    # Shared game components
+      │   ├── __init__.py
+      │   ├── models.py           # Common game models (BaseGame, GameSession, etc.)
+      │   ├── utils.py            # Shared utilities (scoring, XP calculation)
+      │   ├── interfaces.py       # Abstract base classes
+      │   ├── templates/          # Common game templates
+      │   │   ├── base_game.html  # Base template for all games
+      │   │   └── components/     # Shared components (timers, scoreboards)
+      │   └── static/             # Shared game assets
+      │       ├── css/
+      │       │   └── game_common.css
+      │       └── js/
+      │           └── game_common.js
+      ├── traffic_signs/          # Traffic sign recognition game
+      │   ├── __init__.py
+      │   ├── routes.py           # Game-specific Flask routes
+      │   ├── game_logic.py       # Core game mechanics
+      │   ├── models.py           # Game-specific models
+      │   ├── config.py           # Game configuration
+      │   ├── templates/          # Game templates
+      │   │   ├── game.html
+      │   │   ├── leaderboard.html
+      │   │   └── results.html
+      │   └── static/             # Game assets
+      │       ├── css/
+      │       │   └── traffic_signs.css
+      │       ├── js/
+      │       │   └── traffic_signs.js
+      │       └── images/
+      │           └── signs/      # Traffic sign images
+      ├── memory_game/            # Memory matching game
+      ├── driving_simulator/      # Driving simulation game
+      ├── time_challenge/         # Speed quiz game
+      ├── rule_puzzle/            # Traffic rule puzzle game
+      └── multiplayer/            # Multiplayer competitive games
+
+connection_points:
+  main_app_integration:
+    registration: |
+      # In main app/__init__.py
+      from games import register_all_games
+      register_all_games(app)
+    
+    routing: |
+      # URL structure: /games/{game_name}/{action}
+      # Example: /games/traffic_signs/play
+      #          /games/memory_game/leaderboard
+    
+    shared_models: |
+      # Existing models that games will use:
+      - User (for player identification)
+      - GameSession (for session tracking)
+      - GameScenario (for game configuration)
+      - XPTransaction (for XP rewards)
+      - Achievement (for game achievements)
+    
+  gamification_hooks:
+    xp_system: "Games award XP through shared XP calculation system"
+    achievements: "Games trigger achievements through event system"
+    leaderboards: "Games contribute to global and game-specific leaderboards"
+    daily_challenges: "Games can create and complete daily challenges"
+    progress_tracking: "Games update user progress and statistics"
+
+shared_interfaces:
+  base_game_class: |
+    class BaseGame:
+        def __init__(self, user_id):
+            self.user_id = user_id
+            self.session = None
+        
+        def start_session(self) -> GameSession:
+            """Initialize a new game session"""
+            pass
+        
+        def process_action(self, action_data) -> dict:
+            """Process game action and return result"""
+            pass
+        
+        def calculate_score(self, session_data) -> int:
+            """Calculate final score for session"""
+            pass
+        
+        def award_xp(self, score) -> int:
+            """Calculate and award XP based on performance"""
+            pass
+        
+        def complete_session(self, final_score) -> dict:
+            """Complete session and return results"""
+            pass
+        
+        def get_leaderboard(self, limit=10) -> list:
+            """Get top scores for this game"""
+            pass
+
+  common_utilities:
+    scoring_system: "Standardized scoring algorithms across all games"
+    xp_calculation: "Consistent XP rewards based on performance"
+    session_management: "Common session lifecycle management"
+    analytics_tracking: "Unified analytics and performance tracking"
+    achievement_triggers: "Shared achievement detection system"
+
+games:
+  traffic_signs:
+    status: "✅ IMPLEMENTED (needs migration to new structure)"
+    priority: 1
+    description: "Interactive traffic sign recognition game"
+    learning_objectives:
+      - "Memorize Norwegian traffic signs"
+      - "Quick sign identification"
+      - "Visual pattern recognition"
+    game_mechanics:
+      - "Multiple choice sign identification"
+      - "Progressive difficulty"
+      - "Time-based scoring"
+      - "Streak bonuses"
+    technical_features:
+      - "Image-based questions"
+      - "Real-time scoring"
+      - "Session persistence"
+      - "Leaderboard integration"
+    migration_tasks:
+      - "Move existing code to new structure"
+      - "Implement BaseGame interface"
+      - "Separate templates and assets"
+      - "Update routing to new URL scheme"
+    
+  memory_game:
+    status: "🚧 PLANNED"
+    priority: 2
+    description: "Memory card matching game with traffic signs"
+    learning_objectives:
+      - "Reinforce sign recognition through repetition"
+      - "Improve visual memory"
+      - "Pattern matching skills"
+    game_mechanics:
+      - "Card flip and match gameplay"
+      - "Multiple difficulty levels (4x4, 6x6, 8x8 grids)"
+      - "Time tracking"
+      - "Move counting"
+    technical_features:
+      - "CSS animations for card flips"
+      - "Responsive grid layouts"
+      - "Touch/click interactions"
+      - "Progress saving"
+    implementation_estimate: "2-3 days"
+    
+  time_challenge:
+    status: "🚧 PLANNED"
+    priority: 3
+    description: "Speed quiz with countdown timer"
+    learning_objectives:
+      - "Quick decision making"
+      - "Exam pressure simulation"
+      - "Rapid recall training"
+    game_mechanics:
+      - "60-second rapid-fire questions"
+      - "Progressive difficulty"
+      - "Combo multipliers"
+      - "Bonus time for correct answers"
+    technical_features:
+      - "Real-time countdown"
+      - "Question queue management"
+      - "Performance analytics"
+      - "Streak tracking"
+    implementation_estimate: "1-2 days"
+    
+  traffic_scenario_puzzle:
+    status: "🚧 HIGH PRIORITY - DETAILED PLAN READY"
+    priority: 2
+    description: "Interactive traffic scenario puzzle - solve traffic situations by placing vehicles and signs"
+    norwegian_name: "Trafikk Scenario Puslespill"
+    learning_objectives:
+      - "Deep understanding of traffic rules and priorities"
+      - "Scenario-based problem solving"
+      - "Right-of-way comprehension"
+      - "Intersection management skills"
+      - "Critical thinking in traffic situations"
+    
+    game_mechanics:
+      - "Drag-and-drop vehicle placement"
+      - "Traffic rule validation engine"
+      - "Multi-step scenario solving"
+      - "Progressive difficulty levels (3 levels)"
+      - "Hint system with rule explanations"
+      - "Score based on efficiency and accuracy"
+      - "Time bonus for quick solutions"
+    
+    scenario_types:
+      - "Intersection Priority - 4-way intersection vehicle order"
+      - "Roundabout Navigation - correct roundabout sequence"
+      - "Pedestrian Crossings - vehicle-pedestrian interactions"
+      - "Emergency Vehicles - clear path for ambulance/police"
+      - "Lane Merging - organize vehicles merging onto highway"
+      - "School Zones - apply speed limits and safety rules"
+      - "Construction Zones - navigate temporary traffic patterns"
+      - "Parking Scenarios - legal vs illegal parking situations"
+    
+    technical_features:
+      - "HTML5 Canvas for interactive road layouts"
+      - "SVG overlays for precise vehicle positioning"
+      - "Drag-and-drop engine with collision detection"
+      - "Norwegian traffic rule validation system"
+      - "Real-time scenario validation"
+      - "Achievement system for perfect solutions"
+    
+    implementation_estimate: "7-10 days"
+    
+  violation_spotter:
+    status: "🚧 HIGH PRIORITY - DETAILED PLAN READY"
+    priority: 3
+    description: "Feilfinner - Spot traffic violations in animated scenarios"
+    norwegian_name: "Feilfinner"
+    learning_objectives:
+      - "Develop traffic violation awareness"
+      - "Improve observational skills"
+      - "Learn consequences of rule violations"
+      - "Quick decision making under time pressure"
+      - "Pattern recognition for dangerous behaviors"
+    
+    game_mechanics:
+      - "5-second animated traffic scenarios"
+      - "Click on vehicles committing violations"
+      - "Multiple violations possible per scenario"
+      - "Time pressure scoring (faster = more points)"
+      - "Streak bonuses for consecutive correct spots"
+      - "Penalty for false positives"
+      - "Progressive difficulty with more complex scenarios"
+    
+    violation_types:
+      - "Rødt lys kjøring - Running red lights"
+      - "Manglende blinklys - Not using turn signals"
+      - "Feil kjørefelt - Wrong lane usage"
+      - "For høy hastighet - Speeding violations"
+      - "Ikke vikeplikt - Failure to yield"
+      - "Ulovlig parkering - Illegal parking"
+      - "Mobil bruk - Phone usage while driving"
+      - "Ikke stopp for fotgjenger - Not stopping for pedestrians"
+      - "Følger for tett - Following too closely"
+      - "Ulovlig forbikjøring - Illegal overtaking"
+    
+    technical_features:
+      - "CSS animations for vehicle movement"
+      - "JavaScript timeline control"
+      - "Click detection on moving vehicles"
+      - "Real-time violation marking"
+      - "5-second scenario loops with replay"
+      - "Performance-based difficulty progression"
+    
+    implementation_estimate: "7-10 days"
+    
+  driving_simulator:
+    status: "🚧 HIGH PRIORITY - DETAILED PLAN READY"
+    priority: 4
+    description: "2D top-down driving simulation with realistic traffic scenarios"
+    norwegian_name: "Kjøresimulator"
+    learning_objectives:
+      - "Practical application of traffic rules"
+      - "Spatial awareness and vehicle control"
+      - "Decision making in complex traffic"
+      - "Safe driving behavior reinforcement"
+      - "Emergency situation handling"
+    
+    game_mechanics:
+      - "Arrow key/WASD vehicle control"
+      - "Realistic physics (acceleration, braking, turning)"
+      - "AI traffic with rule-following behavior"
+      - "Collision detection and consequences"
+      - "Scenario-based challenges"
+      - "Performance scoring (safety, efficiency, rule compliance)"
+      - "Progressive difficulty levels"
+    
+    scenario_types:
+      - "City Driving - Navigate urban intersections and traffic"
+      - "Highway Merging - Merge safely onto busy highways"
+      - "Roundabout Navigation - Enter and exit roundabouts correctly"
+      - "Parking Challenges - Parallel and perpendicular parking"
+      - "Emergency Response - React to ambulances and hazards"
+      - "Weather Conditions - Drive in rain, snow, reduced visibility"
+      - "School Zones - Navigate safely around schools"
+      - "Construction Zones - Follow temporary traffic patterns"
+    
+    technical_features:
+      - "HTML5 Canvas for smooth 60fps rendering"
+      - "Vehicle physics engine (momentum, friction, turning)"
+      - "AI vehicles following traffic rules"
+      - "Dynamic traffic flow management"
+      - "Weather effects on vehicle handling"
+      - "Modular scenario loading system"
+    
+    implementation_estimate: "12-16 days"
+    
+  multiplayer:
+    status: "🚧 PLANNED"
+    priority: 6
+    description: "Real-time competitive quiz battles"
+    learning_objectives:
+      - "Social learning"
+      - "Competitive motivation"
+      - "Peer interaction"
+    game_mechanics:
+      - "1v1 or group competitions"
+      - "Real-time question battles"
+      - "Tournament brackets"
+      - "Spectator mode"
+    technical_features:
+      - "WebSocket connections"
+      - "Real-time synchronization"
+      - "Matchmaking system"
+      - "Chat integration"
+    implementation_estimate: "14-21 days"
+
+implementation_roadmap:
+  phase_1_foundation:
+    duration: "3-5 days"
+    priority: "IMMEDIATE"
+    tasks:
+      - "Create base game infrastructure"
+      - "Implement shared interfaces and utilities"
+      - "Set up game registry system"
+      - "Create common templates and styles"
+      - "Migrate traffic_signs to new structure"
+    deliverables:
+      - "Working modular architecture"
+      - "Traffic signs game in new structure"
+      - "Base classes for other games"
+      
+  phase_2_core_games:
+    duration: "7-10 days"
+    priority: "HIGH"
+    tasks:
+      - "Implement traffic_scenario_puzzle game"
+      - "Implement violation_spotter (Feilfinner) game"
+      - "Add game-specific achievements"
+      - "Create unified leaderboards"
+      - "Mobile optimization for puzzle games"
+    deliverables:
+      - "3 fully functional interactive games"
+      - "Integrated scoring system"
+      - "Game-specific analytics"
+      - "Mobile-responsive gameplay"
+      
+  phase_3_advanced_simulation:
+    duration: "12-16 days"
+    priority: "MEDIUM"
+    tasks:
+      - "Implement driving_simulator game"
+      - "Add advanced physics and AI"
+      - "Create scenario scripting system"
+      - "Performance optimization"
+      - "Advanced analytics dashboard"
+    deliverables:
+      - "4 complete games with simulation"
+      - "Advanced game mechanics"
+      - "Performance monitoring"
+      - "Scenario management system"
+      
+  phase_4_enhancement_features:
+    duration: "5-7 days"
+    priority: "LOW"
+    tasks:
+      - "Implement memory_game and time_challenge"
+      - "Add tournament system"
+      - "Create social features"
+      - "Advanced achievement system"
+    deliverables:
+      - "6 complete games"
+      - "Social gaming features"
+      - "Competition system"
+      
+  phase_5_multiplayer_future:
+    duration: "14-21 days"
+    priority: "FUTURE"
+    tasks:
+      - "Implement multiplayer game"
+      - "Add real-time features"
+      - "Create matchmaking system"
+      - "Advanced social features"
+    deliverables:
+      - "Complete game ecosystem"
+      - "Real-time multiplayer"
+      - "Social learning platform"
+
+technical_considerations:
+  performance:
+    lazy_loading: "Games load only when accessed"
+    asset_optimization: "Game-specific CSS/JS bundling"
+    caching_strategy: "Aggressive caching for game assets"
+    database_optimization: "Efficient queries for leaderboards and stats"
+    
+  scalability:
+    horizontal_scaling: "Games can run on separate servers if needed"
+    database_sharding: "Game data can be partitioned by game type"
+    cdn_integration: "Static game assets served via CDN"
+    caching_layers: "Redis for session data and leaderboards"
+    
+  monitoring:
+    game_analytics: "Track player behavior and performance"
+    error_tracking: "Game-specific error monitoring"
+    performance_metrics: "Load times and responsiveness"
+    user_engagement: "Play time and retention metrics"
+
+integration_checklist:
+  main_app_changes:
+    - "[ ] Add games blueprint registration"
+    - "[ ] Update navigation to include games section"
+    - "[ ] Modify user dashboard to show game stats"
+    - "[ ] Update achievement system for game events"
+    - "[ ] Add game-specific daily challenges"
+    
+  database_changes:
+    - "[ ] Add game_type field to existing GameSession model"
+    - "[ ] Create game-specific configuration tables"
+    - "[ ] Add indexes for game leaderboard queries"
+    - "[ ] Update XP calculation for game rewards"
+    
+  frontend_changes:
+    - "[ ] Create game navigation component"
+    - "[ ] Add game cards to main dashboard"
+    - "[ ] Implement game-specific progress indicators"
+    - "[ ] Add social sharing for game achievements"
+
+testing_strategy:
+  unit_tests:
+    - "Test each game's core logic independently"
+    - "Test shared utilities and interfaces"
+    - "Test XP calculation and scoring algorithms"
+    
+  integration_tests:
+    - "Test game registration and routing"
+    - "Test gamification system integration"
+    - "Test cross-game leaderboards and achievements"
+    
+  user_acceptance_tests:
+    - "Test complete game flows"
+    - "Test mobile responsiveness"
+    - "Test performance under load"
+
+deployment_strategy:
+  development:
+    - "Feature flags for individual games"
+    - "A/B testing for game mechanics"
+    - "Gradual rollout to user segments"
+    
+  production:
+    - "Blue-green deployment for game updates"
+    - "CDN deployment for game assets"
+    - "Database migration scripts for new features"
+    
+  monitoring:
+    - "Game-specific error tracking"
+    - "Performance monitoring per game"
+    - "User engagement analytics"
+
+success_metrics:
+  engagement:
+    - "Daily active users per game"
+    - "Average session duration per game"
+    - "Game completion rates"
+    - "Return player percentage"
+    
+  learning_effectiveness:
+    - "Improvement in quiz scores after game play"
+    - "Knowledge retention metrics"
+    - "Exam pass rates correlation"
+    
+  business_impact:
+    - "User retention improvement"
+    - "Premium subscription conversions"
+    - "User acquisition through game sharing"
+    - "Revenue per user increase"
+
+future_enhancements:
+  ai_integration:
+    - "Adaptive difficulty based on performance"
+    - "Personalized game recommendations"
+    - "AI-generated scenarios and questions"
+    
+  social_features:
+    - "Friend challenges and competitions"
+    - "Team-based learning games"
+    - "Community-created content"
+    
+  advanced_analytics:
+    - "Learning path optimization"
+    - "Predictive performance modeling"
+    - "Personalized study recommendations"

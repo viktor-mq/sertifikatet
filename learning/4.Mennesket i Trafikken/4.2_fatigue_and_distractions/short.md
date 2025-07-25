@@ -3,7 +3,14 @@
 ## Hovedpoeng
 Trøtthet og distraksjoner er "stille farer" som svekker kjøreevnen like mye som rus. De reduserer reaksjonsevne, konsentrasjon og dømmekraft, og øker risikoen for ulykker betydelig.
 
+
 ## Trøtthet: Den Undervurderte Faren
+
+📉 **Visste du?**  
+Trøtthet er en medvirkende faktor i mellom **10 og 20 % av trafikkulykker i Norge**.  
+→ Likevel undervurderes den ofte – både av sjåfører og medpassasjerer.
+
+🔗 [Kilde: Stiftelsen Norsk Luftambulanse](https://norskluftambulanse.no/nyheter/for-trott-kjore/)
 
 ### 1. **Effekter:**
 - Redusert reaksjonsevne, nedsatt konsentrasjon (mikrosøvn), svekket dømmekraft, synsforstyrrelser.

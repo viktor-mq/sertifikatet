@@ -2205,7 +2205,7 @@ class LearningService:
             submodule_counts = [5, 5, 5, 4, 4]  # As defined in mock data
             max_subs = submodule_counts[current_module - 1] if current_module <= len(submodule_counts) else 5
             
-            if (next_sub - current_module) <= (max_subs / 10):
+            if abs((next_sub - current_module) - (max_subs / 10)) < 1e-10 or (next_sub - current_module) < (max_subs / 10):
                 # Stay in current module
                 return {
                     'submodule_id': next_sub,

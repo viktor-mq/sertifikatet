@@ -19,6 +19,7 @@ Reaksjonstiden er den tiden som går fra du oppfatter en fare til du faktisk beg
 
 **Eksempel på reaksjonslengde:**
 
+
 -   Ved 50 km/t (ca. 14 m/s) tilbakelegger du ca. 14 meter på 1 sekund.
 -   Ved 80 km/t (ca. 22 m/s) tilbakelegger du ca. 22 meter på 1 sekund.
 -   Ved 100 km/t (ca. 28 m/s) tilbakelegger du ca. 28 meter på 1 sekund.
@@ -30,6 +31,10 @@ Denne avstanden er ren "tapt" avstand før du i det hele tatt begynner å bremse
 ### Bremselengde: Fysikkens Lover i Praksis 🚗💨
 
 Bremselengden er avstanden bilen tilbakelegger fra det øyeblikket du begynner å bremse til bilen står helt stille. Denne lengden er direkte påvirket av en rekke fysiske faktorer, og den øker eksponentielt med hastigheten. Det betyr at hvis du dobler hastigheten, firedobles bremselengden.
+
+En enkel huskeregel brukt i teorien for tørr asfalt er: **(fart / 10) × (fart / 10) ÷ 2** – for eksempel vil 80 km/t gi: (8 × 8) ÷ 2 = 32 meter.
+
+På **glatt føre** (snø/is) kan du bruke samme formel, men multiplisere resultatet med **4** for å få en realistisk bremselengde.
 
 **Faktorer som påvirker bremselengden:**
 
@@ -49,11 +54,39 @@ Bremselengden er avstanden bilen tilbakelegger fra det øyeblikket du begynner �
     -   **ABS (Anti-lock Braking System):** Hjelper deg å styre under hard bremsing, men reduserer ikke nødvendigvis bremselengden på alle underlag (kan faktisk øke den på løst underlag som grus/snø).
 -   **Veiens helning:** I nedoverbakke øker bremselengden, mens i oppoverbakke reduseres den.
 
-**Eksempel på bremselengde (omtrentlige verdier på tørr asfalt):**
+**Eksempel på bremselengde (omtrentlige verdier):**
+<div style="font-family: sans-serif; max-width: 400px;">
+  <div style="margin-bottom: 8px;">
+    <label for="long_dry"><input type="radio" id="long_dry" name="long_surface" value="dry" checked onchange="updateBrakeDistanceLong()"> Tørr asfalt</label>
+    <label for="long_slippery" style="margin-left: 15px;"><input type="radio" id="long_slippery" name="long_surface" value="slippery" onchange="updateBrakeDistanceLong()"> Glatt føre</label>
+  </div>
+  <div style="text-align: center;">
+    <label for="long_speedRange"><strong>Fart (km/t):</strong> <span id="long_speedValue">50</span></label>
+  </div>
+  <input type="range" id="long_speedRange" min="10" max="130" value="50" step="1" oninput="updateBrakeDistanceLong()" style="width: 100%;">
+  <p>💡 <strong>Bremselengde (<span id="long_surfaceLabel">tørr asfalt</span>):</strong> <span id="long_brakeDistance">12.5</span> meter</p>
+</div>
 
--   Ved 50 km/t: ca. 15 meter
--   Ved 80 km/t: ca. 40 meter
--   Ved 100 km/t: ca. 60 meter
+<script>
+  function updateBrakeDistanceLong() {
+    const speed = parseInt(document.getElementById("long_speedRange").value);
+    const x = speed / 10;
+    let distance = (x * x) / 2;
+    const surface = document.querySelector('input[name="long_surface"]:checked').value;
+    if (surface === "slippery") {
+      distance *= 4;
+    }
+    document.getElementById("long_speedValue").textContent = speed;
+    document.getElementById("long_brakeDistance").textContent = distance.toFixed(1);
+    const surfaceLabel = surface === "slippery" ? "glatt føre" : "tørr asfalt";
+    document.getElementById("long_surfaceLabel").textContent = surfaceLabel;
+  }
+
+  updateBrakeDistanceLong(); // init
+</script>
+-   Ved 50 km/t: ca. 12.5 meter
+-   Ved 80 km/t: ca. 32 meter
+-   Ved 100 km/t: ca. 50 meter
 
 ---
 

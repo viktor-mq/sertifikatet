@@ -6,15 +6,18 @@ Vegoppmerking er linjer, symboler og tekst malt på veien. De organiserer trafik
 ## Forstå Linjene
 
 ### 1. **Heltrukken Linje (Hvit eller Gul)**
+![Heltrukket linje](/static/images/signs/linjer_og/sf200510071219100401_gif.gif)
 - **Betydning:** Absolutt forbud mot å krysse. Tenk på den som en vegg.
 - **Gul heltrukken:** Forbikjøringsforbud.
 - **Hvit heltrukken:** Kjørefeltlinje eller kantlinje du ikke skal krysse.
 
 ### 2. **Stiplet Linje (Hvit eller Gul)**
+![striplet linje](/static/images/signs/linjer_og/sf200510071219100201_gif_2.gif)
 - **Betydning:** Du kan krysse linjen hvis det er trygt og forsvarlig.
 - **Gul stiplet (varsellinje):** Advarsel om dårlig sikt. Forbikjøring frarådes.
 
 ### 3. **Kombinert Linje (Gul)**
+![kombinerte linjer](/static/images/signs/linjer_og/sf200510071219100601_gif.gif) 
 - **Regel:** Linjen nærmest deg gjelder. Er den heltrukken, har du forbikjøringsforbud. Er den stiplet, kan du kjøre forbi.
 
 ## Viktige Symboler og Tverrlinjer

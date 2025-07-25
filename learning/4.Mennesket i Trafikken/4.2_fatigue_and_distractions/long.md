@@ -4,6 +4,12 @@
 
 Alkohol og rusmidler er åpenbare farer i trafikken, men trøtthet og distraksjoner er like dødelige, og kanskje mer utbredt. Disse "stille farene" svekker din evne til å kjøre trygt på måter som ligner ruspåvirkning, men de er ofte vanskeligere å gjenkjenne og innrømme. Denne modulen vil belyse hvordan mangel på søvn og uoppmerksomhet påvirker din kjøreevne, og gi deg strategier for å unngå å bli et offer for disse usynlige truslene.
 
+📉 **Visste du?**  
+Trøtthet er en medvirkende faktor i mellom **10 og 20 % av trafikkulykker i Norge**.  
+→ Likevel undervurderes den ofte – både av sjåfører og medpassasjerer.
+
+🔗 [Kilde: Stiftelsen Norsk Luftambulanse](https://norskluftambulanse.no/nyheter/for-trott-kjore/)
+
 ---
 
 ### Trøtthet: Den Undervurderte Faren 😴

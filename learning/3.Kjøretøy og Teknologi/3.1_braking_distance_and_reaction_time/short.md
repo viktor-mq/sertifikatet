@@ -29,8 +29,43 @@ Din totale stopplengde er summen av reaksjonslengde og bremselengde. Å forstå 
 - **Bilens tilstand:** Bremser, vekt, ABS-system.
 - **Veiens helning:** Nedoverbakke øker, oppoverbakke reduserer.
 
-### 3. **Eksempel (tørr asfalt):**
-- Ved 80 km/t: ca. 40 meter.
+### 3. **Eksempel:**
+
+
+<div style="font-family: sans-serif; max-width: 400px; margin-top: 1em;">
+  <div style="margin-bottom: 8px;">
+    <label for="dry"><input type="radio" id="dry" name="surface" value="dry" checked onchange="updateBrakeDistance()"> Tørr asfalt</label>
+    <label for="slippery" style="margin-left: 15px;"><input type="radio" id="slippery" name="surface" value="slippery" onchange="updateBrakeDistance()"> Glatt føre</label>
+  </div>
+  <div style="text-align: center;">
+    <label for="speedRange"><strong>Fart (km/t):</strong> <span id="speedValue">50</span></label>
+  </div>
+  <input type="range" id="speedRange" min="10" max="130" value="50" step="1" oninput="updateBrakeDistance()" style="width: 100%;">
+  <p>💡 <strong>Bremselengde (<span id="surfaceLabel">tørr asfalt</span>):</strong> <span id="brakeDistance">12.5</span> meter</p>
+  <p><strong>Formel:</strong> (fart / 10) × (fart / 10) ÷ 2 &nbsp;&nbsp; <em>(på glatt føre: ganger resultatet med 4)</em></p>
+</div>
+- Ved 80 km/t: ca. 32 meter.
+<script>
+  function updateBrakeDistance() {
+    const speed = parseInt(document.getElementById("speedRange").value);
+    const x = speed / 10;
+    let distance = (x * x) / 2;
+
+    const surface = document.querySelector('input[name="surface"]:checked').value;
+    if (surface === "slippery") {
+      distance *= 4;
+    }
+
+    document.getElementById("speedValue").textContent = speed;
+    document.getElementById("brakeDistance").textContent = distance.toFixed(1);
+    const surfaceLabel = surface === "slippery" ? "glatt føre" : "tørr asfalt";
+    document.getElementById("surfaceLabel").textContent = surfaceLabel;
+    const formulaNote = surface === "slippery" ? "(ganger 4 ved glatt føre)" : "";
+    document.getElementById("formulaNote").textContent = formulaNote;
+  }
+
+  updateBrakeDistance(); // init
+</script>
 
 ## Total Stopplengde: Reaksjonslengde + Bremselengde
 
