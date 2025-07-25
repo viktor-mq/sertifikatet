@@ -656,11 +656,11 @@ class UserLearningProgress(db.Model):
         """Mark content as completed"""
         try:
              # Add debug logging
-            print(f"DEBUG: Marking complete with params:")
-            print(f"  user_id: {user_id}")
-            print(f"  module_id: {module_id}")
-            print(f"  submodule_id: {submodule_id} (type: {type(submodule_id)})")
-            print(f"  progress_type: {progress_type}")
+            #print(f"DEBUG: Marking complete with params:")
+            #print(f"  user_id: {user_id}")
+            #print(f"  module_id: {module_id}")
+            #print(f"  submodule_id: {submodule_id} (type: {type(submodule_id)})")
+            #print(f"  progress_type: {progress_type}")
             progress = cls.query.filter_by(
                 user_id=user_id,
                 module_id=module_id,
@@ -699,7 +699,6 @@ class UserLearningProgress(db.Model):
                     progress.quiz_attempts += 1
             
             db.session.commit()
-            print(f"DEBUG: Created new progress record with submodule_id: {progress.submodule_id}")
             return progress
             
         except Exception as e:

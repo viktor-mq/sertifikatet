@@ -213,6 +213,12 @@ class EnhancedCookieConsentManager {
             return;
         }
         
+        // Check if AdSense is already initialized by looking for processed ad slots
+        const existingAds = document.querySelectorAll('.adsbygoogle[data-adsbygoogle-status]');
+        if (existingAds.length > 0) {
+            return;
+        }
+        
         console.log('Activating Google AdSense with GDPR compliance');
         
         // Activate the existing script
@@ -262,7 +268,6 @@ class EnhancedCookieConsentManager {
     
     loadNorwegianAdNetworks() {
         // Placeholder for Norwegian ad networks
-        console.log('Norwegian ad networks integration ready');
     }
     
     showConsentModal() {

@@ -98,12 +98,12 @@
 
 <script>
 // Game state
-let currentQuestionIndex = 0;
+let gameCurrentQuestionIndex = 0;
 let score = 0;
 let correctAnswers = 0;
 let questions = [];
-let startTime;
-let timerInterval;
+let gameStartTime;
+let gameTimerInterval;
 let sessionId;
 
 // DOM elements
@@ -131,13 +131,13 @@ async function startGame() {
     gameScreen.classList.remove('hidden');
     
     // Reset game state
-    currentQuestionIndex = 0;
+    gameCurrentQuestionIndex = 0;
     score = 0;
     correctAnswers = 0;
     
     // Start timer
-    startTime = Date.now();
-    timerInterval = setInterval(updateTimer, 1000);
+    gameStartTime = Date.now();
+    gameTimerInterval = setInterval(updateTimer, 1000);
     
     // Load questions
     try {
@@ -155,8 +155,8 @@ async function startGame() {
 }
 
 function showQuestion() {
-    const question = questions[currentQuestionIndex];
-    currentQuestionElement.textContent = currentQuestionIndex + 1;
+    const question = questions[gameCurrentQuestionIndex];
+    currentQuestionElement.textContent = gameCurrentQuestionIndex + 1;
     
     // Display sign image
     signImage.src = `/static/images/${question.filename}`;
@@ -263,9 +263,9 @@ async function checkAnswer(isCorrect, question) {
 }
 
 function nextQuestion() {
-    currentQuestionIndex++;
+    gameCurrentQuestionIndex++;
     
-    if (currentQuestionIndex < questions.length) {
+    if (gameCurrentQuestionIndex < questions.length) {
         showQuestion();
     } else {
         endGame();
@@ -274,8 +274,8 @@ function nextQuestion() {
 
 async function endGame() {
     // Stop timer
-    clearInterval(timerInterval);
-    const totalTime = Math.floor((Date.now() - startTime) / 1000);
+    clearInterval(gameTimerInterval);
+    const totalTime = Math.floor((Date.now() - gameStartTime) / 1000);
     
     // Hide game screen, show end screen
     gameScreen.classList.add('hidden');
@@ -328,7 +328,7 @@ async function endGame() {
 }
 
 function updateTimer() {
-    const elapsed = Math.floor((Date.now() - startTime) / 1000);
+    const elapsed = Math.floor((Date.now() - gameStartTime) / 1000);
     timerElement.textContent = formatTime(elapsed);
 }
 

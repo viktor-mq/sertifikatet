@@ -194,6 +194,7 @@
         <meta name="user-registration-date" content="{{ current_user.created_at.isoformat() if current_user.created_at else '' }}">
         <script>
             // Set global user data for analytics
+            {% if current_user.is_authenticated %}
             window.currentUser = {
                 id: '{{ current_user.id }}',
                 subscriptionTier: '{{ current_user.get_subscription_tier() }}',
@@ -201,6 +202,9 @@
                 isVerified: {{ current_user.is_verified|lower }},
                 registrationDate: '{{ current_user.created_at.isoformat() if current_user.created_at else "" }}'
             };
+            {% else %}
+            window.currentUser = null;
+            {% endif %}
         </script>
     {% endif %}
     
@@ -444,7 +448,7 @@
             // Listen for cookie preferences to be applied
             window.addEventListener('cookiePreferencesApplied', function(event) {
                 const preferences = event.detail;
-                const userTier = window.currentUser.subscriptionTier;
+                const userTier = window.currentUser ? window.currentUser.subscriptionTier : 'free';
                 
                 // Load AdSense for all free users (personalized or non-personalized based on marketing consent)
                 if (userTier === 'free' && window.adsenseEnabled) {

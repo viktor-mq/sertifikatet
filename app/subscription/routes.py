@@ -223,6 +223,7 @@ def api_get_plan_options():
     """API endpoint to get plan options with upgrade pricing"""
     try:
         current_plan = SubscriptionService.get_user_plan(current_user.id)
+        subscription_stats = SubscriptionService.get_subscription_stats(current_user.id)
         all_plans = SubscriptionPlan.query.filter_by(is_active=True).order_by(SubscriptionPlan.price_nok).all()
         
         plan_options = []
@@ -289,6 +290,7 @@ def api_get_plan_options():
         
         return jsonify({
             'current_plan': current_plan,
+            'subscription_stats': subscription_stats,
             'plans': plan_options
         })
         

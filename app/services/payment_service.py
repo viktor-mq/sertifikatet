@@ -223,15 +223,27 @@ class SubscriptionService:
     def cancel_subscription(user_id: int, reason: str = 'User requested cancellation') -> bool:
         """Cancel user's active subscription - keeps access until end of billing period"""
         try:
+            logger.info(f"DEBUG: Attempting to cancel subscription for user {user_id}")
             subscription = SubscriptionService.get_user_subscription(user_id)
+            logger.info(f"DEBUG: User {user_id} subscription lookup result: {subscription}")
+            
             if not subscription:
+                logger.warning(f"DEBUG: No active subscription found for user {user_id}")
+                # Let's also check what subscriptions exist for this user
+                all_subscriptions = UserSubscription.query.filter_by(user_id=user_id).all()
+                logger.info(f"DEBUG: All subscriptions for user {user_id}: {[(s.id, s.status, s.expires_at) for s in all_subscriptions]}")
                 return False  # No active subscription to cancel
+            
+            logger.info(f"DEBUG: Found subscription - ID: {subscription.id}, Status: {subscription.status}, Expires: {subscription.expires_at}")
             
             # Mark subscription as cancelled but keep it active until expires_at
             subscription.status = 'cancelled'  # Status shows it's cancelled
             subscription.cancelled_at = datetime.utcnow()
             subscription.cancelled_reason = reason
             subscription.auto_renew = False  # Won't renew when it expires
+            subscription.next_billing_date = None  # No next billing for cancelled subscriptions
+            
+            logger.info(f"DEBUG: Updated subscription status to cancelled")
             
             # DO NOT immediately downgrade user - they keep access until expires_at
             # The daily job will handle the actual downgrade when expires_at is reached
@@ -242,6 +254,7 @@ class SubscriptionService:
                 user.subscription_status = 'cancelled'  # For tracking, but plan stays active
             
             db.session.commit()
+            logger.info(f"DEBUG: Database committed successfully")
             logger.info(f"Subscription cancelled for user {user_id}. Access until {subscription.expires_at}")
             return True
             

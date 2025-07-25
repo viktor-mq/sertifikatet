@@ -62,7 +62,7 @@ class QuizResultsModal {
     createModalBackdrop() {
         const backdrop = document.createElement('div');
         backdrop.id = 'quiz-results-backdrop';
-        backdrop.className = 'fixed inset-0 bg-black bg-opacity-50 backdrop-blur-sm z-40 opacity-0 transition-opacity duration-300';
+        backdrop.className = 'fixed inset-0 bg-black bg-opacity-50 backdrop-blur-sm z-[1000] opacity-0 transition-opacity duration-300';
         backdrop.addEventListener('click', () => this.closeModal());
         document.body.appendChild(backdrop);
         
@@ -77,9 +77,11 @@ class QuizResultsModal {
         const modal = document.createElement('div');
         modal.id = 'quiz-results-modal';
         modal.className = `
-            fixed inset-4 md:inset-auto md:top-1/2 md:left-1/2 md:w-full md:max-w-lg md:h-auto
-            md:transform md:-translate-x-1/2 md:-translate-y-1/2
-            glass rounded-xl shadow-2xl z-50 p-6 overflow-y-auto
+            fixed inset-4 sm:inset-8 md:inset-auto 
+            md:top-1/2 md:left-1/2 md:transform md:-translate-x-1/2 md:-translate-y-1/2
+            w-auto md:w-full md:max-w-md lg:max-w-lg xl:max-w-xl 2xl:max-w-2xl
+            max-h-[90vh] md:max-h-[85vh] lg:max-h-[80vh]
+            glass rounded-xl shadow-2xl z-[1001] p-4 sm:p-6 overflow-y-auto
             scale-75 opacity-0 transition-all duration-300
         `;
 
@@ -304,7 +306,7 @@ class QuizResultsModal {
         const modal = document.createElement('div');
         modal.id = 'quiz-review-modal';
         modal.className = `
-            fixed inset-4 md:inset-8 glass rounded-xl shadow-2xl z-50 p-6 overflow-hidden
+            fixed inset-4 md:inset-8 glass rounded-xl shadow-2xl z-[1002] p-6 overflow-hidden
             scale-75 opacity-0 transition-all duration-300 flex flex-col
         `;
 
@@ -663,6 +665,9 @@ class QuizResultsModal {
         const modal = document.getElementById('quiz-results-modal');
         const reviewModal = document.getElementById('quiz-review-modal');
 
+        // Check if we're closing the review modal or the main modal
+        const isClosingReviewOnly = reviewModal && !modal;
+
         if (modal) {
             modal.classList.add('scale-75', 'opacity-0');
         }
@@ -682,6 +687,12 @@ class QuizResultsModal {
                     el.parentNode.removeChild(el);
                 }
             });
+            
+            // Only redirect if we're closing the main modal (not just the review)
+            if (!isClosingReviewOnly) {
+                // Redirect to dashboard to prevent quiz retaking (with cache busting)
+                window.location.href = '/dashboard?updated=' + Date.now();
+            }
         }, 300);
 
         this.isOpen = false;
