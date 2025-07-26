@@ -417,23 +417,43 @@ function updateProgressBar(contentType, progressStats) {
         progressBar.style.width = displayPercentage + '%';
     }, 100);
 
-    // Move and toggle the continue button
+    // Move and toggle the continue button (with DOM safety checks)
     const continueBtn = document.getElementById('continue-btn');
     if (continueBtn) {
-      const margin = 4; // px
-      const container = document.getElementById('progress-bar').parentElement;
-      const containerWidth = container.offsetWidth;
-      const btnWidth = continueBtn.offsetWidth;
-      if (displayPercentage >= 100) {
-        continueBtn.style.opacity = '0';
-      } else {
-        continueBtn.style.opacity = '1';
-        // calculate raw position
-        let pos = (displayPercentage / 100) * containerWidth - (btnWidth / 2);
-        // clamp between margin and (containerWidth - btnWidth - margin)
-        pos = Math.max(margin, Math.min(pos, containerWidth - btnWidth - margin));
-        continueBtn.style.left = `${pos}px`;
-      }
+      // Use requestAnimationFrame to ensure DOM is ready for measurements
+      requestAnimationFrame(() => {
+        const container = document.getElementById('progress-bar').parentElement;
+        if (!container) return;
+        
+        // Force layout recalculation to get accurate measurements
+        container.getBoundingClientRect();
+        
+        const containerWidth = container.offsetWidth;
+        const btnWidth = continueBtn.offsetWidth;
+        
+        // Validate measurements
+        if (containerWidth <= 0 || btnWidth <= 0) {
+          console.warn('Invalid container or button dimensions');
+          return;
+        }
+        
+        if (displayPercentage >= 100) {
+          continueBtn.style.opacity = '0';
+        } else {
+          continueBtn.style.opacity = '1';
+          
+          // Calculate position: button centered at progress bar end
+          let pos = (displayPercentage / 100) * containerWidth - (btnWidth / 2);
+          
+          // Ensure button stays within container bounds
+          const minPos = 2; // Small margin to avoid edge clipping
+          const maxPos = containerWidth - btnWidth - 2;
+          pos = Math.max(minPos, Math.min(pos, maxPos));
+          
+          // Apply position
+          continueBtn.style.left = `${pos}px`;
+        }
+      });
     }
 }
 
