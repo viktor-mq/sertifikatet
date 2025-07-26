@@ -7,11 +7,11 @@
 {% endblock %}
 
 {% block content %}
-<!-- TikTok-Style Video Player - Phase 3 Implementation -->
-<div class="min-h-screen bg-gradient-to-br from-purple-900 via-blue-900 to-indigo-900 flex items-center justify-center p-4">
+<!-- TikTok-Style Video Player - Mobile-First Immersive Experience -->
+<div id="shorts-wrapper" class="min-h-screen bg-gradient-to-br from-purple-900 via-blue-900 to-indigo-900 flex items-center justify-center p-4 md:p-4">
     {% if shorts and shorts|length > 0 %}
     <!-- Video Player Container -->
-    <div class="w-full max-w-sm mx-auto" style="aspect-ratio: 9/16;">
+    <div id="player-container" class="w-full max-w-sm mx-auto md:max-w-sm" style="aspect-ratio: 9/16;">
         <div id="video-container" class="w-full h-full">
             <!-- Player will be dynamically created by JavaScript -->
         </div>
@@ -80,8 +80,15 @@
     {% endif %}
 </div>
 
-<!-- Fullscreen Toggle (Mobile) -->
-<div class="fixed top-4 right-4 z-50 md:hidden">
+<!-- Mobile Exit Button (replaces fullscreen toggle) -->
+<div id="mobile-exit-btn" class="fixed top-4 left-4 z-50 hidden">
+    <button class="bg-black/50 backdrop-blur-lg text-white p-3 rounded-full hover:bg-black/70 transition-all duration-300">
+        <i class="fas fa-arrow-left fa-lg"></i>
+    </button>
+</div>
+
+<!-- Desktop Fullscreen Toggle -->
+<div class="fixed top-4 right-4 z-50 hidden md:block">
     <button id="fullscreen-toggle" class="bg-black/50 backdrop-blur-lg text-white p-3 rounded-full hover:bg-black/70 transition-all duration-300">
         <i class="fas fa-expand fa-lg"></i>
     </button>
@@ -97,14 +104,18 @@ window.currentUser = {
     isAuthenticated: {{ current_user.is_authenticated|lower }}
 };
 
+// Detect mobile device
+window.isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent) || window.innerWidth <= 768;
+
 // Player configuration
 window.playerConfig = {
     autoplay: true,
     volume: 0.8,
-    enableKeyboardControls: true,
+    enableKeyboardControls: !window.isMobile, // Disable keyboard controls on mobile
     enableSwipeControls: true,
     showProgressBars: true,
     trackProgress: true,
+    mobileImmersive: window.isMobile, // Enable immersive mode on mobile
     startVideoIndex: {{ start_video_index if start_video_index is defined else 0 }},
     crossModuleEnabled: {% if request.args.get('start_video') %}true{% else %}false{% endif %},  // Enable cross-module only when continuing from recommendation
     apiEndpoints: {
@@ -163,18 +174,93 @@ const showKeyboardShortcuts = () => {
     alert(`Tastatursnarveier:\n\n↑ / ↓ - Naviger mellom videoer\nSpace - Pause/spill av\n← / → - Søk bakover/fremover\nF - Fullskjerm (desktop)\nEsc - Avslutt fullskjerm`);
 };
 
-// Show shortcuts on long press (mobile) or double-click (desktop)
-let longPressTimer;
-document.addEventListener('touchstart', function() {
-    longPressTimer = setTimeout(showKeyboardShortcuts, 2000);
-});
-document.addEventListener('touchend', function() {
-    clearTimeout(longPressTimer);
-});
-document.addEventListener('dblclick', function(e) {
-    if (!e.target.closest('.action-btn')) {
-        showKeyboardShortcuts();
+// Mobile immersive mode setup
+function enterMobileImmersiveMode() {
+    if (window.isMobile) {
+        document.body.classList.add('mobile-immersive');
+        document.getElementById('shorts-wrapper').classList.add('mobile-immersive');
+        document.getElementById('mobile-exit-btn').classList.remove('hidden');
+        
+        // Hide navbar and other page elements
+        const navbar = document.querySelector('nav, .navbar, header');
+        if (navbar) navbar.style.display = 'none';
+        
+        // Prevent scrolling
+        document.body.style.overflow = 'hidden';
+    }
+}
+
+function exitMobileImmersiveMode() {
+    document.body.classList.remove('mobile-immersive');
+    document.getElementById('shorts-wrapper').classList.remove('mobile-immersive');
+    document.getElementById('mobile-exit-btn').classList.add('hidden');
+    
+    // Restore navbar
+    const navbar = document.querySelector('nav, .navbar, header');
+    if (navbar) navbar.style.display = '';
+    
+    // Restore scrolling
+    document.body.style.overflow = '';
+    
+    // Navigate back to dashboard
+    window.location.href = '{{ url_for("learning.theory_dashboard") }}';
+}
+
+// Mobile exit button handler
+document.addEventListener('DOMContentLoaded', function() {
+    const mobileExitBtn = document.getElementById('mobile-exit-btn');
+    if (mobileExitBtn) {
+        mobileExitBtn.addEventListener('click', exitMobileImmersiveMode);
+    }
+    
+    // Auto-enter immersive mode on mobile
+    if (window.isMobile) {
+        setTimeout(enterMobileImmersiveMode, 100);
     }
 });
+
+// Swipe gesture detection for mobile exit
+let startX = 0;
+let startY = 0;
+let currentX = 0;
+let currentY = 0;
+
+document.addEventListener('touchstart', function(e) {
+    if (!window.isMobile) return;
+    
+    startX = e.touches[0].clientX;
+    startY = e.touches[0].clientY;
+    currentX = startX;
+    currentY = startY;
+});
+
+document.addEventListener('touchmove', function(e) {
+    if (!window.isMobile) return;
+    
+    currentX = e.touches[0].clientX;
+    currentY = e.touches[0].clientY;
+});
+
+document.addEventListener('touchend', function(e) {
+    if (!window.isMobile) return;
+    
+    const diffX = currentX - startX;
+    const diffY = Math.abs(currentY - startY);
+    
+    // Swipe right to exit (minimum 100px swipe, more horizontal than vertical)
+    if (diffX > 100 && diffY < 50 && startX < 50) { // Start from left edge
+        exitMobileImmersiveMode();
+    }
+});
+
+// Disable keyboard shortcuts popup on mobile
+if (!window.isMobile) {
+    // Show shortcuts only on desktop - double-click
+    document.addEventListener('dblclick', function(e) {
+        if (!e.target.closest('.action-btn')) {
+            showKeyboardShortcuts();
+        }
+    });
+}
 </script>
 {% endblock %}

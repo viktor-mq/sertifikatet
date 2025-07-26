@@ -62,17 +62,26 @@ class ShortsPlayer {
         // Check if this is a recommended session and identify the last video (AFTER videos are loaded)
         this.initializeRecommendedSession();
         
-        // Show video info initially
-        setTimeout(() => {
-            this.showVideoInfo();
-        }, 500);
+        // Show video info initially (desktop only)
+        if (!window.isMobile) {
+            setTimeout(() => {
+                this.showVideoInfo();
+            }, 500);
+        }
         
-        // Make container focusable and focused
-        this.container.setAttribute('tabindex', '0');
-        this.container.focus();
+        // Make container focusable and focused (desktop only)
+        if (!window.isMobile) {
+            this.container.setAttribute('tabindex', '0');
+            this.container.focus();
+            
+            // Add visual focus indicator
+            this.container.style.outline = 'none';
+        }
         
-        // Add visual focus indicator
-        this.container.style.outline = 'none';
+        // Setup mobile immersive mode
+        if (window.isMobile) {
+            this.setupMobileImmersive();
+        }
     }
     
     initializeRecommendedSession() {
@@ -98,9 +107,32 @@ class ShortsPlayer {
         }
     }
     
+    setupMobileImmersive() {
+        // Hide swipe hint after first touch interaction
+        let hasInteracted = false;
+        const hideSwipeHint = () => {
+            if (!hasInteracted) {
+                hasInteracted = true;
+                const hint = this.container.querySelector('.mobile-swipe-hint');
+                if (hint) {
+                    hint.style.display = 'none';
+                }
+                this.container.classList.add('interacted');
+            }
+        };
+
+        // Hide hint on any touch interaction
+        this.container.addEventListener('touchstart', hideSwipeHint, { once: true });
+        this.container.addEventListener('click', hideSwipeHint, { once: true });
+
+        // Auto-hide hint after 5 seconds
+        setTimeout(hideSwipeHint, 5000);
+    }
+    
     createPlayerStructure() {
         this.container.innerHTML = `
             <div class="shorts-player relative w-full h-full overflow-hidden bg-black">
+                ${window.isMobile ? '<div class="mobile-swipe-hint"><i class="fas fa-arrow-right mr-2"></i>Swipe høyre for å gå tilbake</div>' : ''}
                 <!-- Video Stack -->
                 <div id="video-stack" class="relative w-full h-full">
                     <!-- Videos will be dynamically added here -->
@@ -1001,7 +1033,8 @@ document.addEventListener('DOMContentLoaded', function() {
         window.shortsPlayer = new ShortsPlayer(playerContainer, videosData, {
             crossModuleEnabled: window.playerConfig.crossModuleEnabled || false,  // Use dynamic setting
             startingSubmodule: window.submoduleId,
-            startVideoIndex: window.playerConfig.startVideoIndex
+            startVideoIndex: window.playerConfig.startVideoIndex,
+            mobileImmersive: window.playerConfig.mobileImmersive || false
         });
         
         // Auto-play first video after 500ms
