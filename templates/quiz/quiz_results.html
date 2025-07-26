@@ -119,7 +119,9 @@
                           {% set path = ['images', response.question.image_filename] %}
                         {% endif %}
                         <img src="{{ url_for('static', filename=path | join('/')) }}" 
-                             alt="Spørsmålsbilde" class="mb-4 rounded-lg max-w-full h-auto">
+                             alt="Spørsmålsbilde" 
+                             class="question-image mb-4 rounded-lg max-w-full h-auto mx-auto block"
+                             loading="lazy">
                         {% endif %}
                     </div>
                     

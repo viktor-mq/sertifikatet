@@ -97,6 +97,7 @@
     <!-- CSS Loading -->
     <link rel="stylesheet" href="{{ url_for('static', filename='css/cookie-consent.css') }}">
     <link rel="stylesheet" href="{{ url_for('static', filename='css/quiz-results.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/quiz-images.css') }}">
     
     <!-- Font Awesome -->
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
@@ -491,31 +492,36 @@
     {% include 'components/achievement_popup.html' %}
     
     <!-- Achievement Notification Logic -->
-    {% if session.new_achievements %}
+    {% if current_user.is_authenticated %}
     <script>
     document.addEventListener('DOMContentLoaded', function() {
-        // Show popups for new achievements
-        const newAchievements = {{ session.new_achievements|tojson }};
-        
-        if (newAchievements && newAchievements.length > 0) {
-            // Show each achievement popup with delay
-            newAchievements.forEach((achievement, index) => {
-                setTimeout(() => {
-                    showAchievementPopup(achievement);
-                }, (index * 6000) + 1000); // 6 seconds apart + 1 second initial delay
-            });
-            
-            // Clear achievements from session after showing
-            // This prevents popups from showing again on page refresh
-            fetch('/api/clear-achievement-notifications', { 
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
+        // Check for unshown achievements via API
+        fetch('/api/unshown-achievements')
+            .then(response => response.json())
+            .then(data => {
+                if (data.achievements && data.achievements.length > 0) {
+                    // Show each achievement popup with delay
+                    data.achievements.forEach((achievement, index) => {
+                        setTimeout(() => {
+                            showAchievementPopup(achievement);
+                        }, (index * 6000) + 1000); // 6 seconds apart + 1 second initial delay
+                    });
+                    
+                    // Mark achievements as shown
+                    const achievementIds = data.achievements.map(a => a.id);
+                    fetch('/api/mark-achievements-shown', {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                            'X-CSRFToken': document.querySelector('meta[name=csrf-token]').getAttribute('content')
+                        },
+                        body: JSON.stringify({ achievement_ids: achievementIds })
+                    });
                 }
-            }).catch(error => {
-                console.log('Note: Clear notifications endpoint not yet implemented');
+            })
+            .catch(error => {
+                console.log('Achievement check failed:', error);
             });
-        }
     });
     </script>
     {% endif %}

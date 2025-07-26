@@ -335,3 +335,38 @@ class AchievementService:
         
         # Default fallback
         return {'text': getattr(achievement, 'progress_hint', 'Låst'), 'percentage': 0}
+    
+    def mark_achievements_as_shown(self, user_id: int, achievement_ids: list) -> None:
+        """Mark achievements as shown to prevent re-displaying"""
+        from datetime import datetime
+        
+        db.session.query(UserAchievement).filter(
+            UserAchievement.user_id == user_id,
+            UserAchievement.achievement_id.in_(achievement_ids),
+            UserAchievement.shown_at.is_(None)
+        ).update(
+            {UserAchievement.shown_at: datetime.utcnow()},
+            synchronize_session=False
+        )
+        db.session.commit()
+    
+    def get_unshown_achievements(self, user_id: int) -> list:
+        """Get achievements that haven't been shown to the user yet"""
+        unshown = db.session.query(UserAchievement, Achievement).join(
+            Achievement, UserAchievement.achievement_id == Achievement.id
+        ).filter(
+            UserAchievement.user_id == user_id,
+            UserAchievement.shown_at.is_(None)
+        ).all()
+        
+        return [
+            {
+                'id': achievement.id,
+                'name': achievement.name,
+                'description': achievement.description,
+                'points': achievement.points,
+                'icon': achievement.icon_filename,
+                'earned_at': user_achievement.earned_at.isoformat() if user_achievement.earned_at else None
+            }
+            for user_achievement, achievement in unshown
+        ]

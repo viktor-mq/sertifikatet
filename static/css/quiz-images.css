@@ -1,0 +1,120 @@
+/* 
+Quiz Image Responsiveness Enhancements
+Fixes mobile image overflow issues and provides better UX
+*/
+
+/* Enhanced image container */
+.question-image-container {
+    max-width: 100%;
+    overflow: hidden;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    position: relative;
+}
+
+/* Base image styling */
+.question-image {
+    max-width: 100%;
+    max-height: 400px; /* Default fallback, will be overridden by JavaScript */
+    width: auto;
+    height: auto;
+    object-fit: contain; /* Maintain aspect ratio */
+    transition: all 0.3s ease;
+    border-radius: 0.5rem;
+    box-shadow: 0 10px 25px rgba(0, 0, 0, 0.3);
+    cursor: pointer;
+}
+
+/* Hover effect for desktop */
+@media (hover: hover) {
+    .question-image:hover {
+        transform: scale(1.02);
+        box-shadow: 0 20px 40px rgba(0, 0, 0, 0.4);
+    }
+}
+
+/* Click feedback for touch devices */
+.question-image:active {
+    transform: scale(0.98);
+}
+
+/* Image loading states */
+.question-image[loading="lazy"] {
+    opacity: 0;
+    animation: fadeInImage 0.5s ease-in-out forwards;
+}
+
+@keyframes fadeInImage {
+    to {
+        opacity: 1;
+    }
+}
+
+/* Mobile container adjustments */
+@media (max-width: 768px) {
+    .question-image-container {
+        margin: 0 -1rem; /* Extend to container edges on mobile if needed */
+        padding: 0 1rem;
+    }
+}
+
+@media (max-width: 480px) {
+    .question-image {
+        border-radius: 0.375rem; /* Slightly smaller border radius */
+    }
+    
+    .question-image-container {
+        margin: 0 -0.5rem;
+        padding: 0 0.5rem;
+    }
+}
+
+/* High DPI/Retina displays */
+@media (-webkit-min-device-pixel-ratio: 2), (min-resolution: 192dpi) {
+    .question-image {
+        image-rendering: -webkit-optimize-contrast;
+        image-rendering: crisp-edges;
+    }
+}
+
+/* Dark mode support */
+@media (prefers-color-scheme: dark) {
+    .question-image {
+        box-shadow: 0 10px 25px rgba(0, 0, 0, 0.6);
+    }
+    
+    .question-image:hover {
+        box-shadow: 0 20px 40px rgba(0, 0, 0, 0.8);
+    }
+}
+
+/* Accessibility: Reduce motion for users who prefer it */
+@media (prefers-reduced-motion: reduce) {
+    .question-image {
+        transition: none;
+    }
+    
+    .question-image:hover,
+    .question-image:active {
+        transform: none;
+    }
+}
+
+/* Print styles */
+@media print {
+    .question-image {
+        max-height: none;
+        max-width: 100%;
+        box-shadow: none;
+        page-break-inside: avoid;
+    }
+}
+
+/* Container overflow fix for any parent elements */
+.quiz-container .question-image-container,
+.question-card .question-image-container {
+    max-width: 100%;
+    word-wrap: break-word;
+    overflow-wrap: break-word;
+}

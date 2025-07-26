@@ -387,16 +387,7 @@ def submit_quiz():
     from ..services.payment_service import UsageLimitService
     UsageLimitService.record_quiz_taken(user_id, quiz_type)
     
-    # Store new achievements in session to show in results
-    if new_achievements:
-        session['new_achievements'] = [
-            {
-                'name': ach.name,
-                'description': ach.description,
-                'points': ach.points,
-                'icon': ach.icon_filename
-            } for ach in new_achievements
-        ]
+    # New achievements are now handled by the database-based system
 
     # If the request is AJAX, return JSON
     if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
@@ -691,12 +682,27 @@ def achievements():
                          seo=seo_data)
 
 
-@main_bp.route('/api/clear-achievement-notifications', methods=['POST'])
+@main_bp.route('/api/unshown-achievements')
 @login_required
-def clear_achievement_notifications():
-    """Clear achievement notifications from session after they've been shown"""
-    if 'new_achievements' in session:
-        session.pop('new_achievements', None)
+def get_unshown_achievements():
+    """Get achievements that haven't been shown to the user yet"""
+    from ..services.achievement_service import AchievementService
+    achievement_service = AchievementService()
+    unshown = achievement_service.get_unshown_achievements(current_user.id)
+    return jsonify({'achievements': unshown})
+
+@main_bp.route('/api/mark-achievements-shown', methods=['POST'])
+@login_required
+def mark_achievements_shown():
+    """Mark achievements as shown"""
+    from ..services.achievement_service import AchievementService
+    data = request.get_json()
+    achievement_ids = data.get('achievement_ids', [])
+    
+    if achievement_ids:
+        achievement_service = AchievementService()
+        achievement_service.mark_achievements_as_shown(current_user.id, achievement_ids)
+    
     return jsonify({'status': 'success'})
 
 

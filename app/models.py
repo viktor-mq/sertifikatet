@@ -131,6 +131,7 @@ class UserAchievement(db.Model):
     user_id = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=False)
     achievement_id = db.Column(db.Integer, db.ForeignKey('achievements.id'), nullable=False)
     earned_at = db.Column(db.DateTime, default=datetime.utcnow)
+    shown_at = db.Column(db.DateTime, nullable=True)  # Timestamp when notification was shown
     
     __table_args__ = (db.UniqueConstraint('user_id', 'achievement_id', name='_user_achv_uc'),)
 

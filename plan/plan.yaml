@@ -414,6 +414,7 @@ database:
       - user_id
       - achievement_id
       - earned_at
+      - shown_at
       
     streak_rewards:
       - id
