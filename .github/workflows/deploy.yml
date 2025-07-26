@@ -77,9 +77,7 @@ jobs:
       run: |
         cd /d "%PROJECT_PATH%"
         echo Pulling latest code from main branch...
-        git fetch origin
-        git reset --hard origin/main
-        git clean -fd
+        git pull origin main
 
     - name: Install/Update dependencies
       shell: cmd
