@@ -1,0 +1,212 @@
+{% extends "base.html" %}
+
+{% block title %}Trafikk Scenario Puslespill - Sertifikatet{% endblock %}
+
+{% block head %}
+<link rel="stylesheet" href="{{ url_for('static', filename='games/rule_puzzle/css/rule_puzzle.css') }}">
+{% endblock %}
+
+{% block content %}
+<div id="rule-puzzle-game" class="game-container">
+    <!-- Game Header -->
+    <div class="game-header">
+        <div class="game-info">
+            <h2 class="game-title">🧩 Trafikk Scenario Puslespill</h2>
+            <p class="game-description">Løs trafikksituasjoner ved å plassere kjøretøy riktig</p>
+        </div>
+        
+        <div class="game-stats">
+            <div class="stat-item">
+                <span class="stat-label">Poeng:</span>
+                <span id="current-score" class="stat-value">0</span>
+            </div>
+            <div class="stat-item">
+                <span class="stat-label">Tid:</span>
+                <span id="time-remaining" class="stat-value">5:00</span>
+            </div>
+            <div class="stat-item">
+                <span class="stat-label">Hints:</span>
+                <span id="hints-used" class="stat-value">0</span>
+            </div>
+        </div>
+    </div>
+
+    <!-- Game Setup Screen -->
+    <div id="game-setup" class="game-screen active">
+        <div class="setup-container">
+            <h3>Velg Vanskelighetsgrad</h3>
+            
+            <div class="difficulty-options">
+                <div class="difficulty-card" data-difficulty="easy">
+                    <div class="difficulty-icon">🟢</div>
+                    <h4>Lett</h4>
+                    <p>3 kjøretøy, enkel scenario</p>
+                    <p class="difficulty-bonus">+20% tidsbonus</p>
+                </div>
+                
+                <div class="difficulty-card selected" data-difficulty="medium">
+                    <div class="difficulty-icon">🟡</div>
+                    <h4>Middels</h4>
+                    <p>5 kjøretøy, moderat scenario</p>
+                    <p class="difficulty-bonus">+50% tidsbonus</p>
+                </div>
+                
+                <div class="difficulty-card" data-difficulty="hard">
+                    <div class="difficulty-icon">🔴</div>
+                    <h4>Vanskelig</h4>
+                    <p>8 kjøretøy, kompleks scenario</p>
+                    <p class="difficulty-bonus">+100% tidsbonus</p>
+                </div>
+            </div>
+            
+            <button id="start-game-btn" class="btn btn-primary btn-large">
+                🚀 Start Spill
+            </button>
+        </div>
+    </div>
+
+    <!-- Main Game Screen -->
+    <div id="game-play" class="game-screen">
+        <!-- Scenario Info -->
+        <div class="scenario-info">
+            <h3 id="scenario-title">Scenario: Kryss Vikeplikt</h3>
+            <p id="scenario-description">Organiser kjøretøy i riktig rekkefølge gjennom krysset</p>
+            
+            <div class="scenario-rules">
+                <h4>📋 Regler som gjelder:</h4>
+                <ul id="scenario-rules-list">
+                    <!-- Rules will be populated dynamically -->
+                </ul>
+            </div>
+        </div>
+
+        <!-- Game Board -->
+        <div class="game-board">
+            <!-- Road Layout -->
+            <div id="road-layout" class="road-container">
+                <!-- Road graphics will be generated based on scenario type -->
+            </div>
+            
+            <!-- Vehicles -->
+            <div id="vehicles-container" class="vehicles-layer">
+                <!-- Vehicle elements will be created dynamically -->
+            </div>
+            
+            <!-- Drop Zones -->
+            <div id="drop-zones" class="drop-zones-layer">
+                <!-- Drop zones will be created dynamically -->
+            </div>
+        </div>
+
+        <!-- Game Controls -->
+        <div class="game-controls">
+            <button id="hint-btn" class="btn btn-secondary">
+                💡 Hint (-5 poeng)
+            </button>
+            
+            <button id="reset-btn" class="btn btn-warning">
+                🔄 Reset
+            </button>
+            
+            <button id="submit-btn" class="btn btn-success" disabled>
+                ✅ Sjekk Løsning
+            </button>
+        </div>
+
+        <!-- Hint Display -->
+        <div id="hint-display" class="hint-container hidden">
+            <div class="hint-content">
+                <h4>💡 Hint:</h4>
+                <p id="hint-text"></p>
+            </div>
+        </div>
+    </div>
+
+    <!-- Results Screen -->
+    <div id="game-results" class="game-screen">
+        <div class="results-container">
+            <div class="results-header">
+                <div id="results-icon" class="results-icon">🎉</div>
+                <h2 id="results-title">Gratulerer!</h2>
+                <p id="results-message">Du løste scenarioet!</p>
+            </div>
+            
+            <div class="score-breakdown">
+                <div class="score-item">
+                    <span class="score-label">Hovedpoeng:</span>
+                    <span id="base-score" class="score-value">0</span>
+                </div>
+                <div class="score-item">
+                    <span class="score-label">Tidsbonus:</span>
+                    <span id="time-bonus" class="score-value">0</span>
+                </div>
+                <div class="score-item">
+                    <span class="score-label">Hint-straff:</span>
+                    <span id="hint-penalty" class="score-value">0</span>
+                </div>
+                <div class="score-item total">
+                    <span class="score-label">Total Poeng:</span>
+                    <span id="final-score" class="score-value">0</span>
+                </div>
+            </div>
+            
+            <div class="xp-earned">
+                <span class="xp-label">XP Opptjent:</span>
+                <span id="xp-earned" class="xp-value">0</span>
+            </div>
+            
+            <!-- Achievements -->
+            <div id="achievements-container" class="achievements hidden">
+                <h4>🏆 Prestasjoner Låst Opp:</h4>
+                <div id="achievements-list" class="achievements-list">
+                    <!-- Achievement badges will be added dynamically -->
+                </div>
+            </div>
+            
+            <!-- Solution Explanation -->
+            <div class="solution-explanation">
+                <h4>📚 Forklaring av Løsningen:</h4>
+                <div id="solution-text" class="solution-content">
+                    <!-- Solution explanation will be added dynamically -->
+                </div>
+            </div>
+            
+            <div class="results-actions">
+                <button id="play-again-btn" class="btn btn-primary">
+                    🎮 Spill Igjen
+                </button>
+                
+                <button id="back-to-games-btn" class="btn btn-secondary">
+                    ⬅️ Tilbake til Spill
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Loading Overlay -->
+    <div id="loading-overlay" class="loading-overlay hidden">
+        <div class="loading-spinner"></div>
+        <p>Laster spill...</p>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script src="{{ url_for('static', filename='games/rule_puzzle/js/rule_puzzle.js') }}"></script>
+<script>
+    // Initialize game with configuration
+    window.gameConfig = {{ game_config | tojson }};
+    window.scenarios = {{ scenarios | tojson }};
+    window.vehicles = {{ vehicles | tojson }};
+    
+    // Start the game when page loads
+    document.addEventListener('DOMContentLoaded', function() {
+        if (typeof RulePuzzleGame !== 'undefined') {
+            window.rulePuzzleGame = new RulePuzzleGame();
+            window.rulePuzzleGame.init();
+        } else {
+            console.error('RulePuzzleGame not loaded');
+        }
+    });
+</script>
+{% endblock %}

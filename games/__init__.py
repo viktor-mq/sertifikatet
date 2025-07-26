@@ -20,14 +20,14 @@ AVAILABLE_GAMES = {
         'status': 'active',
         'priority': 1
     },
-    'traffic_scenario_puzzle': {
-        'module': 'games.traffic_scenario_puzzle',
+    'rule_puzzle': {
+        'module': 'games.rule_puzzle',
         'name': 'Trafikk Scenario Puslespill',
-        'description': 'Løs trafikksituasjoner ved å plassere kjøretøy',
+        'description': 'Løs trafikksituasjoner ved å plassere kjøretøy riktig',
         'icon': 'fas fa-puzzle-piece',
         'difficulty': 'Middels',
         'estimated_time': '5-10 min',
-        'status': 'development',
+        'status': 'active',
         'priority': 2
     },
     'violation_spotter': {
@@ -111,7 +111,8 @@ def register_all_games(app):
 
 def create_games_blueprint():
     """Create main games blueprint for shared routes"""
-    games_bp = Blueprint('games', __name__, url_prefix='/games')
+    games_bp = Blueprint('games', __name__, url_prefix='/games',
+                        template_folder='../templates')
     
     @games_bp.route('/')
     def index():

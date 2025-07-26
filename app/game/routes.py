@@ -53,8 +53,8 @@ def memory_game():
 @game_bp.route('/rule-puzzle')
 @login_required
 def rule_puzzle():
-    """Rule-based puzzle game."""
-    return render_template('game/rule_puzzle.html')
+    """Rule-based puzzle game - redirect to new modular system."""
+    return redirect(url_for('rule_puzzle.play'))
 
 @game_bp.route('/time-challenge')
 @login_required

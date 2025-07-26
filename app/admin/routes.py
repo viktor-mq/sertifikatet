@@ -11,7 +11,7 @@ from functools import wraps
 
 from .utils import validate_question
 from .. import db
-from ..models import Question, Option, TrafficSign, QuizImage, User, AdminAuditLog, AdminReport, UserFeedback, QuizSession, QuizResponse, LearningModules, LearningSubmodules, Achievement, UserAchievement, Video
+from ..models import Question, Option, TrafficSign, QuizImage, User, AdminAuditLog, AdminReport, UserFeedback, QuizSession, QuizResponse, LearningModules, LearningSubmodules, Achievement, UserAchievement, Video, GameScenario, GameSession
 from ..gamification_models import WeeklyTournament, TournamentParticipant, DailyChallenge, UserDailyChallenge, XPReward, XPTransaction, UserLevel
 from ..marketing_models import MarketingEmail, MarketingTemplate, MarketingEmailLog
 from ..marketing_service import MarketingEmailService
@@ -5671,3 +5671,271 @@ def get_gamification_overview():
     except Exception as e:
         logger.error(f"Error fetching gamification overview: {str(e)}")
         return jsonify({'success': False, 'message': str(e)}), 500
+
+
+# ==================== GAMES MANAGEMENT API ====================
+
+@admin_bp.route('/api/games/scenarios')
+@admin_required
+def api_get_game_scenarios():
+    """Get game scenarios for admin management"""
+    try:
+        page = request.args.get('page', 1, type=int)
+        per_page = request.args.get('per_page', 50, type=int)
+        search = request.args.get('search', '')
+        game_type = request.args.get('game_type', '')
+        difficulty = request.args.get('difficulty', '', type=str)
+        
+        # Build query
+        query = GameScenario.query
+        
+        # Apply filters
+        if search:
+            query = query.filter(
+                db.or_(
+                    GameScenario.name.ilike(f'%{search}%'),
+                    GameScenario.description.ilike(f'%{search}%')
+                )
+            )
+        
+        if game_type:
+            query = query.filter(GameScenario.scenario_type == game_type)
+        
+        if difficulty:
+            query = query.filter(GameScenario.difficulty_level == int(difficulty))
+        
+        # Order by priority and name
+        query = query.order_by(GameScenario.order_index.asc(), GameScenario.name.asc())
+        
+        # Handle pagination
+        if per_page == -1:
+            scenarios = query.all()
+            total = len(scenarios)
+            pagination_info = None
+        else:
+            paginated = query.paginate(
+                page=page, per_page=per_page, error_out=False
+            )
+            scenarios = paginated.items
+            total = paginated.total
+            
+            pagination_info = {
+                'page': page,
+                'per_page': per_page,
+                'total': total,
+                'pages': paginated.pages,
+                'has_prev': paginated.has_prev,
+                'has_next': paginated.has_next
+            }
+        
+        # Format scenario data
+        scenarios_data = []
+        for scenario in scenarios:
+            scenarios_data.append({
+                'id': scenario.id,
+                'name': scenario.name,
+                'description': scenario.description,
+                'scenario_type': scenario.scenario_type,
+                'difficulty_level': scenario.difficulty_level,
+                'max_score': scenario.max_score,
+                'time_limit_seconds': scenario.time_limit_seconds,
+                'is_active': scenario.is_active,
+                'is_premium': scenario.is_premium,
+                'min_level_required': scenario.min_level_required,
+                'order_index': scenario.order_index,
+                'created_at': scenario.created_at.isoformat() if hasattr(scenario, 'created_at') and scenario.created_at else None
+            })
+        
+        # Log admin action
+        AdminSecurityService.log_admin_action(
+            current_user, 
+            'VIEW_GAME_SCENARIOS', 
+            f"Viewed game scenarios page {page}"
+        )
+        
+        return jsonify({
+            'success': True,
+            'scenarios': scenarios_data,
+            'pagination': pagination_info,
+            'total': total
+        })
+        
+    except Exception as e:
+        logger.error(f"Error fetching game scenarios: {str(e)}")
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+
+@admin_bp.route('/api/games/stats')
+@admin_required
+def api_get_games_stats():
+    """Get games statistics for admin dashboard"""
+    try:
+        from datetime import date
+        today = date.today()
+        
+        # Game scenarios stats
+        total_scenarios = GameScenario.query.count()
+        active_scenarios = GameScenario.query.filter_by(is_active=True).count()
+        
+        # Games by type
+        rule_puzzle_scenarios = GameScenario.query.filter_by(scenario_type='rule_puzzle').count()
+        traffic_signs_scenarios = GameScenario.query.filter_by(scenario_type='traffic_signs').count()
+        
+        # Game sessions stats
+        total_sessions = GameSession.query.count()
+        sessions_today = GameSession.query.filter(
+            db.func.date(GameSession.started_at) == today
+        ).count()
+        completed_sessions = GameSession.query.filter_by(completed=True).count()
+        
+        # Calculate completion rate
+        completion_rate = (completed_sessions / total_sessions * 100) if total_sessions > 0 else 0
+        
+        return jsonify({
+            'success': True,
+            'stats': {
+                'scenarios_total': total_scenarios,
+                'scenarios_active': active_scenarios,
+                'games_total': 6,  # Total number of different game types
+                'games_active': active_scenarios,
+                'sessions_total': total_sessions,
+                'sessions_today': sessions_today,
+                'sessions_completed': completed_sessions,
+                'completion_rate': round(completion_rate, 1),
+                'by_type': {
+                    'rule_puzzle': rule_puzzle_scenarios,
+                    'traffic_signs': traffic_signs_scenarios
+                }
+            }
+        })
+        
+    except Exception as e:
+        logger.error(f"Error fetching games stats: {str(e)}")
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+
+@admin_bp.route('/api/games/scenarios/<int:scenario_id>/toggle', methods=['POST'])
+@admin_required
+def api_toggle_scenario_status(scenario_id):
+    """Toggle active status of a game scenario"""
+    try:
+        scenario = GameScenario.query.get_or_404(scenario_id)
+        
+        # Toggle status
+        scenario.is_active = not scenario.is_active
+        db.session.commit()
+        
+        # Log admin action
+        action = 'ACTIVATE_SCENARIO' if scenario.is_active else 'DEACTIVATE_SCENARIO'
+        AdminSecurityService.log_admin_action(
+            current_user, 
+            action, 
+            f"Toggled scenario '{scenario.name}' to {'active' if scenario.is_active else 'inactive'}"
+        )
+        
+        return jsonify({
+            'success': True,
+            'message': f"Scenario '{scenario.name}' is now {'active' if scenario.is_active else 'inactive'}",
+            'is_active': scenario.is_active
+        })
+        
+    except Exception as e:
+        logger.error(f"Error toggling scenario status: {str(e)}")
+        db.session.rollback()
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+
+@admin_bp.route('/api/games/scenarios/<int:scenario_id>', methods=['DELETE'])
+@admin_required
+def api_delete_scenario(scenario_id):
+    """Delete a game scenario"""
+    try:
+        scenario = GameScenario.query.get_or_404(scenario_id)
+        scenario_name = scenario.name
+        
+        # Check if scenario has associated game sessions
+        session_count = GameSession.query.filter_by(scenario_id=scenario_id).count()
+        
+        if session_count > 0:
+            return jsonify({
+                'success': False, 
+                'error': f'Cannot delete scenario. It has {session_count} associated game sessions.'
+            }), 400
+        
+        # Delete the scenario
+        db.session.delete(scenario)
+        db.session.commit()
+        
+        # Log admin action
+        AdminSecurityService.log_admin_action(
+            current_user, 
+            'DELETE_SCENARIO', 
+            f"Deleted game scenario '{scenario_name}' (ID: {scenario_id})"
+        )
+        
+        return jsonify({
+            'success': True,
+            'message': f"Scenario '{scenario_name}' has been deleted successfully"
+        })
+        
+    except Exception as e:
+        logger.error(f"Error deleting scenario: {str(e)}")
+        db.session.rollback()
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+
+@admin_bp.route('/api/games/scenarios/<int:scenario_id>', methods=['GET'])
+@admin_required
+def api_get_scenario_details(scenario_id):
+    """Get detailed information about a specific scenario"""
+    try:
+        scenario = GameScenario.query.get_or_404(scenario_id)
+        
+        # Parse config JSON
+        config = {}
+        if scenario.config_json:
+            try:
+                config = json.loads(scenario.config_json)
+            except json.JSONDecodeError:
+                config = {}
+        
+        # Get session statistics
+        total_sessions = GameSession.query.filter_by(scenario_id=scenario_id).count()
+        completed_sessions = GameSession.query.filter_by(
+            scenario_id=scenario_id, 
+            completed=True
+        ).count()
+        avg_score = db.session.query(func.avg(GameSession.score)).filter_by(
+            scenario_id=scenario_id,
+            completed=True
+        ).scalar() or 0
+        
+        scenario_data = {
+            'id': scenario.id,
+            'name': scenario.name,
+            'description': scenario.description,
+            'scenario_type': scenario.scenario_type,
+            'difficulty_level': scenario.difficulty_level,
+            'max_score': scenario.max_score,
+            'time_limit_seconds': scenario.time_limit_seconds,
+            'is_active': scenario.is_active,
+            'is_premium': scenario.is_premium,
+            'min_level_required': scenario.min_level_required,
+            'order_index': scenario.order_index,
+            'config': config,
+            'stats': {
+                'total_sessions': total_sessions,
+                'completed_sessions': completed_sessions,
+                'completion_rate': (completed_sessions / total_sessions * 100) if total_sessions > 0 else 0,
+                'avg_score': round(float(avg_score), 1)
+            }
+        }
+        
+        return jsonify({
+            'success': True,
+            'scenario': scenario_data
+        })
+        
+    except Exception as e:
+        logger.error(f"Error fetching scenario details: {str(e)}")
+        return jsonify({'success': False, 'error': str(e)}), 500

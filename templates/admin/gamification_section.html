@@ -50,6 +50,9 @@
             <button class="gamification-tab" onclick="showGamificationTab('achievements')" data-tab="achievements">
                 🏅 Achievements
             </button>
+            <button class="gamification-tab" onclick="showGamificationTab('games')" data-tab="games">
+                🎮 Games
+            </button>
             <button class="gamification-tab" onclick="showGamificationTab('xprewards')" data-tab="xprewards">
                 ⭐ XP Rewards
             </button>
@@ -445,6 +448,181 @@
             </div>
         </div>
 
+        <!-- Games Management Tab -->
+        <div id="games-tab" class="gamification-tab-content">
+            <!-- Game Statistics -->
+            <div class="stats-container" style="margin-bottom: 20px;">
+                <div class="stat-card">
+                    <h3 data-stat="games_total">0</h3>
+                    <p>Total Games</p>
+                </div>
+                <div class="stat-card">
+                    <h3 data-stat="games_active">0</h3>
+                    <p>Active Games</p>
+                </div>
+                <div class="stat-card">
+                    <h3 data-stat="game_scenarios_total">0</h3>
+                    <p>Total Scenarios</p>
+                </div>
+                <div class="stat-card">
+                    <h3 data-stat="game_sessions_today">0</h3>
+                    <p>Sessions Today</p>
+                </div>
+            </div>
+
+            <!-- Games Sub-tabs -->
+            <div class="games-subtabs" style="border-bottom: 1px solid #e5e7eb; margin-bottom: 20px;">
+                <button class="games-subtab active" onclick="showGamesSubtab('scenarios')" data-subtab="scenarios">
+                    🧩 Game Scenarios
+                </button>
+                <button class="games-subtab" onclick="showGamesSubtab('sessions')" data-subtab="sessions">
+                    📊 Game Sessions
+                </button>
+                <button class="games-subtab" onclick="showGamesSubtab('analytics')" data-subtab="analytics">
+                    📈 Game Analytics
+                </button>
+            </div>
+
+            <!-- Game Scenarios Management -->
+            <div id="scenarios-subtab" class="games-subtab-content active">
+                <!-- Scenario Controls -->
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
+                    <h3 style="margin: 0;">Game Scenarios Management</h3>
+                    <button onclick="openGameScenarioModal()" class="btn" style="
+                        background: #007bff; 
+                        color: white; 
+                        padding: 8px 16px; 
+                        border: none; 
+                        border-radius: 4px; 
+                        cursor: pointer;
+                    ">
+                        <i class="fas fa-plus"></i> Create Scenario
+                    </button>
+                </div>
+
+                <!-- Scenario Filters -->
+                <div style="border: 1px solid #e0e0e0; border-radius: 8px; margin-bottom: 20px; background: white; box-shadow: 0 2px 4px rgba(0,0,0,0.05);">
+                    <div style="background: #f8f9fa; padding: 15px; border-bottom: 1px solid #e0e0e0; border-radius: 8px 8px 0 0;">
+                        <h6 style="margin: 0; font-weight: bold; color: #007bff;">Scenario Filters</h6>
+                    </div>
+                    <div style="padding: 20px;">
+                        <div style="display: grid; grid-template-columns: 1fr 1fr 1fr auto; gap: 15px; align-items: end;">
+                            <div>
+                                <label style="font-weight: bold; margin-bottom: 5px; display: block;">Game Type</label>
+                                <select id="scenario-type-filter" style="width: 100%; padding: 8px; border: 1px solid #ccc; border-radius: 4px;">
+                                    <option value="">All Games</option>
+                                    <option value="rule_puzzle">Rule Puzzle</option>
+                                    <option value="traffic_signs">Traffic Signs</option>
+                                    <option value="memory_game">Memory Game</option>
+                                    <option value="time_challenge">Time Challenge</option>
+                                    <option value="multiplayer">Multiplayer</option>
+                                </select>
+                            </div>
+                            <div>
+                                <label style="font-weight: bold; margin-bottom: 5px; display: block;">Difficulty</label>
+                                <select id="scenario-difficulty-filter" style="width: 100%; padding: 8px; border: 1px solid #ccc; border-radius: 4px;">
+                                    <option value="">All Difficulties</option>
+                                    <option value="1">Easy (1)</option>
+                                    <option value="2">Medium (2)</option>
+                                    <option value="3">Hard (3)</option>
+                                </select>
+                            </div>
+                            <div>
+                                <label for="scenario-search" style="font-weight: bold; margin-bottom: 5px; display: block;">Search</label>
+                                <input type="text" id="scenario-search" placeholder="Search scenarios..." 
+                                       style="width: 100%; padding: 8px; border: 1px solid #ccc; border-radius: 4px;">
+                            </div>
+                            <div>
+                                <button type="button" onclick="applyGameScenarioFilters()" style="
+                                    background: #007bff; 
+                                    color: white; 
+                                    padding: 8px 16px; 
+                                    border: none; 
+                                    border-radius: 4px; 
+                                    cursor: pointer;
+                                ">Filter</button>
+                                <button type="button" onclick="clearGameScenarioFilters()" style="
+                                    background: #6c757d; 
+                                    color: white; 
+                                    padding: 8px 16px; 
+                                    border: none; 
+                                    border-radius: 4px; 
+                                    cursor: pointer;
+                                    margin-left: 5px;
+                                ">Clear</button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Scenarios Table -->
+                <div style="border: 1px solid #e0e0e0; border-radius: 8px; background: white; box-shadow: 0 2px 4px rgba(0,0,0,0.05);">
+                    <div style="background: #f8f9fa; padding: 15px; border-bottom: 1px solid #e0e0e0; border-radius: 8px 8px 0 0;">
+                        <h6 style="margin: 0; font-weight: bold; color: #007bff;">Game Scenarios</h6>
+                    </div>
+                    <div style="padding: 20px;">
+                        <div style="overflow-x: auto;">
+                            <table id="scenarios-table" style="width: 100%; border-collapse: collapse; background: white; border-radius: 8px; overflow: hidden; box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);">
+                                <thead>
+                                    <tr>
+                                        <th style="background: linear-gradient(135deg, #3b82f6 0%, #1d4ed8 100%); color: white; font-weight: 600; text-align: left; padding: 12px 16px; border-bottom: 2px solid #1e40af;">Name</th>
+                                        <th style="background: linear-gradient(135deg, #3b82f6 0%, #1d4ed8 100%); color: white; font-weight: 600; text-align: left; padding: 12px 16px; border-bottom: 2px solid #1e40af;">Game Type</th>
+                                        <th style="background: linear-gradient(135deg, #3b82f6 0%, #1d4ed8 100%); color: white; font-weight: 600; text-align: left; padding: 12px 16px; border-bottom: 2px solid #1e40af;">Difficulty</th>
+                                        <th style="background: linear-gradient(135deg, #3b82f6 0%, #1d4ed8 100%); color: white; font-weight: 600; text-align: left; padding: 12px 16px; border-bottom: 2px solid #1e40af;">Max Score</th>
+                                        <th style="background: linear-gradient(135deg, #3b82f6 0%, #1d4ed8 100%); color: white; font-weight: 600; text-align: left; padding: 12px 16px; border-bottom: 2px solid #1e40af;">Time Limit</th>
+                                        <th style="background: linear-gradient(135deg, #3b82f6 0%, #1d4ed8 100%); color: white; font-weight: 600; text-align: left; padding: 12px 16px; border-bottom: 2px solid #1e40af;">Status</th>
+                                        <th style="background: linear-gradient(135deg, #3b82f6 0%, #1d4ed8 100%); color: white; font-weight: 600; text-align: left; padding: 12px 16px; border-bottom: 2px solid #1e40af;">Actions</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="scenarios-tbody">
+                                    <!-- Dynamic content loaded via AJAX -->
+                                </tbody>
+                            </table>
+                        </div>
+                        
+                        <!-- Scenarios Pagination -->
+                        <div class="pagination-controls" style="margin-top: 20px; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 15px;">
+                            <div class="pagination-info" style="color: #374151; font-size: 14px;">
+                                <span id="scenarios-pagination-info">Showing scenarios</span>
+                            </div>
+                            <div class="pagination-center" style="display: flex; justify-content: center; flex: 1;">
+                                <div class="pagination-buttons" id="scenarios-pagination" style="display: inline-flex; gap: 5px; align-items: center;">
+                                    <!-- Dynamic pagination loaded via AJAX -->
+                                </div>
+                            </div>
+                            <div class="pagination-per-page" style="display: flex; align-items: center; gap: 8px; color: #374151; font-size: 14px;">
+                                <label>Show per page:</label>
+                                <select id="scenariosPerPageSelector" style="padding: 6px 10px; border: 1px solid #d1d5db; border-radius: 4px; background: white; font-size: 14px;">
+                                    <option value="20" selected>20</option>
+                                    <option value="50">50</option>
+                                    <option value="100">100</option>
+                                    <option value="-1">Alle</option>
+                                </select>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Game Sessions Analytics -->
+            <div id="sessions-subtab" class="games-subtab-content">
+                <div style="text-align: center; padding: 40px;">
+                    <h4>Game Sessions Analytics</h4>
+                    <p>View and analyze game session data, user performance, and gameplay statistics.</p>
+                    <p style="color: #6c757d;">Feature coming soon...</p>
+                </div>
+            </div>
+
+            <!-- Game Analytics -->
+            <div id="analytics-subtab" class="games-subtab-content">
+                <div style="text-align: center; padding: 40px;">
+                    <h4>Advanced Game Analytics</h4>
+                    <p>Detailed analytics, A/B testing results, and performance metrics.</p>
+                    <p style="color: #6c757d;">Feature coming soon...</p>
+                </div>
+            </div>
+        </div>
+
         <!-- XP Rewards Management Tab -->
         <div id="xprewards-tab" class="gamification-tab-content">
             <!-- XP Statistics -->
@@ -604,6 +782,72 @@
     margin: 0;
     font-weight: 500;
 }
+
+/* Games subtab styles */
+.games-subtabs {
+    display: flex;
+    gap: 5px;
+    margin-bottom: 20px;
+}
+
+.games-subtab {
+    padding: 8px 16px;
+    background: #f8f9fa;
+    border: 1px solid #dee2e6;
+    border-bottom: none;
+    border-radius: 4px 4px 0 0;
+    color: #495057;
+    cursor: pointer;
+    font-weight: 500;
+    font-size: 14px;
+    transition: all 0.3s ease;
+}
+
+.games-subtab:hover {
+    background: #e9ecef;
+    color: #007bff;
+}
+
+.games-subtab.active {
+    background: #007bff;
+    color: white;
+    border-color: #007bff;
+}
+
+.games-subtab-content {
+    display: none;
+}
+
+.games-subtab-content.active {
+    display: block;
+}
+
+/* Difficulty badge styles */
+.difficulty-badge.difficulty-1 {
+    background: #10b981;
+    color: white;
+}
+
+.difficulty-badge.difficulty-2 {
+    background: #f59e0b;
+    color: white;
+}
+
+.difficulty-badge.difficulty-3 {
+    background: #ef4444;
+    color: white;
+}
+
+/* Status badge styles */
+.status-badge.active {
+    background: #10b981;
+    color: white;
+}
+
+.status-badge.inactive {
+    background: #6b7280;
+    color: white;
+}
 </style>
 
 <script>
@@ -646,6 +890,10 @@ function showGamificationTab(tabName) {
         case 'achievements':
             loadAchievementData();
             loadAchievementStats();
+            break;
+        case 'games':
+            loadGamesData();
+            loadGamesStats();
             break;
         case 'xprewards':
             loadXPRewardsData();
@@ -703,6 +951,8 @@ function loadDailyChallengeData() { console.log('Loading challenge data...'); }
 function loadDailyChallengeStats() { console.log('Loading challenge stats...'); }
 function loadAchievementData() { console.log('Loading achievement data...'); }
 function loadAchievementStats() { console.log('Loading achievement stats...'); }
+function loadGamesData() { loadGameScenariosData(); }
+function loadGamesStats() { loadGameScenariosStats(); }
 function loadXPRewardsData() { console.log('Loading XP rewards data...'); }
 function loadXPRewardsStats() { console.log('Loading XP rewards stats...'); }
 
@@ -718,6 +968,182 @@ function applyDailyChallengeFilters() { console.log('Apply challenge filters'); 
 function clearDailyChallengeFilters() { console.log('Clear challenge filters'); }
 function applyAchievementFilters() { console.log('Apply achievement filters'); }
 function clearAchievementFilters() { console.log('Clear achievement filters'); }
+
+// Games management functions
+function loadGameScenariosData() {
+    fetch('/admin/api/games/scenarios')
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                updateGameScenariosTable(data.scenarios);
+            }
+        })
+        .catch(error => console.error('Error loading game scenarios:', error));
+}
+
+function loadGameScenariosStats() {
+    fetch('/admin/api/games/stats')
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                const stats = data.stats;
+                document.querySelector('[data-stat="games_total"]').textContent = stats.games_total || 0;
+                document.querySelector('[data-stat="games_active"]').textContent = stats.games_active || 0;
+                document.querySelector('[data-stat="game_scenarios_total"]').textContent = stats.scenarios_total || 0;
+                document.querySelector('[data-stat="game_sessions_today"]').textContent = stats.sessions_today || 0;
+            }
+        })
+        .catch(error => console.error('Error loading game stats:', error));
+}
+
+function updateGameScenariosTable(scenarios) {
+    const tbody = document.getElementById('scenarios-tbody');
+    tbody.innerHTML = '';
+    
+    scenarios.forEach(scenario => {
+        const row = document.createElement('tr');
+        row.innerHTML = `
+            <td style="padding: 12px 16px; border-bottom: 1px solid #f3f4f6;">
+                <strong>${scenario.name}</strong>
+                <br><small style="color: #6b7280;">${scenario.description || ''}</small>
+            </td>
+            <td style="padding: 12px 16px; border-bottom: 1px solid #f3f4f6;">
+                <span class="game-type-badge" style="background: #3b82f6; color: white; padding: 4px 8px; border-radius: 4px; font-size: 12px;">
+                    ${scenario.scenario_type || 'Unknown'}
+                </span>
+            </td>
+            <td style="padding: 12px 16px; border-bottom: 1px solid #f3f4f6;">
+                <span class="difficulty-badge difficulty-${scenario.difficulty_level}" style="padding: 4px 8px; border-radius: 4px; font-size: 12px; font-weight: 600;">
+                    ${getDifficultyText(scenario.difficulty_level)}
+                </span>
+            </td>
+            <td style="padding: 12px 16px; border-bottom: 1px solid #f3f4f6;">${scenario.max_score || 'N/A'}</td>
+            <td style="padding: 12px 16px; border-bottom: 1px solid #f3f4f6;">${formatTimeLimit(scenario.time_limit_seconds)}</td>
+            <td style="padding: 12px 16px; border-bottom: 1px solid #f3f4f6;">
+                <span class="status-badge ${scenario.is_active ? 'active' : 'inactive'}" style="padding: 4px 8px; border-radius: 4px; font-size: 12px; font-weight: 600;">
+                    ${scenario.is_active ? 'Active' : 'Inactive'}
+                </span>
+            </td>
+            <td style="padding: 12px 16px; border-bottom: 1px solid #f3f4f6;">
+                <button onclick="editGameScenario(${scenario.id})" style="background: #10b981; color: white; border: none; padding: 6px 12px; border-radius: 4px; margin-right: 5px; cursor: pointer;">
+                    <i class="fas fa-edit"></i>
+                </button>
+                <button onclick="toggleScenarioStatus(${scenario.id}, ${scenario.is_active})" style="background: ${scenario.is_active ? '#f59e0b' : '#10b981'}; color: white; border: none; padding: 6px 12px; border-radius: 4px; margin-right: 5px; cursor: pointer;">
+                    <i class="fas fa-${scenario.is_active ? 'pause' : 'play'}"></i>
+                </button>
+                <button onclick="deleteGameScenario(${scenario.id})" style="background: #ef4444; color: white; border: none; padding: 6px 12px; border-radius: 4px; cursor: pointer;">
+                    <i class="fas fa-trash"></i>
+                </button>
+            </td>
+        `;
+        tbody.appendChild(row);
+    });
+}
+
+function getDifficultyText(level) {
+    switch(level) {
+        case 1: return 'Easy';
+        case 2: return 'Medium';
+        case 3: return 'Hard';
+        default: return 'Unknown';
+    }
+}
+
+function formatTimeLimit(seconds) {
+    if (!seconds) return 'No limit';
+    const minutes = Math.floor(seconds / 60);
+    const remainingSeconds = seconds % 60;
+    return `${minutes}:${remainingSeconds.toString().padStart(2, '0')}`;
+}
+
+function showGamesSubtab(subtabName) {
+    // Hide all subtab contents
+    document.querySelectorAll('.games-subtab-content').forEach(content => {
+        content.classList.remove('active');
+    });
+    
+    // Remove active class from all subtabs
+    document.querySelectorAll('.games-subtab').forEach(tab => {
+        tab.classList.remove('active');
+    });
+    
+    // Show selected subtab content
+    document.getElementById(subtabName + '-subtab').classList.add('active');
+    
+    // Add active class to clicked subtab
+    document.querySelector(`[data-subtab="${subtabName}"]`).classList.add('active');
+}
+
+function openGameScenarioModal() {
+    // Placeholder for scenario creation modal
+    alert('Game Scenario creation modal - Coming soon!');
+}
+
+function editGameScenario(scenarioId) {
+    // Placeholder for scenario editing
+    alert(`Edit scenario ${scenarioId} - Coming soon!`);
+}
+
+function toggleScenarioStatus(scenarioId, currentStatus) {
+    fetch(`/admin/api/games/scenarios/${scenarioId}/toggle`, {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+            'X-CSRFToken': AdminPagination.getCSRFToken()
+        }
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            loadGameScenariosData(); // Reload table
+            AdminUtils.showToast(data.message || 'Status updated successfully', 'success');
+        } else {
+            AdminUtils.showToast(data.error || 'Failed to update status', 'error');
+        }
+    })
+    .catch(error => {
+        console.error('Error toggling scenario status:', error);
+        AdminUtils.showToast('Error updating status', 'error');
+    });
+}
+
+function deleteGameScenario(scenarioId) {
+    if (confirm('Are you sure you want to delete this scenario? This action cannot be undone.')) {
+        fetch(`/admin/api/games/scenarios/${scenarioId}`, {
+            method: 'DELETE',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRFToken': AdminPagination.getCSRFToken()
+            }
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                loadGameScenariosData(); // Reload table
+                AdminUtils.showToast(data.message || 'Scenario deleted successfully', 'success');
+            } else {
+                AdminUtils.showToast(data.error || 'Failed to delete scenario', 'error');
+            }
+        })
+        .catch(error => {
+            console.error('Error deleting scenario:', error);
+            AdminUtils.showToast('Error deleting scenario', 'error');
+        });
+    }
+}
+
+function applyGameScenarioFilters() {
+    // Placeholder for filtering
+    console.log('Apply game scenario filters');
+}
+
+function clearGameScenarioFilters() {
+    // Clear filter inputs
+    document.getElementById('scenario-type-filter').value = '';
+    document.getElementById('scenario-difficulty-filter').value = '';
+    document.getElementById('scenario-search').value = '';
+    loadGameScenariosData();
+}
 
 // XP management functions - placeholders
 function resetXPDefaults() { console.log('Reset XP defaults'); }

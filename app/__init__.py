@@ -135,6 +135,18 @@ def create_app(config_class=None):
     from .game import game_bp
     app.register_blueprint(game_bp)
     
+    # Register games system
+    try:
+        from games import register_all_games, create_games_blueprint
+        # Register main games blueprint first
+        games_main_bp = create_games_blueprint()
+        app.register_blueprint(games_main_bp)
+        # Register individual game blueprints
+        register_all_games(app)
+    except ImportError as e:
+        app.logger.error(f"Failed to register games system: {e}")
+        # Continue without games - graceful degradation
+    
     # Register subscription blueprint
     from .subscription import subscription_bp
     app.register_blueprint(subscription_bp)

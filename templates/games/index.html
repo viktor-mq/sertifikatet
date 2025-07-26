@@ -1,0 +1,234 @@
+{% extends "base.html" %}
+
+{% block title %}Mini-Spill - Sertifikatet{% endblock %}
+
+{% block head %}
+    <link rel="stylesheet" href="{{ url_for('static', filename='games/base/css/game_common.css') }}">
+{% endblock %}
+
+{% block content %}
+<div class="min-h-screen bg-gradient-to-br from-slate-900 via-purple-900 to-slate-900">
+    <div class="container mx-auto px-4 py-8">
+        <!-- Header -->
+        <div class="text-center mb-12">
+            <h1 class="text-5xl font-bold text-white mb-4">
+                🎮 Mini-Spill
+            </h1>
+            <p class="text-xl text-purple-200 max-w-2xl mx-auto">
+                Lær trafikkregler gjennom engasjerende og interaktive spill. 
+                Tren dine ferdigheter mens du har det gøy!
+            </p>
+        </div>
+
+        {% if games %}
+        <!-- Games Grid -->
+        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8 max-w-6xl mx-auto mb-12">
+            {% for game_id, game_info in games.items() %}
+            <div class="game-card bg-white/10 backdrop-blur-md rounded-xl p-6 border border-white/20 hover:border-white/40 transition-all duration-300 hover:transform hover:scale-105">
+                <!-- Game Icon and Status -->
+                <div class="flex justify-between items-start mb-4">
+                    <div class="text-4xl">
+                        <i class="{{ game_info.icon }}"></i>
+                    </div>
+                    <div class="game-status">
+                        {% if game_info.status == 'active' %}
+                            <span class="bg-green-500 text-white px-2 py-1 rounded-full text-xs font-semibold">
+                                AKTIV
+                            </span>
+                        {% elif game_info.status == 'development' %}
+                            <span class="bg-yellow-500 text-black px-2 py-1 rounded-full text-xs font-semibold">
+                                BETA
+                            </span>
+                        {% else %}
+                            <span class="bg-gray-500 text-white px-2 py-1 rounded-full text-xs font-semibold">
+                                KOMMER SNART
+                            </span>
+                        {% endif %}
+                    </div>
+                </div>
+
+                <!-- Game Info -->
+                <h3 class="text-xl font-bold text-white mb-2">{{ game_info.name }}</h3>
+                <p class="text-purple-200 text-sm mb-4">{{ game_info.description }}</p>
+
+                <!-- Game Stats -->
+                <div class="flex justify-between items-center text-xs text-purple-300 mb-6">
+                    <span>📊 {{ game_info.difficulty }}</span>
+                    <span>⏱️ {{ game_info.estimated_time }}</span>
+                </div>
+
+                <!-- Action Button -->
+                <div class="text-center">
+                    {% if game_info.status == 'active' %}
+                        <a href="{{ url_for(game_id + '.play') }}" class="btn-primary w-full inline-block">
+                            🚀 Spill Nå
+                        </a>
+                    {% elif game_info.status == 'development' %}
+                        <a href="{{ url_for(game_id + '.play') }}" class="btn-secondary w-full inline-block">
+                            🧪 Test Beta
+                        </a>
+                    {% else %}
+                        <button class="btn-disabled w-full" disabled>
+                            🔒 Kommer Snart
+                        </button>
+                    {% endif %}
+                </div>
+            </div>
+            {% endfor %}
+        </div>
+        {% else %}
+        <!-- No Games Available -->
+        <div class="text-center">
+            <div class="bg-white/10 backdrop-blur-md rounded-xl p-12 max-w-md mx-auto">
+                <div class="text-6xl mb-4">🎮</div>
+                <h3 class="text-2xl font-bold text-white mb-4">Ingen spill tilgjengelig</h3>
+                <p class="text-purple-200 mb-6">Spill er under utvikling og vil være tilgjengelig snart.</p>
+                <a href="{{ url_for('main.dashboard') }}" class="btn-primary">
+                    ⬅️ Tilbake til Dashboard
+                </a>
+            </div>
+        </div>
+        {% endif %}
+
+        <!-- Global Leaderboard -->
+        {% if games %}
+        <div class="max-w-4xl mx-auto">
+            <div class="bg-white/10 backdrop-blur-md rounded-xl p-8 border border-white/20">
+                <div class="flex justify-between items-center mb-6">
+                    <h2 class="text-2xl font-bold text-white">🏆 Global Toppliste</h2>
+                    <a href="{{ url_for('games.global_leaderboard') }}" class="text-purple-300 hover:text-white transition-colors">
+                        Se alle →
+                    </a>
+                </div>
+
+                <!-- Quick Leaderboard Preview -->
+                <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+                    <div class="text-center">
+                        <div class="text-3xl mb-2">🥇</div>
+                        <p class="text-purple-300 text-sm">Beste Spiller</p>
+                        <p class="text-white font-semibold" id="top-player">Laster...</p>
+                    </div>
+                    <div class="text-center">
+                        <div class="text-3xl mb-2">🎯</div>
+                        <p class="text-purple-300 text-sm">Totalt Spilt</p>
+                        <p class="text-white font-semibold" id="total-games">Laster...</p>
+                    </div>
+                    <div class="text-center">
+                        <div class="text-3xl mb-2">⭐</div>
+                        <p class="text-purple-300 text-sm">Ditt Beste</p>
+                        <p class="text-white font-semibold" id="your-best">Laster...</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+        {% endif %}
+
+        <!-- Quick Actions -->
+        <div class="text-center mt-12">
+            <div class="flex justify-center space-x-4">
+                <a href="{{ url_for('main.dashboard') }}" class="btn-secondary">
+                    ⬅️ Tilbake til Dashboard
+                </a>
+                {% if current_user.is_authenticated %}
+                <a href="{{ url_for('quiz.quiz_home') }}" class="btn-primary">
+                    📚 Quiz
+                </a>
+                <a href="{{ url_for('video.index') }}" class="btn-primary">
+                    🎥 Videoer
+                </a>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+</div>
+
+<style>
+.btn-primary {
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    color: white;
+    padding: 12px 24px;
+    border-radius: 8px;
+    font-weight: 600;
+    text-decoration: none;
+    display: inline-block;
+    transition: all 0.3s ease;
+    border: none;
+    cursor: pointer;
+}
+
+.btn-primary:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 8px 25px rgba(102, 126, 234, 0.4);
+}
+
+.btn-secondary {
+    background: rgba(255, 255, 255, 0.1);
+    backdrop-filter: blur(10px);
+    color: white;
+    padding: 12px 24px;
+    border-radius: 8px;
+    font-weight: 600;
+    text-decoration: none;
+    display: inline-block;
+    transition: all 0.3s ease;
+    border: 1px solid rgba(255, 255, 255, 0.2);
+}
+
+.btn-secondary:hover {
+    background: rgba(255, 255, 255, 0.2);
+    transform: translateY(-2px);
+}
+
+.btn-disabled {
+    background: rgba(107, 114, 128, 0.5);
+    color: rgba(255, 255, 255, 0.5);
+    padding: 12px 24px;
+    border-radius: 8px;
+    font-weight: 600;
+    text-decoration: none;
+    display: inline-block;
+    border: 1px solid rgba(107, 114, 128, 0.3);
+    cursor: not-allowed;
+}
+
+.game-card {
+    backdrop-filter: blur(20px);
+}
+
+.game-card:hover {
+    box-shadow: 0 20px 40px rgba(0, 0, 0, 0.3);
+}
+
+@media (max-width: 768px) {
+    .container {
+        padding: 16px;
+    }
+    
+    .grid {
+        grid-template-columns: 1fr;
+        gap: 24px;
+    }
+    
+    .flex.space-x-4 {
+        flex-direction: column;
+        gap: 12px;
+    }
+    
+    .flex.space-x-4 > * {
+        margin: 0;
+    }
+}
+</style>
+
+<script>
+// Load quick stats
+document.addEventListener('DOMContentLoaded', function() {
+    // Mock data for now - replace with actual API calls
+    document.getElementById('top-player')?.textContent = 'Laster...';
+    document.getElementById('total-games')?.textContent = 'Laster...';
+    document.getElementById('your-best')?.textContent = 'Laster...';
+    
+    // You can add actual API calls here later
+});
+</script>
+{% endblock %}

@@ -1,0 +1,230 @@
+{% extends "base.html" %}
+
+{% block title %}{{ game_name }} - Toppliste{% endblock %}
+
+{% block content %}
+<div class="leaderboard-container">
+    <div class="leaderboard-header">
+        <h1>🏆 {{ game_name }} Toppliste</h1>
+        <p>De beste spillerne i trafikk scenario puslespill</p>
+    </div>
+
+    {% if leaderboard %}
+    <div class="leaderboard-table">
+        <div class="table-header">
+            <div class="rank-col">#</div>
+            <div class="player-col">Spiller</div>
+            <div class="score-col">Total Poeng</div>
+            <div class="games-col">Spill</div>
+            <div class="avg-col">Snitt</div>
+            <div class="best-col">Beste</div>
+        </div>
+        
+        {% for entry in leaderboard %}
+        <div class="leaderboard-row {% if entry.user_id == current_user.id %}current-user{% endif %}">
+            <div class="rank-col">
+                {% if entry.rank <= 3 %}
+                    <span class="medal">
+                        {% if entry.rank == 1 %}🥇
+                        {% elif entry.rank == 2 %}🥈
+                        {% else %}🥉{% endif %}
+                    </span>
+                {% else %}
+                    {{ entry.rank }}
+                {% endif %}
+            </div>
+            
+            <div class="player-col">
+                <div class="player-info">
+                    {% if entry.profile_picture %}
+                        <img src="{{ entry.profile_picture }}" alt="{{ entry.username }}" class="player-avatar">
+                    {% else %}
+                        <div class="player-avatar-placeholder">{{ entry.username[0]|upper }}</div>
+                    {% endif %}
+                    <span class="player-name">{{ entry.username }}</span>
+                </div>
+            </div>
+            
+            <div class="score-col">
+                <span class="score-value">{{ "{:,}".format(entry.total_score) }}</span>
+            </div>
+            
+            <div class="games-col">
+                {{ entry.games_played }}
+            </div>
+            
+            <div class="avg-col">
+                {{ entry.avg_score }}
+            </div>
+            
+            <div class="best-col">
+                <span class="best-score">{{ entry.best_score }}</span>
+            </div>
+        </div>
+        {% endfor %}
+    </div>
+    {% else %}
+    <div class="empty-leaderboard">
+        <div class="empty-icon">📊</div>
+        <h3>Ingen resultater ennå</h3>
+        <p>Vær den første til å spille og sett en rekord!</p>
+        <a href="{{ url_for('rule_puzzle.play') }}" class="btn btn-primary">
+            🎮 Spill Nå
+        </a>
+    </div>
+    {% endif %}
+
+    <div class="leaderboard-actions">
+        <a href="{{ url_for('rule_puzzle.play') }}" class="btn btn-primary">
+            🎮 Spill Igjen
+        </a>
+        
+        <a href="{{ url_for('games.index') }}" class="btn btn-secondary">
+            ⬅️ Tilbake til Spill
+        </a>
+    </div>
+</div>
+
+<style>
+.leaderboard-container {
+    max-width: 800px;
+    margin: 0 auto;
+    padding: 20px;
+}
+
+.leaderboard-header {
+    text-align: center;
+    margin-bottom: 30px;
+}
+
+.leaderboard-header h1 {
+    color: #1f2937;
+    margin-bottom: 10px;
+}
+
+.leaderboard-table {
+    background: white;
+    border-radius: 12px;
+    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+    overflow: hidden;
+}
+
+.table-header {
+    display: grid;
+    grid-template-columns: 60px 1fr 120px 80px 80px 100px;
+    gap: 10px;
+    padding: 15px 20px;
+    background: #f8fafc;
+    border-bottom: 1px solid #e5e7eb;
+    font-weight: 600;
+    color: #374151;
+}
+
+.leaderboard-row {
+    display: grid;
+    grid-template-columns: 60px 1fr 120px 80px 80px 100px;
+    gap: 10px;
+    padding: 15px 20px;
+    border-bottom: 1px solid #f3f4f6;
+    align-items: center;
+    transition: background-color 0.2s;
+}
+
+.leaderboard-row:hover {
+    background: #f9fafb;
+}
+
+.leaderboard-row.current-user {
+    background: #fef3c7;
+    border: 2px solid #f59e0b;
+}
+
+.rank-col {
+    font-weight: 600;
+    text-align: center;
+}
+
+.medal {
+    font-size: 20px;
+}
+
+.player-info {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+.player-avatar {
+    width: 32px;
+    height: 32px;
+    border-radius: 50%;
+    object-fit: cover;
+}
+
+.player-avatar-placeholder {
+    width: 32px;
+    height: 32px;
+    border-radius: 50%;
+    background: #6b7280;
+    color: white;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-weight: 600;
+    font-size: 14px;
+}
+
+.player-name {
+    font-weight: 500;
+}
+
+.score-value {
+    font-weight: 600;
+    color: #059669;
+}
+
+.best-score {
+    font-weight: 500;
+    color: #dc2626;
+}
+
+.empty-leaderboard {
+    text-align: center;
+    padding: 60px 20px;
+    color: #6b7280;
+}
+
+.empty-icon {
+    font-size: 48px;
+    margin-bottom: 20px;
+}
+
+.leaderboard-actions {
+    display: flex;
+    justify-content: center;
+    gap: 15px;
+    margin-top: 30px;
+}
+
+/* Mobile responsiveness */
+@media (max-width: 768px) {
+    .table-header,
+    .leaderboard-row {
+        grid-template-columns: 50px 1fr 80px 60px;
+        font-size: 14px;
+    }
+    
+    .avg-col,
+    .best-col {
+        display: none;
+    }
+    
+    .player-avatar,
+    .player-avatar-placeholder {
+        width: 24px;
+        height: 24px;
+        font-size: 12px;
+    }
+}
+</style>
+{% endblock %}

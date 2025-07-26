@@ -153,7 +153,7 @@ class Question(db.Model):
     
     # Relationships
     options = db.relationship('Option', backref='question', cascade='all, delete-orphan')
-    quiz_responses = db.relationship('QuizResponse', backref='question')
+    quiz_responses = db.relationship('QuizResponse', backref='question', cascade='all, delete-orphan')   
     video_checkpoints = db.relationship('VideoCheckpoint', backref='question')
 
 
