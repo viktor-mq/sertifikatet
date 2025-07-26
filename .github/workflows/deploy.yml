@@ -72,6 +72,15 @@ jobs:
           call venv\Scripts\activate.bat
         )
 
+    - name: Pull latest code from repository
+      shell: cmd
+      run: |
+        cd /d "%PROJECT_PATH%"
+        echo Pulling latest code from main branch...
+        git fetch origin
+        git reset --hard origin/main
+        git clean -fd
+
     - name: Install/Update dependencies
       shell: cmd
       run: |
