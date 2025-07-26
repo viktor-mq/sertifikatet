@@ -1077,7 +1077,10 @@ function confirmDeleteAjax(id) {
   }
   
   fetch(`/admin/api/question/delete/${id}`, {
-    method: 'DELETE'
+    method: 'DELETE',
+    headers: {
+    'X-CSRFToken': getCSRFToken()
+    }
   })
   .then(response => response.json())
   .then(result => {
@@ -1324,7 +1327,10 @@ function enhancedConfirmDeleteAjax(id) {
   }
   
   fetch(`/admin/api/question/delete/${id}`, {
-    method: 'DELETE'
+    method: 'DELETE',
+    headers: {
+    'X-CSRFToken': getCSRFToken()
+    }
   })
   .then(response => response.json())
   .then(result => {
