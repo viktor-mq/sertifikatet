@@ -249,8 +249,6 @@
     {% endif %}
     <!-- End Google Tag Manager (noscript) -->
     
-    <!-- Scroll Progress Indicator -->
-    <div id="scroll-progress" class="scroll-progress"></div>
     
     <!-- Navigation -->
     <nav class="bg-gray-800 shadow-lg">
@@ -634,20 +632,6 @@
             }
         });
         
-        // Scroll Progress Indicator
-        function updateScrollProgress() {
-            const scrollProgress = document.getElementById('scroll-progress');
-            if (scrollProgress) {
-                const scrollTop = window.pageYOffset || document.documentElement.scrollTop;
-                const scrollHeight = document.documentElement.scrollHeight - document.documentElement.clientHeight;
-                const progress = (scrollTop / scrollHeight) * 100;
-                scrollProgress.style.width = Math.min(progress, 100) + '%';
-            }
-        }
-        
-        // Update scroll progress on scroll
-        window.addEventListener('scroll', updateScrollProgress);
-        window.addEventListener('resize', updateScrollProgress);
         
         // Apply purple scrollbar to body
         document.body.classList.add('scrollbar-purple');
