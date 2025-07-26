@@ -15,6 +15,7 @@
             <div id="modalMessage"></div>
 
             <form id="questionModalForm" onsubmit="saveQuestion(event)">
+                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
                 <input type="hidden" id="questionModalId" name="question_id">
 
                 <!-- Question Text -->
@@ -410,7 +411,7 @@ function saveModalQuestion() {
     
     // Basic validation
     if (!formData.question || !formData.option_a || !formData.option_b || !formData.option_c || !formData.option_d || !formData.correct_option) {
-        alert('Alle påkrevde felt må fylles ut');
+        showToast('Alle påkrevde felt må fylles ut', 'error');
         return;
     }
     
@@ -423,6 +424,7 @@ function saveModalQuestion() {
         method: 'POST',
         headers: {
             'Content-Type': 'application/json',
+            'X-CSRFToken': getCSRFToken()
         },
         body: JSON.stringify(formData)
     })
@@ -439,12 +441,12 @@ function saveModalQuestion() {
             }
             closeQuestionModal();
         } else {
-            alert('Feil: ' + (result.error || 'Ukjent feil'));
+            showToast('Feil: ' + (result.error || 'Ukjent feil'), 'error');
         }
     })
     .catch(error => {
         console.error('Error saving question:', error);
-        alert('Nettverksfeil ved lagring av spørsmål');
+        showToast('Nettverksfeil ved lagring av spørsmål', 'error');
     });
 }
 

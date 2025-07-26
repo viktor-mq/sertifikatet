@@ -1,6 +1,12 @@
 // Reports Section Enhancement JavaScript - Support for multiple tables
 (function() {
     'use strict';
+    
+    // CSRF token utility
+    function getCSRFToken() {
+        return document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') || '';
+    }
+
     let currentReportId = null;
 
     // Reports table state
@@ -52,7 +58,6 @@
     };
 
     function initializeReportsEnhancements() {
-        console.log('🔧 Initializing Reports section enhancements...');
         
         // Initialize search inputs with debouncing
         const reportsSearchInput = document.getElementById('reports-search');
@@ -118,13 +123,16 @@
             });
         });
         
+        // Initialize client-side pagination for reports table
+        initializeReportsPagination();
+        
         // Initialize per-page selector
         const perPageSelect = document.getElementById('reports-per-page');
         if (perPageSelect) {
             perPageSelect.addEventListener('change', function() {
                 reportsPerPage = parseInt(this.value);
                 reportsCurrentPage = 1;
-                performReportsSearch();
+                renderReportsPage();
             });
         }
         
@@ -151,7 +159,6 @@
             }
         });
         
-        console.log('✅ Reports section enhancements initialized successfully');
     }
 
     function debouncedReportsSearch() {
@@ -259,9 +266,9 @@
         rows.forEach(row => row.style.display = 'none');
         filteredRows.forEach(row => row.style.display = '');
         
-        // Update results info
-        const totalRows = rows.length;
-        updateReportsResultsInfo(filteredRows.length, totalRows);
+        // Reset to page 1 after filtering and re-render pagination
+        reportsCurrentPage = 1;
+        renderReportsPage();
         
         // Update status cards to reflect filtered data
         updateStatusCards();
@@ -343,62 +350,95 @@
         return badges[status] || `<span class="btn btn-secondary btn-small" style="cursor: default;">${status.toUpperCase()}</span>`;
     }
 
-    function updateReportsPagination(pagination) {
-        const container = document.getElementById('reports-pagination');
-        if (!container || !pagination) return;
+    // Client-side pagination functions for reports
+    function initializeReportsPagination() {
+        renderReportsPage();
+    }
+    
+    function renderReportsPage() {
+        const table = document.getElementById('reports-table');
+        if (!table) return;
         
-        let html = '<div class="pagination">';
+        const rows = Array.from(table.querySelectorAll('tbody tr'));
+        const visibleRows = rows.filter(row => row.style.display !== 'none');
+        const totalItems = visibleRows.length;
+        const perPage = reportsPerPage === -1 ? totalItems : reportsPerPage;
+        const totalPages = Math.ceil(totalItems / perPage);
+        
+        // Calculate pagination bounds
+        const start = (reportsCurrentPage - 1) * perPage;
+        const end = Math.min(start + perPage, totalItems);
+        
+        // Show/hide rows based on current page
+        visibleRows.forEach((row, index) => {
+            if (index >= start && index < end) {
+                row.style.display = '';
+            } else {
+                row.style.display = 'none';
+            }
+        });
+        
+        // Update pagination info
+        updateReportsPaginationInfo(start + 1, end, totalItems);
+        
+        // Update pagination buttons
+        updateReportsPaginationButtons(reportsCurrentPage, totalPages);
+    }
+    
+    function updateReportsPaginationInfo(start, end, total) {
+        const infoElement = document.getElementById('reports-pagination-info');
+        if (infoElement) {
+            if (reportsPerPage === -1) {
+                infoElement.textContent = `Showing all ${total} reports`;
+            } else {
+                infoElement.textContent = `Showing ${start}-${end} of ${total} reports`;
+            }
+        }
+    }
+    
+    function updateReportsPaginationButtons(currentPage, totalPages) {
+        const container = document.getElementById('reports-pagination');
+        if (!container) return;
+        
+        let html = '';
         
         // Previous button
-        if (pagination.has_prev) {
-            html += `<button class="page-btn" onclick="goToReportsPage(${pagination.prev_num})">← Previous</button>`;
+        if (currentPage > 1) {
+            html += `<button onclick="goToReportsPage(${currentPage - 1})" class="page-btn">‹ Previous</button>`;
         } else {
-            html += '<button class="page-btn" disabled>← Previous</button>';
+            html += `<button class="page-btn disabled" disabled>‹ Previous</button>`;
         }
         
-        // Page numbers
-        const startPage = Math.max(1, pagination.page - 2);
-        const endPage = Math.min(pagination.pages, pagination.page + 2);
+        // Page numbers (show max 7 pages)
+        const maxVisible = 7;
+        let startPage = Math.max(1, currentPage - Math.floor(maxVisible / 2));
+        let endPage = Math.min(totalPages, startPage + maxVisible - 1);
         
-        if (startPage > 1) {
-            html += '<button class="page-btn" onclick="goToReportsPage(1)">1</button>';
-            if (startPage > 2) html += '<span class="page-btn" disabled>...</span>';
+        if (endPage - startPage + 1 < maxVisible) {
+            startPage = Math.max(1, endPage - maxVisible + 1);
         }
         
         for (let i = startPage; i <= endPage; i++) {
-            const activeClass = i === pagination.page ? 'active' : '';
-            html += `<button class="page-btn ${activeClass}" onclick="goToReportsPage(${i})">${i}</button>`;
-        }
-        
-        if (endPage < pagination.pages) {
-            if (endPage < pagination.pages - 1) html += '<span class="page-btn" disabled>...</span>';
-            html += `<button class="page-btn" onclick="goToReportsPage(${pagination.pages})">${pagination.pages}</button>`;
+            if (i === currentPage) {
+                html += `<button class="page-btn active" disabled>${i}</button>`;
+            } else {
+                html += `<button onclick="goToReportsPage(${i})" class="page-btn">${i}</button>`;
+            }
         }
         
         // Next button
-        if (pagination.has_next) {
-            html += `<button class="page-btn" onclick="goToReportsPage(${pagination.next_num})">Next →</button>`;
+        if (currentPage < totalPages) {
+            html += `<button onclick="goToReportsPage(${currentPage + 1})" class="page-btn">Next ›</button>`;
         } else {
-            html += '<button class="page-btn" disabled>Next →</button>';
+            html += `<button class="page-btn disabled" disabled>Next ›</button>`;
         }
         
-        html += '</div>';
         container.innerHTML = html;
     }
-
+    
     function goToReportsPage(page) {
-        currentPage = page;
-        performReportsSearch();
-    }
-
-    function updateResultsInfo(pagination) {
-        const infoDiv = document.getElementById('reports-results-info');
-        if (!infoDiv || !pagination) return;
-        
-        const start = (pagination.page - 1) * pagination.per_page + 1;
-        const end = Math.min(pagination.page * pagination.per_page, pagination.total);
-        
-        infoDiv.innerHTML = `Showing ${start}-${end} of ${pagination.total} reports`;
+        reportsCurrentPage = page;
+        renderReportsPage();
     }
 
     function updateSortIndicators() {
@@ -501,7 +541,10 @@
         try {
             const response = await fetch(`/admin/api/reports/${reportId}/assign`, {
                 method: 'POST',
-                headers: { 'Content-Type': 'application/json' }
+                headers: { 
+                    'Content-Type': 'application/json',
+                    'X-CSRFToken': getCSRFToken()
+                }
             });
             
             if (!response.ok) throw new Error('Failed to assign report');
@@ -529,7 +572,10 @@
         try {
             const response = await fetch(`/admin/api/reports/${currentReportId}/resolve`, {
                 method: 'POST',
-                headers: { 'Content-Type': 'application/json' }
+                headers: { 
+                    'Content-Type': 'application/json',
+                    'X-CSRFToken': getCSRFToken()
+                }
             });
             
             if (!response.ok) throw new Error('Failed to resolve report');
@@ -807,7 +853,8 @@
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
-                    'X-Requested-With': 'XMLHttpRequest'
+                    'X-Requested-With': 'XMLHttpRequest',
+                    'X-CSRFToken': getCSRFToken()
                 }
             });
             
@@ -818,20 +865,40 @@
             const result = await response.json();
             
             if (result.success) {
-                alert(`Report ${reportId} assigned! - This would make an API call`);
+                // Show toast notification
+                if (typeof showToast === 'function') {
+                    showToast(`✅ Rapport ${reportId} tildelt til deg!`, 'success');
+                } else if (typeof AdminEnhancements !== 'undefined' && AdminEnhancements.showToast) {
+                    AdminEnhancements.showToast(`✅ Rapport ${reportId} tildelt til deg!`, 'success');
+                }
                 
-                // Redirect to the HTML view of the report after assignment
+                // Refresh the current table data to reflect changes
+                if (typeof performReportsSearch === 'function') {
+                    performReportsSearch();
+                }
+                
+                // Optionally redirect to the report view after a short delay
                 setTimeout(() => {
-                    window.location.href = `/admin/reports/${reportId}`;
-                }, 1000);
+                    if (confirm('Vil du se rapporten nå?')) {
+                        window.location.href = `/admin/reports/${reportId}`;
+                    }
+                }, 1500);
                 
             } else {
-                alert(`❌ Error: ${result.error || 'Failed to assign report'}`);
+                if (typeof showToast === 'function') {
+                    showToast(`❌ Feil: ${result.error || 'Kunne ikke tildele rapport'}`, 'error');
+                } else if (typeof AdminEnhancements !== 'undefined' && AdminEnhancements.showToast) {
+                    AdminEnhancements.showToast(`❌ Feil: ${result.error || 'Kunne ikke tildele rapport'}`, 'error');
+                }
             }
             
         } catch (error) {
             console.error('Error assigning report:', error);
-            alert(`❌ Network error: ${error.message}`);
+            if (typeof showToast === 'function') {
+                showToast(`❌ Nettverksfeil: ${error.message}`, 'error');
+            } else if (typeof AdminEnhancements !== 'undefined' && AdminEnhancements.showToast) {
+                AdminEnhancements.showToast(`❌ Nettverksfeil: ${error.message}`, 'error');
+            }
         } finally {
             setReportsLoading(false);
         }
@@ -926,13 +993,14 @@
             statCards[3].textContent = highPriorityCount; // High Priority
         }
         
-        console.log(`Updated status cards: Total=${totalCount}, New=${newCount}, InProgress=${inProgressCount}, HighPriority=${highPriorityCount}`);
+        //console.log(`Updated status cards: Total=${totalCount}, New=${newCount}, InProgress=${inProgressCount}, HighPriority=${highPriorityCount}`);
     }
 
     // Make the function globally available
     window.assignReportAjax = assignReportAjax;
     window.updateStatusCards = updateStatusCards;
     window.openReportModal = openReportModal;
+    window.goToReportsPage = goToReportsPage;
     window.viewReport = function(reportId) {
         window.location.href = `/admin/reports/${reportId}`;
     };

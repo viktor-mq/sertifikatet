@@ -1,0 +1,154 @@
+<!-- Base Game Template -->
+<!-- All game templates should extend this base template -->
+
+{% extends "base.html" %}
+
+{% block head %}
+    <!-- Common game styles -->
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/game.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='games/base/css/game_common.css') }}">
+    
+    <!-- Game-specific styles (override in child templates) -->
+    {% block game_styles %}{% endblock %}
+{% endblock %}
+
+{% block content %}
+<div class="min-h-screen bg-gradient-to-br from-slate-900 via-purple-900 to-slate-900">
+    <!-- Game Header -->
+    <div class="container mx-auto px-4 py-8">
+        {% block game_header %}
+        <div class="text-center mb-8">
+            <h1 class="text-4xl font-bold text-white mb-2">
+                {% block game_icon %}<i class="fas fa-gamepad mr-3"></i>{% endblock %}
+                {% block game_title %}Spill{% endblock %}
+            </h1>
+            <p class="text-xl text-purple-200">
+                {% block game_description %}Lær trafikkregler gjennom interaktive spill{% endblock %}
+            </p>
+        </div>
+        {% endblock %}
+
+        <!-- Game Stats Bar -->
+        {% block game_stats %}
+        <div class="grid grid-cols-2 md:grid-cols-4 gap-4 mb-8">
+            <div class="bg-white/10 backdrop-blur-md rounded-lg p-4 text-center">
+                <h3 class="text-sm text-purple-300 uppercase tracking-wide mb-1">Poengsum</h3>
+                <p class="text-3xl font-bold text-yellow-400" id="game-score">0</p>
+            </div>
+            <div class="bg-white/10 backdrop-blur-md rounded-lg p-4 text-center">
+                <h3 class="text-sm text-purple-300 uppercase tracking-wide mb-1">Tid</h3>
+                <p class="text-3xl font-bold text-green-400" id="game-timer">0:00</p>
+            </div>
+            <div class="bg-white/10 backdrop-blur-md rounded-lg p-4 text-center">
+                <h3 class="text-sm text-purple-300 uppercase tracking-wide mb-1">Fremgang</h3>
+                <p class="text-3xl font-bold text-blue-400" id="game-progress">0%</p>
+            </div>
+            <div class="bg-white/10 backdrop-blur-md rounded-lg p-4 text-center">
+                <h3 class="text-sm text-purple-300 uppercase tracking-wide mb-1">Nøyaktighet</h3>
+                <p class="text-3xl font-bold text-pink-400" id="game-accuracy">100%</p>
+            </div>
+        </div>
+        {% endblock %}
+
+        <!-- Game Content Area -->
+        <div class="max-w-6xl mx-auto">
+            {% block game_content %}
+            <div class="bg-white/10 backdrop-blur-md rounded-xl p-8">
+                <div id="game-area">
+                    <!-- Game-specific content goes here -->
+                    {% block game_area %}
+                    <p class="text-white text-center">Spill innhold lastes...</p>
+                    {% endblock %}
+                </div>
+            </div>
+            {% endblock %}
+        </div>
+
+        <!-- Game Controls -->
+        {% block game_controls %}
+        <div class="max-w-4xl mx-auto mt-8">
+            <div class="flex justify-center space-x-4">
+                <button id="pause-btn" class="bg-yellow-600 hover:bg-yellow-700 text-white px-6 py-3 rounded-lg font-semibold transition-all">
+                    <i class="fas fa-pause mr-2"></i>Pause
+                </button>
+                <button id="hint-btn" class="bg-blue-600 hover:bg-blue-700 text-white px-6 py-3 rounded-lg font-semibold transition-all">
+                    <i class="fas fa-lightbulb mr-2"></i>Hint
+                </button>
+                <button id="quit-btn" class="bg-red-600 hover:bg-red-700 text-white px-6 py-3 rounded-lg font-semibold transition-all">
+                    <i class="fas fa-times mr-2"></i>Avslutt
+                </button>
+            </div>
+        </div>
+        {% endblock %}
+    </div>
+</div>
+
+<!-- Game Modals -->
+{% block game_modals %}
+<!-- Pause Modal -->
+<div id="pause-modal" class="fixed inset-0 bg-black bg-opacity-50 hidden items-center justify-center z-50">
+    <div class="bg-white rounded-lg p-8 max-w-md mx-4">
+        <h3 class="text-2xl font-bold text-gray-800 mb-4">Spill satt på pause</h3>
+        <p class="text-gray-600 mb-6">Spillet er midlertidig stoppet. Klikk fortsett for å spille videre.</p>
+        <div class="flex space-x-4">
+            <button id="resume-btn" class="bg-green-600 hover:bg-green-700 text-white px-6 py-3 rounded-lg font-semibold flex-1">
+                <i class="fas fa-play mr-2"></i>Fortsett
+            </button>
+            <button id="quit-confirm-btn" class="bg-red-600 hover:bg-red-700 text-white px-6 py-3 rounded-lg font-semibold flex-1">
+                <i class="fas fa-stop mr-2"></i>Avslutt
+            </button>
+        </div>
+    </div>
+</div>
+
+<!-- Results Modal -->
+<div id="results-modal" class="fixed inset-0 bg-black bg-opacity-50 hidden items-center justify-center z-50">
+    <div class="bg-white rounded-lg p-8 max-w-lg mx-4">
+        <h3 class="text-3xl font-bold text-gray-800 mb-4 text-center">Spill fullført!</h3>
+        
+        <div class="grid grid-cols-2 gap-4 mb-6">
+            <div class="text-center">
+                <p class="text-sm text-gray-600">Poengsum</p>
+                <p class="text-2xl font-bold text-yellow-600" id="final-score">0</p>
+            </div>
+            <div class="text-center">
+                <p class="text-sm text-gray-600">Nøyaktighet</p>
+                <p class="text-2xl font-bold text-green-600" id="final-accuracy">0%</p>
+            </div>
+            <div class="text-center">
+                <p class="text-sm text-gray-600">Tid brukt</p>
+                <p class="text-2xl font-bold text-blue-600" id="final-time">0:00</p>
+            </div>
+            <div class="text-center">
+                <p class="text-sm text-gray-600">XP opptjent</p>
+                <p class="text-2xl font-bold text-purple-600" id="final-xp">0</p>
+            </div>
+        </div>
+
+        <div id="achievements-section" class="mb-6 hidden">
+            <h4 class="text-lg font-semibold text-gray-800 mb-2">Nye prestasjoner!</h4>
+            <div id="achievements-list" class="space-y-2">
+                <!-- Achievements will be populated here -->
+            </div>
+        </div>
+
+        <div class="flex space-x-4">
+            <button id="play-again-btn" class="bg-green-600 hover:bg-green-700 text-white px-6 py-3 rounded-lg font-semibold flex-1">
+                <i class="fas fa-redo mr-2"></i>Spill igjen
+            </button>
+            <button id="back-to-games-btn" class="bg-blue-600 hover:bg-blue-700 text-white px-6 py-3 rounded-lg font-semibold flex-1">
+                <i class="fas fa-arrow-left mr-2"></i>Tilbake til spill
+            </button>
+        </div>
+    </div>
+</div>
+{% endblock %}
+{% endblock %}
+
+{% block scripts %}
+    <!-- Common game JavaScript -->
+    <script src="{{ url_for('static', filename='games/base/js/game_common.js') }}"></script>
+    
+    <!-- Game-specific JavaScript (override in child templates) -->
+    {% block game_scripts %}{% endblock %}
+{% endblock %}

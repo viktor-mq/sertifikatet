@@ -615,10 +615,22 @@ def review_session(session_id):
                 'text': opt.option_text
             } for opt in question.options]
             
+            # Add image folder discovery (same as take_quiz function)
+            image_folder = ''
+            if question.image_filename:
+                import os
+                from flask import current_app
+                images_dir = os.path.join(current_app.static_folder, 'images')
+                for root, dirs, files in os.walk(images_dir):
+                    if question.image_filename in files:
+                        image_folder = os.path.relpath(root, images_dir).replace(os.sep, '/')
+                        break
+            
             question_data = {
                 'question_id': question.id,
                 'question_text': question.question,
                 'image_filename': question.image_filename,
+                'image_folder': image_folder,
                 'options': options,
                 'correct_answer': question.correct_option,
                 'user_answer': response.user_answer,
@@ -706,6 +718,23 @@ def view_results(session_id):
         
         # Get all responses for this session
         responses = QuizResponse.query.filter_by(session_id=session_id).all()
+        
+        # Add image folder discovery for each question (same as take_quiz function)
+        import os
+        from flask import current_app
+        
+        images_dir = os.path.join(current_app.static_folder, 'images')
+        
+        for response in responses:
+            if response.question and response.question.image_filename:
+                # Dynamic discovery of image folder
+                image_folder = ''
+                for root, dirs, files in os.walk(images_dir):
+                    if response.question.image_filename in files:
+                        image_folder = os.path.relpath(root, images_dir).replace(os.sep, '/')
+                        break
+                # Add image_folder attribute to question object
+                response.question.image_folder = image_folder
         
         # Get ML insights if available
         ml_insights = {}

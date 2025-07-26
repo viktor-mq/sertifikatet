@@ -217,8 +217,8 @@
 </div>
 <!-- Add this for debugging -->
 <script>
-    console.log('Submodule status from backend:', '{{ submodule.status }}');
-    console.log('Is completed from backend:', {{ submodule.is_completed|tojson }});
+    //console.log('Submodule status from backend:', '{{ submodule.status }}');
+    //console.log('Is completed from backend:', {{ submodule.is_completed|tojson }});
     </script>
 <script>
 // Content type toggle functionality
@@ -356,9 +356,9 @@ async function loadNextContent() {
                     nextBtn.title = 'Gå til neste emne';
                 }
                 
-                console.log('Smart navigation loaded:', data.next_content.title);
-                console.log('Submodule status from backend:', '{{ submodule.status }}');
-                console.log('Is completed from backend:', {{ submodule.is_completed|tojson }});
+                //console.log('Smart navigation loaded:', data.next_content.title);
+                //console.log('Submodule status from backend:', '{{ submodule.status }}');
+                //console.log('Is completed from backend:', {{ submodule.is_completed|tojson }});
             }
         } else {
             // No next content available - hide the button
@@ -495,7 +495,6 @@ function markAsComplete() {
             resolve();
             return;
         }
-        console.log('❌ Not marked as complete yet, showing dialog');
         const currentContentType = document.querySelector('input[name="content-type"]:checked').value;
         
         const confirmMessage = currentContentType === 'kort' 
@@ -507,7 +506,8 @@ function markAsComplete() {
             fetch('/learning/api/complete-content', {
                 method: 'POST',
                 headers: {
-                    'Content-Type': 'application/json'
+                    'Content-Type': 'application/json',
+                    'X-CSRFToken': document.querySelector('meta[name=csrf-token]').getAttribute('content')
                 },
                 body: JSON.stringify({
                     content_type: 'content',
@@ -515,7 +515,7 @@ function markAsComplete() {
                     completion_data: {
                         content_type_read: currentContentType,
                         font_size: currentFontSize,
-                        time_spent: Math.floor((Date.now() - startTime) / 1000 / 60)
+                        time_spent: Math.floor((Date.now() - learningStartTime) / 1000 / 60)
                     }
                 })
             })
@@ -553,9 +553,9 @@ function markAsComplete() {
 }
 
 // Track reading time
-let startTime = Date.now();
+let learningStartTime = Date.now();
 window.addEventListener('beforeunload', function() {
-    const timeSpent = Math.floor((Date.now() - startTime) / 1000 / 60); // minutes
+    const timeSpent = Math.floor((Date.now() - learningStartTime) / 1000 / 60); // minutes
     if (timeSpent > 0) {
         // TODO: Send time tracking data to server
         navigator.sendBeacon('/api/learning/track-time', JSON.stringify({

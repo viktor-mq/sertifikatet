@@ -19,6 +19,22 @@ class QuizGamificationIntegration {
         });
     }
 
+    async handleQuizCompletion(data) {
+        // Handle quiz completion from external sources (like QuizResultsModal)
+        try {
+            if (data.gamification) {
+                this.processGamificationRewards(data.gamification);
+            }
+            
+            if (data.success) {
+                this.handleQuizSuccess(data);
+            }
+        } catch (error) {
+            console.error('Error handling quiz completion:', error);
+            this.handleQuizError(error.message);
+        }
+    }
+
     async handleQuizSubmission(event) {
         event.preventDefault();
         
@@ -187,14 +203,11 @@ class QuizGamificationIntegration {
     }
 
     handleQuizSuccess(result) {
-        // Trigger the new modal-based results system
-        const event = new CustomEvent('quiz-ajax-complete', {
-            detail: result
-        });
-        document.dispatchEvent(event);
-        
-        // Legacy fallback if modal system isn't available
-        if (!window.QuizResultsModal) {
+        // Show modal directly instead of dispatching events to prevent loops
+        if (window.QuizResultsModal && window.quizResultsModal) {
+            window.quizResultsModal.handleQuizCompletion(result);
+        } else {
+            // Fallback if modal not available
             console.warn('Modal system not available, using fallback');
             if (result.redirect_url) {
                 window.location.href = result.redirect_url;

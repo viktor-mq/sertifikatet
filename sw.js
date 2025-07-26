@@ -16,14 +16,12 @@ const STATIC_CACHE_FILES = [
     '/static/images/profiles/selskapslogo.png',
     '/offline',
     
-    // Core pages
-    '/quiz/categories',
+    // Core pages (only public ones)
     '/video',
     '/game',
     '/learning',
     
-    // External dependencies
-    'https://cdn.tailwindcss.com',
+    // External dependencies (only ones that allow caching)
     'https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css'
 ];
 
@@ -43,16 +41,25 @@ const SYNC_TAGS = {
 
 // Install event - cache static resources
 self.addEventListener('install', (event) => {
-    console.log('Service Worker: Installing...');
+    // Installing service worker...
     
     event.waitUntil(
         caches.open(CACHE_NAME)
-            .then((cache) => {
-                console.log('Service Worker: Caching static files');
-                return cache.addAll(STATIC_CACHE_FILES);
-            })
-            .then(() => {
-                console.log('Service Worker: Installation complete');
+            .then(async (cache) => {
+                // Caching static files...
+                
+                // Cache files individually to avoid failing on missing files
+                const cachePromises = STATIC_CACHE_FILES.map(async (url) => {
+                    try {
+                        await cache.add(url);
+                        // Cached file silently
+                    } catch (error) {
+                        // Failed to cache file (expected for missing/CORS-blocked files)
+                    }
+                });
+                
+                await Promise.all(cachePromises);
+                // Installation complete
                 return self.skipWaiting();
             })
             .catch((error) => {
@@ -63,7 +70,7 @@ self.addEventListener('install', (event) => {
 
 // Activate event - clean up old caches
 self.addEventListener('activate', (event) => {
-    console.log('Service Worker: Activating...');
+    // Activating service worker...
     
     event.waitUntil(
         caches.keys()
@@ -78,7 +85,7 @@ self.addEventListener('activate', (event) => {
                 );
             })
             .then(() => {
-                console.log('Service Worker: Activation complete');
+                // Activation complete
                 return self.clients.claim();
             })
     );
@@ -105,6 +112,7 @@ self.addEventListener('fetch', (event) => {
         console.log('Service Worker: Skipping quiz submission request:', url.pathname);
         return; // Let quiz submissions go through normally
     }
+
     
     // Skip any quiz-related POST requests that should use AJAX
     if (request.method === 'POST' && (
@@ -126,6 +134,21 @@ self.addEventListener('fetch', (event) => {
 // Handle GET requests with cache strategies
 async function handleGetRequest(request) {
     const url = new URL(request.url);
+    
+    // Skip dashboard and progress pages to prevent caching stale progress data
+    if (url.pathname === '/' || 
+        url.pathname === '/dashboard' || 
+        url.pathname === '/gamification/dashboard' || 
+        url.pathname === '/learning/theory' ||
+        url.pathname.startsWith('/learning/module/') ||
+        url.pathname.startsWith('/learning/theory/module/') ||
+        url.pathname.startsWith('/subscription/checkout/') ||
+        url.pathname.startsWith('/subscription/cancel') ||
+        url.pathname === '/subscription/manage' ||
+        url.pathname.startsWith('/subscription/api/')) {
+        // Bypassing cache for progress pages or subscription management
+        return fetch(request); // Go directly to network, bypass all caching
+    }
     
     try {
         // Strategy 1: Cache First for static assets
@@ -155,6 +178,12 @@ async function handleGetRequest(request) {
 // Handle POST requests for offline queue
 async function handlePostRequest(request) {
     const url = new URL(request.url);
+    
+    // Skip payment and subscription management requests - let them go through normally
+    if (url.pathname.startsWith('/subscription/checkout/') || 
+        url.pathname.startsWith('/subscription/cancel')) {
+        return fetch(request); // Go directly to network, no caching or sync
+    }
     
     try {
         // Clone the request before attempting to read its body
@@ -405,7 +434,12 @@ async function retryRequest(requestData) {
         }
         
     } catch (error) {
-        console.error('Service Worker: Request sync failed', error);
+        // Only log unexpected errors, not expected 4xx client errors
+        if (error.message && error.message.includes('status 4')) {
+            console.log('Service Worker: Skipping invalid request (expected)');
+        } else {
+            console.error('Service Worker: Request sync failed', error);
+        }
         
         // Retry later if request is not too old (24 hours)
         const age = Date.now() - requestData.timestamp;
@@ -570,4 +604,4 @@ async function cleanupOldCache() {
     }
 }
 
-console.log('Service Worker: Script loaded successfully');
+// Service Worker loaded

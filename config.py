@@ -54,3 +54,10 @@ class Config:
     
     # Feature toggles
     REGULAR_VIDEOS_ENABLED = os.getenv('REGULAR_VIDEOS_ENABLED', 'True').lower() in ('true', '1', 'yes')
+    
+    # ML Configuration
+    ML_ALGORITHM_VERSION = os.getenv('ML_ALGORITHM_VERSION', '1.0')
+
+    # CSRF Protection Settings
+    WTF_CSRF_ENABLED = os.getenv('WTF_CSRF_ENABLED', 'True').lower() in ('true', '1', 'yes')
+    WTF_CSRF_SECRET_KEY = os.getenv('WTF_CSRF_SECRET_KEY', 'a-different-super-secret-key')

@@ -3,6 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="csrf-token" content="{{ csrf_token() }}">
     <title>{% block title %}Admin Panel{% endblock %} - Sertifikatet</title>
     <link rel="stylesheet" href="{{ url_for('static', filename='css/layout-common.css') }}">
     <link rel="stylesheet" href="{{ url_for('static', filename='css/admin.css') }}">
@@ -34,22 +35,119 @@
     </header>
     
     <main style="flex: 1; padding: 20px;">
-        <!-- Flash Messages -->
-        {% with messages = get_flashed_messages(with_categories=true) %}
-            {% if messages %}
-                <div class="container-fluid mb-4">
-                    {% for category, message in messages %}
-                        <div class="alert alert-{{ 'danger' if category == 'error' else category }} alert-dismissible fade show" role="alert">
-                            {{ message }}
-                            <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
-                        </div>
-                    {% endfor %}
-                </div>
-            {% endif %}
-        {% endwith %}
-        
         {% block content %}{% endblock %}
     </main>
+
+    <!-- Toast Notification Container (Global) -->
+    <div id="toastContainer" class="toast-container"></div>
+
+    <script>
+        // Global CSRF token retrieval function
+        window.getCSRFToken = function() {
+            const token = document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') || '';
+            console.log('getCSRFToken returning:', token);
+            return token;
+        };
+
+        // Global showToast function (if not already defined in included scripts)
+        if (typeof showToast === 'undefined') {
+            window.showToast = function(message, type = 'info', options = {}) {
+                const {
+                    duration = 5000,
+                    showProgress = true,
+                    allowClose = true,
+                    isUndo = false,
+                    onUndo = null
+                } = options;
+
+                const toast = document.createElement('div');
+                toast.className = `toast ${type} ${isUndo ? 'undo' : ''}`;
+
+                const iconMap = {
+                    success: '✅',
+                    error: '❌',
+                    warning: '⚠️',
+                    info: 'ℹ️',
+                    undo: '↩️'
+                };
+
+                let toastContent = `
+                    <div class="toast-icon">${iconMap[type] || iconMap.info}</div>
+                    <div class="toast-content">${message}</div>
+                `;
+
+                if (isUndo && onUndo) {
+                    toastContent += `<button class="toast-undo-btn" onclick="handleUndo()">Angre</button>`;
+                }
+
+                if (allowClose) {
+                    toastContent += `<button class="toast-close" onclick="removeToast(this.parentElement)">×</button>`;
+                }
+
+                if (showProgress && duration > 0) {
+                    toastContent += `<div class="toast-progress"></div>`;
+                }
+
+                toast.innerHTML = toastContent;
+
+                if (isUndo && onUndo) {
+                    window.currentUndoCallback = onUndo;
+                }
+
+                const container = document.getElementById('toastContainer');
+                if (container) {
+                    container.appendChild(toast);
+                } else {
+                    console.error('Toast container not found!');
+                    document.body.appendChild(toast); // Fallback
+                }
+
+                if (duration > 0) {
+                    setTimeout(() => {
+                        removeToast(toast);
+                    }, duration);
+                }
+
+                return toast;
+            };
+
+            window.removeToast = function(toast) {
+                if (toast && toast.parentElement) {
+                    toast.style.animation = 'slideOutToast 0.3s ease-in';
+                    setTimeout(() => {
+                        if (toast.parentElement) {
+                            toast.remove();
+                        }
+                    }, 300);
+                }
+            };
+
+            window.handleUndo = function() {
+                if (window.currentUndoCallback) {
+                    window.currentUndoCallback();
+                    window.currentUndoCallback = null;
+                    document.querySelectorAll('.toast.undo').forEach(toast => {
+                        removeToast(toast);
+                    });
+                }
+            };
+        }
+
+        // Process Flask flashed messages as toasts
+        document.addEventListener('DOMContentLoaded', function() {
+            const flashedMessages = JSON.parse('{{ get_flashed_messages(with_categories=true) | tojson | safe }}');
+            flashedMessages.forEach(function(message) {
+                const category = message[0];
+                const text = message[1];
+                let type = 'info';
+                if (category === 'success') type = 'success';
+                else if (category === 'error') type = 'error';
+                else if (category === 'warning') type = 'warning';
+
+                showToast(text, type, { duration: 5000, showProgress: true, allowClose: true });
+            });
+        });
+    </script>
     
     <footer class="admin-footer" style="padding: 15px 20px; text-align: center; background: #f8f9fa; border-top: 1px solid #dee2e6; margin-top: auto; flex-shrink: 0;">
         <p style="margin: 0; font-size: 0.9rem; color: rgb(176, 175, 175);">
@@ -69,6 +167,191 @@
                 yearSpan.textContent = new Date().getFullYear();
             }
         });
+
+        // Global Admin Pagination Utility
+        window.AdminPagination = {
+            // Get CSRF token
+            getCSRFToken: function() {
+                return document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') || '';
+            },
+
+            // Generic fetch with CSRF token
+            fetchWithCSRF: function(url, options = {}) {
+                const defaultOptions = {
+                    headers: {
+                        'X-CSRFToken': this.getCSRFToken(),
+                        'Content-Type': 'application/json',
+                        ...options.headers
+                    }
+                };
+                return fetch(url, { ...defaultOptions, ...options });
+            },
+
+            // Initialize pagination for any section
+            init: function(config) {
+                const {
+                    apiEndpoint,           // e.g., '/admin/api/questions'
+                    paginationContainer,   // e.g., '#paginationButtons'
+                    tableContainer,        // e.g., '#questionsTable tbody'
+                    updateCallback,        // function to update table content
+                    currentFilters = {},   // current filter state
+                    currentSort = {}       // current sort state
+                } = config;
+
+                // Store config globally for this section
+                window[`${config.sectionName}Config`] = config;
+
+                // Add click handlers to pagination buttons
+                document.addEventListener('click', function(e) {
+                    if (e.target.matches(`${paginationContainer} .admin-page-btn`)) {
+                        e.preventDefault();
+                        const page = parseInt(e.target.dataset.page);
+                        if (page && !isNaN(page)) {
+                            AdminPagination.goToPage(config.sectionName, page);
+                        }
+                    }
+                });
+            },
+
+            // Navigate to specific page
+            goToPage: function(sectionName, page) {
+                const config = window[`${sectionName}Config`];
+                if (!config) {
+                    console.error(`No config found for section: ${sectionName}`);
+                    return;
+                }
+
+                // Build query parameters
+                const params = new URLSearchParams();
+                params.append('page', page);
+                
+                // Add current filters
+                Object.entries(config.currentFilters || {}).forEach(([key, value]) => {
+                    if (value) params.append(key, value);
+                });
+
+                // Add current sort
+                Object.entries(config.currentSort || {}).forEach(([key, value]) => {
+                    if (value) params.append(key, value);
+                });
+
+                // Make API call
+                this.fetchWithCSRF(`${config.apiEndpoint}?${params.toString()}`)
+                    .then(response => response.json())
+                    .then(data => {
+                        if (data.success) {
+                            // Update table content
+                            if (config.updateCallback) {
+                                config.updateCallback(data);
+                            }
+                            // Update pagination controls
+                            this.updatePaginationControls(config.paginationContainer, data.pagination);
+                        } else {
+                            console.error('API Error:', data.error);
+                            this.showError('Failed to load page: ' + (data.error || 'Unknown error'));
+                        }
+                    })
+                    .catch(error => {
+                        console.error('Network Error:', error);
+                        this.showError('Network error occurred');
+                    });
+            },
+
+            // Update pagination controls HTML
+            updatePaginationControls: function(containerSelector, pagination) {
+                const container = document.querySelector(containerSelector);
+                if (!container) {
+                    console.error('Container not found:', containerSelector);
+                    return;
+                }
+
+                let html = '';
+
+                // Previous button
+                if (pagination.has_prev) {
+                    html += `<button class="admin-page-btn pagination-btn" data-page="${pagination.page - 1}" title="Previous">
+                        <span class="pagination-arrow">‹</span> Forrige
+                    </button>`;
+                } else {
+                    html += `<button class="admin-page-btn pagination-btn disabled" disabled title="No previous page">
+                        <span class="pagination-arrow">‹</span> Forrige
+                    </button>`;
+                }
+
+                // Page numbers
+                const maxVisible = 5;
+                let startPage = Math.max(1, pagination.page - Math.floor(maxVisible / 2));
+                let endPage = Math.min(pagination.pages, startPage + maxVisible - 1);
+
+                if (endPage - startPage + 1 < maxVisible) {
+                    startPage = Math.max(1, endPage - maxVisible + 1);
+                }
+
+                // First page + ellipsis
+                if (startPage > 1) {
+                    html += `<button class="admin-page-btn page-btn" data-page="1">1</button>`;
+                    if (startPage > 2) {
+                        html += `<span class="pagination-ellipsis">…</span>`;
+                    }
+                }
+
+                // Page numbers
+                for (let i = startPage; i <= endPage; i++) {
+                    if (i === pagination.page) {
+                        html += `<button class="admin-page-btn page-btn active" disabled>${i}</button>`;
+                    } else {
+                        html += `<button class="admin-page-btn page-btn" data-page="${i}">${i}</button>`;
+                    }
+                }
+
+                // Last page + ellipsis
+                if (endPage < pagination.pages) {
+                    if (endPage < pagination.pages - 1) {
+                        html += `<span class="pagination-ellipsis">…</span>`;
+                    }
+                    html += `<button class="admin-page-btn page-btn" data-page="${pagination.pages}">${pagination.pages}</button>`;
+                }
+
+                // Next button
+                if (pagination.has_next) {
+                    html += `<button class="admin-page-btn pagination-btn" data-page="${pagination.page + 1}" title="Next">
+                        Neste <span class="pagination-arrow">›</span>
+                    </button>`;
+                } else {
+                    html += `<button class="admin-page-btn pagination-btn disabled" disabled title="No next page">
+                        Neste <span class="pagination-arrow">›</span>
+                    </button>`;
+                }
+                container.innerHTML = html;
+            },
+
+            // Show error message
+            showError: function(message) {
+                // Try to find existing toast container or create one
+                let container = document.getElementById('admin-toast-container');
+                if (!container) {
+                    container = document.createElement('div');
+                    container.id = 'admin-toast-container';
+                    container.style.cssText = 'position: fixed; top: 20px; right: 20px; z-index: 9999;';
+                    document.body.appendChild(container);
+                }
+
+                const toast = document.createElement('div');
+                toast.className = 'alert alert-danger alert-dismissible fade show';
+                toast.innerHTML = `
+                    ${message}
+                    <button type="button" class="btn-close" onclick="this.parentElement.remove()"></button>
+                `;
+                container.appendChild(toast);
+
+                // Auto remove after 5 seconds
+                setTimeout(() => {
+                    if (toast.parentElement) {
+                        toast.remove();
+                    }
+                }, 5000);
+            }
+        };
     </script>
 </body>
 </html>

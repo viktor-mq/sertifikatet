@@ -275,6 +275,7 @@
                                 {% if report.status == 'new' and not report.assigned_to %}
                                 <form method="POST" action="{{ url_for('admin.update_report', report_id=report.id) }}" 
                                       style="display: inline;">
+                                  <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
                                   <input type="hidden" name="action" value="assign">
                                   <button type="submit" class="btn btn-warning btn-small" style="font-size: 11px;">
                                     👤 Assign
@@ -369,6 +370,7 @@
                             <td><strong>{{ feedback.created_at.strftime('%d.%m.%Y') }}</strong></td>
                             <td>
                                 <form method="POST" action="{{ url_for('admin.create_report_from_feedback', feedback_id=feedback.id) }}" style="display: inline;">
+                                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
                                     <button type="submit" class="btn btn-success btn-small">
                                         📄 Create Report
                                     </button>

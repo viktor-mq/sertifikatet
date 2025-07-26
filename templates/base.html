@@ -4,6 +4,9 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     
+    <!-- CSRF Protection -->
+    <meta name="csrf-token" content="{{ csrf_token() }}">
+    
     <!-- SEO Meta Tags -->
     <title>{% block title %}{{ seo.title if seo else 'Sertifikatet - Norsk Førerkort Teori' }}{% endblock %}</title>
     <meta name="description" content="{{ seo.description if seo else 'Lær førerkort teori med interaktive quizer, videoer og spill. Personalisert læring med AI. Gratis praksis og eksamen forberedelse for norsk førerkort.' }}">
@@ -80,27 +83,23 @@
     
     <!-- CSS and Resource Preloading -->
     <!-- Preload critical resources for better performance -->
-    <link rel="preload" href="{{ url_for('static', filename='css/layout-common.css') }}" as="style">
-    <link rel="preload" href="{{ url_for('static', filename='css/style.css') }}" as="style">
+    <link rel="preload" href="{{ url_for('static', filename='css/tailwind.css') }}" as="style">
     <link rel="preload" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" as="style">
     
     <!-- DNS prefetch for external resources -->
     <link rel="dns-prefetch" href="//cdnjs.cloudflare.com">
-    <link rel="dns-prefetch" href="//cdn.tailwindcss.com">
     <link rel="dns-prefetch" href="//www.googletagmanager.com">
     <link rel="dns-prefetch" href="//www.google-analytics.com">
     
+    <!-- Tailwind CSS - Compiled for Production -->
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/tailwind.css') }}">
+    
     <!-- CSS Loading -->
-    <link rel="stylesheet" href="{{ url_for('static', filename='css/layout-common.css') }}">
-    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
     <link rel="stylesheet" href="{{ url_for('static', filename='css/cookie-consent.css') }}">
     <link rel="stylesheet" href="{{ url_for('static', filename='css/quiz-results.css') }}">
     
     <!-- Font Awesome -->
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
-    
-    <!-- Tailwind CSS (if used) -->
-    <script src="https://cdn.tailwindcss.com"></script>
     
     <!-- Google Tag Manager - GDPR Compliant Loading -->
     {% if config.GOOGLE_TAG_MANAGER_ID %}
@@ -191,6 +190,7 @@
         <meta name="user-registration-date" content="{{ current_user.created_at.isoformat() if current_user.created_at else '' }}">
         <script>
             // Set global user data for analytics
+            {% if current_user.is_authenticated %}
             window.currentUser = {
                 id: '{{ current_user.id }}',
                 subscriptionTier: '{{ current_user.get_subscription_tier() }}',
@@ -198,6 +198,9 @@
                 isVerified: {{ current_user.is_verified|lower }},
                 registrationDate: '{{ current_user.created_at.isoformat() if current_user.created_at else "" }}'
             };
+            {% else %}
+            window.currentUser = null;
+            {% endif %}
         </script>
     {% endif %}
     
@@ -245,12 +248,16 @@
     height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
     {% endif %}
     <!-- End Google Tag Manager (noscript) -->
+    
+    <!-- Scroll Progress Indicator -->
+    <div id="scroll-progress" class="scroll-progress"></div>
+    
     <!-- Navigation -->
     <nav class="bg-gray-800 shadow-lg">
         <div class="max-w-7xl mx-auto px-4">
             <div class="flex justify-between items-center py-4">
                 <div class="flex items-center">
-                    <a href="{{ url_for('main.index') }}" class="text-xl font-bold">
+                    <a href="{{ url_for('main.index') }}" class="text-xl font-extrabold">
                         🚗 Sertifikatet
                     </a>
                 </div>
@@ -309,9 +316,11 @@
                             <i class="fas fa-question-circle mr-2"></i> Quiz
                         </a>
                     {% endif %}
+                    {% if config.REGULAR_VIDEOS_ENABLED %}
                     <a href="{{ url_for('video.index') }}" class="block hover:text-purple-400 transition py-2">
                         <i class="fas fa-play mr-2"></i> Videoer
                     </a>
+                    {% endif %}
                     <a href="{{ url_for('game.index') }}" class="block hover:text-purple-400 transition py-2">
                         <i class="fas fa-gamepad mr-2"></i> Spill
                     </a>
@@ -381,7 +390,6 @@
     {% endwith %}
     
     <!-- Main Content -->
-    <main>
         {% block content %}{% endblock %}
     </main>
     
@@ -439,7 +447,7 @@
             // Listen for cookie preferences to be applied
             window.addEventListener('cookiePreferencesApplied', function(event) {
                 const preferences = event.detail;
-                const userTier = window.currentUser.subscriptionTier;
+                const userTier = window.currentUser ? window.currentUser.subscriptionTier : 'free';
                 
                 // Load AdSense for all free users (personalized or non-personalized based on marketing consent)
                 if (userTier === 'free' && window.adsenseEnabled) {
@@ -478,12 +486,6 @@
     {% if config.DEBUG %}
     <script src="{{ url_for('static', filename='js/gtm-testing.js') }}"></script>
     <script>
-        // Add debug tools to console in development
-        console.log('🔧 GTM Debug Tools Available:');
-        console.log('  - testGTM() - Run comprehensive GTM tests');
-        console.log('  - testGTMTriggers() - Test GTM trigger firing');
-        console.log('  - window.gtmTestReport - View last test report');
-        console.log('  - Add ?gtm_debug=1 to URL for auto-testing');
     </script>
     {% endif %}
     
@@ -631,8 +633,24 @@
                 });
             }
         });
-    </script>
-    
+        
+        // Scroll Progress Indicator
+        function updateScrollProgress() {
+            const scrollProgress = document.getElementById('scroll-progress');
+            if (scrollProgress) {
+                const scrollTop = window.pageYOffset || document.documentElement.scrollTop;
+                const scrollHeight = document.documentElement.scrollHeight - document.documentElement.clientHeight;
+                const progress = (scrollTop / scrollHeight) * 100;
+                scrollProgress.style.width = Math.min(progress, 100) + '%';
+            }
+        }
+        
+        // Update scroll progress on scroll
+        window.addEventListener('scroll', updateScrollProgress);
+        window.addEventListener('resize', updateScrollProgress);
+        
+        // Apply purple scrollbar to body
+        document.body.classList.add('scrollbar-purple');
     </script>
 </body>
 </html>

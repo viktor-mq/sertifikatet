@@ -10,16 +10,19 @@ Vegoppmerking er den usynlige helten i trafikksystemet. Det er linjene, pilene, 
 Linjene langs og på tvers av veien har en hierarkisk betydning basert på hvordan de ser ut.
 
 1.  **Heltrukken linje: Absolutt Forbud ⛔**  
+    ![Heltrukket linje](/static/images/signs/linjer_og/sf200510071219100401_gif.gif)
     En heltrukken linje, enten det er en kantlinje eller en gul/hvit midtlinje, fungerer som en vegg. Du har ikke lov til å krysse eller kjøre på den.  
     -   **Hvit heltrukken linje:** Brukes som kantlinje eller for å skille kjørefelt der det er farlig å skifte felt.  
     -   **Gul heltrukken linje:** Indikerer at det er forbudt å kjøre forbi. Den fungerer som et konstant forbikjøringsforbud.
 
-2.  **Stiplet linje: Anbefaling og Advarsel ❕**  
+2.  **Stiplet linje: Anbefaling og Advarsel ❕** 
+    ![striplet linje](/static/images/signs/linjer_og/sf200510071219100201_gif_2.gif)
     En stiplet linje er en veiledning. Du *kan* krysse den, men bare hvis det er trygt og forsvarlig.  
     -   **Hvit stiplet linje (kjørefeltlinje):** Skiller kjørefelt. Du kan krysse den ved feltskifte, men du må forsikre deg om at det er klar bane.  
     -   **Gul stiplet linje (varsellinje):** Advarer om at sikten er dårlig og at en heltrukken linje snart vil komme. Forbikjøring frarådes sterkt.
 
-3.  **Kombinerte linjer: Situasjonsbestemt Regel ↔️**  
+3.  **Kombinerte linjer: Situasjonsbestemt Regel ↔️** 
+    ![kombinerte linjer](/static/images/signs/linjer_og/sf200510071219100601_gif.gif) 
     Ofte ser du en kombinasjon av en heltrukken og en stiplet gul linje.  
     **Regelen er enkel:** Du må forholde deg til den linjen som er nærmest deg.  
     -   **Stiplet linje nærmest deg:** Du kan krysse linjen for å kjøre forbi, forutsatt at det er trygt.  
@@ -50,22 +53,27 @@ Disse linjene løper på tvers av veien og indikerer steder der du må være spe
 -   **Stopplinje**  
     **Funksjon:** En bred, heltrukken hvit linje som viser nøyaktig hvor du skal stoppe ved et stoppskilt eller rødt lys. Du skal stoppe *før* linjen.
 
--   **Vikelinje (Haifinner)**  
+-   **Vikelinje (Haifinner)**
+    ![vikelinje](/static/images/signs/linjer_og/sf200510071219102201_gif_2.gif) 
     **Funksjon:** En serie med hvite trekanter (ofte kalt "haifinner") som viser hvor du skal vike. De forsterker vikepliktskiltet og indikerer hvor du bør stoppe for å vike for kryssende trafikk.
 
--   **Gangfelt (Fotgjengerovergang)**  
+-   **Gangfelt (Fotgjengerovergang)** 
+    ![Gangfelt](/static/images/signs/linjer_og/sf200510071219102401_gif.gif) 
     **Funksjon:** Brede, hvite striper som markerer et område der fotgjengere har prioritet. Du har vikeplikt for fotgjengere som er i eller på vei ut i gangfeltet.
 
 ### ↖️ Symboler og Tekst
 Disse gir deg spesifikk informasjon direkte på asfalten.
 
 -   **Piler i kjørefeltet**  
+    ![piler](/static/images/signs/linjer_og/sf200510071219103401_gif.gif) 
     **Funksjon:** Viser hvilken retning (eller retninger) feltet er ment for. Disse er påbud og må følges. Hvis du er i et felt med en venstrepil, kan du ikke kjøre rett frem.
 
--   **Fartsgrense malt i veien**  
+-   **Fartsgrense malt i veien** 
+    ![fartsgrense](/static/images/signs/linjer_og/sf200510071219105401_gif.gif)
     **Funksjon:** En påminnelse om den gjeldende fartsgrensen. Den erstatter ikke skilt, men forsterker budskapet, spesielt etter kryss der man kan være usikker.
 
--   **Sykkel-symbol**  
+-   **Sykkel-symbol** 
+    ![sykkel-symbol](/static/images/signs/linjer_og/sf200510071219103901_gif.gif)
     **Funksjon:** Indikerer et sykkelfelt eller en sykkelrute. Vær ekstra oppmerksom på syklister.
 
 ## Husk!

@@ -3,11 +3,16 @@
  * Phase 3 Implementation - Vertical Video Player with Swipe Navigation
  */
 
+// CSRF token utility
+function getCSRFToken() {
+    return document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') || '';
+}
+
 class ShortsPlayer {
     constructor(container, videos = [], options = {}) {
         this.container = container;
         this.videos = videos;
-        this.currentIndex = 0;
+        this.currentIndex = options.startVideoIndex || 0;  // Use starting index from options
         this.isPlaying = false;
         this.videoElements = [];
         this.touchStartY = 0;
@@ -18,8 +23,16 @@ class ShortsPlayer {
         this.isTransitioning = false;
         this.progressUpdateInterval = null;
         this.autoplayTimeout = null;
+        this.infoTimeout = null;
+        this.infoVisible = true;
+        this.videoCompletionTracked = false;
         this.crossModuleEnabled = options.crossModuleEnabled || false;
         this.startingSubmodule = options.startingSubmodule || null;
+        
+        // Track recommended session state
+        this.isRecommendedSession = false;
+        this.recommendedSessionCompleted = false;
+        this.lastVideoInRecommendedSession = null;
         
         // Player settings
         this.settings = {
@@ -46,12 +59,43 @@ class ShortsPlayer {
             this.loadCurrentVideo();
         }
         
+        // Check if this is a recommended session and identify the last video (AFTER videos are loaded)
+        this.initializeRecommendedSession();
+        
+        // Show video info initially
+        setTimeout(() => {
+            this.showVideoInfo();
+        }, 500);
+        
         // Make container focusable and focused
         this.container.setAttribute('tabindex', '0');
         this.container.focus();
         
         // Add visual focus indicator
         this.container.style.outline = 'none';
+    }
+    
+    initializeRecommendedSession() {
+        const urlParams = new URLSearchParams(window.location.search);
+        const scopeParam = urlParams.get('scope');
+
+        if (scopeParam === 'submodule' && !this.crossModuleEnabled) {
+            this.isRecommendedSession = true;
+
+            // For scope=submodule sessions, find the last video in the submodule
+            if (this.videos.length > 0) {
+                // Get the submodule of the first video (they should all be the same in a submodule session)
+                const submodule = this.videos[0].theory_module_ref;
+
+                // Filter to get all videos for the submodule
+                const submoduleVideos = this.videos.filter(v => v.theory_module_ref === submodule);
+                
+                if (submoduleVideos.length > 0) {
+                    this.lastVideoInRecommendedSession = submoduleVideos[submoduleVideos.length - 1].id;
+                    console.log(`Recommended session for submodule ${submodule} initialized. Last video ID: ${this.lastVideoInRecommendedSession}`);
+                }
+            }
+        }
     }
     
     createPlayerStructure() {
@@ -76,7 +120,7 @@ class ShortsPlayer {
                     </div>
                     
                     <!-- Video Info -->
-                    <div class="absolute bottom-0 left-0 right-0 p-4 bg-gradient-to-t from-black/80 via-black/40 to-transparent pointer-events-auto">
+                    <div id="video-info-overlay" class="absolute bottom-0 left-0 right-0 p-4 bg-gradient-to-t from-black/80 via-black/40 to-transparent pointer-events-auto transition-opacity duration-300">
                         <div class="flex items-end justify-between">
                             <div class="flex-1 mr-4">
                                 <h3 id="video-title" class="text-white font-bold text-lg mb-1"></h3>
@@ -183,8 +227,13 @@ class ShortsPlayer {
             });
             
             videoElement.addEventListener('ended', () => {
-                if (index === this.currentIndex && this.settings.autoplayNext) {
-                    this.nextVideo();
+                if (index === this.currentIndex) {
+                    // Track completion when video ends naturally
+                    this.trackVideoCompletion(index);
+                    
+                    if (this.settings.autoplayNext) {
+                        this.nextVideo();
+                    }
                 }
             });
             
@@ -356,7 +405,20 @@ class ShortsPlayer {
     
     handleClick(e) {
         if (e.target.closest('.action-btn') || e.target.closest('#play-pause-btn')) return;
-        this.togglePlayPause();
+        
+        // Check if clicking in bottom area (video info zone)
+        const rect = this.container.getBoundingClientRect();
+        const clickY = e.clientY - rect.top;
+        const containerHeight = rect.height;
+        const bottomThreshold = containerHeight * 0.7; // Bottom 30% of screen
+        
+        if (clickY > bottomThreshold) {
+            // Clicked in bottom area - toggle video info
+            this.toggleVideoInfo();
+        } else {
+            // Clicked elsewhere - play/pause
+            this.togglePlayPause();
+        }
     }
     
     handleLike(e) {
@@ -438,6 +500,8 @@ class ShortsPlayer {
             this.currentIndex = newIndex;
             this.updateVideoInfo(newIndex);
             this.updateProgressBars();
+            this.showVideoInfo(); // Show info when video changes
+            this.videoCompletionTracked = false; // Reset completion tracking for new video
             this.isTransitioning = false;
             
             // Auto-play new video
@@ -515,8 +579,30 @@ class ShortsPlayer {
             progressBar.style.width = `${progress}%`;
         }
         
-        // Track progress periodically
-        this.trackVideoProgress(this.currentIndex, currentVideo.currentTime, progress >= 95);
+        // Track progress periodically and check for completion
+        const isCompleted = progress >= 95;
+        
+        // Check for recommended session completion FIRST (before stopping progress tracking)
+        if (this.isRecommendedSession && !this.recommendedSessionCompleted && progress >= 100) {
+            const currentVideo = this.videos[this.currentIndex];
+            if (currentVideo && currentVideo.id === this.lastVideoInRecommendedSession) {
+                console.log('Last video in recommended session completed!');
+                this.recommendedSessionCompleted = true;
+                this.stopProgressTracking(); // Stop all further updates
+                this.showRecommendedSessionCompletionPopup();
+            }
+        }
+        
+        // Only track progress if recommended session is not completed
+        if (!this.recommendedSessionCompleted) {
+            this.trackVideoProgress(this.currentIndex, currentVideo.currentTime, isCompleted);
+        }
+        
+        // Track completion when reaching 95% (only once per video)
+        if (isCompleted && !this.videoCompletionTracked) {
+            this.trackVideoCompletion(this.currentIndex);
+            this.videoCompletionTracked = true;
+        }
     }
     
     updateProgressBars() {
@@ -573,17 +659,52 @@ class ShortsPlayer {
         return `${mins}:${secs.toString().padStart(2, '0')}`;
     }
     
+    // Video Info Visibility Methods
+    
+    showVideoInfo() {
+        const infoOverlay = this.container.querySelector('#video-info-overlay');
+        if (!infoOverlay) return;
+        
+        infoOverlay.style.opacity = '1';
+        this.infoVisible = true;
+        
+        // Auto-hide after 3 seconds
+        clearTimeout(this.infoTimeout);
+        this.infoTimeout = setTimeout(() => {
+            this.hideVideoInfo();
+        }, 3000);
+    }
+    
+    hideVideoInfo() {
+        const infoOverlay = this.container.querySelector('#video-info-overlay');
+        if (!infoOverlay) return;
+        
+        infoOverlay.style.opacity = '0';
+        this.infoVisible = false;
+    }
+    
+    toggleVideoInfo() {
+        clearTimeout(this.infoTimeout); // Cancel auto-hide when manually toggling
+        
+        if (this.infoVisible) {
+            this.hideVideoInfo();
+        } else {
+            this.showVideoInfo();
+        }
+    }
+    
     // API Integration Methods
     
     async toggleLike(videoId) {
         try {
-            const endpoint = videoId >= 9000 ? 
-                '/learning/api/shorts/mock/like' : 
-                `/learning/api/shorts/${videoId}/like`;
+            const endpoint = `/learning/api/shorts/${videoId}/like`;
                 
             const response = await fetch(endpoint, {
                 method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
+                headers: { 
+                    'Content-Type': 'application/json',
+                    'X-CSRFToken': getCSRFToken()
+                },
                 body: JSON.stringify({ shorts_id: videoId })
             });
             
@@ -633,13 +754,14 @@ class ShortsPlayer {
         if (!video) return;
         
         try {
-            const endpoint = video.id >= 9000 ? 
-                '/learning/api/shorts/mock/progress' : 
-                `/learning/api/shorts/${video.id}/progress`;
+            const endpoint = `/learning/api/shorts/${video.id}/progress`;
                 
             await fetch(endpoint, {
                 method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
+                headers: { 
+                    'Content-Type': 'application/json',
+                    'X-CSRFToken': getCSRFToken()
+                },
                 body: JSON.stringify({
                     shorts_id: video.id,
                     watch_percentage: completed ? 100 : (currentTime / this.videoElements[index].duration) * 100,
@@ -659,14 +781,14 @@ class ShortsPlayer {
         if (!video || !videoElement) return;
         
         try {
-            // 🎯 ADD MOCK DETECTION HERE
-            const endpoint = video.id >= 9000 ? 
-                '/learning/api/shorts/mock/progress' :  // Use mock endpoint
-                '/learning/api/shorts/watch';           // Use real endpoint
+            const endpoint = `/learning/api/shorts/${video.id}/progress`;
                 
             await fetch(endpoint, {
                 method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
+                headers: { 
+                    'Content-Type': 'application/json',
+                    'X-CSRFToken': getCSRFToken()
+                },
                 body: JSON.stringify({
                     shorts_id: video.id,
                     watch_percentage: 100,
@@ -674,14 +796,162 @@ class ShortsPlayer {
                     swipe_direction: 'up'
                 })
             });
+            
+            // Only check submodule completion if not already handled in updateProgress
+            if (!this.isRecommendedSession || !this.recommendedSessionCompleted) {
+                this.checkSubmoduleCompletion(index);
+            }
+            
         } catch (error) {
             console.error('Error tracking video completion:', error);
         }
     }
     
+    checkSubmoduleCompletion(completedIndex) {
+        console.log('checkSubmoduleCompletion called:', { 
+            completedIndex, 
+            totalVideos: this.videos.length, 
+            isRecommendedSession: this.isRecommendedSession 
+        });
+        
+        // Use existing state variables instead of re-parsing URL parameters
+        if (this.isRecommendedSession && completedIndex === this.videos.length - 1) {
+            const currentVideo = this.videos[completedIndex];
+            if (currentVideo && currentVideo.theory_module_ref) {
+                const currentSubmodule = currentVideo.theory_module_ref;
+                console.log('Showing completion popup for submodule:', currentSubmodule);
+                this.showSubmoduleCompletionPopup(currentSubmodule, this.videos.length);
+            }
+        }
+    }
+    
+    showRecommendedSessionCompletionPopup() {
+        // Get current video info for display
+        const currentVideo = this.videos[this.currentIndex];
+        const submodule = currentVideo ? (currentVideo.theory_module_ref || currentVideo.submodule_id || 'Anbefaling') : 'Anbefaling';
+        const submoduleVideos = this.videos.filter(v => (v.theory_module_ref || v.submodule_id) === (currentVideo.theory_module_ref || currentVideo.submodule_id));
+        
+        this.showSubmoduleCompletionPopup(submodule, submoduleVideos.length);
+    }
+    
+    showSubmoduleCompletionPopup(submodule, videosCompleted) {
+        // Create completion modal with two-button design
+        const modal = document.createElement('div');
+        modal.className = 'fixed inset-0 bg-black/80 flex items-center justify-center z-50 p-4';
+        modal.innerHTML = `
+            <div class="bg-gradient-to-br from-green-500 to-teal-600 rounded-2xl p-8 max-w-md w-full text-center text-white shadow-2xl">
+                <div class="mb-8">
+                    <div class="w-24 h-24 bg-white/20 rounded-full flex items-center justify-center mx-auto mb-6">
+                        <i class="fas fa-check-circle fa-4x text-white"></i>
+                    </div>
+                    <h2 class="text-3xl font-bold mb-3">Gratulerer! 🎉</h2>
+                    <p class="text-green-100 text-lg mb-2">Du har fullført anbefalingen!</p>
+                    <p class="text-green-200 text-sm">Modul ${submodule || 'Anbefaling'} - ${videosCompleted || 0} videoer sett</p>
+                </div>
+                
+                <div class="space-y-4">
+                    <button id="continue-learning" class="w-full bg-white text-green-600 font-bold py-4 px-6 rounded-xl hover:bg-green-50 transition-all duration-300 transform hover:scale-105">
+                        <i class="fas fa-play mr-2"></i>
+                        Fortsett læring
+                    </button>
+                    <button id="back-to-dashboard" class="w-full bg-transparent border-2 border-white text-white font-bold py-4 px-6 rounded-xl hover:bg-white hover:text-green-600 transition-all duration-300">
+                        <i class="fas fa-home mr-2"></i>
+                        Tilbake til oversikt
+                    </button>
+                </div>
+            </div>
+        `;
+        
+        // Add modal to page
+        document.body.appendChild(modal);
+        
+        // Add event listeners
+        modal.querySelector('#continue-learning').addEventListener('click', async () => {
+            modal.remove();
+            await this.continueToNextIncompleteVideos();
+        });
+        
+        modal.querySelector('#back-to-dashboard').addEventListener('click', () => {
+            modal.remove();
+            window.location.href = '/learning/theory';
+        });
+        
+        // Track completion event for analytics
+        if (window.gtag) {
+            gtag('event', 'submodule_completion', {
+                'event_category': 'learning',
+                'event_label': `submodule_${submodule}`,
+                'value': videosCompleted
+            });
+        }
+    }
+    
+    async continueToNextIncompleteVideos() {
+        try {
+            // Call the backend to get all incomplete videos ordered from lowest to highest
+            const response = await fetch('/learning/api/shorts/incomplete-session');
+            const data = await response.json();
+            
+            if (data.success && data.videos && data.videos.length > 0) {
+                // Transition to incomplete videos session
+                this.videos = data.videos;
+                this.currentIndex = 0;
+                this.videoCompletionTracked = false;
+                
+                // Reset recommendation session state for normal tracking
+                this.isRecommendedSession = false;
+                this.recommendedSessionCompleted = false;
+                this.lastVideoInRecommendedSession = null;
+                
+                // Change URL to reflect the new session type
+                window.history.replaceState({}, '', '/learning/shorts/continue-learning');
+                
+                // Rebuild video elements
+                this.videoStack.innerHTML = '';
+                this.videoElements = [];
+                this.loadVideos();
+                this.loadCurrentVideo();
+                this.updateVideoInfo(0);
+                
+                // Start playing the first incomplete video
+                setTimeout(() => {
+                    this.play();
+                }, 500);
+                
+            } else {
+                // No incomplete videos found - redirect to dashboard
+                window.location.href = '/learning/theory';
+            }
+            
+        } catch (error) {
+            console.error('Error loading incomplete videos:', error);
+            // Fallback to dashboard
+            window.location.href = '/learning/theory';
+        }
+    }
+    
     async loadAllVideosForSession() {
         try {
-            const response = await fetch(`/learning/api/shorts/all-session${this.startingSubmodule ? `?start=${this.startingSubmodule}` : ''}`);
+            // Extract start_video parameter from URL
+            const urlParams = new URLSearchParams(window.location.search);
+            const startVideoId = urlParams.get('start_video');
+            
+            // Build API URL with both submodule and video parameters
+            let apiUrl = '/learning/api/shorts/all-session';
+            const params = new URLSearchParams();
+            
+            if (this.startingSubmodule) {
+                params.set('start', this.startingSubmodule);
+            }
+            if (startVideoId) {
+                params.set('start_video', startVideoId);
+            }
+            
+            if (params.toString()) {
+                apiUrl += '?' + params.toString();
+            }
+            
+            const response = await fetch(apiUrl);
             const data = await response.json();
             
             if (data.success) {
@@ -710,6 +980,7 @@ class ShortsPlayer {
     
     destroy() {
         this.stopProgressTracking();
+        clearTimeout(this.infoTimeout);
         this.videoElements.forEach(video => {
             video.pause();
             video.src = '';
@@ -728,8 +999,9 @@ document.addEventListener('DOMContentLoaded', function() {
     
     if (playerContainer && videosData.length > 0) {
         window.shortsPlayer = new ShortsPlayer(playerContainer, videosData, {
-            crossModuleEnabled: true,  // Enable cross-module navigation
-            startingSubmodule: window.submoduleId
+            crossModuleEnabled: window.playerConfig.crossModuleEnabled || false,  // Use dynamic setting
+            startingSubmodule: window.submoduleId,
+            startVideoIndex: window.playerConfig.startVideoIndex
         });
         
         // Auto-play first video after 500ms

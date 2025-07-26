@@ -4,6 +4,7 @@
 Forbudsskilt setter absolutte grenser. De er runde med rød kant og forteller deg hva som er ulovlig. Å ignorere dem fører til farlige situasjoner og straff. De er kommandoer, ikke anbefalinger.
 
 ## Gjenkjenn Forbudene
+<img src="/static/images/signs/forbuds/sf200510071219306001_gif.gif" alt="Forbudsskilt" width="87" height="99" style= "margin-left:30px; margin-bottom:5px;">
 
 ### 1. **Designet**
 - **Sirkel med rød kant:** Betyr et absolutt forbud.
@@ -15,6 +16,14 @@ Forbudsskilt setter absolutte grenser. De er runde med rød kant og forteller de
 - **Planlegg alternativ:** Se etter en lovlig rute eller handling.
 
 ### 3. **De Viktigste Forbudene**
+<div style="display:flex; gap:6px; margin-left:30px; margin-bottom:10px;">
+  <img src="/static/images/signs/forbuds/sf20051007121930201_gif.gif" alt="Innkjøring forbudt" style="width:100px; height:auto;">
+  <img src="/static/images/signs/forbuds/sf20051007121936201_gif.gif" alt="Fartsgrense" style="width:100px; height:auto;">
+  <img src="/static/images/signs/forbuds/sf20051007121933401_gif.gif" alt="Forbikjøring forbudt" style="width:100px; height:auto;">
+  <img src="/static/images/signs/forbuds/sf20051007121937001_gif.gif" alt="Stans forbudt" style="width:100px; height:auto;">
+  <img src="/static/images/signs/forbuds/sf20051007121937201_gif.gif" alt="Parkering forbudt" style="width:100px; height:auto;">
+</div>
+
 - **Innkjøring forbudt:** Ikke kjør inn. Garantert møtende trafikk.
 - **Fartsgrense:** Maksimal tillatt hastighet under ideelle forhold.
 - **Forbikjøring forbudt:** Hold deg bak kjøretøyet foran. Forbudet er der av en grunn (dårlig sikt, smal vei).

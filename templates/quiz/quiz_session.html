@@ -183,7 +183,7 @@
 
 {% block extra_js %}
 <!-- Gamification System JavaScript -->
-<script src="{{ url_for('static', filename='js/quiz-results-modal.js') }}"></script>
+<!-- quiz-results-modal.js is already loaded in base.html -->
 
 <script>
 // Initialize quiz data for JavaScript
@@ -194,130 +194,145 @@ window.quizData = {
     startTime: Date.now()
 };
 
-// Set up CSRF token
-const csrfMeta = document.createElement('meta');
-csrfMeta.name = 'csrf-token';
-csrfMeta.content = '{{ csrf_token() }}';
-document.head.appendChild(csrfMeta);
+// CSRF token setup handled by base.html or QuizMobileEnhancer
 
-// Enhanced quiz navigation
-document.addEventListener('DOMContentLoaded', function() {
-    // Initialize quiz
-    document.getElementById('startTime').value = startTime;
-    showQuestion(0);
-    startTimer();
-    
-    // Set up next/previous button event listeners
-    const nextBtn = document.getElementById('nextBtn');
-    const prevBtn = document.getElementById('prevBtn');
-    
-    if (nextBtn) {
-        nextBtn.addEventListener('click', () => changeQuestion(1));
+// Clean, working quiz navigation (restored) - Session scoped
+(function() {
+    // Scoped variables to prevent conflicts
+    let currentQuestionIndex = 0;
+    const totalQuestions = {{ questions|length }};
+    let startTime = Date.now();
+    let timerInterval;
+
+    document.addEventListener('DOMContentLoaded', function() {
+        // Set start time
+        document.getElementById('startTime').value = startTime;
+        
+        // Show first question
+        showQuestion(0);
+        
+        // Start timer
+        startTimer();
+        
+        // Set up navigation
+        setupNavigation();
+        
+        console.log('Quiz session loaded with', totalQuestions, 'questions');
+    });
+
+    function startTimer() {
+        timerInterval = setInterval(() => {
+            const elapsed = Math.floor((Date.now() - startTime) / 1000);
+            const minutes = Math.floor(elapsed / 60).toString().padStart(2, '0');
+            const seconds = (elapsed % 60).toString().padStart(2, '0');
+            document.getElementById('timer').textContent = `${minutes}:${seconds}`;
+        }, 1000);
     }
-    
-    if (prevBtn) {
-        prevBtn.addEventListener('click', () => changeQuestion(-1));
-    }
-    
-    // Enhanced answer selection with better UX
-    document.querySelectorAll('input[type="radio"]').forEach(radio => {
-        radio.addEventListener('change', function() {
-            // Mark question as answered in navigation
-            const questionIndex = Array.from(document.querySelectorAll('.question-card')).findIndex(
-                card => card.dataset.questionId === this.dataset.questionId
-            );
-            
-            const navButton = document.querySelector(`[data-question-index="${questionIndex}"]`);
-            if (navButton) {
-                navButton.classList.add('answered');
-            }
-            
-            // Auto-advance after selection (with delay for mobile)
-            setTimeout(() => {
-                if (currentQuestionIndex < totalQuestions - 1) {
-                    changeQuestion(1);
-                }
-            }, window.innerWidth <= 768 ? 800 : 400);
+
+    function showQuestion(index) {
+        // Hide all questions
+        document.querySelectorAll('.question-card').forEach(card => {
+            card.style.display = 'none';
         });
-    });
-    
-    console.log('Quiz session template loaded with', {{ questions|length }}, 'questions');
-});
-
-// Essential navigation functions
-let currentQuestionIndex = 0;
-const totalQuestions = {{ questions|length }};
-let timerInterval;
-let startTime = Date.now();
-
-function startTimer() {
-    timerInterval = setInterval(() => {
-        const elapsed = Math.floor((Date.now() - startTime) / 1000);
-        const minutes = Math.floor(elapsed / 60).toString().padStart(2, '0');
-        const seconds = (elapsed % 60).toString().padStart(2, '0');
-        document.getElementById('timer').textContent = `${minutes}:${seconds}`;
-    }, 1000);
-}
-
-function showQuestion(index) {
-    // Hide all questions
-    document.querySelectorAll('.question-card').forEach(card => {
-        card.style.display = 'none';
-    });
-    
-    // Show current question
-    const questions = document.querySelectorAll('.question-card');
-    if (questions[index]) {
-        questions[index].style.display = 'block';
+        
+        // Show current question
+        const questions = document.querySelectorAll('.question-card');
+        if (questions[index]) {
+            questions[index].style.display = 'block';
+        }
+        
+        updateProgress(index);
+        updateNavigation(index);
     }
-    
-    updateProgress(index);
-    updateNavigation(index);
-}
 
-function updateProgress(index) {
-    const progress = ((index + 1) / totalQuestions) * 100;
-    document.getElementById('progressBar').style.width = `${progress}%`;
-    document.getElementById('currentQuestion').textContent = index + 1;
-    
-    // Update navigation buttons
-    document.querySelectorAll('.question-nav').forEach(btn => {
-        btn.classList.remove('current');
-    });
-    const currentNavBtn = document.querySelector(`[data-question-index="${index}"]`);
-    if (currentNavBtn) {
-        currentNavBtn.classList.add('current');
+    function updateProgress(index) {
+        const progress = ((index + 1) / totalQuestions) * 100;
+        document.getElementById('progressBar').style.width = `${progress}%`;
+        document.getElementById('currentQuestion').textContent = index + 1;
+        
+        // Update navigation buttons
+        document.querySelectorAll('.question-nav').forEach(btn => {
+            btn.classList.remove('current');
+        });
+        const currentNavBtn = document.querySelector(`[data-question-index="${index}"]`);
+        if (currentNavBtn) {
+            currentNavBtn.classList.add('current');
+        }
     }
-}
 
-function updateNavigation(index) {
-    const prevBtn = document.getElementById('prevBtn');
-    const nextBtn = document.getElementById('nextBtn');
-    const submitBtn = document.getElementById('submitBtn');
-    
-    if (prevBtn) prevBtn.disabled = index === 0;
-    
-    if (index === totalQuestions - 1) {
-        if (nextBtn) nextBtn.style.display = 'none';
-        if (submitBtn) submitBtn.style.display = 'block';
-    } else {
-        if (nextBtn) nextBtn.style.display = 'block';
-        if (submitBtn) submitBtn.style.display = 'none';
+    function updateNavigation(index) {
+        const prevBtn = document.getElementById('prevBtn');
+        const nextBtn = document.getElementById('nextBtn');
+        const submitBtn = document.getElementById('submitBtn');
+        
+        if (prevBtn) prevBtn.disabled = index === 0;
+        
+        if (index === totalQuestions - 1) {
+            if (nextBtn) nextBtn.style.display = 'none';
+            if (submitBtn) submitBtn.style.display = 'block';
+        } else {
+            if (nextBtn) nextBtn.style.display = 'block';
+            if (submitBtn) submitBtn.style.display = 'none';
+        }
     }
-}
 
-function changeQuestion(direction) {
-    const newIndex = currentQuestionIndex + direction;
-    if (newIndex >= 0 && newIndex < totalQuestions) {
-        currentQuestionIndex = newIndex;
-        showQuestion(currentQuestionIndex);
+    function changeQuestion(direction) {
+        const newIndex = currentQuestionIndex + direction;
+        if (newIndex >= 0 && newIndex < totalQuestions) {
+            currentQuestionIndex = newIndex;
+            showQuestion(currentQuestionIndex);
+        }
     }
-}
 
-function goToQuestion(index) {
-    currentQuestionIndex = index;
-    showQuestion(index);
-}
+    function goToQuestion(index) {
+        currentQuestionIndex = index;
+        showQuestion(index);
+    }
+
+    function setupNavigation() {
+        // Button event listeners
+        const nextBtn = document.getElementById('nextBtn');
+        const prevBtn = document.getElementById('prevBtn');
+        
+        if (nextBtn) {
+            nextBtn.addEventListener('click', () => changeQuestion(1));
+        }
+        
+        if (prevBtn) {
+            prevBtn.addEventListener('click', () => changeQuestion(-1));
+        }
+        
+        // Answer selection with auto-advance
+        document.querySelectorAll('input[type="radio"]').forEach(radio => {
+            radio.addEventListener('change', function() {
+                // Mark question as answered
+                const questionIndex = Array.from(document.querySelectorAll('.question-card')).findIndex(
+                    card => card.dataset.questionId === this.dataset.questionId
+                );
+                
+                const navButton = document.querySelector(`[data-question-index="${questionIndex}"]`);
+                if (navButton) {
+                    navButton.classList.add('answered');
+                }
+                
+                // Auto-advance after short delay
+                setTimeout(() => {
+                    if (currentQuestionIndex < totalQuestions - 1) {
+                        changeQuestion(1);
+                    }
+                }, 400);
+            });
+        });
+    }
+
+    // Make functions globally accessible for onclick handlers
+    window.changeQuestion = changeQuestion;
+    window.goToQuestion = goToQuestion;
+
+})(); // End of scoped function
+
+// QuizMobileEnhancer from static/js/quiz.js handles all quiz functionality
+// including mobile swipe gestures, timer, navigation, and form submission
 </script>
 {% endblock %}
 {% endblock %}

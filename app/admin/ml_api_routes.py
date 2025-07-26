@@ -392,6 +392,18 @@ def get_ml_diagnostics_api():
         return jsonify({'error': 'An internal error occurred.'}), 500
 
 
+@ml_api_bp.route('/skills-analysis', methods=['GET'], endpoint='ml_skills_analysis')
+@admin_required
+def get_ml_skills_analysis_api():
+    """Returns user skills analysis data for admin dashboard."""
+    try:
+        skills_data = ml_service.get_skills_analysis()
+        return jsonify(skills_data)
+    except Exception as e:
+        logger.error(f"[ML_API] Error getting ML skills analysis: {e}", exc_info=True)
+        return jsonify({'error': 'An internal error occurred.'}), 500
+
+
 @ml_api_bp.route('/data-export', methods=['POST'], endpoint='ml_data_export')
 @admin_required
 def export_ml_data():

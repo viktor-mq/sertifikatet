@@ -21,6 +21,7 @@
 
         <!-- Registration Form -->
         <form class="mt-8 space-y-6" method="POST">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
             <div class="glass rounded-2xl p-8">
                 <div class="space-y-5">
                     <!-- Full Name -->
@@ -29,7 +30,7 @@
                             Fullt navn
                         </label>
                         <input id="full_name" name="full_name" type="text" required
-                               class="w-full px-4 py-3 bg-gray-800 border border-gray-700 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent transition-all"
+                               class="w-full px-4 py-3 bg-gray-800 text-white placeholder-gray-400 border border-gray-700 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent transition-all"
                                placeholder="Ola Nordmann">
                     </div>
 
@@ -39,7 +40,7 @@
                             Brukernavn
                         </label>
                         <input id="username" name="username" type="text" required
-                               class="w-full px-4 py-3 bg-gray-800 border border-gray-700 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent transition-all"
+                               class="w-full px-4 py-3 bg-gray-800 text-white placeholder-gray-400 border border-gray-700 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent transition-all"
                                placeholder="Velg et unikt brukernavn">
                         <p class="mt-1 text-xs text-gray-500">Dette bruker du for å logge inn</p>
                     </div>
@@ -50,7 +51,7 @@
                             E-postadresse
                         </label>
                         <input id="email" name="email" type="email" required
-                               class="w-full px-4 py-3 bg-gray-800 border border-gray-700 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent transition-all"
+                               class="w-full px-4 py-3 bg-gray-800 text-white placeholder-gray-400 border border-gray-700 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent transition-all"
                                placeholder="ola@eksempel.no">
                     </div>
 
@@ -62,7 +63,7 @@
                         <div class="relative">
                             <input id="password" name="password" type="password" required
                                    minlength="8"
-                                   class="w-full px-4 py-3 bg-gray-800 border border-gray-700 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent transition-all"
+                                   class="w-full px-4 py-3 bg-gray-800 text-white placeholder-gray-400 border border-gray-700 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent transition-all"
                                    placeholder="Minimum 8 tegn"
                                    onkeyup="checkPasswordStrength(this.value)">
                             <button type="button" 
@@ -112,7 +113,7 @@
                         <div class="relative">
                             <input id="confirm_password" name="confirm_password" type="password" required
                                    minlength="8"
-                                   class="w-full px-4 py-3 bg-gray-800 border border-gray-700 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent transition-all"
+                                   class="w-full px-4 py-3 bg-gray-800 text-white placeholder-gray-400 border border-gray-700 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent transition-all"
                                    placeholder="Skriv passordet på nytt"
                                    onkeyup="checkPasswordMatch()">
                             <button type="button" 

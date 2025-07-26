@@ -1,7 +1,390 @@
 {# templates/admin/reports_section.html #}
 <script src="{{ url_for('static', filename='js/admin/admin-report-section.js') }}"></script>
 <script>
-  document.addEventListener('DOMContentLoaded', initializeReportsEnhancements);
+// Enhanced Reports Section JavaScript - Updated to use Global AdminPagination
+let reportsCurrentFilters = {
+    search: '',
+    type: '',
+    status: '',
+    priority: '',
+    searchColumn: 'all'
+};
+
+let reportsCurrentSort = {
+    field: 'created_at',
+    order: 'desc'
+};
+
+let reportsCurrentPagination = {
+    page: 1,
+    per_page: 50,
+    total: 0
+};
+
+// Initialize when DOM is ready
+document.addEventListener('DOMContentLoaded', function() {
+    initializeEnhancedReportsSection();
+});
+
+function initializeEnhancedReportsSection() {
+    
+    // Initialize global AdminPagination
+    if (typeof AdminPagination !== 'undefined') {
+        AdminPagination.init({
+            sectionName: 'reports',
+            apiEndpoint: '/admin/api/reports',
+            paginationContainer: '#reports-pagination',
+            tableContainer: '#reports-table tbody',
+            perPageSelector: '#reports-per-page',
+            paginationInfo: '#reports-pagination-info',
+            currentFilters: reportsCurrentFilters,
+            currentSort: reportsCurrentSort,
+            currentPerPage: reportsCurrentPagination.per_page,
+            updateCallback: function(data) {
+                updateReportsTable(data.reports);
+                updateReportsStats(data.stats);
+                reportsCurrentPagination = data.pagination;
+            }
+        });
+    }
+    
+    // Initialize enhanced features
+    initializeReportsEnhancedFeatures();
+    initializeReportsRealTimeSearch();
+    initializeReportsFilters();
+    initializeReportsSorting();
+    initializeReportsKeyboardShortcuts();
+    
+}
+
+// Real-time search with debouncing
+function initializeReportsRealTimeSearch() {
+    const searchInput = document.getElementById('reports-realtime-search');
+    if (!searchInput) return;
+    
+    let searchTimeout;
+    searchInput.addEventListener('input', function() {
+        clearTimeout(searchTimeout);
+        searchTimeout = setTimeout(() => {
+            reportsCurrentFilters.search = this.value;
+            performReportsSearch(true);
+        }, 300);
+    });
+}
+
+// Initialize filters
+function initializeReportsFilters() {
+    const typeFilter = document.getElementById('reports-type-filter');
+    const statusFilter = document.getElementById('reports-status-filter');
+    const priorityFilter = document.getElementById('reports-priority-filter');
+    
+    if (typeFilter) {
+        typeFilter.addEventListener('change', function() {
+            reportsCurrentFilters.type = this.value;
+            performReportsSearch(true);
+        });
+    }
+    
+    if (statusFilter) {
+        statusFilter.addEventListener('change', function() {
+            reportsCurrentFilters.status = this.value;
+            performReportsSearch(true);
+        });
+    }
+    
+    if (priorityFilter) {
+        priorityFilter.addEventListener('change', function() {
+            reportsCurrentFilters.priority = this.value;
+            performReportsSearch(true);
+        });
+    }
+}
+
+// Perform search using global AdminPagination
+function performReportsSearch(resetPage = false) {
+    if (resetPage) {
+        reportsCurrentPagination.page = 1;
+    }
+    
+    // Use global AdminPagination to perform the search
+    if (typeof AdminPagination !== 'undefined') {
+        AdminPagination.goToPage('reports', reportsCurrentPagination.page);
+    }
+}
+
+// Clear all filters
+function clearAllReportsFilters() {
+    reportsCurrentFilters = {
+        search: '',
+        type: '',
+        status: '',
+        priority: '',
+        searchColumn: 'all'
+    };
+    
+    // Reset form elements
+    document.getElementById('reports-realtime-search').value = '';
+    document.getElementById('reports-type-filter').value = '';
+    document.getElementById('reports-status-filter').value = '';
+    document.getElementById('reports-priority-filter').value = '';
+    
+    // Reset sort
+    reportsCurrentSort = {
+        field: 'created_at',
+        order: 'desc'
+    };
+    
+    updateReportsSortIndicators();
+    performReportsSearch(true);
+}
+
+// Sorting system
+function initializeReportsSorting() {
+    updateReportsSortIndicators();
+}
+
+function toggleReportsSort(column) {
+    if (reportsCurrentSort.field === column) {
+        reportsCurrentSort.order = reportsCurrentSort.order === 'asc' ? 'desc' : 'asc';
+    } else {
+        reportsCurrentSort.field = column;
+        reportsCurrentSort.order = 'asc';
+    }
+    
+    updateReportsSortIndicators();
+    performReportsSearch();
+}
+
+function updateReportsSortIndicators() {
+    // Clear all indicators
+    document.querySelectorAll('#reports-table .sort-indicator').forEach(indicator => {
+        indicator.className = 'sort-indicator';
+    });
+    
+    // Set active indicator
+    const activeIndicator = document.querySelector(`.sort-indicator[data-sort="${reportsCurrentSort.field}"]`);
+    if (activeIndicator) {
+        activeIndicator.className = `sort-indicator ${reportsCurrentSort.order}`;
+    }
+}
+
+// Enhanced features initialization
+function initializeReportsEnhancedFeatures() {
+    initializeReportsTableDensity();
+    initializeReportsColumnVisibility();
+    initializeReportsAdvancedSearch();
+    
+    // Click outside to close dropdowns
+    document.addEventListener('click', function(e) {
+        const dropdown = document.getElementById('reportsColumnVisibilityDropdown');
+        const button = document.getElementById('reportsColumnVisibilityBtn');
+        if (dropdown && !dropdown.contains(e.target) && !button.contains(e.target)) {
+            dropdown.style.display = 'none';
+        }
+    });
+}
+
+// Table density management
+function initializeReportsTableDensity() {
+    const savedDensity = localStorage.getItem('reportsTableDensity') || 'comfortable';
+    applyReportsTableDensity(savedDensity);
+    
+    const densitySelect = document.getElementById('reportsTableDensity');
+    if (densitySelect) {
+        densitySelect.value = savedDensity;
+    }
+}
+
+function changeReportsTableDensity() {
+    const densitySelect = document.getElementById('reportsTableDensity');
+    if (!densitySelect) return;
+    
+    const density = densitySelect.value;
+    applyReportsTableDensity(density);
+    localStorage.setItem('reportsTableDensity', density);
+}
+
+function applyReportsTableDensity(density) {
+    const table = document.getElementById('reports-table');
+    if (!table) return;
+    
+    // Remove existing density classes
+    table.classList.remove('density-compact', 'density-comfortable', 'density-spacious');
+    
+    // Add new density class
+    table.classList.add(`density-${density}`);
+}
+
+// Column visibility management
+function initializeReportsColumnVisibility() {
+    const checkboxes = document.querySelectorAll('.reports-column-checkbox');
+    checkboxes.forEach(checkbox => {
+        checkbox.addEventListener('change', function() {
+            const column = this.getAttribute('data-column');
+            const isVisible = this.checked;
+            toggleReportsColumnVisibility(column, isVisible);
+        });
+    });
+}
+
+function toggleReportsColumnVisibilityDropdown() {
+    const dropdown = document.getElementById('reportsColumnVisibilityDropdown');
+    if (dropdown) {
+        dropdown.style.display = dropdown.style.display === 'none' ? 'block' : 'none';
+    }
+}
+
+function toggleReportsColumnVisibility(column, isVisible) {
+    const table = document.getElementById('reports-table');
+    if (!table) return;
+    
+    // Toggle header
+    const header = table.querySelector(`th[data-column="${column}"]`);
+    if (header) {
+        header.style.display = isVisible ? '' : 'none';
+    }
+    
+    // Toggle all cells in this column
+    const cells = table.querySelectorAll(`td[data-column="${column}"]`);
+    cells.forEach(cell => {
+        cell.style.display = isVisible ? '' : 'none';
+    });
+}
+
+// Advanced search functionality
+function initializeReportsAdvancedSearch() {
+    const searchColumnSelect = document.getElementById('reportsAdvancedSearchColumn');
+    const searchInput = document.getElementById('reports-realtime-search');
+    
+    if (!searchColumnSelect || !searchInput) return;
+    
+    // Update placeholder based on search column
+    searchColumnSelect.addEventListener('change', function() {
+        const column = this.value;
+        const placeholders = {
+            all: '🔍 Søk i alle felt...',
+            title: '🔍 Søk i titler...',
+            type: '🔍 Søk i typer...',
+            status: '🔍 Søk i status...',
+            priority: '🔍 Søk i prioritet...',
+            reported_by: '🔍 Søk i rapportert av...'
+        };
+        
+        searchInput.placeholder = placeholders[column] || placeholders.all;
+        
+        // Update search context and re-filter if there's search text
+        if (searchInput.value.trim()) {
+            reportsCurrentFilters.search = searchInput.value;
+            reportsCurrentFilters.searchColumn = column;
+            performReportsSearch(true);
+        }
+    });
+}
+
+// Keyboard shortcuts
+function initializeReportsKeyboardShortcuts() {
+    document.addEventListener('keydown', function(e) {
+        if (e.ctrlKey || e.metaKey) {
+            switch(e.key.toLowerCase()) {
+                case 'f':
+                    e.preventDefault();
+                    document.getElementById('reports-realtime-search')?.focus();
+                    break;
+                case 'r':
+                    e.preventDefault();
+                    clearAllReportsFilters();
+                    break;
+                case 'd':
+                    e.preventDefault();
+                    cycleDensity();
+                    break;
+                case 'h':
+                    e.preventDefault();
+                    showReportsKeyboardShortcuts();
+                    break;
+                case 'k':
+                    e.preventDefault();
+                    toggleReportsColumnVisibilityDropdown();
+                    break;
+            }
+        }
+    });
+}
+
+function cycleDensity() {
+    const densitySelect = document.getElementById('reportsTableDensity');
+    if (!densitySelect) return;
+    
+    const options = ['comfortable', 'compact', 'spacious'];
+    const currentIndex = options.indexOf(densitySelect.value);
+    const nextIndex = (currentIndex + 1) % options.length;
+    
+    densitySelect.value = options[nextIndex];
+    changeReportsTableDensity();
+}
+
+function showReportsKeyboardShortcuts() {
+    alert(`Hurtigtaster for Rapporter:
+    
+Ctrl+F: Fokuser søkefelt
+Ctrl+R: Nullstill alle filtre
+Ctrl+D: Bytt tabellvisning
+Ctrl+K: Vis/skjul kolonner
+Ctrl+H: Vis denne hjelpeteksten`);
+}
+
+// Update table content (called by AdminPagination)
+function updateReportsTable(reports) {
+    const tbody = document.querySelector('#reports-table tbody');
+    if (!tbody) return;
+    
+    tbody.innerHTML = reports.map(report => `
+        <tr class="${report.priority === 'critical' ? 'table-danger' : report.priority === 'high' ? 'table-warning' : ''}">
+            <td data-column="id">#${report.id}</td>
+            <td data-column="priority">
+                <span class="btn btn-${report.priority === 'critical' ? 'danger' : report.priority === 'high' ? 'warning' : 'secondary'} btn-small">
+                    ${report.priority.toUpperCase()}
+                </span>
+            </td>
+            <td data-column="report_type">
+                <span class="btn btn-secondary btn-small">${report.report_type}</span>
+            </td>
+            <td data-column="title">
+                <strong>${report.title.length > 50 ? report.title.substring(0, 50) + '...' : report.title}</strong>
+            </td>
+            <td data-column="reported_by">
+                ${report.reported_by ? report.reported_by.username : '<em>System</em>'}
+            </td>
+            <td data-column="status">
+                <span class="btn btn-${report.status === 'resolved' ? 'success' : report.status === 'in_progress' ? 'warning' : 'secondary'} btn-small">
+                    ${report.status.toUpperCase()}
+                </span>
+            </td>
+            <td data-column="created_at">${new Date(report.created_at).toLocaleDateString('no-NO')}</td>
+            <td data-column="assigned_to">
+                ${report.assigned_to ? report.assigned_to.username : '<em>Unassigned</em>'}
+            </td>
+            <td data-column="actions">
+                <a href="/admin/reports/${report.id}" class="btn btn-small">👁️ View</a>
+                ${report.status === 'new' && !report.assigned_to ? `<button onclick="assignReportAjax(${report.id})" class="btn btn-warning btn-small">👤 Assign</button>` : ''}
+            </td>
+        </tr>
+    `).join('');
+}
+
+// Update stats (called by AdminPagination)
+function updateReportsStats(stats) {
+    if (!stats) return;
+    
+    const statCards = document.querySelectorAll('.stat-card h3');
+    if (statCards.length >= 4) {
+        statCards[0].textContent = stats.total || 0;
+        statCards[1].textContent = stats.new || 0;
+        statCards[2].textContent = stats.in_progress || 0;
+        statCards[3].textContent = (stats.high + stats.critical) || 0;
+    }
+}
+
 </script>
 
 <!-- Reports & Security Section -->
@@ -31,6 +414,52 @@
     <div class="stat-card">
       <h3>{{ (reports_stats.high + reports_stats.critical) if reports_stats else 0 }}</h3>
       <p>High Priority</p>
+    </div>
+  </div>
+
+  <!-- Enhanced Features Bar -->
+  <div class="enhanced-features-bar">
+    <div class="feature-group">
+      <label for="reportsAdvancedSearchColumn">🔍 Søk i:</label>
+      <select id="reportsAdvancedSearchColumn">
+        <option value="all">Alle felt</option>
+        <option value="title">Kun tittel</option>
+        <option value="type">Kun type</option>
+        <option value="status">Kun status</option>
+        <option value="priority">Kun prioritet</option>
+        <option value="reported_by">Kun rapportert av</option>
+      </select>
+    </div>
+    <div class="feature-group">
+      <label for="reportsTableDensity">📏 Tabellvisning:</label>
+      <select id="reportsTableDensity" onchange="changeReportsTableDensity()">
+        <option value="comfortable">Komfortabel</option>
+        <option value="compact">Kompakt</option>
+        <option value="spacious">Luftig</option>
+      </select>
+    </div>
+    <div class="feature-group">
+      <button type="button" id="reportsKeyboardShortcutsBtn" onclick="showReportsKeyboardShortcuts()" class="btn btn-secondary btn-small" title="Vis hurtigtaster">
+        ⌨️ Hurtigtaster
+      </button>
+    </div>
+    <div class="feature-group">
+      <button type="button" id="reportsColumnVisibilityBtn" onclick="toggleReportsColumnVisibilityDropdown()" class="btn btn-secondary btn-small" title="Vis/skjul kolonner">
+        👁️ Kolonner
+      </button>
+      <div id="reportsColumnVisibilityDropdown" class="column-visibility-dropdown" style="display: none;">
+        <div class="column-checkbox-group">
+          <label><input type="checkbox" class="reports-column-checkbox" data-column="id" checked> ID</label>
+          <label><input type="checkbox" class="reports-column-checkbox" data-column="priority" checked> Prioritet</label>
+          <label><input type="checkbox" class="reports-column-checkbox" data-column="report_type" checked> Type</label>
+          <label><input type="checkbox" class="reports-column-checkbox" data-column="title" checked> Tittel</label>
+          <label><input type="checkbox" class="reports-column-checkbox" data-column="reported_by" checked> Rapportert av</label>
+          <label><input type="checkbox" class="reports-column-checkbox" data-column="status" checked> Status</label>
+          <label><input type="checkbox" class="reports-column-checkbox" data-column="created_at" checked> Opprettet</label>
+          <label><input type="checkbox" class="reports-column-checkbox" data-column="assigned_to" checked> Tildelt</label>
+          <label><input type="checkbox" class="reports-column-checkbox" data-column="actions" checked> Handlinger</label>
+        </div>
+      </div>
     </div>
   </div>
 
@@ -114,61 +543,40 @@
   <!-- Reports Table -->
   <div class="table-section">
     <h3 style="color: #374151; margin-bottom: 15px; display: flex; align-items: center; gap: 10px;">
-      📊 All Reports
+       All Reports
     </h3>
     
     <!-- Reports Filter Form -->
-    <form id="reports-filter-form" class="enhanced-filter-form" onsubmit="event.preventDefault(); performReportsSearch(); return false;">
-      <div class="search-filter-container enhanced-search">
-        <input type="text" id="reports-search" name="search" placeholder="🔍 Search reports, users, content..." 
-               value="{{ search_filter or '' }}" class="search-input" oninput="debouncedReportsSearch()" />
-        <select name="type" id="reports-type" onchange="performReportsSearch()">
-          <option value="">All Types</option>
-          <option value="user_feedback" {% if report_type_filter == 'user_feedback' %}selected{% endif %}>
-            User Feedback
-          </option>
-          <option value="system_error" {% if report_type_filter == 'system_error' %}selected{% endif %}>
-            System Error
-          </option>
-          <option value="security_alert" {% if report_type_filter == 'security_alert' %}selected{% endif %}>
-            Security Alert
-          </option>
-          <option value="admin_change" {% if report_type_filter == 'admin_change' %}selected{% endif %}>
-            Admin Change
-          </option>
-          <option value="suspicious_activity" {% if report_type_filter == 'suspicious_activity' %}selected{% endif %}>
-            Suspicious Activity
-          </option>
-        </select>
-
-        <select name="status" id="reports-status" onchange="performReportsSearch()">
-          <option value="">All Status</option>
-          <option value="new" {% if status_filter == 'new' %}selected{% endif %}>New</option>
-          <option value="in_progress" {% if status_filter == 'in_progress' %}selected{% endif %}>
-            In Progress
-          </option>
-          <option value="resolved" {% if status_filter == 'resolved' %}selected{% endif %}>Resolved</option>
-          <option value="archived" {% if status_filter == 'archived' %}selected{% endif %}>Archived</option>
-        </select>
-
-        <select name="priority" id="reports-priority" onchange="performReportsSearch()">
-          <option value="">All Priorities</option>
-          <option value="critical" {% if priority_filter == 'critical' %}selected{% endif %}>Critical</option>
-          <option value="high" {% if priority_filter == 'high' %}selected{% endif %}>High</option>
-          <option value="medium" {% if priority_filter == 'medium' %}selected{% endif %}>Medium</option>
-          <option value="low" {% if priority_filter == 'low' %}selected{% endif %}>Low</option>
-        </select>
-
-        <select name="per_page" id="reports-per-page" onchange="performReportsSearch()">
-          <option value="20">20 per page</option>
-          <option value="50">50 per page</option>
-          <option value="100">100 per page</option>
-        </select>
-        <button type="button" class="btn" onclick="performReportsSearch()">🔍 Filter</button>
-        <button type="button" class="btn btn-secondary" onclick="clearReportsFilters()">🗑️ Clear</button>
-        <div class="loading-indicator" id="reports-loading" style="display: none;">⏳ Loading...</div>
+    <div class="search-filter-container">
+      <input type="text" id="reports-realtime-search" placeholder="🔍 Søk i rapporter..." class="search-input enhanced-search-input" />
+      <select id="reports-type-filter" class="filter-select">
+        <option value="">Alle typer</option>
+        <option value="user_feedback">Bruker feedback</option>
+        <option value="system_error">Systemfeil</option>
+        <option value="security_alert">Sikkerhetsvarsel</option>
+        <option value="admin_change">Admin endring</option>
+        <option value="suspicious_activity">Mistenksom aktivitet</option>
+      </select>
+      <select id="reports-status-filter" class="filter-select">
+        <option value="">Alle statuser</option>
+        <option value="new">Ny</option>
+        <option value="in_progress">Pågår</option>
+        <option value="resolved">Løst</option>
+        <option value="archived">Arkivert</option>
+      </select>
+      <select id="reports-priority-filter" class="filter-select">
+        <option value="">Alle prioriteter</option>
+        <option value="critical">Kritisk</option>
+        <option value="high">Høy</option>
+        <option value="medium">Medium</option>
+        <option value="low">Lav</option>
+      </select>
+      <button type="button" onclick="clearAllReportsFilters()" class="btn btn-secondary btn-small">🗙 Nullstill</button>
+      <div id="reportsFilterLoadingIndicator" class="filter-loading" style="display: none;">
+        <div class="loading-spinner-small"></div>
+        <span>Søker...</span>
       </div>
-    </form>
+    </div>
 
   <!-- Reports Table with Enhanced Features -->
   <div class="table-container">
@@ -176,23 +584,37 @@
     <table id="reports-table">
       <thead>
         <tr>
-          <th class="sortable" data-field="id">ID <span class="sort-indicator"></span></th>
-          <th class="sortable" data-field="priority">Priority <span class="sort-indicator"></span></th>
-          <th class="sortable" data-field="report_type">Type <span class="sort-indicator"></span></th>
-          <th class="sortable" data-field="title">Title <span class="sort-indicator"></span></th>
-          <th class="sortable" data-field="reported_by">Reported By <span class="sort-indicator"></span></th>
-          <th class="sortable" data-field="status">Status <span class="sort-indicator"></span></th>
-          <th class="sortable" data-field="created_at">Created <span class="sort-indicator"></span></th>
-          <th>Assigned To</th>
-          <th>Actions</th>
+          <th data-column="id" data-sortable="id" class="sortable-header" onclick="toggleReportsSort('id')">
+            ID <span class="sort-indicator" data-sort="id"></span>
+          </th>
+          <th data-column="priority" data-sortable="priority" class="sortable-header" onclick="toggleReportsSort('priority')">
+            Prioritet <span class="sort-indicator" data-sort="priority"></span>
+          </th>
+          <th data-column="report_type" data-sortable="report_type" class="sortable-header" onclick="toggleReportsSort('report_type')">
+            Type <span class="sort-indicator" data-sort="report_type"></span>
+          </th>
+          <th data-column="title" data-sortable="title" class="sortable-header" onclick="toggleReportsSort('title')">
+            Tittel <span class="sort-indicator" data-sort="title"></span>
+          </th>
+          <th data-column="reported_by" data-sortable="reported_by" class="sortable-header" onclick="toggleReportsSort('reported_by')">
+            Rapportert av <span class="sort-indicator" data-sort="reported_by"></span>
+          </th>
+          <th data-column="status" data-sortable="status" class="sortable-header" onclick="toggleReportsSort('status')">
+            Status <span class="sort-indicator" data-sort="status"></span>
+          </th>
+          <th data-column="created_at" data-sortable="created_at" class="sortable-header" onclick="toggleReportsSort('created_at')">
+            Opprettet <span class="sort-indicator" data-sort="created_at"></span>
+          </th>
+          <th data-column="assigned_to">Tildelt</th>
+          <th data-column="actions">Handlinger</th>
         </tr>
       </thead>
       <tbody>
         {% if reports %}
           {% for report in reports %}
           <tr class="{% if report.priority == 'critical' %}table-danger{% elif report.priority == 'high' %}table-warning{% endif %}">
-            <td>#{{ report.id }}</td>
-            <td>
+            <td data-column="id">#{{ report.id }}</td>
+            <td data-column="priority">
               {% if report.priority == 'critical' %}
                 <span class="btn btn-danger btn-small" style="cursor: default;">CRITICAL</span>
               {% elif report.priority == 'high' %}
@@ -203,20 +625,20 @@
                 <span class="btn btn-secondary btn-small" style="cursor: default;">LOW</span>
               {% endif %}
             </td>
-            <td>
+            <td data-column="report_type">
               <span class="btn btn-secondary btn-small" style="cursor: default;">{{ report.report_type }}</span>
             </td>
-            <td>
+            <td data-column="title">
               <strong>{{ report.title[:50] }}{% if report.title|length > 50 %}...{% endif %}</strong>
             </td>
-            <td>
+            <td data-column="reported_by">
               {% if report.reported_by %}
                 {{ report.reported_by.username }}
               {% else %}
                 <em>System</em>
               {% endif %}
             </td>
-            <td>
+            <td data-column="status">
               {% if report.status == 'new' %}
                 <span class="btn btn-secondary btn-small" style="cursor: default;">NEW</span>
               {% elif report.status == 'in_progress' %}
@@ -227,15 +649,15 @@
                 <span class="btn btn-secondary btn-small" style="cursor: default;">{{ report.status|upper }}</span>
               {% endif %}
             </td>
-            <td>{{ report.created_at.strftime('%d.%m.%Y %H:%M') }}</td>
-            <td>
+            <td data-column="created_at">{{ report.created_at.strftime('%d.%m.%Y %H:%M') }}</td>
+            <td data-column="assigned_to">
               {% if report.assigned_to %}
                 {{ report.assigned_to.username }}
               {% else %}
                 <em>Unassigned</em>
               {% endif %}
             </td>
-            <td>
+            <td data-column="actions">
               <a href="/admin/reports/{{ report.id }}" class="btn btn-small">
                 👁️ View
               </a>
@@ -257,7 +679,25 @@
   </div>
   
   <!-- Reports Pagination Controls -->
-  <div id="reports-pagination" class="pagination-container"></div>
+  <div class="pagination-controls" style="margin-top: 20px; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 15px;">
+    <div class="pagination-info" style="color: #374151; font-size: 14px;">
+      <span id="reports-pagination-info">Viser rapporter</span>
+    </div>
+    <div class="pagination-center" style="display: flex; justify-content: center; flex: 1;">
+      <div class="pagination-buttons" id="reports-pagination" style="display: inline-flex; gap: 5px; align-items: center;">
+        <!-- Dynamic pagination loaded via AdminPagination -->
+      </div>
+    </div>
+    <div class="pagination-per-page" style="display: flex; align-items: center; gap: 8px; color: #374151; font-size: 14px;">
+      <label>Vis per side:</label>
+      <select id="reports-per-page" style="padding: 6px 10px; border: 1px solid #d1d5db; border-radius: 4px; background: white; font-size: 14px;">
+        <option value="20">20</option>
+        <option value="50" selected>50</option>
+        <option value="100">100</option>
+        <option value="-1">Alle</option>
+      </select>
+    </div>
+  </div>
   </div>
 
   <!-- Unresolved User Feedback -->
@@ -314,6 +754,7 @@
             <td>{{ feedback.created_at.strftime('%d.%m.%Y') }}</td>
             <td>
               <form method="POST" action="{{ url_for('admin.create_report_from_feedback', feedback_id=feedback.id) }}" class="d-inline">
+                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
                 <button type="submit" class="btn btn-success btn-small">
                   📄 Create Report
                 </button>
@@ -362,6 +803,219 @@
 }
 
 /* Enhanced CSS for Reports Section */
+
+/* Enhanced Features Bar Styling */
+.enhanced-features-bar {
+    background: linear-gradient(135deg, #f3f4f6 0%, #e5e7eb 100%);
+    padding: 15px 20px;
+    border-radius: 8px;
+    margin-bottom: 15px;
+    display: flex;
+    gap: 20px;
+    align-items: center;
+    flex-wrap: wrap;
+    border: 1px solid #d1d5db;
+}
+
+.feature-group {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    position: relative;
+}
+
+.feature-group label {
+    font-weight: 500;
+    color: #374151;
+    font-size: 14px;
+}
+
+.feature-group select {
+    padding: 6px 10px;
+    border: 1px solid #d1d5db;
+    border-radius: 6px;
+    font-size: 14px;
+    background: white;
+    transition: border-color 0.2s;
+}
+
+.feature-group select:focus {
+    border-color: #3b82f6;
+    box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.1);
+}
+
+/* Column Visibility Dropdown */
+.column-visibility-dropdown {
+    position: absolute;
+    top: 100%;
+    right: 0;
+    background: white;
+    border: 1px solid #d1d5db;
+    border-radius: 8px;
+    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+    padding: 15px;
+    z-index: 1000;
+    margin-top: 5px;
+    min-width: 200px;
+}
+
+.column-checkbox-group {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+
+.column-checkbox-group label {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    cursor: pointer;
+    padding: 4px 8px;
+    border-radius: 4px;
+    transition: background-color 0.2s;
+    font-weight: normal;
+}
+
+.column-checkbox-group label:hover {
+    background-color: #f3f4f6;
+}
+
+.column-checkbox-group input[type="checkbox"] {
+    margin: 0;
+}
+
+/* Table Density Classes */
+#reports-table.density-compact {
+    font-size: 13px;
+}
+
+#reports-table.density-compact th,
+#reports-table.density-compact td {
+    padding: 6px 8px;
+}
+
+#reports-table.density-comfortable {
+    font-size: 14px;
+}
+
+#reports-table.density-comfortable th,
+#reports-table.density-comfortable td {
+    padding: 12px 16px;
+}
+
+#reports-table.density-spacious {
+    font-size: 15px;
+}
+
+#reports-table.density-spacious th,
+#reports-table.density-spacious td {
+    padding: 16px 20px;
+}
+
+/* Sortable Headers Enhancement */
+.sortable-header {
+    cursor: pointer;
+    user-select: none;
+    transition: background-color 0.2s;
+}
+
+.sortable-header:hover {
+    background: linear-gradient(135deg, #2563eb 0%, #1e40af 100%);
+}
+
+.sort-indicator {
+    font-weight: bold;
+    color: #fbbf24;
+    margin-left: 5px;
+}
+
+.sort-indicator.asc::after {
+    content: ' ↑';
+    color: #10b981;
+}
+
+.sort-indicator.desc::after {
+    content: ' ↓';
+    color: #ef4444;
+}
+
+/* Enhanced Search Input */
+.enhanced-search-input {
+    flex: 1;
+    min-width: 300px;
+    padding: 10px 15px;
+    border: 2px solid #e5e7eb;
+    border-radius: 8px;
+    font-size: 14px;
+    transition: all 0.3s;
+}
+
+.enhanced-search-input:focus {
+    border-color: #3b82f6;
+    box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
+}
+
+/* Filter Selects */
+.filter-select {
+    padding: 8px 12px;
+    border: 1px solid #d1d5db;
+    border-radius: 6px;
+    font-size: 14px;
+    background: white;
+    transition: border-color 0.2s;
+}
+
+.filter-select:focus {
+    border-color: #3b82f6;
+    box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.1);
+}
+
+/* Loading Indicator */
+.filter-loading {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    color: #6b7280;
+    font-size: 14px;
+}
+
+.loading-spinner-small {
+    width: 16px;
+    height: 16px;
+    border: 2px solid #e5e7eb;
+    border-top: 2px solid #3b82f6;
+    border-radius: 50%;
+    animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+    0% { transform: rotate(0deg); }
+    100% { transform: rotate(360deg); }
+}
+
+/* Responsive Design */
+@media (max-width: 768px) {
+    .enhanced-features-bar {
+        flex-direction: column;
+        align-items: stretch;
+    }
+    
+    .feature-group {
+        justify-content: space-between;
+    }
+    
+    .enhanced-search-input {
+        min-width: unset;
+    }
+    
+    .column-visibility-dropdown {
+        position: fixed;
+        top: 50%;
+        left: 50%;
+        transform: translate(-50%, -50%);
+        right: auto;
+    }
+}
 .enhanced-filter-form {
   background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
   padding: 20px;

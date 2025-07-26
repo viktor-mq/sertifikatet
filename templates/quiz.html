@@ -35,6 +35,7 @@
 
         <!-- Quiz Container -->
         <form id="quizForm" method="POST" action="{{ url_for('main.submit_quiz') }}">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
             <input type="hidden" name="start_time" id="startTime">
             <input type="hidden" name="quiz_type" value="{{ quiz_type or 'practice' }}">
             {% if learning_path_id %}
@@ -175,15 +176,15 @@
 </style>
 
 <script>
-let currentQuestionIndex = 0;
-const totalQuestions = {{ questions|length }};
-let startTime = Date.now();
-let timerInterval;
+let quizCurrentQuestionIndex = 0;
+const quizTotalQuestions = {{ questions|length }};
+let quizStartTime = Date.now();
+let quizTimerInterval;
 
 // Initialize
 document.addEventListener('DOMContentLoaded', function() {
     // Set start time
-    document.getElementById('startTime').value = startTime;
+    document.getElementById('startTime').value = quizStartTime;
     
     // Show first question
     showQuestion(0);
@@ -202,7 +203,7 @@ document.addEventListener('DOMContentLoaded', function() {
             
             // Auto-advance to next question after short delay
             setTimeout(() => {
-                if (currentQuestionIndex < totalQuestions - 1) {
+                if (quizCurrentQuestionIndex < quizTotalQuestions - 1) {
                     changeQuestion(1);
                 }
             }, 300);
@@ -211,8 +212,8 @@ document.addEventListener('DOMContentLoaded', function() {
 });
 
 function startTimer() {
-    timerInterval = setInterval(() => {
-        const elapsed = Math.floor((Date.now() - startTime) / 1000);
+    quizTimerInterval = setInterval(() => {
+        const elapsed = Math.floor((Date.now() - quizStartTime) / 1000);
         const minutes = Math.floor(elapsed / 60).toString().padStart(2, '0');
         const seconds = (elapsed % 60).toString().padStart(2, '0');
         document.getElementById('timer').textContent = `${minutes}:${seconds}`;
@@ -240,7 +241,7 @@ function showQuestion(index) {
 
 function updateProgress(index) {
     // Update progress bar
-    const progress = ((index + 1) / totalQuestions) * 100;
+    const progress = ((index + 1) / quizTotalQuestions) * 100;
     document.getElementById('progressBar').style.width = `${progress}%`;
     
     // Update question counter
@@ -262,7 +263,7 @@ function updateNavigation(index) {
     const nextBtn = document.getElementById('nextBtn');
     const submitBtn = document.getElementById('submitBtn');
     
-    if (index === totalQuestions - 1) {
+    if (index === quizTotalQuestions - 1) {
         nextBtn.style.display = 'none';
         submitBtn.style.display = 'block';
     } else {
@@ -272,15 +273,15 @@ function updateNavigation(index) {
 }
 
 function changeQuestion(direction) {
-    const newIndex = currentQuestionIndex + direction;
-    if (newIndex >= 0 && newIndex < totalQuestions) {
-        currentQuestionIndex = newIndex;
-        showQuestion(currentQuestionIndex);
+    const newIndex = quizCurrentQuestionIndex + direction;
+    if (newIndex >= 0 && newIndex < quizTotalQuestions) {
+        quizCurrentQuestionIndex = newIndex;
+        showQuestion(quizCurrentQuestionIndex);
     }
 }
 
 function goToQuestion(index) {
-    currentQuestionIndex = index;
+    quizCurrentQuestionIndex = index;
     showQuestion(index);
 }
 
@@ -290,7 +291,7 @@ document.getElementById('quizForm').addEventListener('submit', function(e) {
     
     // Count answered questions
     const answered = document.querySelectorAll('.question-nav.answered').length;
-    const unanswered = totalQuestions - answered;
+    const unanswered = quizTotalQuestions - answered;
     
     let message = 'Er du sikker på at du vil levere quizen?';
     if (unanswered > 0) {
@@ -298,7 +299,7 @@ document.getElementById('quizForm').addEventListener('submit', function(e) {
     }
     
     if (confirm(message)) {
-        clearInterval(timerInterval);
+        clearInterval(quizTimerInterval);
         
         const formData = new FormData(this);
         const action = this.action;

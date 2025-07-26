@@ -1,6 +1,11 @@
 (function () { 'use strict';
     // Marketing Section - Full AJAX Implementation
     
+    // CSRF token utility
+    function getCSRFToken() {
+        return document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') || '';
+    }
+    
     // State management
     let currentEmailId = null;
     let marketingCurrentFilters = { search: '', status: '' };
@@ -374,7 +379,6 @@
     
     // Marketing data loading
     function loadMarketingData() {
-        console.log('Loading marketing data with filters:', marketingCurrentFilters);
         
         showMarketingLoading(true);
         
@@ -652,7 +656,8 @@
             method: 'DELETE',
             headers: {
                 'Accept': 'application/json',
-                'X-Requested-With': 'XMLHttpRequest'
+                'X-Requested-With': 'XMLHttpRequest',
+                'X-CSRFToken': getCSRFToken()
             }
         })
         .then(response => response.json())
@@ -775,23 +780,15 @@
     }
     
     function showNotification(message, type = 'info') {
-        // Create notification element
-        const notification = document.createElement('div');
-        notification.className = `alert alert-${type} alert-dismissible fade show position-fixed`;
-        notification.style.cssText = 'top: 20px; right: 20px; z-index: 9999; min-width: 300px;';
-        notification.innerHTML = `
-            ${message}
-            <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
-        `;
-        
-        document.body.appendChild(notification);
-        
-        // Auto-remove after 5 seconds
-        setTimeout(() => {
-            if (notification.parentNode) {
-                notification.remove();
-            }
-        }, 5000);
+        // Use global toast system instead of Bootstrap alerts
+        if (typeof window.showToast === 'function') {
+            window.showToast(message, type);
+        } else if (typeof AdminEnhancements !== 'undefined' && AdminEnhancements.showToast) {
+            AdminEnhancements.showToast(message, type);
+        } else {
+            // Fallback to console if no global system available
+            console.log(`${type.toUpperCase()}: ${message}`);
+        }
     }
     
     // Template functions
@@ -843,13 +840,11 @@
 
     // Main initialization function
     function initializeMarketing() {
-        console.log('Marketing section initialized');
         
         // Ensure marketing section is visible
         const marketingSection = document.getElementById('marketingSection');
         if (marketingSection) {
             marketingSection.style.display = 'block';
-            console.log('Marketing section display set to block');
         } else {
             console.error('Marketing section not found!');
             return;
@@ -891,7 +886,8 @@
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json',
-                'X-Requested-With': 'XMLHttpRequest'
+                'X-Requested-With': 'XMLHttpRequest',
+                'X-CSRFToken': getCSRFToken()
             },
             body: JSON.stringify({email_id: currentEmailId})
         })
@@ -953,12 +949,14 @@
     }
 
     // Recipient modal variables
-    let recipientData = [];
-    let filteredRecipients = [];
-    let currentPage = 1;
-    const itemsPerPage = 20;
+    let recipientPagination = {};
+    const recipientItemsPerPage = 20;
+    let currentRecipientPage = 1; // Added this line
 
-    function loadRecipientData(emailId) {
+    function loadRecipientData(emailId, page = 1) {
+        currentEmailId = emailId;
+        currentRecipientPage = page;
+        
         // Show loading state
         document.getElementById('recipientTableContainer').innerHTML = `
             <div class="text-center py-4">
@@ -969,8 +967,24 @@
             </div>
         `;
         
-        // Fetch recipient data
-        fetch(`/admin/api/marketing-recipients?email_id=${emailId}&details=true`, {
+        // Get current filter values
+        const searchTerm = document.getElementById('recipientSearch')?.value || '';
+        const subscriptionFilter = document.getElementById('subscriptionFilter')?.value || '';
+        const adminFilter = document.getElementById('adminFilter')?.value || '';
+        
+        // Build query parameters
+        const params = new URLSearchParams({
+            email_id: emailId,
+            page: page,
+            per_page: recipientItemsPerPage
+        });
+        
+        if (searchTerm) params.append('search', searchTerm);
+        if (subscriptionFilter) params.append('subscription', subscriptionFilter);
+        if (adminFilter) params.append('admin_filter', adminFilter);
+        
+        // Fetch recipient data with server-side filtering and pagination
+        fetch(`/admin/api/marketing-recipients?${params.toString()}`, {
             method: 'GET',
             headers: {
                 'Accept': 'application/json',
@@ -984,11 +998,10 @@
             return response.json();
         })
         .then(data => {
-            recipientData = data.recipients || [];
-            filteredRecipients = [...recipientData];
-            currentPage = 1;
-            renderRecipientTable();
-            updateRecipientCount();
+            recipientPagination = data.pagination || {};
+            renderRecipientTable(data.recipients || []);
+            updateRecipientCountFromServer(data.total_count || 0);
+            renderRecipientPagination();
         })
         .catch(error => {
             console.error('Error loading recipients:', error);
@@ -996,18 +1009,14 @@
                 <div class="text-center py-4">
                     <i class="fas fa-exclamation-triangle fa-2x text-muted mb-3"></i>
                     <p class="text-muted">Error loading recipients: ${error.message}</p>
-                    <button class="btn btn-outline-primary" onclick="loadRecipientData(${emailId})">Retry</button>
+                    <button class="btn btn-outline-primary" onclick="loadRecipientData(${emailId}, ${page})">Retry</button>
                 </div>
             `;
         });
     }
 
-    function renderRecipientTable() {
-        const startIndex = (currentPage - 1) * itemsPerPage;
-        const endIndex = startIndex + itemsPerPage;
-        const pageData = filteredRecipients.slice(startIndex, endIndex);
-        
-        if (pageData.length === 0) {
+    function renderRecipientTable(recipients) {
+        if (!recipients || recipients.length === 0) {
             document.getElementById('recipientTableContainer').innerHTML = `
                 <div class="text-center py-4">
                     <i class="fas fa-users fa-2x text-muted mb-3"></i>
@@ -1031,7 +1040,7 @@
                         </tr>
                     </thead>
                     <tbody>
-                        ${pageData.map(recipient => `
+                        ${recipients.map(recipient => `
                             <tr>
                                 <td>${escapeHtml(recipient.full_name || 'N/A')}</td>
                                 <td>${escapeHtml(recipient.email)}</td>
@@ -1067,8 +1076,6 @@
             const ths = table?.querySelectorAll('th');
             
             if (thead && ths && ths.length > 0) {
-                console.log('🎨 Applying Recipients Modal table styles...');
-                
                 // Apply styles with maximum specificity
                 thead.style.cssText = `
                     background: linear-gradient(135deg, #3b82f6 0%, #1d4ed8 100%);
@@ -1089,20 +1096,24 @@
                         text-align: left ;
                     `;
                 });
-                
-                console.log('✅ Recipients Modal table styles applied successfully!');
             }
         }, 50); // Small delay to ensure DOM is updated
         
-        renderPagination();
+        // Show pagination controls if needed
+        document.getElementById('recipientPaginationNav').classList.remove('d-none');
     }
 
-    function renderPagination() {
-        // Always update the showing range, even for single page
-        const startIndex = (currentPage - 1) * itemsPerPage + 1;
-        const endIndex = Math.min(currentPage * itemsPerPage, filteredRecipients.length);
+    function renderRecipientPagination() {
+        if (!recipientPagination || !recipientPagination.pages) {
+            document.getElementById('recipientPaginationNav').classList.add('d-none');
+            return;
+        }
         
-        // Update showing range regardless of pagination visibility
+        // Always update the showing range
+        const startIndex = ((recipientPagination.page - 1) * recipientPagination.per_page) + 1;
+        const endIndex = Math.min(recipientPagination.page * recipientPagination.per_page, recipientPagination.total);
+        
+        // Update showing range
         const showingRangeEl = document.getElementById('showingRange');
         const totalCountEl = document.getElementById('totalCount');
         
@@ -1110,15 +1121,13 @@
             showingRangeEl.textContent = `${startIndex}-${endIndex}`;
         }
         if (totalCountEl) {
-            totalCountEl.textContent = filteredRecipients.length;
+            totalCountEl.textContent = recipientPagination.total;
         }
         
-        const totalPages = Math.ceil(filteredRecipients.length / itemsPerPage);
-        
-        if (totalPages <= 1) {
+        if (recipientPagination.pages <= 1) {
             document.getElementById('recipientPaginationNav').classList.add('d-none');
             document.getElementById('recipientPagination').classList.remove('d-none'); // Keep pagination info visible
-            return; // Exit after updating the text
+            return;
         }
         
         document.getElementById('recipientPaginationNav').classList.remove('d-none');
@@ -1126,10 +1135,12 @@
         
         // Generate pagination HTML
         let paginationHtml = '';
+        const currentPage = recipientPagination.page;
+        const totalPages = recipientPagination.pages;
         
         // Previous button
-        if (currentPage > 1) {
-            paginationHtml += `<li class="page-item"><a class="page-link" href="#" onclick="goToPage(${currentPage - 1})">Previous</a></li>`;
+        if (recipientPagination.has_prev) {
+            paginationHtml += `<li class="page-item"><a class="page-link" href="#" onclick="goToRecipientPage(${currentPage - 1})">Previous</a></li>`;
         } else {
             paginationHtml += `<li class="page-item disabled"><span class="page-link">Previous</span></li>`;
         }
@@ -1139,7 +1150,7 @@
         const endPage = Math.min(totalPages, currentPage + 2);
         
         if (startPage > 1) {
-            paginationHtml += `<li class="page-item"><a class="page-link" href="#" onclick="goToPage(1)">1</a></li>`;
+            paginationHtml += `<li class="page-item"><a class="page-link" href="#" onclick="goToRecipientPage(1)">1</a></li>`;
             if (startPage > 2) {
                 paginationHtml += `<li class="page-item disabled"><span class="page-link">...</span></li>`;
             }
@@ -1149,7 +1160,7 @@
             if (i === currentPage) {
                 paginationHtml += `<li class="page-item active"><span class="page-link">${i}</span></li>`;
             } else {
-                paginationHtml += `<li class="page-item"><a class="page-link" href="#" onclick="goToPage(${i})">${i}</a></li>`;
+                paginationHtml += `<li class="page-item"><a class="page-link" href="#" onclick="goToRecipientPage(${i})">${i}</a></li>`;
             }
         }
         
@@ -1157,69 +1168,57 @@
             if (endPage < totalPages - 1) {
                 paginationHtml += `<li class="page-item disabled"><span class="page-link">...</span></li>`;
             }
-            paginationHtml += `<li class="page-item"><a class="page-link" href="#" onclick="goToPage(${totalPages})">${totalPages}</a></li>`;
+            paginationHtml += `<li class="page-item"><a class="page-link" href="#" onclick="goToRecipientPage(${totalPages})">${totalPages}</a></li>`;
         }
         
         // Next button
-        if (currentPage < totalPages) {
-            paginationHtml += `<li class="page-item"><a class="page-link" href="#" onclick="goToPage(${currentPage + 1})">Next</a></li>`;
+        if (recipientPagination.has_next) {
+            paginationHtml += `<li class="page-item"><a class="page-link" href="#" onclick="goToRecipientPage(${currentPage + 1})">Next</a></li>`;
         } else {
             paginationHtml += `<li class="page-item disabled"><span class="page-link">Next</span></li>`;
         }
         
         document.getElementById('recipientPaginationList').innerHTML = paginationHtml;
-     }
+    }
 
-    function goToPage(page) {
-        currentPage = page;
-        renderRecipientTable();
+    function goToRecipientPage(page) {
+        if (currentEmailId) {
+            loadRecipientData(currentEmailId, page);
+        }
     }
 
     function filterRecipients() {
-        const searchTerm = document.getElementById('recipientSearch').value.toLowerCase();
-        const subscriptionFilter = document.getElementById('subscriptionFilter').value;
-        const adminFilter = document.getElementById('adminFilter').value;
-        
-        filteredRecipients = recipientData.filter(recipient => {
-            // Search filter
-            const searchMatch = !searchTerm || 
-                (recipient.full_name && recipient.full_name.toLowerCase().includes(searchTerm)) ||
-                recipient.email.toLowerCase().includes(searchTerm);
-            
-            // Subscription filter
-            const subscriptionMatch = !subscriptionFilter || recipient.subscription === subscriptionFilter;
-            
-            // Admin filter
-            let adminMatch = true;
-            if (adminFilter === 'admin') {
-                adminMatch = recipient.is_admin;
-            } else if (adminFilter === 'user') {
-                adminMatch = !recipient.is_admin;
-            }
-            
-            return searchMatch && subscriptionMatch && adminMatch;
-        });
-        
-        currentPage = 1;
-        renderRecipientTable();
-        updateRecipientCount();
+        // Trigger server-side filtering by reloading data with current filters
+        if (currentEmailId) {
+            loadRecipientData(currentEmailId, 1); // Reset to page 1 when filtering
+        }
     }
+
 
     function clearRecipientFilters() {
         document.getElementById('recipientSearch').value = '';
         document.getElementById('subscriptionFilter').value = '';
         document.getElementById('adminFilter').value = '';
         
-        if (recipientData.length > 0) {
-            filteredRecipients = [...recipientData];
-            currentPage = 1;
-            renderRecipientTable();
-            updateRecipientCount();
+        // Reload data with cleared filters
+        if (currentEmailId) {
+            loadRecipientData(currentEmailId, 1);
         }
     }
 
-    function updateRecipientCount() {
-        document.getElementById('recipientCount').textContent = filteredRecipients.length;
+    function updateRecipientCountFromServer(totalCount) {
+        // Try to update both possible recipient count elements
+        const countElement1 = document.getElementById('recipientsModalCount');
+        // Look for the span inside the modal specifically
+        const modal = document.getElementById('recipientsModal');
+        const countElement2 = modal ? modal.querySelector('#recipientCount') : document.getElementById('recipientCount');
+        
+        if (countElement1) {
+            countElement1.textContent = totalCount || 0;
+        }
+        if (countElement2) {
+            countElement2.textContent = totalCount || 0;
+        }
     }
 
     function exportRecipients(format) {
@@ -1404,32 +1403,22 @@
     }
     
     function showNotification(message, type = 'info') {
-        // Create notification element
-        const notification = document.createElement('div');
-        notification.className = `alert alert-${type} alert-dismissible fade show position-fixed`;
-        notification.style.cssText = 'top: 20px; right: 20px; z-index: 9999; min-width: 300px;';
-        notification.innerHTML = `
-            ${message}
-            <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
-        `;
-        
-        document.body.appendChild(notification);
-        
-        // Auto-remove after 5 seconds
-        setTimeout(() => {
-            if (notification.parentNode) {
-                notification.remove();
-            }
-        }, 5000);
+        // Use global toast system instead of Bootstrap alerts
+        if (typeof window.showToast === 'function') {
+            window.showToast(message, type);
+        } else if (typeof AdminEnhancements !== 'undefined' && AdminEnhancements.showToast) {
+            AdminEnhancements.showToast(message, type);
+        } else {
+            // Fallback to console if no global system available
+            console.log(`${type.toUpperCase()}: ${message}`);
+        }
     }
     
     function initializeMarketing() {
-        console.log('Marketing section initialized');
         
         // Ensure marketing section is visible
         const marketingSection = document.getElementById('marketingSection');
         if (marketingSection) {
-            console.log('Marketing section display set to block');
         } else {
             console.error('Marketing section not found!');
             return;
@@ -1510,7 +1499,8 @@
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json',
-                'X-Requested-With': 'XMLHttpRequest'
+                'X-Requested-With': 'XMLHttpRequest',
+                'X-CSRFToken': getCSRFToken()
             },
             body: JSON.stringify({email_id: currentEmailId})
         })
@@ -1545,7 +1535,8 @@
             method: 'DELETE',
             headers: {
                 'Accept': 'application/json',
-                'X-Requested-With': 'XMLHttpRequest'
+                'X-Requested-With': 'XMLHttpRequest',
+                'X-CSRFToken': getCSRFToken()
             }
         })
         .then(response => response.json())
@@ -1633,11 +1624,11 @@
     window.clearRecipientFilters = clearRecipientFilters;
     window.loadRecipientData = loadRecipientData;
     window.exportRecipients = exportRecipients;
-    window.goToPage = goToPage;
+    window.goToRecipientPage = goToRecipientPage;
     window.filterRecipients = filterRecipients;
-    window.updateRecipientCount = updateRecipientCount;
+    window.updateRecipientCountFromServer = updateRecipientCountFromServer;
     window.renderRecipientTable = renderRecipientTable;
-    window.renderPagination = renderPagination;
+    window.renderRecipientPagination = renderRecipientPagination;
     window.getSubscriptionBadgeClass = getSubscriptionBadgeClass;
     window.getStatusBadgeClass = getStatusBadgeClass;
     window.escapeHtml = escapeHtml;

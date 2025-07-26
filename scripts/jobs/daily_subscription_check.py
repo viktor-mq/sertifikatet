@@ -16,13 +16,14 @@ from app import create_app, db
 from app.models import User
 from app.payment_models import UserSubscription, SubscriptionPlan
 from app.services.payment_service import SubscriptionService
+from sqlalchemy import or_, and_
 
 # Set up logging
 logging.basicConfig(
     level=logging.INFO,
     format='%(asctime)s - %(levelname)s - %(message)s',
     handlers=[
-        logging.FileHandler('/var/log/sertifikatet/subscription_check.log'),
+        logging.FileHandler('/Users/viktorigesund/Documents/teoritest/logs/subscription_check.log'),
         logging.StreamHandler()
     ]
 )
@@ -41,13 +42,15 @@ def check_and_expire_subscriptions():
             now = datetime.utcnow()
             
             # Find all subscriptions that should be expired (both active and cancelled)
-            expired_subscriptions = UserSubscription.query.filter(
+            # Exclude admin users who should always maintain Pro access
+            expired_subscriptions = UserSubscription.query.join(User).filter(
                 or_(
                     UserSubscription.status == 'active',
                     UserSubscription.status == 'cancelled'
                 ),
                 UserSubscription.expires_at <= now,
-                UserSubscription.expires_at.isnot(None)
+                UserSubscription.expires_at.isnot(None),
+                User.is_admin == False  # Exclude admin users
             ).all()
             
             logger.info(f"Found {len(expired_subscriptions)} subscriptions to expire")

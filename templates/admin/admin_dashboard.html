@@ -2,6 +2,7 @@
 <html lang="no">
 <head>
     <meta charset="UTF-8">
+    <meta name="csrf-token" content="{{ csrf_token() }}">
     <title>Adminpanel - Sertifikatet</title>
     <link rel="stylesheet" href="{{ url_for('static', filename='css/admin.css') }}">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
@@ -17,6 +18,255 @@
                 }
             });
         }
+
+        // Global Admin Pagination Utility (copied from admin/base.html)
+        window.AdminPagination = {
+            // Get CSRF token
+            getCSRFToken: function() {
+                return document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') || '';
+            },
+
+            // Generic fetch with CSRF token
+            fetchWithCSRF: function(url, options = {}) {
+                const defaultOptions = {
+                    headers: {
+                        'X-CSRFToken': this.getCSRFToken(),
+                        'Content-Type': 'application/json',
+                        ...options.headers
+                    }
+                };
+                return fetch(url, { ...defaultOptions, ...options });
+            },
+
+            // Initialize pagination for any section
+            init: function(config) {
+                const {
+                    apiEndpoint,           // e.g., '/admin/api/questions'
+                    paginationContainer,   // e.g., '#paginationButtons'
+                    tableContainer,        // e.g., '#questionsTable tbody'
+                    updateCallback,        // function to update table content
+                    currentFilters = {},   // current filter state
+                    currentSort = {},      // current sort state
+                    perPageSelector,       // e.g., '#perPageSelector'
+                    paginationInfo         // e.g., '#paginationInfo'
+                } = config;
+
+                // Store config globally for this section
+                window[`${config.sectionName}Config`] = config;
+
+                // Add click handlers to pagination buttons
+                document.addEventListener('click', function(e) {
+                    if (e.target.classList.contains('admin-page-btn')) {
+                        const container = document.querySelector(paginationContainer);
+                        if (container && container.contains(e.target)) {
+                            e.preventDefault();
+                            const page = parseInt(e.target.dataset.page);
+                            if (page && !isNaN(page)) {
+                                AdminPagination.goToPage(config.sectionName, page);
+                            }
+                        }
+                    }
+                });
+
+                // Add change handler for per-page selector
+                if (perPageSelector) {
+                    const selector = document.querySelector(perPageSelector);
+                    if (selector) {
+                        selector.addEventListener('change', function() {
+                            AdminPagination.changePerPage(config.sectionName, parseInt(this.value));
+                        });
+                    }
+                }
+            },
+
+            // Navigate to specific page
+            goToPage: function(sectionName, page) {
+                const config = window[`${sectionName}Config`];
+                if (!config) {
+                    console.error(`No config found for section: ${sectionName}`);
+                    return;
+                }
+
+                // Update current page in config
+                config.currentPage = page;
+
+                // Build query parameters
+                const params = new URLSearchParams();
+                params.append('page', page);
+                params.append('per_page', config.currentPerPage || 50);
+                
+                // Add current filters
+                Object.entries(config.currentFilters || {}).forEach(([key, value]) => {
+                    if (value) params.append(key, value);
+                });
+
+                // Add current sort
+                Object.entries(config.currentSort || {}).forEach(([key, value]) => {
+                    if (value) params.append(key, value);
+                });
+
+                // Make API call
+                this.fetchWithCSRF(`${config.apiEndpoint}?${params.toString()}`)
+                    .then(response => response.json())
+                    .then(data => {
+                        if (data.success) {
+                            // Update table content
+                            if (config.updateCallback) {
+                                config.updateCallback(data);
+                            }
+                            // Update pagination controls and info
+                            this.updatePaginationControls(config.paginationContainer, data.pagination);
+                            this.updatePaginationInfo(config.paginationInfo, data.pagination);
+                            this.updatePerPageSelector(config.perPageSelector, data.pagination);
+                        } else {
+                            console.error('API Error:', data.error);
+                            this.showError('Failed to load page: ' + (data.error || 'Unknown error'));
+                        }
+                    })
+                    .catch(error => {
+                        console.error('Network Error:', error);
+                        this.showError('Network error occurred');
+                    });
+            },
+
+            // Change per-page setting
+            changePerPage: function(sectionName, newPerPage) {
+                const config = window[`${sectionName}Config`];
+                if (!config) {
+                    console.error(`No config found for section: ${sectionName}`);
+                    return;
+                }
+
+                // Update config
+                config.currentPerPage = newPerPage;
+                config.currentPage = 1; // Reset to first page
+
+                // Make API call with new per_page setting
+                this.goToPage(sectionName, 1);
+            },
+
+            // Update pagination controls HTML
+            updatePaginationControls: function(containerSelector, pagination) {
+                const container = document.querySelector(containerSelector);
+                if (!container) {
+                    console.error('Container not found:', containerSelector);
+                    return;
+                }
+
+                let html = '';
+
+                // Previous button
+                if (pagination.has_prev) {
+                    html += `<button class="admin-page-btn pagination-btn" data-page="${pagination.page - 1}" title="Previous">
+                        <span class="pagination-arrow">‹</span> Forrige
+                    </button>`;
+                } else {
+                    html += `<button class="admin-page-btn pagination-btn disabled" disabled title="No previous page">
+                        <span class="pagination-arrow">‹</span> Forrige
+                    </button>`;
+                }
+
+                // Page numbers
+                const maxVisible = 5;
+                let startPage = Math.max(1, pagination.page - Math.floor(maxVisible / 2));
+                let endPage = Math.min(pagination.pages, startPage + maxVisible - 1);
+
+                if (endPage - startPage + 1 < maxVisible) {
+                    startPage = Math.max(1, endPage - maxVisible + 1);
+                }
+
+                // First page + ellipsis
+                if (startPage > 1) {
+                    html += `<button class="admin-page-btn page-btn" data-page="1">1</button>`;
+                    if (startPage > 2) {
+                        html += `<span class="pagination-ellipsis">…</span>`;
+                    }
+                }
+
+                // Page numbers
+                for (let i = startPage; i <= endPage; i++) {
+                    if (i === pagination.page) {
+                        html += `<button class="admin-page-btn page-btn active" disabled>${i}</button>`;
+                    } else {
+                        html += `<button class="admin-page-btn page-btn" data-page="${i}">${i}</button>`;
+                    }
+                }
+
+                // Last page + ellipsis
+                if (endPage < pagination.pages) {
+                    if (endPage < pagination.pages - 1) {
+                        html += `<span class="pagination-ellipsis">…</span>`;
+                    }
+                    html += `<button class="admin-page-btn page-btn" data-page="${pagination.pages}">${pagination.pages}</button>`;
+                }
+
+                // Next button
+                if (pagination.has_next) {
+                    html += `<button class="admin-page-btn pagination-btn" data-page="${pagination.page + 1}" title="Next">
+                        Neste <span class="pagination-arrow">›</span>
+                    </button>`;
+                } else {
+                    html += `<button class="admin-page-btn pagination-btn disabled" disabled title="No next page">
+                        Neste <span class="pagination-arrow">›</span>
+                    </button>`;
+                }
+                container.innerHTML = html;
+            },
+
+            // Update pagination info text
+            updatePaginationInfo: function(infoSelector, pagination) {
+                if (!infoSelector) return;
+                
+                const infoElement = document.querySelector(infoSelector);
+                if (!infoElement) return;
+
+                const start = ((pagination.page - 1) * pagination.per_page) + 1;
+                const end = Math.min(pagination.page * pagination.per_page, pagination.total);
+                
+                if (pagination.per_page === -1) {
+                    infoElement.textContent = `Viser alle ${pagination.total} elementer`;
+                } else {
+                    infoElement.textContent = `Viser ${start}-${end} av ${pagination.total} elementer`;
+                }
+            },
+
+            // Update per-page selector
+            updatePerPageSelector: function(selectorPath, pagination) {
+                if (!selectorPath) return;
+                
+                const selector = document.querySelector(selectorPath);
+                if (!selector) return;
+
+                selector.value = pagination.per_page;
+            },
+
+            // Show error message
+            showError: function(message) {
+                // Try to find existing toast container or create one
+                let container = document.getElementById('admin-toast-container');
+                if (!container) {
+                    container = document.createElement('div');
+                    container.id = 'admin-toast-container';
+                    container.style.cssText = 'position: fixed; top: 20px; right: 20px; z-index: 9999;';
+                    document.body.appendChild(container);
+                }
+
+                const toast = document.createElement('div');
+                toast.className = 'alert alert-danger alert-dismissible fade show';
+                toast.innerHTML = `
+                    ${message}
+                    <button type="button" class="btn-close" onclick="this.parentElement.remove()"></button>
+                `;
+                container.appendChild(toast);
+
+                // Auto remove after 5 seconds
+                setTimeout(() => {
+                    if (toast.parentElement) {
+                        toast.remove();
+                    }
+                }, 5000);
+            }
+        };
     </script>
 </head>
 <body style="
@@ -136,7 +386,7 @@
         {% include 'admin/database_section.html' %}
 
         <!-- Reports & Security Section -->
-        {% include 'admin/sections/reports_standalone.html' %}
+        {% include 'admin/reports_section.html' %}
 
         <!-- Manage Users Section -->
         {% include 'admin/manage_users_section.html' %}
@@ -219,7 +469,7 @@
         
         // Initialize section-specific functionality
         function initializeSection(sectionName) {
-            console.log('Initializing section:', sectionName);
+            //console.log('Initializing section:', sectionName);
             
             switch(sectionName) {
                 case 'questions':
@@ -230,56 +480,48 @@
                     // Load standalone reports section
                     if (typeof initializeReportsSection === 'function') {
                         initializeReportsSection();
-                        console.log('Standalone Reports section initialized');
                     }
                     break;
                     
                 case 'manageUsers':
                     if (typeof initializeUsersEnhancements === 'function') {
                         initializeUsersEnhancements();
-                        console.log('Users section initialized');
                     }
                     break;
                     
                 case 'auditLog':
                     if (typeof initializeAuditEnhancements === 'function') {
                         initializeAuditEnhancements();
-                        console.log('Audit section initialized');
                     }
                     break;
                     
                 case 'mlSettings2':
                     if (typeof initializeMLSettings === 'function') {
                         initializeMLSettings();
-                        console.log('ML Settings section initialized');
                     }
                     break;
                     
                 case 'marketing':
                     if (typeof initializeMarketing === 'function') {
                         initializeMarketing();
-                        console.log('Marketing section initialized');
                     }
                     break;
                     
                 case 'gamification':
                     if (typeof initializeGamificationAdmin === 'function') {
                         initializeGamificationAdmin();
-                        console.log('Gamification section initialized');
                     }
                     break;
                     
                 case 'learningModules':
                     if (typeof initializeLearningModules === 'function') {
                         initializeLearningModules();
-                        console.log('Learning Modules section initialized');
                     }
                     break;
                     
                 case 'database':
                     // Database section uses its own DatabaseFiltering system
                     // Skip AdminEnhancements initialization to avoid conflicts
-                    console.log('Database section uses DatabaseFiltering - skipping AdminEnhancements');
                     break;
                     
                 default:
@@ -289,7 +531,6 @@
 
         // New ML Dashboard function - bypasses section management issues
         function showMLDashboard() {
-            console.log('Opening ML Dashboard...');
             
             // Hide all sections
             document.querySelectorAll('.section').forEach(section => {
@@ -311,15 +552,10 @@
                 mlSection.style.visibility = 'visible';
                 mlSection.classList.add('active');
                 
-                console.log('ML section shown, dimensions:', {
-                    width: mlSection.offsetWidth,
-                    height: mlSection.offsetHeight
-                });
                 
                 // Initialize ML functionality
                 if (typeof initializeMLSettings === 'function') {
                     initializeMLSettings();
-                    console.log('ML Settings initialized');
                 }
                 
                 // Make ML Dashboard button active if it exists

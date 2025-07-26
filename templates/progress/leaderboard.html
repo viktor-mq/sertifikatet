@@ -176,49 +176,58 @@ function displayLeaderboard(leaderboard) {
         return;
     }
     
-    // Create podium (top 3)
-    const podiumRanks = [2, 1, 3]; // Middle, Left, Right for visual balance
-    const podiumHeights = ['h-20', 'h-24', 'h-16'];
-    const podiumColors = ['bg-gray-400', 'bg-yellow-400', 'bg-orange-400'];
-    
-    podiumRanks.forEach((displayRank, index) => {
-        const actualIndex = displayRank - 1;
-        const user = leaderboard[actualIndex];
-        
+    // Create podium (top 3) - Visual positions: 2nd, 1st, 3rd
+    const topThree = leaderboard.slice(0, 3);
+    const podiumOrder = [2, 1, 3]; // Visual order: 2nd, 1st, 3rd
+
+    // Ensure the podium container is a flex container
+    podium.className = 'flex items-end justify-center gap-4 mb-8';
+
+    topThree.forEach((user, index) => {
         const podiumDiv = document.createElement('div');
-        podiumDiv.className = `text-center ${index === 1 ? 'order-1' : index === 0 ? 'order-2' : 'order-3'}`;
-        
-        if (user) {
-            podiumDiv.innerHTML = `
-                <div class="mb-2">
-                    <div class="w-16 h-16 rounded-full bg-purple-600 mx-auto flex items-center justify-center text-2xl font-bold">
-                        ${user.avatar}
-                    </div>
-                </div>
-                <div class="${podiumHeights[actualIndex]} ${podiumColors[actualIndex]} rounded-t-lg flex items-end justify-center pb-2">
-                    <span class="text-white font-bold text-lg">${displayRank}</span>
-                </div>
-                <div class="mt-2">
-                    <div class="text-white font-bold text-sm">${user.username}</div>
-                    <div class="text-gray-300 text-xs">${user.score} poeng</div>
-                </div>
-            `;
-        } else {
-            podiumDiv.innerHTML = `
-                <div class="mb-2">
-                    <div class="w-16 h-16 rounded-full bg-gray-600 mx-auto flex items-center justify-center">
-                        <i class="fas fa-user text-gray-400"></i>
-                    </div>
-                </div>
-                <div class="${podiumHeights[actualIndex]} bg-gray-600 rounded-t-lg flex items-end justify-center pb-2">
-                    <span class="text-gray-400 font-bold text-lg">${displayRank}</span>
-                </div>
-                <div class="mt-2">
-                    <div class="text-gray-400 text-sm">-</div>
-                </div>
-            `;
+        const isFirstPlace = user.rank === 1;
+        const isSecondPlace = user.rank === 2;
+        const isThirdPlace = user.rank === 3;
+
+        let orderClass = '';
+        let heightClass = '';
+        let colorClass = '';
+        let crownsHTML = '';
+
+        if (isFirstPlace) {
+            orderClass = 'order-2';
+            heightClass = 'h-32';
+            colorClass = 'bg-yellow-400'; // Gold
+            crownsHTML = '<div class="flex justify-center space-x-1">' + '<i class="fas fa-crown text-yellow-200 text-xl"></i>'.repeat(3) + '</div>';
+        } else if (isSecondPlace) {
+            orderClass = 'order-1';
+            heightClass = 'h-24';
+            colorClass = 'bg-slate-400'; // Silver
+            crownsHTML = '<div class="flex justify-center space-x-1">' + '<i class="fas fa-crown text-slate-200 text-lg"></i>'.repeat(2) + '</div>';
+        } else if (isThirdPlace) {
+            orderClass = 'order-3';
+            heightClass = 'h-20';
+            colorClass = 'bg-gray-500'; // Gray/Bronze
+            crownsHTML = '<i class="fas fa-crown text-orange-300 text-base"></i>';
         }
+
+        podiumDiv.className = `text-center w-1/3 ${orderClass}`;
         
+        podiumDiv.innerHTML = `
+            <div class="mb-2">
+                <div class="w-16 h-16 rounded-full bg-purple-600 mx-auto flex items-center justify-center text-2xl font-bold border-2 ${isFirstPlace ? 'border-yellow-400' : 'border-transparent'}">
+                    ${user.avatar || '👤'}
+                </div>
+            </div>
+            <div class="${heightClass} ${colorClass} rounded-t-lg flex items-center justify-center pb-2 flex-col">
+                <span class="text-white font-bold text-2xl">${user.rank}</span>
+                <div class="mt-1">${crownsHTML}</div>
+            </div>
+            <div class="mt-2">
+                <div class="text-white font-bold text-sm truncate">${user.username}</div>
+                <div class="text-gray-300 text-xs">${user.score} poeng</div>
+            </div>
+        `;
         podium.appendChild(podiumDiv);
     });
     

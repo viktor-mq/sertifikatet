@@ -7,11 +7,10 @@ Installs the cron job for daily subscription maintenance
 echo "🚀 Setting up daily subscription check..."
 
 # Create log directory
-sudo mkdir -p /var/log/sertifikatet
-sudo chown $(whoami):$(whoami) /var/log/sertifikatet
+mkdir -p /logs
 
 # Make the script executable
-chmod +x /Users/viktorigesund/Documents/teoritest/scripts/jobs/daily_subscription_check.py
+chmod +x /scripts/jobs/daily_subscription_check.py
 
 # Install the cron job
 echo "📅 Installing cron job..."

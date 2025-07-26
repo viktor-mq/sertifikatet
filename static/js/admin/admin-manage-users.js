@@ -3,10 +3,14 @@
 // ENHANCED ACTIVITY TABLE FUNCTIONALITY
 // ============================================================================
 
+// CSRF token utility
+function getCSRFToken() {
+    return document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') || '';
+}
+
 (function() {
     'use strict';
     function initializeActivitySection() {
-        console.log('Initializing activity section...');
         
         // Set up real-time search for activity table
         const searchInput = document.getElementById('activityRealTimeSearch');
@@ -48,10 +52,8 @@
 
         // Initialize activity table if it exists
         if (document.getElementById('activity-table')) {
-            console.log('Activity table found, loading initial data...');
             loadActivityData();
         } else {
-            console.log('Activity table not found in DOM');
         }
     }
 
@@ -73,7 +75,6 @@
     }
 
     function loadActivityData() {
-        console.log('Loading activity data from API with filters:', activityCurrentFilters);
         
         showActivityLoading(true);
         
@@ -103,7 +104,6 @@
             return response.json();
         })
         .then(data => {
-            console.log('Activity data loaded:', data);
             
             // Update the activity table
             updateActivityTable(data.logs);
@@ -139,7 +139,6 @@
     }
     
     function updateActivityTable(logs) {
-        console.log(`Updating activity table with ${logs.length} logs`);
         
         const tbody = document.querySelector('#activity-table tbody');
         if (!tbody) {
@@ -317,7 +316,6 @@
     }
 
     function goToActivityPage(page) {
-        console.log(`Going to activity page: ${page}`);
         activityCurrentPage = page;
         loadActivityData();
     }
@@ -424,7 +422,8 @@
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
-                    'X-Requested-With': 'XMLHttpRequest'
+                    'X-Requested-With': 'XMLHttpRequest',
+                    'X-CSRFToken': getCSRFToken()
                 }
             });
             
@@ -470,7 +469,8 @@
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
-                    'X-Requested-With': 'XMLHttpRequest'
+                    'X-Requested-With': 'XMLHttpRequest',
+                    'X-CSRFToken': getCSRFToken()
                 }
             });
             
@@ -526,8 +526,7 @@
         
         // Force our event listeners to override any conflicting ones
         setTimeout(() => {
-            console.log('Forcing our event listeners to take precedence...');
-            
+                    
             const searchInput = document.getElementById('usersRealTimeSearch');
             const adminFilter = document.getElementById('usersAdminStatusFilter');
             const statusFilter = document.getElementById('usersStatusFilter');
@@ -545,22 +544,18 @@
                 
                 // Add OUR event listeners
                 newSearchInput.addEventListener('input', function() {
-                    console.log('Enhanced table search triggered!');
                     applyUsersFilters();
                 });
                 
                 newAdminFilter.addEventListener('change', function() {
-                    console.log('Enhanced table admin filter triggered!');
                     applyUsersFilters();
                 });
                 
                 newStatusFilter.addEventListener('change', function() {
-                    console.log('Enhanced table status filter triggered!');
                     applyUsersFilters();
                 });
                 
-                console.log('Enhanced table event listeners successfully installed!');
-            }
+                        }
         }, 1000); // Wait 1 second for other scripts to load
     });
 
@@ -645,7 +640,7 @@
         const form = document.getElementById('users-filter-form');
         const formData = new FormData(form);
         
-        currentUsersFilters = {
+        usersCurrentFilters = {
             search: formData.get('search') || '',
             admin_status: formData.get('admin_status') || '',
             status: formData.get('status') || '',
@@ -662,11 +657,10 @@
         setUsersLoading(true);
         
         try {
-            const data = await AdminEnhancements.fetchData('users', currentUsersFilters);
+            const data = await AdminEnhancements.fetchData('users', usersCurrentFilters);
             updateUsersTable(data);
             updateUsersPagination(data.pagination);
             updateUsersResultsInfo(data.pagination);
-            AdminEnhancements.showToast('Users updated', 'success');
         } catch (error) {
             AdminEnhancements.showToast('Error loading users: ' + error.message, 'error');
         } finally {
@@ -805,7 +799,7 @@
 
     function clearUsersFilters() {
         document.getElementById('users-filter-form').reset();
-        currentUsersFilters = {};
+        usersCurrentFilters = {};
         currentUsersSort = { field: 'created_at', order: 'desc' };
         currentUsersPage = 1;
         usersPerPage = 20;
@@ -841,7 +835,10 @@
         try {
             const response = await fetch(`/admin/api/users/${userId}/grant-admin`, {
                 method: 'POST',
-                headers: { 'Content-Type': 'application/json' }
+                headers: { 
+                    'Content-Type': 'application/json',
+                    'X-CSRFToken': getCSRFToken()
+                }
             });
             
             if (!response.ok) throw new Error('Failed to grant admin privileges');
@@ -866,7 +863,10 @@
         try {
             const response = await fetch(`/admin/api/users/${userId}/revoke-admin`, {
                 method: 'POST',
-                headers: { 'Content-Type': 'application/json' }
+                headers: { 
+                    'Content-Type': 'application/json',
+                    'X-CSRFToken': getCSRFToken()
+                }
             });
             
             if (!response.ok) throw new Error('Failed to revoke admin privileges');
@@ -953,7 +953,6 @@
             search_column: searchColumn
         };
 
-        console.log('Applying users filters:', usersCurrentFilters);
         performUsersSearch();
     }
 
@@ -1195,7 +1194,6 @@
     // ============================================================================
 
     function performUsersSearch() {
-        console.log('Performing users search with filters:', usersCurrentFilters);
         
         // Show loading
         showUsersLoading(true);

@@ -2,21 +2,34 @@
  * Database Section Enhancements
  * Handles multi-table search, filtering, sorting, column toggles, pagination, and export.
  */
-console.log('🚀 admin-database.js script started loading - FIXED VERSION v20250102');
 
-// Local toast notification function (accessible globally within this file)
+// Use global toast notification function
 function showToast(message, type = 'info') {
-    console.log(`${type.toUpperCase()}: ${message}`);
-    // You can enhance this later with actual toast UI if needed
+    // Try to use AdminUtils.showToast (from admin enhancements)
+    if (typeof AdminUtils !== 'undefined' && typeof AdminUtils.showToast === 'function') {
+        AdminUtils.showToast(message, type);
+    } else if (typeof AdminEnhancements !== 'undefined' && AdminEnhancements.showToast) {
+        AdminEnhancements.showToast(message, type);
+    } else {
+        // Fallback: create simple toast notification
+        const toast = document.createElement('div');
+        toast.style.cssText = `
+            position: fixed; top: 20px; right: 20px; z-index: 10001;
+            background: ${type === 'success' ? '#d4edda' : type === 'error' ? '#f8d7da' : '#d1ecf1'};
+            color: ${type === 'success' ? '#155724' : type === 'error' ? '#721c24' : '#0c5460'};
+            padding: 12px 20px; border-radius: 6px; box-shadow: 0 2px 8px rgba(0,0,0,0.2);
+            max-width: 300px; font-size: 14px;
+        `;
+        toast.textContent = message;
+        document.body.appendChild(toast);
+        setTimeout(() => toast.remove(), 4000);
+    }
 }
 
 (function(window) {
     
     // Create namespace for database-specific filtering
     const DatabaseFiltering = {};
-    
-    // Debug: Log that DatabaseFiltering is being created
-    console.log('🔧 DatabaseFiltering namespace created');
     
     /**
      * Initialize filtering for a specific table
@@ -113,7 +126,6 @@ function showToast(message, type = 'info') {
         initializeTablePagination(tableName);
     };
     
-    console.log('🔧 initializeTableFiltering function defined');
     
     /**
      * Apply all filters for a specific table
@@ -127,7 +139,6 @@ function showToast(message, type = 'info') {
             return;
         }
         
-        console.log(`🔍 Applying database filters for table: ${tableName}`);
         
         // SCOPE ALL SELECTORS to database section
         const form = databaseSection.querySelector(`#filter-form-${tableName}`);
@@ -174,18 +185,22 @@ function showToast(message, type = 'info') {
                 }
             }
             
-            row.style.display = showRow ? '' : 'none';
+            // Use data attribute instead of direct style manipulation
+            if (showRow) {
+                row.removeAttribute('data-filtered-out');
+            } else {
+                row.setAttribute('data-filtered-out', 'true');
+            }
         });
         
-        // Reset pagination to page 1 after filtering
-        const perPageSelect = document.querySelector(`#${tableName}PerPageSelector`);
-        if (perPageSelect) {
-            perPageSelect.dispatchEvent(new Event('change'));
+        // Reset pagination to page 1 after filtering and trigger re-render
+        const section = document.querySelector(`.table-section[data-table="${tableName}"]`);
+        if (section && section._paginationRender) {
+            section._currentPage = 1;
+            section._paginationRender();
         }
     };
     
-    console.log('🔧 applyFilters function defined');
-    console.log('🔧 DEBUG: DatabaseFiltering now has:', Object.keys(DatabaseFiltering));
     
     /**
      * Clear all filters for a specific table
@@ -221,7 +236,6 @@ function showToast(message, type = 'info') {
         DatabaseFiltering.applyFilters(tableName);
     };
     
-    console.log('🔧 clearFilters function defined');
     
 
   
@@ -352,28 +366,46 @@ function showToast(message, type = 'info') {
     const perPageSelect = pagContainer ? pagContainer.querySelector('.per-page-selector') : null;
     if (!pagContainer) return;
     let currentPage = 1;
+    
+    // Store pagination function on section for external access
+    section._currentPage = currentPage;
+    section._paginationRender = renderPage;
 
     function renderPage() {
       const perPage = perPageSelect ? parseInt(perPageSelect.value) : rows.length;
-      const visibleRows = rows.filter(row => row.style.display !== 'none');
+      // Get rows that are not filtered out (but ignore pagination hiding)
+      const visibleRows = rows.filter(row => !row.hasAttribute('data-filtered-out'));
       const totalItems = visibleRows.length;
       const totalPages = perPage === 'all' || isNaN(perPage) ? 1 : Math.ceil(totalItems / perPage);
       const start = (currentPage - 1) * perPage + 1;
       const end = perPage === 'all' || isNaN(perPage) ? totalItems : Math.min(currentPage * perPage, totalItems);
 
-      // Show/hide rows according to current page
-      if (perPage === 'all' || isNaN(perPage)) {
-        visibleRows.forEach(row => row.style.display = '');
-      } else {
+      // First, show all visible rows, then hide pagination-excluded ones
+      rows.forEach(row => {
+        if (row.hasAttribute('data-filtered-out')) {
+          row.style.display = 'none';
+        } else {
+          row.style.display = '';
+        }
+      });
+
+      // Then apply pagination hiding
+      if (perPage !== 'all' && !isNaN(perPage)) {
         visibleRows.forEach((row, idx) => {
-          row.style.display = (idx >= start - 1 && idx < end) ? '' : 'none';
+          if (idx < start - 1 || idx >= end) {
+            row.style.display = 'none';
+          }
         });
       }
 
       // Update results info
       const infoDiv = pagContainer.querySelector('.pagination-info');
       if (infoDiv) {
-        infoDiv.textContent = `Viser ${start}-${end} av ${totalItems}`;
+        if (perPage === 'all' || isNaN(perPage)) {
+          infoDiv.textContent = `Viser alle ${totalItems} elementer`;
+        } else {
+          infoDiv.textContent = `Viser ${start}-${end} av ${totalItems} elementer`;
+        }
       }
 
       // Render page buttons inside the center container
@@ -386,8 +418,11 @@ function showToast(message, type = 'info') {
       // Previous button
       const prev = document.createElement('button');
       prev.className = 'page-btn';
-      prev.disabled = currentPage === 1;
-      prev.innerText = '‹ Forrige';
+      if (currentPage === 1) {
+        prev.disabled = true;
+        prev.classList.add('disabled');
+      }
+      prev.innerHTML = '<span class="pagination-arrow">‹</span> Forrige';
       prev.addEventListener('click', () => {
         if (currentPage > 1) {
           currentPage--;
@@ -430,8 +465,11 @@ function showToast(message, type = 'info') {
       // Next button
       const next = document.createElement('button');
       next.className = 'page-btn';
-      next.disabled = currentPage === totalPages;
-      next.innerText = 'Neste ›';
+      if (currentPage === totalPages) {
+        next.disabled = true;
+        next.classList.add('disabled');
+      }
+      next.innerHTML = 'Neste <span class="pagination-arrow">›</span>';
       next.addEventListener('click', () => {
         if (currentPage < totalPages) {
           currentPage++;
@@ -455,7 +493,6 @@ function showToast(message, type = 'info') {
   
   // Database Control Features
   DatabaseFiltering.initializeDatabaseControls = function() {
-  console.log('🎛️ Initializing database controls...');
   
   // Initialize multiselect dropdown
   DatabaseFiltering.initializeMultiselectDropdown();
@@ -532,7 +569,6 @@ function showToast(message, type = 'info') {
             // Add new mode class
             table.classList.add(mode);
         });
-        console.log(`🎨 Applied table display mode: ${mode}`);
     };
     
     DatabaseFiltering.saveTableVisibilityPreferences = function() {
@@ -542,12 +578,10 @@ function showToast(message, type = 'info') {
             preferences[checkbox.dataset.table] = checkbox.checked;
         });
         localStorage.setItem('database_table_visibility', JSON.stringify(preferences));
-        console.log('💾 Saved table visibility preferences:', preferences);
     };
     
     DatabaseFiltering.saveDisplayModePreference = function(mode) {
         localStorage.setItem('database_display_mode', mode);
-        console.log(`💾 Saved display mode preference: ${mode}`);
     };
     
     DatabaseFiltering.updateVisibilityStatus = function() {
@@ -578,7 +612,6 @@ function showToast(message, type = 'info') {
         const options = document.getElementById('tableVisibilityOptions');
         // GUARD: Prevent duplicate initialization 
         if (selected && selected.dataset.dropdownInitialized === 'true') {
-            console.log('🚫 Dropdown already initialized, skipping...');
             return;
         }
         
@@ -639,12 +672,10 @@ function showToast(message, type = 'info') {
             
             if (!isToggling && !dropdown.contains(e.target) && !e.target.closest('.btn[onclick*="showSection"]')) {
                 if (dropdown.classList.contains('open')) {
-                    console.log('🔧 Dropdown closed by outside click');
                     dropdown.classList.remove('open');
                     options.style.display = 'none';
                 }
             } else {
-                console.log('🚫 Outside click ignored - isToggling:', isToggling, 'contains:', dropdown.contains(e.target));
             }
         });
         
@@ -657,7 +688,6 @@ function showToast(message, type = 'info') {
             selected.dataset.dropdownInitialized = 'true';
         }
         
-        console.log('✅ Multiselect dropdown initialized successfully');
     };
     
     DatabaseFiltering.updateDropdownSelectedText = function() {
@@ -726,7 +756,5 @@ function showToast(message, type = 'info') {
     
     // Expose DatabaseFiltering globally
     window.DatabaseFiltering = DatabaseFiltering;
-    console.log('✅ FINAL: DatabaseFiltering exposed globally with functions:', Object.keys(DatabaseFiltering));
-    console.log('✅ FINAL: applyFilters type:', typeof DatabaseFiltering.applyFilters);
   
   })(window);

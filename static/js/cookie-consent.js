@@ -1,6 +1,11 @@
 /* Enhanced Cookie Consent for Analytics + Ads */
 /* Extends your existing cookie-consent.js */
 
+// CSRF token utility
+function getCSRFToken() {
+    return document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') || '';
+}
+
 class EnhancedCookieConsentManager {
     constructor() {
         this.STORAGE_KEY = 'sertifikatet_cookie_banner_shown';
@@ -118,7 +123,6 @@ class EnhancedCookieConsentManager {
     loadGoogleAnalytics() {
         // Only load if not already loaded and user has consented
         if (window.gtag || document.querySelector(`script[src*="googletagmanager.com/gtag/js?id=${this.GOOGLE_ANALYTICS_ID}"]`)) {
-            console.log('Google Analytics already loaded');
             return;
         }
         
@@ -209,6 +213,12 @@ class EnhancedCookieConsentManager {
             return;
         }
         
+        // Check if AdSense is already initialized by looking for processed ad slots
+        const existingAds = document.querySelectorAll('.adsbygoogle[data-adsbygoogle-status]');
+        if (existingAds.length > 0) {
+            return;
+        }
+        
         console.log('Activating Google AdSense with GDPR compliance');
         
         // Activate the existing script
@@ -258,7 +268,6 @@ class EnhancedCookieConsentManager {
     
     loadNorwegianAdNetworks() {
         // Placeholder for Norwegian ad networks
-        console.log('Norwegian ad networks integration ready');
     }
     
     showConsentModal() {
@@ -457,6 +466,7 @@ class EnhancedCookieConsentManager {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
+                    'X-CSRFToken': getCSRFToken()
                 },
                 body: JSON.stringify(this.currentPreferences)
             });

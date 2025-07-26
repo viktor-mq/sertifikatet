@@ -112,7 +112,13 @@
                         <p class="text-gray-300 mb-3">{{ response.question.question }}</p>
                         
                         {% if response.question.image_filename %}
-                        <img src="{{ url_for('static', filename='images/quiz/' + response.question.image_filename) }}" 
+                        {% set path = [] %}
+                        {% if response.question.image_folder %}
+                          {% set path = ['images', response.question.image_folder, response.question.image_filename] %}
+                        {% else %}
+                          {% set path = ['images', response.question.image_filename] %}
+                        {% endif %}
+                        <img src="{{ url_for('static', filename=path | join('/')) }}" 
                              alt="Spørsmålsbilde" class="mb-4 rounded-lg max-w-full h-auto">
                         {% endif %}
                     </div>

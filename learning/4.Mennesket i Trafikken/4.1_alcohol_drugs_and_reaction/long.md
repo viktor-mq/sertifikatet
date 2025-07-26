@@ -26,6 +26,12 @@ Alkohol er et sentraldempende middel som påvirker hjernen og nervesystemet. Sel
 
 **Nedbrytning av alkohol:** Alkohol brytes ned svært sakte i kroppen, ca. 0,15 promille per time. Det finnes ingen snarveier (kaffe, dusj, søvn) som raskt fjerner alkoholen fra blodet. Den eneste måten å bli edru på er tid.
 
+📊 **Visste du?**  
+En mann på 80 kg som drikker 2 øl (0,5 l) kan allerede ha rundt **0,5 promille**.  
+→ Det betyr **automatisk førerkortbeslag** og **økt risiko for dødsulykke**.
+
+🔗 **Tips:** Prøv Promille kalkulatoren hos [Promille.no](https://www.promille.no/promille-kalkulator/) for å forstå hvordan kroppen bryter ned alkohol.
+
 ---
 
 ### Rusmidler og Medisiners Innvirkning 💊

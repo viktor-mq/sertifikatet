@@ -81,6 +81,7 @@ th {
     {% endif %}
     
     <form method="POST" action="{{ url_for('admin.admin_dashboard') }}" style="background: #f8f9fa; padding: 20px; border-radius: 8px; margin-bottom: 30px;">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
         <h3 style="margin-top: 0;">💻 SQL-konsoll</h3>
         <textarea id="sql_query" name="sql_query" rows="5" style="width:100%; box-sizing:border-box; padding: 10px; border: 2px solid #e5e7eb; border-radius: 8px; font-family: 'Courier New', monospace;"></textarea>
         <button type="submit" class="btn" style="margin-top: 10px;">▶️ Kjør SQL</button>
@@ -223,7 +224,7 @@ th {
             <label for="{{ table }}PerPageSelector" style="color: #64748b; font-size: 14px; margin-right: 8px;">Vis per side:</label>
             <select id="{{ table }}PerPageSelector" name="per_page" class="per-page-selector">
               <option value="20">20</option>
-              <option value="50">50</option>
+              <option value="50" selected>50</option>
               <option value="100">100</option>
               <option value="all">Alle</option>
             </select>
@@ -675,11 +676,9 @@ th {
                       getComputedStyle(databaseSection).display !== 'none';
       
       if (!isActive) {
-        console.log('🚫 Database section not active - deferring initialization');
         return;
       }
       
-      console.log('✅ Database section is active - initializing database filtering');
       
       // Initialize client-side database filtering system (scoped to database section)
       {% for table, rows in tables.items() %}
@@ -689,7 +688,6 @@ th {
       // Initialize database control features
       DatabaseFiltering.initializeDatabaseControls();
       
-      console.log('✅ DatabaseFiltering initialized for database section with controls');
     }
     
     // Try to initialize immediately
@@ -702,7 +700,6 @@ th {
         if (mutation.type === 'attributes' && mutation.attributeName === 'class') {
           const target = mutation.target;
           if (target.id === 'databaseSection' && target.classList.contains('active')) {
-            console.log('🔄 Database section became active - initializing');
             initializeDatabaseWhenActive();
           }
         }

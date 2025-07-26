@@ -48,7 +48,9 @@
                     <div class="bg-gray-800/50 rounded-lg p-4">
                         <div class="flex items-center justify-between">
                             <span class="text-sm text-gray-400">
-                                {% if subscription_stats.is_trial %}Prøveperiode utløper{% else %}Neste fakturering{% endif %}
+                                {% if subscription_stats.is_trial %}Prøveperiode utløper
+                                {% elif subscription_stats.status == 'cancelled' %}Abonnement utløper
+                                {% else %}Neste fakturering{% endif %}
                             </span>
                             <span class="font-medium">
                                 {% if subscription_stats.expires_at %}
@@ -215,6 +217,7 @@
         </p>
         
         <form action="{{ url_for('subscription.cancel') }}" method="POST">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
             <div class="mb-6">
                 <label class="block text-sm font-medium mb-2">Årsak til kansellering (valgfritt)</label>
                 <select name="reason" class="w-full px-4 py-2 bg-gray-800 border border-gray-700 rounded-lg focus:border-purple-500 focus:outline-none">
@@ -268,7 +271,7 @@ async function loadPlanOptions() {
         planOptionsContainer.innerHTML = '';
         
         data.plans.forEach(plan => {
-            const planCard = createPlanCard(plan, data.current_plan);
+            const planCard = createPlanCard(plan, data.current_plan, data.subscription_stats);
             planOptionsContainer.appendChild(planCard);
         });
     } catch (error) {
@@ -277,11 +280,12 @@ async function loadPlanOptions() {
     }
 }
 
-function createPlanCard(plan, currentPlan) {
+function createPlanCard(plan, currentPlan, subscriptionStats) {
     const div = document.createElement('div');
     const isCurrentPlan = plan.name === currentPlan;
     const canUpgrade = plan.can_upgrade;
     const upgradeInfo = plan.upgrade_info;
+    const isSubscriptionCancelled = subscriptionStats && subscriptionStats.status === 'cancelled';
     
     div.className = `bg-gray-800/50 rounded-lg p-6 border-2 ${
         isCurrentPlan ? 'border-purple-500' : 'border-gray-700'
@@ -311,9 +315,17 @@ function createPlanCard(plan, currentPlan) {
         }
         buttonContent = `<a href="/subscription/upgrade/${plan.name}" class="block w-full px-4 py-2 bg-gradient-to-r from-green-600 to-blue-600 text-center text-white rounded-lg font-semibold hover:from-green-700 hover:to-blue-700 transition">Oppgrader til ${plan.display_name}</a>`;
     } else if (plan.is_downgrade && plan.name === 'free') {
-        // Special case for Free plan - show cancel option
-        priceDisplay = `<p class="text-2xl font-bold text-gray-400">${plan.price} NOK</p><p class="text-sm text-gray-400">Kanseller abonnement</p>`;
-        buttonContent = '<button onclick="hidePlanChangeModal(); showCancelModal();" class="w-full px-4 py-2 bg-red-600 text-white rounded-lg font-semibold hover:bg-red-700 transition">Kanseller Abonnement</button>';
+        // Special case for Free plan - show cancel option or expiration info
+        if (isSubscriptionCancelled) {
+            // Already cancelled - show expiration info
+            const expirationDate = subscriptionStats.expires_at ? new Date(subscriptionStats.expires_at).toLocaleDateString('no-NO') : 'Ikke satt';
+            priceDisplay = `<p class="text-2xl font-bold text-gray-400">${plan.price} NOK</p><p class="text-sm text-gray-400">Allerede kansellert</p>`;
+            buttonContent = `<div class="w-full px-4 py-2 bg-orange-600/20 text-orange-400 rounded-lg font-semibold text-center">Abonnement utløper ${expirationDate}</div>`;
+        } else {
+            // Active subscription - show cancel option
+            priceDisplay = `<p class="text-2xl font-bold text-gray-400">${plan.price} NOK</p><p class="text-sm text-gray-400">Kanseller abonnement</p>`;
+            buttonContent = '<button onclick="hidePlanChangeModal(); showCancelModal();" class="w-full px-4 py-2 bg-red-600 text-white rounded-lg font-semibold hover:bg-red-700 transition">Kanseller Abonnement</button>';
+        }
     } else if (plan.is_downgrade) {
         priceDisplay = `<p class="text-2xl font-bold text-gray-400">${plan.price} NOK</p><p class="text-sm text-gray-400">Nedgradering</p>`;
         buttonContent = '<span class="px-4 py-2 bg-gray-600 text-gray-400 rounded-lg font-semibold cursor-not-allowed">Nedgradering ikke støttet</span>';

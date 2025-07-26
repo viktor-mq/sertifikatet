@@ -7,6 +7,14 @@
   const AdminEnhancements = {};
 
   /**
+   * Get CSRF token from meta tag
+   */
+  AdminEnhancements.getCSRFToken = function() {
+    const tokenEl = document.querySelector('meta[name="csrf-token"]');
+    return tokenEl ? tokenEl.getAttribute('content') : '';
+  };
+
+  /**
    * Fetch JSON data from the API with query parameters.
    * @param {string} resource
    * @param {object} params
@@ -15,7 +23,10 @@
     const query = new URLSearchParams(params).toString();
     const url = `/admin/api/${resource}` + (query ? `?${query}` : '');
     const response = await fetch(url, {
-      headers: { 'Accept': 'application/json' }
+      headers: { 
+        'Accept': 'application/json',
+        'X-CSRFToken': AdminEnhancements.getCSRFToken()
+      }
     });
     if (!response.ok) {
       throw new Error(`Failed to fetch ${resource}: ${response.statusText}`);
@@ -29,13 +40,74 @@
    * @param {string} [type="info"] - "info", "success", or "error"
    */
   AdminEnhancements.showToast = function(message, type = 'info') {
-    const container = document.getElementById('toast-container');
+    // Try multiple possible container IDs
+    let container = document.getElementById('toast-container') || 
+                   document.getElementById('toastContainer') ||
+                   document.getElementById('admin-toast-container');
+    
     if (!container) return;
+    
     const toast = document.createElement('div');
-    toast.className = `toast toast-${type}`;
+    toast.className = `toast ${type}`;
+    
+    // Set colors based on type
+    const colors = {
+      success: {
+        background: 'rgba(220, 252, 231, 0.95)',
+        color: '#065f46',
+        borderColor: '#059669'
+      },
+      error: {
+        background: 'rgba(254, 226, 226, 0.95)',
+        color: '#991b1b',
+        borderColor: '#dc2626'
+      },
+      info: {
+        background: 'rgba(219, 234, 254, 0.95)',
+        color: '#1e40af',
+        borderColor: '#3b82f6'
+      },
+      warning: {
+        background: 'rgba(254, 243, 199, 0.95)',
+        color: '#92400e',
+        borderColor: '#f59e0b'
+      }
+    };
+    
+    const colorScheme = colors[type] || colors.info;
+    
+    // Apply base styles
+    toast.style.cssText = `
+      min-width: 300px;
+      max-width: 500px;
+      padding: 16px 20px;
+      border-radius: 8px;
+      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      font-weight: 500;
+      font-size: 14px;
+      line-height: 1.4;
+      pointer-events: auto;
+      position: relative;
+      backdrop-filter: blur(8px);
+      border: 1px solid;
+      background: ${colorScheme.background};
+      color: ${colorScheme.color};
+      border-color: ${colorScheme.borderColor};
+      animation: slideInToast 0.3s ease-out;
+    `;
+    
     toast.innerText = message;
     container.appendChild(toast);
-    setTimeout(() => container.removeChild(toast), 3000);
+    
+    // Use a unique timeout to avoid conflicts
+    setTimeout(() => {
+      if (toast.parentNode) {
+        toast.parentNode.removeChild(toast);
+      }
+    }, 3000);
   };
 
   /**
@@ -126,7 +198,10 @@
       try {
         const response = await fetch(`/admin/api/${resource}/update/${payload.id}`, {
           method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
+          headers: { 
+            'Content-Type': 'application/json',
+            'X-CSRFToken': AdminEnhancements.getCSRFToken()
+          },
           body: JSON.stringify(payload)
         });
         if (!response.ok) throw new Error(`Save failed: ${response.statusText}`);

@@ -31,7 +31,7 @@ def enroll_in_module(module_id):
     except Exception as e:
         logger.error(f"Error enrolling in module {module_id}: {str(e)}")
         flash('Det oppstod en feil ved påmelding', 'error')
-        return redirect(url_for('learning.dashboard'))
+        return redirect(url_for('learning.theory_dashboard'))
 
 
 @learning_bp.route('/module/<int:module_id>')
@@ -44,7 +44,7 @@ def module_overview(module_id):
         
         if not module_data:
             flash('Modulen ble ikke funnet', 'error')
-            return redirect(url_for('learning.dashboard'))
+            return redirect(url_for('learning.theory_dashboard'))
         
         # Get submodules with progress
         submodules_data = LearningService.get_submodules_progress(module_id, current_user)
@@ -55,22 +55,25 @@ def module_overview(module_id):
     except Exception as e:
         logger.error(f"Error loading module {module_id}: {str(e)}")
         flash('Det oppstod en feil ved lasting av modulen', 'error')
-        return redirect(url_for('learning.dashboard'))
+        return redirect(url_for('learning.theory_dashboard'))
 
 
 @learning_bp.route('/module/<float:submodule_id>')
 @login_required
 def submodule_content(submodule_id):
-    """Submodule content page - shows detailed theory content with toggle"""
+    """Submodule content page - shows theory content with reading/video toggle"""
     try:
-        # Get submodule details with content
+        # Get content type from URL parameter (default to reading)
+        content_type = request.args.get('type', 'reading')  # 'reading' or 'video'
+        
+        # Get submodule details with BOTH reading and video progress
         submodule_data = LearningService.get_submodule_details(submodule_id, current_user)
         
         if not submodule_data:
             flash('Undermodulen ble ikke funnet', 'error')
-            return redirect(url_for('learning.dashboard'))
+            return redirect(url_for('learning.theory_dashboard'))
         
-        # Load content from files
+        # Load reading content from files (EXISTING LOGIC - UNCHANGED)
         content_data = ContentManager.get_submodule_content(submodule_id)
         if not content_data:
             content_data = {
@@ -80,16 +83,27 @@ def submodule_content(submodule_id):
                 'shorts_count': 0
             }
         
-        # Track content access for progress tracking
-        LearningService.track_content_access(current_user, submodule_id, 'content')
+        # Get video data for video mode
+        video_data = None
+        if content_type == 'video' or submodule_data.get('has_video_shorts', False):
+            video_data = LearningService.get_submodule_shorts(submodule_id, current_user)
+        
+        # Track content access based on mode
+        if content_type == 'reading':
+            LearningService.track_content_access(current_user, submodule_id, 'content')
+        elif content_type == 'video':
+            LearningService.track_video_access(current_user, submodule_id)
         
         return render_template('learning/submodule_content.html',
                              submodule=submodule_data,
-                             content=content_data)
+                             content=content_data,
+                             video_data=video_data,
+                             content_type=content_type)
+                             
     except Exception as e:
         logger.error(f"Error loading submodule {submodule_id}: {str(e)}")
         flash('Det oppstod en feil ved lasting av innholdet', 'error')
-        return redirect(url_for('learning.dashboard'))
+        return redirect(url_for('learning.theory_dashboard'))
 
 
 @learning_bp.route('/shorts/<float:submodule_id>')
@@ -102,7 +116,7 @@ def shorts_player(submodule_id):
         
         if not submodule_data:
             flash('Undermodulen ble ikke funnet', 'error')
-            return redirect(url_for('learning.dashboard'))
+            return redirect(url_for('learning.theory_dashboard'))
         
         # Get video shorts for this submodule
         shorts_data = LearningService.get_submodule_shorts(submodule_id, current_user)
@@ -111,12 +125,27 @@ def shorts_player(submodule_id):
             flash('Ingen videoer funnet for denne undermodulen ennå', 'info')
             return redirect(url_for('learning.submodule_content', submodule_id=submodule_id))
         
+        # Check for specific video to start from (continue functionality)
+        start_video_id = request.args.get('start_video', type=int)
+        start_video_index = 0  # Default to first video
+        
+        if start_video_id:
+            # Find the index of the video to start from
+            for i, video in enumerate(shorts_data):
+                if video.get('id') == start_video_id:
+                    start_video_index = i
+                    logger.info(f"Starting shorts player from video {start_video_id} at index {i}")
+                    break
+            else:
+                logger.warning(f"Start video {start_video_id} not found in submodule {submodule_id}, starting from beginning")
+        
         # Track shorts access for progress tracking
         LearningService.track_content_access(current_user, submodule_id, 'shorts')
         
         return render_template('learning/shorts_player.html',
                              submodule=submodule_data,
-                             shorts=shorts_data)
+                             shorts=shorts_data,
+                             start_video_index=start_video_index)
     except Exception as e:
         logger.error(f"Error loading shorts for submodule {submodule_id}: {str(e)}")
         flash('Det oppstod en feil ved lasting av videoene', 'error')
@@ -134,8 +163,15 @@ def continue_learning():
         if last_position and last_position['submodule_number']:
             # Redirect based on progress type
             if last_position['progress_type'] == 'shorts':
-                return redirect(url_for('learning.shorts_player', 
-                                      submodule_id=last_position['submodule_number']))
+                # For video progress, include the specific video ID to resume from
+                shorts_url = url_for('learning.shorts_player', 
+                                    submodule_id=last_position['submodule_number'])
+                
+                # Add video ID parameter if we have specific video position
+                if last_position.get('last_video_id'):
+                    shorts_url += f"?start_video={last_position['last_video_id']}"
+                
+                return redirect(shorts_url)
             else:
                 return redirect(url_for('learning.submodule_content', 
                                       submodule_id=last_position['submodule_number']))
@@ -146,12 +182,42 @@ def continue_learning():
         else:
             # First time user - redirect to dashboard
             flash('Velkommen! Start med å utforske læringsmodulene.', 'info')
-            return redirect(url_for('learning.dashboard'))
+            return redirect(url_for('learning.theory_dashboard'))
             
     except Exception as e:
         logger.error(f"Error getting continue position: {str(e)}")
         flash('Kunne ikke finne din siste posisjon. Starter fra begynnelsen.', 'warning')
-        return redirect(url_for('learning.dashboard'))
+        return redirect(url_for('learning.theory_dashboard'))
+
+
+@learning_bp.route('/shorts/continue-learning')
+@login_required
+def shorts_continue_learning():
+    """Continue learning with unseen videos from all modules"""
+    try:
+        # Get unseen videos ordered from lowest to highest module
+        unseen_videos = LearningService.get_unseen_videos_ordered(current_user)
+        
+        if not unseen_videos:
+            # No unseen videos - user has watched everything!
+            flash('Gratulerer, alle videoene er sett! 🎉', 'success')
+            return redirect(url_for('learning.theory_dashboard'))
+        
+        # Render shorts player with unseen videos
+        return render_template('learning/shorts_player.html',
+                             submodule={
+                                 'title': 'Fortsett læring', 
+                                 'submodule_number': 'continue',
+                                 'id': 'continue'
+                             },
+                             shorts=unseen_videos,
+                             start_video_index=0,
+                             submodule_id='continue')
+                             
+    except Exception as e:
+        logger.error(f"Error loading continue learning: {str(e)}")
+        flash('Det oppstod en feil ved lasting av videoer', 'error')
+        return redirect(url_for('learning.theory_dashboard'))
 
 
 # Also add a route name fix for the shorts player
@@ -262,7 +328,7 @@ def progress_tracker():
     except Exception as e:
         logger.error(f"Error loading progress tracker: {str(e)}")
         flash('Det oppstod en feil ved lasting av fremgangsdata', 'error')
-        return redirect(url_for('learning.dashboard'))
+        return redirect(url_for('learning.theory_dashboard'))
 
 
 # API routes for progress tracking and interactions
@@ -292,6 +358,133 @@ def api_update_progress():
             'success': False,
             'error': 'Kunne ikke oppdatere fremgang'
         }), 400
+
+
+# ============================================================================
+# NEW VIDEO PROGRESS API ROUTES (Phase 2 Implementation)
+# ============================================================================
+
+@learning_bp.route('/api/video-progress/<float:submodule_id>')
+@login_required
+def get_video_progress_api(submodule_id):
+    """API endpoint to get current video progress for submodule"""
+    try:
+        video_progress = LearningService.get_submodule_video_progress(current_user, submodule_id)
+        
+        return jsonify({
+            'success': True,
+            'submodule_id': submodule_id,
+            'progress': video_progress
+        })
+        
+    except Exception as e:
+        logger.error(f"Error getting video progress API: {str(e)}")
+        return jsonify({
+            'success': False,
+            'error': 'Could not load video progress'
+        }), 500
+
+
+@learning_bp.route('/api/mark-videos-complete/<float:submodule_id>', methods=['POST'])
+@login_required  
+def mark_videos_complete_api(submodule_id):
+    """API endpoint to mark all videos in submodule as complete"""
+    try:
+        result = LearningService.mark_submodule_videos_complete(current_user, submodule_id)
+        
+        if result['success']:
+            return jsonify({
+                'success': True,
+                'message': f"Markerte {result['videos_completed']} videoer som fullført",
+                'videos_completed': result['videos_completed'],
+                'completion_percentage': result['completion_percentage']
+            })
+        else:
+            return jsonify({
+                'success': False,
+                'error': result.get('error', 'Unknown error')
+            }), 400
+            
+    except Exception as e:
+        logger.error(f"Error marking videos complete API: {str(e)}")
+        return jsonify({
+            'success': False,
+            'error': 'Could not mark videos as complete'
+        }), 500
+
+
+@learning_bp.route('/api/cross-complete/<float:submodule_id>', methods=['POST'])
+@login_required
+def cross_complete_api(submodule_id):
+    """API endpoint for cross-completion (mark other format as complete)"""
+    try:
+        data = request.get_json()
+        format_type = data.get('format')  # 'reading' or 'video'
+        
+        if format_type == 'video':
+            # User completed reading, mark videos as complete
+            result = LearningService.mark_submodule_videos_complete(current_user, submodule_id)
+            action = "videoer som fullført"
+        elif format_type == 'reading':
+            # User completed videos, mark reading as complete  
+            result = LearningService.mark_content_complete(current_user, 'content', submodule_id)
+            action = "lesing som fullført"
+        else:
+            return jsonify({
+                'success': False,
+                'error': 'Invalid format specified'
+            }), 400
+        
+        if result.get('success', True):  # mark_content_complete might not return success field
+            return jsonify({
+                'success': True,
+                'message': f"Markerte {action}",
+                'format': format_type
+            })
+        else:
+            return jsonify({
+                'success': False,
+                'error': result.get('error', 'Unknown error')
+            }), 400
+            
+    except Exception as e:
+        logger.error(f"Error in cross-completion API: {str(e)}")
+        return jsonify({
+            'success': False,
+            'error': 'Could not complete cross-completion'
+        }), 500
+
+
+@learning_bp.route('/api/progress-summary/<float:submodule_id>')
+@login_required
+def progress_summary_api(submodule_id):
+    """API endpoint to get complete progress summary for both formats"""
+    try:
+        submodule_data = LearningService.get_submodule_details(submodule_id, current_user)
+        
+        if not submodule_data:
+            return jsonify({
+                'success': False,
+                'error': 'Submodule not found'
+            }), 404
+        
+        return jsonify({
+            'success': True,
+            'submodule_id': submodule_id,
+            'reading_progress': submodule_data['reading_progress'],
+            'video_progress': submodule_data['video_progress'],
+            'overall_progress': submodule_data.get('overall_progress', {
+                'status': 'not_started',
+                'completion_percentage': 0
+            })
+        })
+        
+    except Exception as e:
+        logger.error(f"Error getting progress summary API: {str(e)}")
+        return jsonify({
+            'success': False,
+            'error': 'Could not load progress summary'
+        }), 500
 
 
 
@@ -410,19 +603,32 @@ def api_shorts_like():
 def theory_dashboard():
     """Theory mode dashboard - shows learning modules with progress"""
     try:
-        # Get all modules with user progress
-        modules_data = LearningService.get_user_modules_progress(current_user)
+        # Get content type from URL parameter
+        content_type = request.args.get('type', 'reading')  # 'reading' or 'video'
+        
+        if content_type == 'video':
+            # Get video progress for all modules
+            modules_data = LearningService.get_dashboard_video_progress(current_user)
+        else:
+            # Get reading progress (existing functionality)
+            modules_data = LearningService.get_user_modules_progress(current_user)
         
         # Get user learning stats
         learning_stats = LearningService.get_user_learning_stats(current_user)
         
+        # Get overall progress stats for reading vs video
+        progress_stats = LearningService.get_overall_progress_stats(current_user)
+        
         # Get recommended next steps
         recommendations = LearningService.get_recommendations(current_user)
         
+        # Pass content_type to template
         return render_template('learning/theory_dashboard.html',
                              modules=modules_data,
                              stats=learning_stats,
-                             recommendations=recommendations)
+                             progress_stats=progress_stats,
+                             recommendations=recommendations,
+                             content_type=content_type)
     except Exception as e:
         logger.error(f"Error loading theory dashboard: {str(e)}")
         flash('Det oppstod en feil ved lasting av teorioversikten', 'error')
@@ -525,20 +731,56 @@ def get_recommendations():
         }), 400
 
 
+@learning_bp.route('/api/recommendations/dual-action')
+@login_required
+def get_dual_action_recommendations():
+    """Get personalized recommendations with dual reading/video actions (AJAX)"""
+    try:
+        recommendations = LearningService.get_dual_action_recommendations(current_user)
+        return jsonify({
+            'success': True,
+            'recommendations': recommendations
+        })
+    except Exception as e:
+        logger.error(f"Error getting dual-action recommendations: {str(e)}")
+        return jsonify({
+            'success': False,
+            'error': 'Kunne ikke hente anbefalinger'
+        }), 400
+
+
 # Video Shorts API Endpoints
 @learning_bp.route('/api/shorts/mock/progress', methods=['POST'])
 @login_required  
 def update_mock_shorts_progress_api():
-    """Handle progress updates for mock videos (no database save)"""
+    """Handle progress updates for mock videos - saves to database in development mode"""
     try:
         data = request.get_json()
-        # For mock videos, just return success without database save
+        
+        # In development mode, save mock progress to database for testing
+        from flask import current_app
+        if current_app.config.get('ENVIRONMENT') == 'development':
+            video_id = data.get('video_id') or data.get('shorts_id')
+            if video_id:
+                # Use the real progress tracking service
+                # Filter to only allowed fields to match the real endpoint
+                allowed_fields = ['watch_percentage', 'watch_time_seconds', 'watch_status']
+                filtered_data = {k: v for k, v in data.items() if k in allowed_fields}
+                
+                if filtered_data:
+                    result = LearningService.update_shorts_progress(
+                        current_user, video_id, filtered_data
+                    )
+                    return jsonify(result)
+        
+        # Fallback to mock response for production or missing data
         return jsonify({
             'success': True,
-            'message': 'Mock progress tracked (not saved to database)',
+            'message': 'Mock progress tracked',
             'watch_percentage': data.get('watch_percentage', 0)
         })
     except Exception as e:
+        logger.error(f"Error in mock progress tracking: {str(e)}")
         return jsonify({
             'success': False,
             'error': 'Mock progress tracking failed'
@@ -547,16 +789,29 @@ def update_mock_shorts_progress_api():
 @learning_bp.route('/api/shorts/mock/like', methods=['POST'])
 @login_required  
 def toggle_mock_shorts_like():
-    """Handle like toggle for mock videos (no database save)"""
+    """Handle like toggle for mock videos - saves to database in development mode"""
     try:
         data = request.get_json()
-        # For mock videos, just return success without database save
+        
+        # In development mode, save mock likes to database for testing
+        from flask import current_app
+        if current_app.config.get('ENVIRONMENT') == 'development':
+            video_id = data.get('video_id') or data.get('shorts_id')
+            if video_id:
+                # Use the real like toggle service
+                result = LearningService.toggle_shorts_like(
+                    current_user, video_id
+                )
+                return jsonify(result)
+        
+        # Fallback to mock response for production or missing data
         return jsonify({
             'success': True,
             'liked': True,  # Always return liked for mock
-            'message': 'Mock like tracked (not saved to database)'
+            'message': 'Mock like tracked'
         })
     except Exception as e:
+        logger.error(f"Error in mock like tracking: {str(e)}")
         return jsonify({
             'success': False,
             'error': 'Mock like tracking failed'
@@ -565,10 +820,16 @@ def toggle_mock_shorts_like():
 @learning_bp.route('/api/shorts/all-session', methods=['GET'])
 @login_required
 def get_session_shorts_api():
-    """Get all shorts for cross-module session"""
+    """Get all shorts for cross-module session with continuation support"""
     try:
         starting_submodule = request.args.get('start')
-        videos = LearningService.get_all_shorts_for_session(current_user, starting_submodule)
+        starting_video_id = request.args.get('start_video', type=int)
+        
+        videos = LearningService.get_all_shorts_for_session(
+            current_user, 
+            starting_submodule, 
+            starting_video_id=starting_video_id
+        )
         
         return jsonify({
             'success': True,
@@ -580,6 +841,50 @@ def get_session_shorts_api():
         return jsonify({
             'success': False,
             'error': 'Could not load session videos'
+        }), 500
+
+
+@learning_bp.route('/api/shorts/incomplete-session', methods=['GET'])
+@login_required
+def get_incomplete_shorts_api():
+    """Get all unseen videos (not completed) ordered from lowest to highest module"""
+    try:
+        videos = LearningService.get_unseen_videos_ordered(current_user)
+        
+        return jsonify({
+            'success': True,
+            'videos': videos,
+            'count': len(videos)
+        })
+    except Exception as e:
+        logger.error(f"Error getting incomplete videos: {e}")
+        return jsonify({
+            'success': False,
+            'error': 'Could not load incomplete videos'
+        }), 500
+
+@learning_bp.route('/api/next-submodule', methods=['GET'])
+@login_required
+def get_next_submodule():
+    """Get next available submodule for reading continuation"""
+    try:
+        next_submodule = LearningService.get_next_reading_submodule(current_user)
+        
+        if next_submodule:
+            return jsonify({
+                'success': True,
+                'next_submodule_id': next_submodule
+            })
+        else:
+            return jsonify({
+                'success': False,
+                'message': 'Ingen flere moduler tilgjengelig'
+            })
+    except Exception as e:
+        logger.error(f"Error getting next submodule: {e}")
+        return jsonify({
+            'success': False,
+            'error': 'Could not get next submodule'
         }), 500
 
 @learning_bp.route('/api/shorts/<int:shorts_id>/progress', methods=['POST'])
@@ -684,42 +989,41 @@ def get_shorts_analytics(shorts_id):
 
 # NEW API ROUTES FOR VIDEO SHORTS USING VIDEO/VIDEOPROGRESS MODELS
 
-@learning_bp.route('/api/shorts/all-session', methods=['GET'])
-@login_required
-def get_all_session_shorts():
-    """Get all shorts for cross-module session"""
-    try:
-        starting_submodule = request.args.get('start')
-        videos = LearningService.get_all_shorts_for_session(current_user, starting_submodule)
-        
-        return jsonify({
-            'success': True,
-            'videos': videos,
-            'count': len(videos)
-        })
-    except Exception as e:
-        logger.error(f"Error getting session shorts: {e}")
-        return jsonify({
-            'success': False,
-            'error': 'Could not load session videos'
-        }), 500
+# Duplicate route removed - using get_session_shorts_api above
 
 
 @learning_bp.route('/api/shorts/mock/progress', methods=['POST'])
 @login_required  
 def update_mock_shorts_progress():
-    """Handle progress updates for mock videos (no database save)"""
+    """Handle progress updates for mock videos - saves to database in development mode"""
     try:
         data = request.get_json()
-        # For mock videos, just return success without database save
+        
+        # In development mode, save mock progress to database for testing
+        from flask import current_app
+        if current_app.config.get('ENVIRONMENT') == 'development':
+            video_id = data.get('video_id') or data.get('shorts_id')
+            if video_id:
+                # Use the real progress tracking service
+                # Filter to only allowed fields to match the real endpoint
+                allowed_fields = ['watch_percentage', 'watch_time_seconds', 'watch_status']
+                filtered_data = {k: v for k, v in data.items() if k in allowed_fields}
+                
+                if filtered_data:
+                    result = LearningService.update_shorts_progress(
+                        current_user, video_id, filtered_data
+                    )
+                    return jsonify(result)
+        
+        # Fallback to mock response for production or missing data
         return jsonify({
             'success': True,
-            'message': 'Mock progress tracked (not saved to database)',
+            'message': 'Mock progress tracked',
             'watch_percentage': data.get('watch_percentage', 0)
         })
     except Exception as e:
+        logger.error(f"Error in mock progress tracking: {str(e)}")
         return jsonify({
             'success': False,
             'error': 'Mock progress tracking failed'
         }), 400
-

@@ -1,0 +1,20 @@
+{
+  "name": "sertifikatet",
+  "version": "1.0.0",
+  "description": "Norwegian driving theory test platform",
+  "scripts": {
+    "build-css": "postcss static/css/src/input.css -o static/css/tailwind.css --watch",
+    "build-css-prod": "NODE_ENV=production postcss static/css/src/input.css -o static/css/tailwind.css",
+    "dev": "concurrently \"python run.py\" \"npm run build-css\"",
+    "build": "npm run build-css-prod"
+  },
+  "devDependencies": {
+    "@tailwindcss/forms": "^0.5.7",
+    "@tailwindcss/typography": "^0.5.10",
+    "autoprefixer": "^10.4.16",
+    "concurrently": "^8.2.2",
+    "postcss": "^8.4.32",
+    "postcss-cli": "^11.0.0",
+    "tailwindcss": "^3.3.6"
+  }
+}

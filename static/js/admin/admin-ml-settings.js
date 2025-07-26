@@ -3,17 +3,29 @@
  * Handles ML dashboard functionality and admin controls
  */
 
+// CSRF token utility
+function getCSRFToken() {
+    return document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') || '';
+}
+
 // ML Configuration Batching System
-const MLConfigBatcher = {
+const MLConfigBatcher = window.MLConfigBatcher || {
     pendingChanges: {},
+    originalValues: {}, // Store original values for reversion
     timer: null,
     batchDelay: 10000, // 10 seconds
     isActive: false,
     notificationElement: null,
+    hideTimer: null, // Track the hide timeout
     
     // Queue a configuration change for batch processing
     queueChange(settingKey, value) {
         console.log(`🔄 Queuing ML setting: ${settingKey} = ${value}`);
+        
+        // Store original value if this is the first change for this setting
+        if (!(settingKey in this.originalValues)) {
+            this.storeOriginalValue(settingKey);
+        }
         
         // Add to pending changes
         this.pendingChanges[settingKey] = value;
@@ -57,7 +69,8 @@ const MLConfigBatcher = {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json',
-                'X-Requested-With': 'XMLHttpRequest'
+                'X-Requested-With': 'XMLHttpRequest',
+                'X-CSRFToken': getCSRFToken()
             },
             body: JSON.stringify(this.pendingChanges)
         })
@@ -71,6 +84,9 @@ const MLConfigBatcher = {
                 Object.entries(this.pendingChanges).forEach(([key, value]) => {
                     handleMLSettingUpdate(key, value);
                 });
+                
+                // Clear original values on successful update
+                this.originalValues = {};
                 
                 // Refresh ML data
                 loadMLData();
@@ -129,22 +145,58 @@ const MLConfigBatcher = {
         this.clearPendingUI();
     },
     
+    // Store the original value of a control for later reversion
+    storeOriginalValue(settingKey) {
+        const control = document.getElementById(settingKey) || 
+                      document.querySelector(`[data-setting="${settingKey}"]`) ||
+                      document.querySelector(`input[name="${settingKey}"]`);
+        
+        if (control) {
+            if (control.type === 'checkbox') {
+                this.originalValues[settingKey] = control.checked;
+            } else if (control.type === 'range') {
+                this.originalValues[settingKey] = parseFloat(control.value);
+            } else {
+                this.originalValues[settingKey] = control.value;
+            }
+            console.log(`📝 Stored original value for ${settingKey}:`, this.originalValues[settingKey]);
+        }
+    },
+    
     // Revert pending changes in the UI
     revertPendingChanges() {
+        console.log('🔄 Reverting pending changes due to batch failure');
+        
         Object.entries(this.pendingChanges).forEach(([settingKey, attemptedValue]) => {
             const control = document.getElementById(settingKey) || 
                           document.querySelector(`[data-setting="${settingKey}"]`) ||
                           document.querySelector(`input[name="${settingKey}"]`);
             
-            if (control) {
+            const originalValue = this.originalValues[settingKey];
+            
+            if (control && originalValue !== undefined) {
                 if (control.type === 'checkbox') {
-                    control.checked = !attemptedValue;
+                    control.checked = originalValue;
+                    console.log(`✅ Reverted checkbox ${settingKey} to:`, originalValue);
                 } else if (control.type === 'range') {
-                    // For sliders, we'd need to store the previous value somewhere
-                    console.log(`Would revert ${settingKey} slider - need previous value`);
+                    control.value = originalValue;
+                    // Also update the display value if it exists
+                    const valueDisplay = document.getElementById(settingKey + 'Value');
+                    if (valueDisplay) {
+                        valueDisplay.textContent = originalValue;
+                    }
+                    console.log(`✅ Reverted slider ${settingKey} to:`, originalValue);
+                } else {
+                    control.value = originalValue;
+                    console.log(`✅ Reverted ${settingKey} to:`, originalValue);
                 }
+            } else {
+                console.warn(`⚠️ Could not revert ${settingKey} - control or original value not found`);
             }
         });
+        
+        // Clear the stored values after reversion
+        this.originalValues = {};
     },
     
     // Update UI to show pending state
@@ -304,8 +356,11 @@ const MLConfigBatcher = {
             </div>
         `;
         
-        // Auto-hide after 4 seconds
-        setTimeout(() => {
+        // Clear existing hide timer and set new one
+        if (this.hideTimer) {
+            clearTimeout(this.hideTimer);
+        }
+        this.hideTimer = setTimeout(() => {
             this.hideBatchingNotification();
         }, 4000);
     },
@@ -322,8 +377,11 @@ const MLConfigBatcher = {
             </div>
         `;
         
-        // Auto-hide after 6 seconds
-        setTimeout(() => {
+        // Clear existing hide timer and set new one
+        if (this.hideTimer) {
+            clearTimeout(this.hideTimer);
+        }
+        this.hideTimer = setTimeout(() => {
             this.hideBatchingNotification();
         }, 6000);
     },
@@ -339,14 +397,23 @@ const MLConfigBatcher = {
             </div>
         `;
         
-        // Auto-hide after 3 seconds
-        setTimeout(() => {
+        // Clear existing hide timer and set new one
+        if (this.hideTimer) {
+            clearTimeout(this.hideTimer);
+        }
+        this.hideTimer = setTimeout(() => {
             this.hideBatchingNotification();
         }, 3000);
     },
     
     // Hide batching notification
     hideBatchingNotification() {
+        // Clear any pending hide timer
+        if (this.hideTimer) {
+            clearTimeout(this.hideTimer);
+            this.hideTimer = null;
+        }
+        
         if (this.notificationElement) {
             this.notificationElement.style.opacity = '0';
             setTimeout(() => {
@@ -359,6 +426,9 @@ const MLConfigBatcher = {
     }
 };
 
+// Make MLConfigBatcher globally available to prevent duplicate declarations
+window.MLConfigBatcher = MLConfigBatcher;
+
 // Page unload warning for pending changes
 window.addEventListener('beforeunload', function(e) {
     if (MLConfigBatcher.isActive && Object.keys(MLConfigBatcher.pendingChanges).length > 0) {
@@ -370,7 +440,6 @@ window.addEventListener('beforeunload', function(e) {
 
 // Initialize ML Settings section
 function initializeMLSettings() {
-    console.log('🤖 Initializing ML Settings section...');
     
     try {
         // Set up event listeners for ML controls
@@ -383,9 +452,7 @@ function initializeMLSettings() {
         loadMLConfiguration();
         
         // Initialize batching system
-        console.log('📝 Batching system ready for ML configuration changes');
         
-        console.log('✅ ML Settings section initialized successfully');
     } catch (error) {
         console.error('❌ Error initializing ML Settings:', error);
     }
@@ -452,7 +519,6 @@ function handleMLSettingUpdate(settingKey, value) {
 
 // NEW: Update dashboard sections when master toggle changes
 function updateDashboardSections(mlSystemEnabled) {
-    console.log(`🔄 Updating dashboard sections: ML System ${mlSystemEnabled ? 'Enabled' : 'Disabled'}`);
     
     // Calculate ML models count dynamically based on system state
     function calculateModelsActiveFromToggle(systemEnabled) {
@@ -464,9 +530,14 @@ function updateDashboardSections(mlSystemEnabled) {
         let activeCount = 0;
         
         // Check if individual ML features are enabled (these control the models)
-        const difficultyEnabled = document.getElementById('mlDifficultyPrediction')?.checked !== false;
-        const adaptiveEnabled = document.getElementById('mlAdaptiveLearning')?.checked !== false;
-        const skillTrackingEnabled = document.getElementById('mlSkillTracking')?.checked !== false;
+        const difficultyCheckbox = document.getElementById('mlDifficultyPrediction');
+        const adaptiveCheckbox = document.getElementById('mlAdaptiveLearning');
+        const skillTrackingCheckbox = document.getElementById('mlSkillTracking');
+        
+        const difficultyEnabled = difficultyCheckbox?.checked === true;
+        const adaptiveEnabled = adaptiveCheckbox?.checked === true;
+        const skillTrackingEnabled = skillTrackingCheckbox?.checked === true;
+        
         
         if (difficultyEnabled) activeCount++;
         if (adaptiveEnabled) activeCount++;
@@ -475,11 +546,11 @@ function updateDashboardSections(mlSystemEnabled) {
         return activeCount;
     }
     
-    // Update algorithm version card
+    // Update algorithm version card - will be properly set by next API call
     const algorithmVersionElement = document.getElementById('algorithmVersion');
     if (algorithmVersionElement) {
         if (mlSystemEnabled) {
-            algorithmVersionElement.textContent = 'v1.2.3'; // Or fetch from API
+            algorithmVersionElement.textContent = 'Loading...'; // Will be updated by next loadMLData() call
         } else {
             algorithmVersionElement.textContent = 'Inactive';
         }
@@ -694,7 +765,6 @@ function setupMLSliders() {
 
 // Load ML configuration settings
 function loadMLConfiguration() {
-    console.log('Loading ML configuration...');
     
     fetch('/admin/api/ml/config')
         .then(response => {
@@ -705,7 +775,6 @@ function loadMLConfiguration() {
         })
         .then(config => {
             updateMLConfiguration(config);
-            console.log('✅ ML configuration loaded successfully');
         })
         .catch(error => {
             console.error('❌ Error loading ML configuration:', error);
@@ -720,7 +789,6 @@ function snakeToCamel(str) {
 
 // Update configuration form with loaded values
 function updateMLConfiguration(config) {
-    console.log('Updating ML configuration with:', config);
     
     // Define the mapping of API keys to their corresponding elements
     const toggleMappings = {
@@ -738,7 +806,6 @@ function updateMLConfiguration(config) {
             const toggle = document.getElementById(elementId);
             if (toggle) {
                 toggle.checked = config[apiKey];
-                console.log(`✅ Updated ${elementId}:`, config[apiKey]);
             } else {
                 console.warn(`❌ Toggle ${elementId} not found`);
             }
@@ -755,7 +822,6 @@ function updateMLConfiguration(config) {
             if (valueDisplay) {
                 valueDisplay.textContent = config.ml_learning_rate.toFixed(2);
             }
-            console.log('✅ Updated learning rate slider:', config.ml_learning_rate);
         } else {
             console.warn('❌ Learning rate slider not found');
         }
@@ -770,7 +836,6 @@ function updateMLConfiguration(config) {
             if (valueDisplay) {
                 valueDisplay.textContent = config.ml_adaptation_strength.toFixed(1);
             }
-            console.log('✅ Updated adaptation strength slider:', config.ml_adaptation_strength);
         } else {
             console.warn('❌ Adaptation strength slider not found');
         }
@@ -783,7 +848,6 @@ function updateMLConfiguration(config) {
                               document.getElementById('mlFallbackMode');
         if (fallbackSelect) {
             fallbackSelect.value = config.ml_fallback_mode;
-            console.log('✅ Updated fallback mode:', config.ml_fallback_mode);
         }
     }
     
@@ -792,7 +856,6 @@ function updateMLConfiguration(config) {
         const updateFrequencySelect = document.getElementById('mlUpdateFrequency');
         if (updateFrequencySelect) {
             updateFrequencySelect.value = config.ml_update_frequency;
-            console.log('✅ Updated update frequency:', config.ml_update_frequency);
         }
     }
     
@@ -808,7 +871,6 @@ function updateMLConfiguration(config) {
             const checkbox = document.getElementById(elementId);
             if (checkbox) {
                 checkbox.checked = config[apiKey];
-                console.log(`✅ Updated ${elementId}:`, config[apiKey]);
             }
         }
     });
@@ -816,12 +878,10 @@ function updateMLConfiguration(config) {
     // NEW: Apply master toggle dependency logic after loading configuration
     applyMasterToggleLogic(config);
     
-    console.log('🎯 ML Configuration update complete');
 }
 
 // NEW: Apply master toggle dependency logic
 function applyMasterToggleLogic(config) {
-    console.log('🔒 Applying master toggle dependency logic...');
     
     const masterToggleEnabled = config && config.ml_system_enabled;
     const featureControls = document.getElementById('mlFeatureControls');
@@ -834,7 +894,6 @@ function applyMasterToggleLogic(config) {
             document.querySelectorAll('#mlFeatureControls input[type="checkbox"]').forEach(input => {
                 input.disabled = false;
             });
-            console.log('✅ Individual features enabled (master toggle is ON)');
         } else {
             // Disable the feature controls section
             featureControls.classList.add('disabled');
@@ -862,27 +921,36 @@ function applyMasterToggleLogic(config) {
     // Update dashboard sections based on master toggle state
     updateDashboardSections(masterToggleEnabled);
     
-    console.log(`🎯 Master toggle logic applied: ${masterToggleEnabled ? 'System Active' : 'System Inactive'}`);
 }
 
 // Load ML data and refresh dashboard
 function loadMLData() {
-    console.log('Loading ML data...');
     
     // Show loading state
     setMLLoadingState(true);
     
-    // Simulate API call to get fresh ML data
-    fetch('/admin/api/ml/status')
-        .then(response => {
+    // Fetch both status (for stats) and diagnostics (for accurate model count)
+    Promise.all([
+        fetch('/admin/api/ml/status').then(response => {
             if (!response.ok) {
-                throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+                throw new Error(`Status HTTP ${response.status}: ${response.statusText}`);
+            }
+            return response.json();
+        }),
+        fetch('/admin/api/ml/diagnostics').then(response => {
+            if (!response.ok) {
+                throw new Error(`Diagnostics HTTP ${response.status}: ${response.statusText}`);
             }
             return response.json();
         })
-        .then(data => {
-            updateMLDashboard(data);
-            console.log('✅ ML data loaded successfully');
+    ])
+        .then(([statusData, diagnosticsData]) => {
+            // Combine both data sources
+            const combinedData = {
+                ...statusData,
+                diagnostics: diagnosticsData
+            };
+            updateMLDashboard(combinedData);
         })
         .catch(error => {
             console.error('❌ Error loading ML data:', error);
@@ -895,23 +963,17 @@ function loadMLData() {
 
 // Update ML dashboard with fresh data
 function updateMLDashboard(data) {
-    console.log('Updating dashboard with data:', data);
-    console.log('Looking for element totalUsers:', document.getElementById('totalUsers'));
     
-    // Calculate ML models active count dynamically from model status
-    function calculateMLModelsActive(status) {
-        if (!status || !status.models) {
-            // Fallback: check if ML is initialized from other status indicators
-            if (status && status.ml_initialized) {
-                return 3; // Default when ML is active but no detailed model info
-            }
+    // Calculate ML models active count dynamically from diagnostics data (same as modal)
+    function calculateMLModelsActive(diagnostics) {
+        if (!diagnostics || !diagnostics.models) {
             return 0;
         }
         
         let activeCount = 0;
-        const models = status.models;
+        const models = diagnostics.models;
         
-        // Count individual active models (same logic as diagnostics)
+        // Count individual active models (same logic as diagnostics modal)
         if (models.difficulty_prediction && models.difficulty_prediction.active) activeCount++;
         if (models.adaptive_learning && models.adaptive_learning.active) activeCount++;
         if (models.question_analyzer && models.question_analyzer.active) activeCount++;
@@ -919,25 +981,24 @@ function updateMLDashboard(data) {
         return activeCount;
     }
     
-    // Update statistics
+    // Use diagnostics data for accurate ML models count
+    const dynamicModelsActive = calculateMLModelsActive(data.diagnostics);
+    updateElement('modelsActive', dynamicModelsActive);
+    
+    // Update statistics from status endpoint data
     if (data.stats) {
         updateElement('totalUsers', data.stats.total_users || 0);
         updateElement('activeProfiles', data.stats.active_profiles || 0);
         updateElement('mlSessions', data.stats.ml_sessions || 0);
         updateElement('algorithmVersion', data.stats.algorithm_version || 'v1.0');
         
-        // Update the Current Impact elements with dynamic ML models count
+        // Update the Current Impact elements
         updateElement('usersAffected', data.stats.users_using_ml || 0);
         updateElement('profilesActive', data.stats.active_profiles || 0);
-        
-        // Use dynamic calculation for ML models count instead of static backend value
-        const dynamicModelsActive = calculateMLModelsActive(data.status);
-        updateElement('modelsActive', dynamicModelsActive);
-        
         updateElement('fallbackUsage', data.stats.fallback_usage || 0);
     }
     
-    // Update status banner
+    // Update status banner using status data (not diagnostics)
     updateMLStatusBanner(data.status);
     
     // Update model performance cards
@@ -949,6 +1010,9 @@ function updateMLDashboard(data) {
     if (data.recent_activity) {
         updateRecentActivity(data.recent_activity);
     }
+    
+    // Load skills analysis data separately
+    loadSkillsAnalysis();
 }
 
 // Update ML status banner
@@ -962,7 +1026,7 @@ function updateMLStatusBanner(status) {
             <span style="margin-right: 10px;">✅</span>
             <div>
                 <strong>ML System Active</strong>
-                <span style="margin-left: 10px; font-size: 0.9em;">Algorithm v${status.algorithm_version}</span>
+                <span style="margin-left: 10px; font-size: 0.9em;">Algorithm ${status.algorithm_version}</span>
             </div>
         `;
     } else {
@@ -1068,6 +1132,127 @@ function updateRecentActivity(activities) {
     }
 }
 
+// Load skills analysis data
+function loadSkillsAnalysis() {
+    
+    fetch('/admin/api/ml/skills-analysis')
+        .then(response => {
+            if (!response.ok) {
+                throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+            }
+            return response.json();
+        })
+        .then(data => {
+            updateSkillsAnalysis(data);
+        })
+        .catch(error => {
+            console.error('❌ Error loading skills analysis data:', error);
+            // Show fallback message
+            updateSkillsAnalysis({
+                skill_distribution: {},
+                top_categories: [],
+                problem_areas: [],
+                total_profiles: 0
+            });
+        });
+}
+
+// Update skills analysis display
+function updateSkillsAnalysis(data) {
+    
+    // Update skill level distribution
+    const skillContainer = document.querySelector('.user-skills-analysis .skills-distribution');
+    if (skillContainer) {
+        const totalProfiles = data.total_profiles || 0;
+        
+        if (totalProfiles > 0) {
+            const skillLevels = ['beginner', 'intermediate', 'advanced', 'expert'];
+            const skillColors = {
+                'beginner': '#dc3545',
+                'intermediate': '#ffc107', 
+                'advanced': '#17a2b8',
+                'expert': '#28a745'
+            };
+            
+            let skillHtml = '<div class="skill-bars" style="margin-top: 15px;">';
+            
+            skillLevels.forEach(level => {
+                const count = data.skill_distribution[level] || 0;
+                const percentage = ((count / totalProfiles) * 100).toFixed(1);
+                const color = skillColors[level];
+                
+                skillHtml += `
+                    <div style="margin-bottom: 12px;">
+                        <div style="display: flex; justify-content: space-between; margin-bottom: 4px;">
+                            <span style="text-transform: capitalize; font-weight: 500;">${level}</span>
+                            <span style="font-size: 0.9em; color: #666;">${count} (${percentage}%)</span>
+                        </div>
+                        <div style="background: #e9ecef; height: 8px; border-radius: 4px; overflow: hidden;">
+                            <div style="width: ${percentage}%; height: 100%; background: ${color}; transition: width 0.3s ease;"></div>
+                        </div>
+                    </div>
+                `;
+            });
+            
+            skillHtml += '</div>';
+            skillContainer.innerHTML = skillHtml;
+        } else {
+            skillContainer.innerHTML = `
+                <div style="text-align: center; color: #666; padding: 20px;">
+                    <p>No skill profiles available</p>
+                    <small>Start quiz sessions to generate skill data</small>
+                </div>
+            `;
+        }
+    }
+    
+    // Update top categories
+    const topContainer = document.querySelector('.user-skills-analysis .top-categories');
+    if (topContainer) {
+        if (data.top_categories && data.top_categories.length > 0) {
+            topContainer.innerHTML = data.top_categories.map(cat => `
+                <div style="display: flex; justify-content: space-between; align-items: center; padding: 8px 0; border-bottom: 1px solid #e9ecef;">
+                    <span style="font-weight: 500;">${escapeHtml(cat.category)}</span>
+                    <div style="text-align: right;">
+                        <div style="color: #28a745; font-weight: bold;">${(cat.avg_score * 100).toFixed(1)}%</div>
+                        <small style="color: #666;">${cat.session_count} sessions</small>
+                    </div>
+                </div>
+            `).join('');
+        } else {
+            topContainer.innerHTML = `
+                <div style="text-align: center; color: #666; padding: 20px;">
+                    <p>No category data available</p>
+                    <small>Need more quiz sessions</small>
+                </div>
+            `;
+        }
+    }
+    
+    // Update problem areas
+    const problemContainer = document.querySelector('.user-skills-analysis .problem-areas');
+    if (problemContainer) {
+        if (data.problem_areas && data.problem_areas.length > 0) {
+            problemContainer.innerHTML = data.problem_areas.map(cat => `
+                <div style="display: flex; justify-content: space-between; align-items: center; padding: 8px 0; border-bottom: 1px solid #e9ecef;">
+                    <span style="font-weight: 500;">${escapeHtml(cat.category)}</span>
+                    <div style="text-align: right;">
+                        <div style="color: #dc3545; font-weight: bold;">${(cat.avg_score * 100).toFixed(1)}%</div>
+                        <small style="color: #666;">${cat.session_count} sessions</small>
+                    </div>
+                </div>
+            `).join('');
+        } else {
+            problemContainer.innerHTML = `
+                <div style="text-align: center; color: #666; padding: 20px;">
+                    <p>No problem areas identified</p>
+                    <small>All categories performing well</small>
+                </div>
+            `;
+        }
+    }
+}
+
 // Set ML loading state
 function setMLLoadingState(loading) {
     const section = document.getElementById('mlSettings2Section');
@@ -1114,13 +1299,11 @@ function setMLLoadingState(loading) {
 
 // Action button functions
 function refreshMLData() {
-    console.log('🔄 Refreshing ML data...');
     showMLNotification('Refreshing ML data...', 'info');
     loadMLData();
 }
 
 function exportMLInsights() {
-    console.log('📊 Exporting ML insights...');
     
     setMLLoadingState(true);
     
@@ -1163,7 +1346,6 @@ function resetMLModels() {
         return;
     }
     
-    console.log('⚙️ Resetting ML models...');
     setMLLoadingState(true);
     
     fetch('/admin/api/ml/reset', {
@@ -1195,7 +1377,6 @@ function resetMLModels() {
 }
 
 function showMLDiagnostics() {
-    console.log('🔍 Showing ML diagnostics...');
     
     fetch('/admin/api/ml/diagnostics')
         .then(response => {
@@ -1213,40 +1394,6 @@ function showMLDiagnostics() {
         });
 }
 
-function saveMLConfiguration() {
-    console.log('💾 Saving ML configuration...');
-    
-    // Collect configuration data
-    const config = {
-        learning_rate: parseFloat(document.querySelector('input[type="range"]:nth-of-type(1)').value),
-        adaptation_strength: parseFloat(document.querySelector('input[type="range"]:nth-of-type(2)').value),
-        collect_response_times: document.querySelector('input[type="checkbox"]:nth-of-type(1)').checked,
-        track_confidence: document.querySelector('input[type="checkbox"]:nth-of-type(2)').checked,
-        analyze_patterns: document.querySelector('input[type="checkbox"]:nth-of-type(3)').checked,
-        update_frequency: document.querySelector('.config-select').value
-    };
-    
-    fetch('/admin/api/ml/config', {
-        method: 'POST',
-        headers: {
-            'Content-Type': 'application/json',
-        },
-        body: JSON.stringify(config)
-    })
-    .then(response => {
-        if (!response.ok) {
-            throw new Error(`HTTP ${response.status}: ${response.statusText}`);
-        }
-        return response.json();
-    })
-    .then(data => {
-        showMLNotification('Configuration saved successfully!', 'success');
-    })
-    .catch(error => {
-        console.error('❌ Error saving ML configuration:', error);
-        showMLNotification('Error saving configuration: ' + error.message, 'error');
-    });
-}
 
 // Show ML diagnostics modal
 function showMLDiagnosticsModal(diagnostics) {

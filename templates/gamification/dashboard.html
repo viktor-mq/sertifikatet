@@ -29,11 +29,13 @@
                         <div class="mb-2">
                             <div class="flex justify-between text-sm text-gray-400 mb-1">
                                 <span class="xp-text">... / ... XP</span>
-                                <span class="xp-percentage">...%</span>
                             </div>
-                            <div class="h-4 bg-gray-700 rounded-full overflow-hidden">
+                            <div class="relative h-4 bg-gray-700 rounded-full overflow-hidden">
                                 <div class="h-full bg-gradient-to-r from-purple-600 to-pink-600 transition-all duration-500 xp-progress-bar"
                                      style="width: 0%"></div>
+                                <div class="absolute inset-0 flex items-center justify-center">
+                                    <span class="xp-percentage text-xs font-semibold text-white drop-shadow-sm">...%</span>
+                                </div>
                             </div>
                         </div>
                         <p class="text-gray-400">Total XP: <span class="text-white font-semibold total-xp">{{ current_user.total_xp }}</span></p>
@@ -361,9 +363,7 @@ document.addEventListener('DOMContentLoaded', function() {
             if (window.GamificationUpdater) {
                 if (document.querySelector('.gamification-dashboard') || 
                     document.querySelector('[data-gamification="true"]')) {
-                    console.log('🎯 Force-initializing gamification...');
                     new GamificationUpdater();
-                    console.log('✅ Gamification force-initialized successfully');
                 }
             } else {
                 console.log('❌ GamificationUpdater still not available after timeout');
