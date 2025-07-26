@@ -434,6 +434,23 @@ def quiz_results(session_id):
     # Get responses with questions
     responses = QuizResponse.query.filter_by(session_id=session_id).all()
     
+    # Add image folder discovery for each question
+    import os
+    from flask import current_app
+    
+    images_dir = os.path.join(current_app.static_folder, 'images')
+    
+    for response in responses:
+        if response.question and response.question.image_filename:
+            # Dynamic discovery of image folder
+            image_folder = ''
+            for root, dirs, files in os.walk(images_dir):
+                if response.question.image_filename in files:
+                    image_folder = os.path.relpath(root, images_dir).replace(os.sep, '/')
+                    break
+            # Add image_folder attribute to question object
+            response.question.image_folder = image_folder
+    
     # Format results
     results = []
     for response in responses:

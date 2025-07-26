@@ -382,7 +382,7 @@ class QuizResultsModal {
                     <h3 class="text-white font-semibold mb-2">Spørsmål</h3>
                     <p class="text-purple-100">${question.question_text}</p>
                     ${question.image_filename ? `
-                        <img src="/static/images/quiz/${question.image_filename}" 
+                        <img src="/static/images/${question.image_folder ? question.image_folder + '/' : ''}${question.image_filename}" 
                              alt="Spørsmålsbilde" 
                              class="mt-3 rounded-lg max-w-full h-auto">
                     ` : ''}

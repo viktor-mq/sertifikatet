@@ -1,0 +1,210 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* Custom component styles for Sertifikatet */
+@layer components {
+  .btn-primary {
+    @apply bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white font-semibold py-2 px-4 rounded-lg transition-all duration-300;
+  }
+  
+  .btn-secondary {
+    @apply bg-white border border-gray-300 hover:bg-gray-50 text-gray-700 font-semibold py-2 px-4 rounded-lg transition-all duration-300;
+  }
+  
+  .card {
+    @apply bg-white/10 backdrop-blur-lg rounded-xl p-6 border border-white/20 shadow-lg;
+  }
+  
+  .input-field {
+    @apply w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent text-white placeholder-gray-400;
+  }
+  
+  /* Form input defaults for dark theme */
+  input[type="text"], 
+  input[type="email"], 
+  input[type="password"], 
+  textarea {
+    @apply bg-gray-800 text-white border border-gray-600 rounded-lg px-3 py-2 focus:border-purple-500 focus:ring-2 focus:ring-purple-500 focus:ring-opacity-50;
+  }
+  
+  /* Custom select styling */
+  select {
+    @apply bg-gray-800 text-white border border-gray-600 rounded-lg px-3 py-2 pr-10 focus:border-purple-500 focus:ring-2 focus:ring-purple-500 focus:ring-opacity-50;
+    -webkit-appearance: none;
+    -moz-appearance: none;
+    appearance: none;
+    background-image: url("data:image/svg+xml;charset=UTF-8,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='currentColor' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3e%3cpolyline points='6 9 12 15 18 9'%3e%3c/polyline%3e%3c/svg%3e");
+    background-repeat: no-repeat;
+    background-position: right 0.7rem center;
+    background-size: 1.2em;
+    cursor: pointer;
+  }
+  
+  /* Native dropdown styling for macOS - more specific */
+  select.native-mac-dropdown {
+    appearance: menulist; /* Or revert to default */
+    background-image: none;
+  }
+  
+  .quiz-option {
+    @apply p-4 border-2 border-gray-200 rounded-lg cursor-pointer transition-all duration-200 hover:border-blue-300 hover:bg-blue-50;
+  }
+  
+  .quiz-option.selected {
+    @apply border-blue-500 bg-blue-100;
+  }
+  
+  .quiz-option.correct {
+    @apply border-green-500 bg-green-100;
+  }
+  
+  .quiz-option.incorrect {
+    @apply border-red-500 bg-red-100;
+  }
+  
+  .progress-bar {
+    @apply w-full bg-gray-200 rounded-full h-2.5;
+  }
+  
+  .progress-fill {
+    @apply bg-gradient-to-r from-blue-600 to-purple-600 h-2.5 rounded-full transition-all duration-500;
+  }
+  
+  .shorts-player {
+    @apply relative w-full h-full overflow-hidden bg-black;
+  }
+  
+  .shorts-overlay {
+    @apply absolute inset-0 pointer-events-none;
+  }
+  
+  .shorts-controls {
+    @apply absolute bottom-0 left-0 right-0 p-4 bg-gradient-to-t from-black/80 via-black/40 to-transparent pointer-events-auto;
+  }
+  
+  .achievement-badge {
+    @apply inline-flex items-center px-3 py-1 rounded-full text-xs font-medium bg-yellow-100 text-yellow-800;
+  }
+  
+  .nav-link {
+    @apply text-white hover:text-blue-200 transition-colors duration-200;
+  }
+  
+  .sidebar-link {
+    @apply flex items-center px-4 py-2 text-gray-600 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-all duration-200;
+  }
+  
+  .sidebar-link.active {
+    @apply text-blue-600 bg-blue-50;
+  }
+}
+
+/* Custom utilities */
+@layer utilities {
+  .text-shadow {
+    text-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+  }
+  
+  .text-shadow-lg {
+    text-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
+  }
+  
+  /* Custom scrollbar styling */
+  .scrollbar-purple::-webkit-scrollbar {
+    width: 8px;
+  }
+  
+  .scrollbar-purple::-webkit-scrollbar-track {
+    background: #1f2937;
+    border-radius: 4px;
+  }
+  
+  .scrollbar-purple::-webkit-scrollbar-thumb {
+    background: linear-gradient(135deg, #8b5cf6, #7c3aed);
+    border-radius: 4px;
+    border: 1px solid #4c1d95;
+  }
+  
+  .scrollbar-purple::-webkit-scrollbar-thumb:hover {
+    background: linear-gradient(135deg, #7c3aed, #6d28d9);
+  }
+  
+  /* Page scroll progress indicator */
+  .scroll-progress {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 0%;
+    height: 3px;
+    background: linear-gradient(90deg, #8b5cf6, #7c3aed);
+    z-index: 9999;
+    transition: width 0.1s ease-out;
+  }
+  
+  .glass-effect {
+    backdrop-filter: blur(10px);
+    background: rgba(255, 255, 255, 0.1);
+    border: 1px solid rgba(255, 255, 255, 0.2);
+  }
+  
+  .gradient-bg-primary {
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  }
+  
+  .gradient-bg-secondary {
+    background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
+  }
+  
+  .gradient-text {
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    background-clip: text;
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+  }
+}
+
+/* Base styles for better defaults */
+@layer base {
+  html {
+    scroll-behavior: smooth;
+    height: 100%;
+  }
+  
+  body {
+    @apply font-sans;
+    min-height: 100vh !important;
+    display: flex !important;
+    flex-direction: column !important;
+    margin: 0;
+    padding: 0;
+  }
+  
+  /* Ensure proper spacing between nav and main content */
+  main {
+    @apply pt-4;
+    flex: 1 !important;
+  }
+  
+  /* Footer should stick to bottom */
+  footer {
+    margin-top: auto !important;
+    flex-shrink: 0 !important;
+  }
+  
+  h1, h2, h3, h4, h5, h6 {
+    @apply font-semibold;
+  }
+  
+  a {
+    @apply transition-colors duration-200;
+  }
+  
+  button {
+    @apply transition-all duration-200;
+  }
+  
+  input, textarea, select {
+    @apply transition-all duration-200;
+  }
+}
